@@ -3,9 +3,11 @@ class Table:
         self.data = []
         self.colnames = []
         self.coltypes = []
+        self._update()
+
+    def _update(self):
         self.no_cols = len(self.colnames)
-        self.columns = [[row[i] for row in lst ]for i in range(self.no_cols)]
-#         self.rows =
+        self.columns = [[row[i] for row in self.data]for i in range(self.no_cols)]
         self.size = len(self.data)
 
     def set_column_names(self, colnames):
@@ -28,9 +30,11 @@ class Table:
             self.colnames = list(range(len(row)))
             self.coltypes = [str for _ in range(len(row))]
         self.data.append(row)
+        self._update()
 
     def delete(self, row_no):
         self.data.pop(row_no)
+        self._update()
 
     def select(self, rows):
         if not isinstance(rows, list):
