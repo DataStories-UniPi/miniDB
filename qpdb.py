@@ -1,30 +1,47 @@
 from tabulate import tabulate
+import pickle
+
+# conditions, io for the database, joins, query opt,
+
+
+class Database:
+    def __init__(self):
+        self.tables = {}
+        self.no_of_tables = 0
+        pass
+
+    def create_table(self, name=None, column_names=None, column_types=None, load=None):
+        self.tables.update({name: Table(name=name, column_names=column_names, column_types=column_types, load=load)})
+        # self.name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
+        setattr(self, name, self.tables[name])
+        self.no_of_tables += 1
+
 class Table:
     '''
     Table object represents a table inside a database
-    
+
     A Table object can be created either by assigning:
         - a table name (string)
         - column names (list of strings)
         - column types (list of functions like str/int etc)
-    
+
     OR
-        
+
         - by assigning a value to the variable called load. This value can be:
             - a path to a Table file saved using the save function
             - a dictionary that includes the appropriate info (all the attributes in __init__)
-            
+
     '''
     def __init__(self, name=None, column_names=None, column_types=None, load=None):
-        
+
         if load is not None:
             if isinstance(load, dict):
-                self.__dict__.update(_dict)
+                self.__dict__.update(load)
             elif isinstance(load, str):
                 self._load_from_file(load)
-            
+
         elif (name is not None) and (column_names is not None) and (column_types is not None):
-            
+
             self.name = name
 
             if len(column_names)!=len(column_types):
@@ -35,14 +52,14 @@ class Table:
             self._no_of_columns = len(column_names)
             self.data = []
         else:
-            raise Warning("Created table is an empty object. Are you sure you know what you're doing?")
+            print("Created table is an empty object. Are you sure you know what you're doing?")
 
     def insert(self, row):
-        row = row.split(',')
-        
+        # row = row.split(',')
+
         if len(row)!=self._no_of_columns:
             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {self._no_of_columns} columns exist')
-            
+
         for i in range(len(row)):
             try:
                 row[i] = self.column_types[i](row[i])
@@ -57,7 +74,8 @@ class Table:
     def select(self, rows):
         if not isinstance(rows, list):
             rows = [rows]
-        return {(key):([self.data[i] for i in rows] if key=="data" else value) for key,value in tab.__dict__.items()}
+        dict = {(key):([self.data[i] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+        return Table(load=dict)
 
 
     def show(self, no_of_rows=5):
@@ -67,15 +85,13 @@ class Table:
     def save(self, filename):
         if filename.split('.')[-1] != 'pkl':
             raise ValueError(f'ERROR -> Savefile needs .pkl extention')
-            
+
         with open(filename, 'wb') as f:
             pickle.dump(self.__dict__, f)
 
     def _load_from_file(self, filename):
         f = open(filename, 'rb')
-        tmp_dict = cPickle.load(f)
+        tmp_dict = pickle.load(f)
         f.close()
 
         self.__dict__.update(tmp_dict)
-        
-        
