@@ -1,20 +1,45 @@
 from tabulate import tabulate
 import pickle
 
-# conditions, io for the database, joins, query opt,
+# io for the database, joins, query opt, server-client (ports), user priviledges, sort rows
+
+import operator
+
+def get_op(op, a, b):
+    ops = {'>': operator.gt,
+                '<': operator.lt,
+                '>=': operator.ge,
+                '<=': operator.le,
+                '==': operator.eq}
+    try:
+        return ops[op](a,b)
+    except:
+        raise Exception(f'Unknown operator "{op}"')
 
 
 class Database:
     def __init__(self):
         self.tables = {}
-        self.no_of_tables = 0
-        pass
+        # self.no_of_tables = len(self.tables)
+        self.len = 0
+
+    def _update(self):
+        self.len = len(self.tables)
 
     def create_table(self, name=None, column_names=None, column_types=None, load=None):
         self.tables.update({name: Table(name=name, column_names=column_names, column_types=column_types, load=load)})
         # self.name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
-        setattr(self, name, self.tables[name])
-        self.no_of_tables += 1
+        # check that new dynamic var doesnt exist already
+        if name not in self.__dir__():
+            setattr(self, name, self.tables[name])
+        else:
+            raise Exception(f'"{name}" attribute already exists in "{self.__class__.__name__} "class.')
+        # self.no_of_tables += 1
+        self._update()
+
+    def drop_table(self, name):
+        del self.tables[name]
+        delattr(self, name)
 
 class Table:
     '''
@@ -48,11 +73,31 @@ class Table:
                 raise ValueError('Need same number of column names and types.')
 
             self.column_names = column_names
+
+            self.columns = []
+
+            for col in self.column_names:
+                if col not in self.__dir__():
+                    setattr(self, col, [])
+                    self.columns.append([])
+                else:
+                    raise Exception(f'"{col}" attribute already exists in "{self.__class__.__name__} "class.')
+
             self.column_types = column_types
             self._no_of_columns = len(column_names)
             self.data = []
+            # self.columns = [[] for _ in range(self._no_of_columns)]
+            self._update()
+
+
+
         else:
             print("Created table is an empty object. Are you sure you know what you're doing?")
+
+    def _update(self):
+        self.columns = [[row[i] for row in self.data] for i in range(self._no_of_columns)]
+        for ind, col in enumerate(self.column_names):
+            setattr(self, col, self.columns[ind])
 
     def insert(self, row):
         # row = row.split(',')
@@ -67,13 +112,21 @@ class Table:
                 raise ValueError(f'ERROR -> Value {row[i]} is not of type {self.column_types[i]}.')
                 return
         self.data.append(row)
+        self._update()
 
     def delete(self, row_no):
         self.data.pop(row_no)
 
-    def select(self, rows):
+    def _select_indx(self, rows):
         if not isinstance(rows, list):
             rows = [rows]
+        dict = {(key):([self.data[i] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+        return Table(load=dict)
+
+    def select_where(self, column_name, operator, value):
+        column = self.columns[self.column_names.index(column_name)]
+        rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
         dict = {(key):([self.data[i] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
         return Table(load=dict)
 
@@ -95,3 +148,10 @@ class Table:
         f.close()
 
         self.__dict__.update(tmp_dict)
+
+    def where(self, column_name, op, value):
+    # where syntax -> db.table.where(colname, <, 10)
+    # this works -> db.test1.select(db.test1.where('Age','<=',40)).show()
+        column = self.columns[self.column_names.index(column_name)]
+        idxs = [ind for ind, x in enumerate(column) if get_op(op, x, value)]
+        return idxs
