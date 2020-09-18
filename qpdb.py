@@ -1,7 +1,11 @@
+from __future__ import annotations
 from tabulate import tabulate
 import pickle
 
-# io for the database, joins, query opt, server-client (ports), user priviledges, sort rows
+# have to
+# server-client, keys (primary, foriegn)
+# maybe
+# query opt, server-client (ports), user priviledges
 
 import operator
 
@@ -40,6 +44,36 @@ class Database:
     def drop_table(self, name):
         del self.tables[name]
         delattr(self, name)
+
+    def save(self, filename):
+        if filename.split('.')[-1] != 'pkl':
+            raise ValueError(f'ERROR -> Savefile needs .pkl extention')
+
+        with open(filename, 'wb') as f:
+            pickle.dump(self.__dict__, f)
+
+    def load(self, filename):
+        f = open(filename, 'rb')
+        tmp_dict = pickle.load(f)
+        f.close()
+
+        self.__dict__.update(tmp_dict)
+
+    def table_from_csv(self, filename, name=None, column_types=None):
+        if name is None:
+            name=filename.split('.')[:-1][0]
+
+        file = open(filename, 'r')
+
+        first_line=True
+        for line in file.readlines():
+            if first_line:
+                colnames = line.strip('\n').split(',')
+                self.create_table(name=name, column_names=colnames, column_types=[str for _ in colnames])
+                first_line = False
+                continue
+
+            self.tables[name].insert(line.strip('\n').split(','))
 
 class Table:
     '''
@@ -88,11 +122,6 @@ class Table:
             self.data = []
             # self.columns = [[] for _ in range(self._no_of_columns)]
             self._update()
-
-
-
-        else:
-            print("Created table is an empty object. Are you sure you know what you're doing?")
 
     def _update(self):
         self.columns = [[row[i] for row in self.data] for i in range(self._no_of_columns)]
@@ -149,9 +178,32 @@ class Table:
 
         self.__dict__.update(tmp_dict)
 
-    def where(self, column_name, op, value):
-    # where syntax -> db.table.where(colname, <, 10)
-    # this works -> db.test1.select(db.test1.where('Age','<=',40)).show()
-        column = self.columns[self.column_names.index(column_name)]
-        idxs = [ind for ind, x in enumerate(column) if get_op(op, x, value)]
-        return idxs
+
+
+    def order_by(self, column_name, desc=False):
+        idx = sorted(range(len(column_name)), key=lambda k: column_name[k], reverse=not desc)
+        self.data = [self.data[i] for i in idx]
+
+    def inner_join(self, table_right: Table, column_name_left, column_name_right=None ):
+        if column_name_right is None:
+            column_name_right = column_name_left
+        try:
+            column_index_left = self.column_names.index(column_name_left)
+            column_index_right = table_right.column_names.index(column_name_right)
+        except:
+            raise Exception(f'Column "{column_name}" doesnt exist in both tables.')
+
+        join_table_name = f'{self.name}_join_{table_right.name}'
+        join_table_colnames = self.column_names+table_right.column_names[:column_index_right]+table_right.column_names[column_index_right+1:]
+        join_table_coltypes = self.column_types+table_right.column_types[:column_index_right]+table_right.column_types[column_index_right+1:]
+        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
+
+        # this code is dumb on purpose... it needs to illustrate the underline technique
+        for row_left in self.data:
+            left_value = row_left[column_index_left]
+            for row_right in table_right.data:
+                right_value = row_right[column_index_right]
+                if left_value == right_value:
+                    join_table.insert(row_left+row_right[:column_index_right]+row_right[column_index_right+1:])
+
+        return join_table
