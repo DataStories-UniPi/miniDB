@@ -1,11 +1,25 @@
 from __future__ import annotations
 from tabulate import tabulate
 import pickle
+import os
+import time
+
+
 
 # have to
-# server-client, keys (primary, foriegn)
+# server-client
 # maybe
-# query opt, server-client (ports), user priviledges
+# query opt, user priviledges
+
+'''
+locking
+
+check current lock
+if confilct:
+    do
+
+if not set
+'''
 
 import operator
 
@@ -30,6 +44,17 @@ class Database:
     def _update(self):
         self.len = len(self.tables)
 
+    def table_from_pkl(self, path):
+        new_table = Table(load=path)
+
+        if new_table.name not in self.__dir__():
+            setattr(self, new_table.name, new_table)
+        else:
+            raise Exception(f'"{new_table.name}" attribute already exists in "{self.__class__.__name__} "class.')
+
+        self.tables.update({new_table.name: new_table})
+        self._update()
+
     def create_table(self, name=None, column_names=None, column_types=None, load=None):
         self.tables.update({name: Table(name=name, column_names=column_names, column_types=column_types, load=load)})
         # self.name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
@@ -42,6 +67,10 @@ class Database:
         self._update()
 
     def drop_table(self, name):
+        if self.tables[name]._is_locked():
+            print(f"!! Table '{name}' is currently locked")
+            return
+
         del self.tables[name]
         delattr(self, name)
 
@@ -120,7 +149,8 @@ class Table:
             self.column_types = column_types
             self._no_of_columns = len(column_names)
             self.data = []
-            # self.columns = [[] for _ in range(self._no_of_columns)]
+            self.path = f'{self.name}_tmp.pkl'
+
             self._update()
 
     def _update(self):
@@ -128,8 +158,17 @@ class Table:
         for ind, col in enumerate(self.column_names):
             setattr(self, col, self.columns[ind])
 
+        with open(self.path, 'wb') as f:
+            pickle.dump(self.__dict__, f)
+
     def insert(self, row):
         # row = row.split(',')
+        if self._is_locked():
+            print(f"!! Table '{self.name}' is currently locked")
+            return
+
+        self._lock()
+        time.sleep(1)
 
         if len(row)!=self._no_of_columns:
             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {self._no_of_columns} columns exist')
@@ -142,9 +181,17 @@ class Table:
                 return
         self.data.append(row)
         self._update()
+        self._unlock()
 
     def delete(self, row_no):
+        if self._is_locked():
+            print(f"!! Table '{self.name}' is currently locked")
+            return
+
         self.data.pop(row_no)
+        self._update()
+
+        self._unlock()
 
     def _select_indx(self, rows):
         if not isinstance(rows, list):
@@ -168,7 +215,8 @@ class Table:
         if filename.split('.')[-1] != 'pkl':
             raise ValueError(f'ERROR -> Savefile needs .pkl extention')
 
-        with open(filename, 'wb') as f:
+        self.path = filename
+        with open(self.path, 'wb') as f:
             pickle.dump(self.__dict__, f)
 
     def _load_from_file(self, filename):
@@ -207,3 +255,15 @@ class Table:
                     join_table.insert(row_left+row_right[:column_index_right]+row_right[column_index_right+1:])
 
         return join_table
+
+    def _lock(self):
+        with open(f'{self.name}.lock', 'w'): pass
+
+    def _unlock(self):
+        os.remove(f'{self.name}.lock')
+
+    def _is_locked(self):
+        return os.path.exists(f'{self.name}.lock')
+
+    def _reload(self):
+        self._load_from_file(self.path)
