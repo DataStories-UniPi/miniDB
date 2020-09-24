@@ -10,6 +10,14 @@ import time
 # server-client
 # maybe
 # query opt, user priviledges
+#
+# delete where
+# metadata add
+# indexes add
+# doc
+# where should be separate
+# btree
+
 
 
 import operator
@@ -23,10 +31,8 @@ def get_op(op, a, b):
                 '>=': operator.ge,
                 '<=': operator.le,
                 '==': operator.eq}
-    try:
-        return ops[op](a,b)
-    except:
-        raise Exception(f'Unknown operator "{op}"')
+
+    return ops[op](a,b)
 
 
 class Database:
@@ -183,6 +189,14 @@ class Table:
         with open(self.path, 'wb') as f:
             pickle.dump(self.__dict__, f)
 
+    def cast_column(self, column_name, cast_type):
+        column_idx = self.column_names.index(column_name)
+        for i in range(len(self.data)):
+            self.data[i][column_idx] = cast_type(self.data[i][column_idx])
+        self.column_types[column_idx] = cast_type
+        self._update()
+
+
     def insert(self, row):
         # row = row.split(',')
         if self._is_locked():
@@ -190,7 +204,6 @@ class Table:
             return
 
         self._lock()
-        time.sleep(1)
 
         if len(row)!=self._no_of_columns:
             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {self._no_of_columns} columns exist')
@@ -205,15 +218,38 @@ class Table:
         self._update()
         self._unlock()
 
-    def delete(self, row_no):
+    def _delete(self, row_no):
         if self._is_locked():
             print(f"!! Table '{self.name}' is currently locked")
             return
+        self._lock()
 
         self.data.pop(row_no)
         self._update()
 
         self._unlock()
+
+    def delete_where(self, column_name, operator, value):
+        if self._is_locked():
+            print(f"!! Table '{self.name}' is currently locked")
+            return
+        self._lock()
+
+        indexes_to_del = []
+
+        column = self.columns[self.column_names.index(column_name)]
+        for index, row_value in enumerate(column):
+            if get_op(operator, row_value, value):
+                indexes_to_del.append(index)
+
+        # we pop from highest to lowest index in order to avoid removing the wrong item
+        for index in sorted(indexes_to_del, reverse=True):
+            self.data.pop(index)
+
+        self._update()
+        self._unlock()
+        print(f"Deleted {len(indexes_to_del)} rows")
+
 
     def _select_indx(self, rows):
         if not isinstance(rows, list):
@@ -255,17 +291,19 @@ class Table:
         idx = sorted(range(len(column_name)), key=lambda k: column_name[k], reverse=not desc)
         self.data = [self.data[i] for i in idx]
 
-    def inner_join(self, table_right: Table, column_name_left, column_name_right=None ):
-        if column_name_right is None:
-            column_name_right = column_name_left
+    def natural_join(self, table_right: Table, column_name):
         try:
-            column_index_left = self.column_names.index(column_name_left)
-            column_index_right = table_right.column_names.index(column_name_right)
+            column_index_left = self.column_names.index(column_name)
+            column_index_right = table_right.column_names.index(column_name)
         except:
             raise Exception(f'Column "{column_name}" doesnt exist in both tables.')
 
+        left_names = [f'{self.name}_{colname}' for colname in self.column_names]
+        right_names = [f'{table_right.name}_{colname}' for colname in table_right.column_names]
+
+
         join_table_name = f'{self.name}_join_{table_right.name}'
-        join_table_colnames = self.column_names+table_right.column_names[:column_index_right]+table_right.column_names[column_index_right+1:]
+        join_table_colnames = left_names+right_names[:column_index_right]+right_names[column_index_right+1:]
         join_table_coltypes = self.column_types+table_right.column_types[:column_index_right]+table_right.column_types[column_index_right+1:]
         join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
 
@@ -276,6 +314,32 @@ class Table:
                 right_value = row_right[column_index_right]
                 if left_value == right_value: #EQ_OP
                     join_table.insert(row_left+row_right[:column_index_right]+row_right[column_index_right+1:])
+
+        return join_table
+
+    def comparison_join(self, table_right: Table, column_name_left, column_name_right, operator='=='):
+        try:
+            column_index_left = self.column_names.index(column_name_left)
+            column_index_right = table_right.column_names.index(column_name_right)
+        except:
+            raise Exception(f'Columns dont exist in one or both tables.')
+
+        left_names = [f'{self.name}_{colname}' for colname in self.column_names]
+        right_names = [f'{table_right.name}_{colname}' for colname in table_right.column_names]
+
+
+        join_table_name = f'{self.name}_join_{table_right.name}'
+        join_table_colnames = left_names+right_names
+        join_table_coltypes = self.column_types+table_right.column_types
+        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
+
+        # this code is dumb on purpose... it needs to illustrate the underline technique
+        for row_left in self.data:
+            left_value = row_left[column_index_left]
+            for row_right in table_right.data:
+                right_value = row_right[column_index_right]
+                if get_op(operator, left_value, right_value): #EQ_OP
+                    join_table.insert(row_left+row_right)
 
         return join_table
 
