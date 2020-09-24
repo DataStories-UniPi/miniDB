@@ -11,19 +11,13 @@ import time
 # maybe
 # query opt, user priviledges
 
-'''
-locking
-
-check current lock
-if confilct:
-    do
-
-if not set
-'''
 
 import operator
 
 def get_op(op, a, b):
+    '''
+    Get op as a function of a and b by using a symbol
+    '''
     ops = {'>': operator.gt,
                 '<': operator.lt,
                 '>=': operator.ge,
@@ -36,15 +30,23 @@ def get_op(op, a, b):
 
 
 class Database:
+    '''
+    Database class contains tables.
+    '''
     def __init__(self):
         self.tables = {}
-        # self.no_of_tables = len(self.tables)
         self.len = 0
 
     def _update(self):
+        '''
+        recalculate the number of tables in the Database
+        '''
         self.len = len(self.tables)
 
     def table_from_pkl(self, path):
+        '''
+        Load a table from a pkl file. tmp tables and saved tables are all saved using the pkl extention.
+        '''
         new_table = Table(load=path)
 
         if new_table.name not in self.__dir__():
@@ -56,6 +58,12 @@ class Database:
         self._update()
 
     def create_table(self, name=None, column_names=None, column_types=None, load=None):
+        '''
+        This method create a new table. This table is saved and can be accessed by
+        db_object.tables['table_name']
+        or
+        db_object.table_name
+        '''
         self.tables.update({name: Table(name=name, column_names=column_names, column_types=column_types, load=load)})
         # self.name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
@@ -66,15 +74,21 @@ class Database:
         # self.no_of_tables += 1
         self._update()
 
-    def drop_table(self, name):
-        if self.tables[name]._is_locked():
-            print(f"!! Table '{name}' is currently locked")
+    def drop_table(self, table_name):
+        '''
+        Drop table with name 'table_name' from current db
+        '''
+        if self.tables[table_name]._is_locked():
+            print(f"!! Table '{table_name}' is currently locked")
             return
 
-        del self.tables[name]
-        delattr(self, name)
+        del self.tables[table_name]
+        delattr(self, table_name)
 
     def save(self, filename):
+        '''
+        Save db as a pkl file. This method saves the db object, ie all the tables and attributes.
+        '''
         if filename.split('.')[-1] != 'pkl':
             raise ValueError(f'ERROR -> Savefile needs .pkl extention')
 
@@ -82,6 +96,9 @@ class Database:
             pickle.dump(self.__dict__, f)
 
     def load(self, filename):
+        '''
+        Load a db from a saved db_object
+        '''
         f = open(filename, 'rb')
         tmp_dict = pickle.load(f)
         f.close()
@@ -89,6 +106,11 @@ class Database:
         self.__dict__.update(tmp_dict)
 
     def table_from_csv(self, filename, name=None, column_types=None):
+        '''
+        Create a table from a csv file.
+        If name is not specified, filename's name is used
+        If column types are not specified, all are regarded to be of type str
+        '''
         if name is None:
             name=filename.split('.')[:-1][0]
 
@@ -200,6 +222,7 @@ class Table:
         return Table(load=dict)
 
     def select_where(self, column_name, operator, value):
+        # TODO: this needs to be dumbed down
         column = self.columns[self.column_names.index(column_name)]
         rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
 
@@ -251,7 +274,7 @@ class Table:
             left_value = row_left[column_index_left]
             for row_right in table_right.data:
                 right_value = row_right[column_index_right]
-                if left_value == right_value:
+                if left_value == right_value: #EQ_OP
                     join_table.insert(row_left+row_right[:column_index_right]+row_right[column_index_right+1:])
 
         return join_table
