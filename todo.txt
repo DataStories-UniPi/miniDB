@@ -1,0 +1,7 @@
+TODOS
+
+- query opt, user priviledges
+- metadata add
+- indexes/btree add
+- doc
+- where should be separate and dumbed down
