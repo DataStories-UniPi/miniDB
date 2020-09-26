@@ -1,5 +1,6 @@
-from tabulate import tabulate
 from __future__ import annotations
+from tabulate import tabulate
+import pickle
 import os
 from misc import get_op
 
@@ -88,6 +89,25 @@ class Table:
         self.data.append(row)
         self._update()
         self._unlock()
+
+    def update(self, set_value, set_column, column_name, operator, value):
+        if self._is_locked():
+            print(f"!! Table '{self.name}' is currently locked")
+            return
+        self._lock()
+        column = self.columns[self.column_names.index(column_name)]
+        set_column_idx = self.column_names.index(set_column)
+
+        # set_columns_indx = [self.column_names.index(set_column_name) for set_column_name in set_column_names]
+
+        for row_ind, column_value in enumerate(column):
+            if value == column_value:
+                self.data[row_ind][set_column_idx] = set_value
+
+        self._update()
+        self._unlock()
+        # print(f"Updated {len(indexes_to_del)} rows")
+
 
     def _delete(self, row_no):
         if self._is_locked():

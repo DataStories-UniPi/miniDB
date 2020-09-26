@@ -1,5 +1,6 @@
 from __future__ import annotations
 import pickle
+from table import Table
 
 class Database:
     '''
@@ -56,6 +57,7 @@ class Database:
 
         del self.tables[table_name]
         delattr(self, table_name)
+        self._update()
 
     def save(self, filename):
         '''
