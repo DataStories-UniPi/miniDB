@@ -61,7 +61,7 @@ class Table:
         with open(self.path, 'wb') as f:
             pickle.dump(self.__dict__, f)
 
-    def cast_column(self, column_name, cast_type):
+    def _cast_column(self, column_name, cast_type):
         column_idx = self.column_names.index(column_name)
         for i in range(len(self.data)):
             self.data[i][column_idx] = cast_type(self.data[i][column_idx])
@@ -69,7 +69,7 @@ class Table:
         self._update()
 
 
-    def insert(self, row):
+    def _insert(self, row):
         # row = row.split(',')
         if self._is_locked():
             print(f"!! Table '{self.name}' is currently locked")
@@ -90,7 +90,7 @@ class Table:
         self._update()
         self._unlock()
 
-    def update(self, set_value, set_column, column_name, operator, value):
+    def _update_row(self, set_value, set_column, column_name, operator, value):
         if self._is_locked():
             print(f"!! Table '{self.name}' is currently locked")
             return
@@ -120,7 +120,7 @@ class Table:
 
         self._unlock()
 
-    def delete_where(self, column_name, operator, value):
+    def _delete_where(self, column_name, operator, value):
         if self._is_locked():
             print(f"!! Table '{self.name}' is currently locked")
             return
@@ -148,7 +148,7 @@ class Table:
         dict = {(key):([self.data[i] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
         return Table(load=dict)
 
-    def select_where(self, column_name, operator, value):
+    def _select_where(self, column_name, operator, value):
         # TODO: this needs to be dumbed down
         column = self.columns[self.column_names.index(column_name)]
         rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
@@ -156,12 +156,11 @@ class Table:
         dict = {(key):([self.data[i] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
         return Table(load=dict)
 
-
-    def show(self, no_of_rows=5):
+    def _show(self, no_of_rows=5):
         print(f"# {self.name} #\n")
         print(tabulate(self.data[:no_of_rows], headers=self.column_names))
 
-    def save(self, filename):
+    def _save(self, filename):
         if filename.split('.')[-1] != 'pkl':
             raise ValueError(f'ERROR -> Savefile needs .pkl extention')
 
@@ -178,11 +177,14 @@ class Table:
 
 
 
-    def order_by(self, column_name, desc=False):
-        idx = sorted(range(len(column_name)), key=lambda k: column_name[k], reverse=not desc)
+    def _order_by(self, column_name, desc=False):
+        column = self.columns[self.column_names.index(column_name)]
+        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=not desc)
+        # print(idx)
         self.data = [self.data[i] for i in idx]
+        self._update()
 
-    def natural_join(self, table_right: Table, column_name):
+    def _natural_join(self, table_right: Table, column_name):
         try:
             column_index_left = self.column_names.index(column_name)
             column_index_right = table_right.column_names.index(column_name)
@@ -204,11 +206,11 @@ class Table:
             for row_right in table_right.data:
                 right_value = row_right[column_index_right]
                 if left_value == right_value: #EQ_OP
-                    join_table.insert(row_left+row_right[:column_index_right]+row_right[column_index_right+1:])
+                    join_table._insert(row_left+row_right[:column_index_right]+row_right[column_index_right+1:])
 
         return join_table
 
-    def comparison_join(self, table_right: Table, column_name_left, column_name_right, operator='=='):
+    def _comparison_join(self, table_right: Table, column_name_left, column_name_right, operator='=='):
         try:
             column_index_left = self.column_names.index(column_name_left)
             column_index_right = table_right.column_names.index(column_name_right)
@@ -230,7 +232,7 @@ class Table:
             for row_right in table_right.data:
                 right_value = row_right[column_index_right]
                 if get_op(operator, left_value, right_value): #EQ_OP
-                    join_table.insert(row_left+row_right)
+                    join_table._insert(row_left+row_right)
 
         return join_table
 

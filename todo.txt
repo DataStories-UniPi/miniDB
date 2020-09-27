@@ -5,3 +5,6 @@ TODOS
 - indexes/btree add
 - doc
 - where should be separate and dumbed down
+- add select and join tables to db
+- cast on csv
+- locking tables
