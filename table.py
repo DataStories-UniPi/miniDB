@@ -71,11 +71,6 @@ class Table:
 
     def _insert(self, row):
         # row = row.split(',')
-        if self._is_locked():
-            print(f"!! Table '{self.name}' is currently locked")
-            return
-
-        self._lock()
 
         if len(row)!=self._no_of_columns:
             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {self._no_of_columns} columns exist')
@@ -88,13 +83,8 @@ class Table:
                 return
         self.data.append(row)
         self._update()
-        self._unlock()
 
     def _update_row(self, set_value, set_column, column_name, operator, value):
-        if self._is_locked():
-            print(f"!! Table '{self.name}' is currently locked")
-            return
-        self._lock()
         column = self.columns[self.column_names.index(column_name)]
         set_column_idx = self.column_names.index(set_column)
 
@@ -105,26 +95,16 @@ class Table:
                 self.data[row_ind][set_column_idx] = set_value
 
         self._update()
-        self._unlock()
-        # print(f"Updated {len(indexes_to_del)} rows")
+                # print(f"Updated {len(indexes_to_del)} rows")
 
 
     def _delete(self, row_no):
-        if self._is_locked():
-            print(f"!! Table '{self.name}' is currently locked")
-            return
-        self._lock()
 
         self.data.pop(row_no)
         self._update()
 
-        self._unlock()
 
     def _delete_where(self, column_name, operator, value):
-        if self._is_locked():
-            print(f"!! Table '{self.name}' is currently locked")
-            return
-        self._lock()
 
         indexes_to_del = []
 
@@ -138,7 +118,6 @@ class Table:
             self.data.pop(index)
 
         self._update()
-        self._unlock()
         print(f"Deleted {len(indexes_to_del)} rows")
 
 
@@ -156,8 +135,11 @@ class Table:
         dict = {(key):([self.data[i] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
         return Table(load=dict)
 
-    def _show(self, no_of_rows=5):
-        print(f"# {self.name} #\n")
+    def show(self, no_of_rows=5, is_locked=False):
+        if is_locked:
+            print(f"\n## {self.name} (locked) ##")
+        else:
+            print(f"\n## {self.name} ##")
         print(tabulate(self.data[:no_of_rows], headers=self.column_names))
 
     def _save(self, filename):
@@ -235,15 +217,3 @@ class Table:
                     join_table._insert(row_left+row_right)
 
         return join_table
-
-    def _lock(self):
-        with open(f'{self.name}.lock', 'w'): pass
-
-    def _unlock(self):
-        os.remove(f'{self.name}.lock')
-
-    def _is_locked(self):
-        return os.path.exists(f'{self.name}.lock')
-
-    def _reload(self):
-        self._load_from_file(self.path)

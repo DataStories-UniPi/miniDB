@@ -1,6 +1,7 @@
 from __future__ import annotations
 import pickle
 from table import Table
+from time import sleep
 
 class Database:
     '''
@@ -14,6 +15,7 @@ class Database:
         # self.meta.update({'length': Table('length', ['table_name', 'no_of_rows'], [str, int])})
 
         self.create_table('meta_length',  ['table_name', 'no_of_rows'], [str, int])
+        self.create_table('meta_locks',  ['table_name', 'locked'], [str, str])
 
     #### IO ####
 
@@ -22,7 +24,8 @@ class Database:
         recalculate the number of tables in the Database
         '''
         self.len = len(self.tables)
-        self._update_meta()
+        self._update_meta_length()
+        self._update_meta_locks()
 
 
     def create_table(self, name=None, column_names=None, column_types=None, load=None):
@@ -40,7 +43,7 @@ class Database:
         else:
             raise Exception(f'"{name}" attribute already exists in "{self.__class__.__name__} "class.')
         # self.no_of_tables += 1
-        self._update()
+        # self._update()
 
 
     def drop_table(self, table_name):
@@ -98,7 +101,7 @@ class Database:
                 continue
 
             self.insert(name, line.strip('\n').split(','))
-        self._update()
+
 
     def table_from_pkl(self, path):
         '''
@@ -118,51 +121,81 @@ class Database:
     ##### table functions #####
 
     def cast_column(self, table_name, column_name, cast_type):
+        self.lock_table(table_name)
         self.tables[table_name]._cast_column(column_name, cast_type)
+        self.unlock_table(table_name)
+        self._update()
 
     def insert(self, table_name, row):
+        self.lock_table(table_name)
         self.tables[table_name]._insert(row)
+        # sleep(2)
+        self.unlock_table(table_name)
+        self._update()
 
     def update_row(self, table_name, set_value, set_column, column_name, operator, value):
+        self.lock_table(table_name)
         self.tables[table_name]._update_row(set_value, set_column, column_name, operator, value)
+        self.unlock_table(table_name)
+        self._update()
 
     def delete(self, table_name, column_name, operator, value):
+        self.lock_table(table_name)
         self.tables[table_name]._delete_where(column_name, operator, value)
+        self.unlock_table(table_name)
+        self._update()
 
     def select(self, table_name, column_name, operator, value):
         return self.tables[table_name]._select_where(column_name, operator, value)
 
     def show_table(self, table_name, no_of_rows=5):
-        self.tables[table_name]._show(no_of_rows)
+        self.tables[table_name].show(no_of_rows, self.is_locked(table_name))
 
     def order_by(self, table_name, column_name, desc=False):
         self.tables[table_name]._order_by(column_name, desc=desc)
 
-    def natural_join(self, left_table_name, right_table_name, column_name):
+    def natural_join(self, left_table_name, right_table_name, column_name, save_name=None):
         return self.tables[left_table_name]._natural_join(self.tables[right_table_name], column_name)
 
-    def comparison_join(self, left_table_name, right_table_name, column_name_left, column_name_right, operator='=='):
+    def comparison_join(self, left_table_name, right_table_name, column_name_left, column_name_right, operator='==', save_name=None):
         return self.tables[left_table_name]._comparison_join(self.tables[right_table_name], column_name_left, column_name_right, operator='==')
 
-    # def lock_table(self, table_name):
-    #     tables[table_name]._
-    #
-    # def unlock_table(self, table_name):
-    #     tables[table_name]._
-    #
-    # def is_locked(self, table_name):
-    #     tables[table_name]._
+    def lock_table(self, table_name):
+        self.tables['meta_locks']._update_row(True, 'locked', 'table_name', '==', table_name)
+        print(f'Locking table "{table_name}"')
+
+    def unlock_table(self, table_name):
+        self.tables['meta_locks']._update_row(False, 'locked', 'table_name', '==', table_name)
+        print(f'Unlocking table "{table_name}"')
+
+    def is_locked(self, table_name):
+        return self.select('meta_locks', 'table_name', '==', table_name).locked[0]
     #
     # def lock_table(self, table_name):
     #     tables[table_name]._
 
     #### META ####
 
-    def _update_meta(self):
+    def _update_meta_length(self):
         for table in self.tables.values():
+            if table.name[:4]=='meta':
+                continue
             if table.name not in self.meta_length.table_name:
-                self.insert('meta_length', [table.name, 0])
+                self.tables['meta_length']._insert([table.name, 0])
 
-            self.update_row('meta_length', len(table.data), 'no_of_rows', 'table_name', '==', table.name)
+            self.tables['meta_length']._update_row(len(table.data), 'no_of_rows', 'table_name', '==', table.name)
+            # self.update_row('meta_length', len(table.data), 'no_of_rows', 'table_name', '==', table.name)
+
+    def _update_meta_locks(self):
+        for table in self.tables.values():
+            if table.name[:4]=='meta':
+                continue
+            if table.name not in self.meta_locks.table_name:
+
+                self.tables['meta_locks']._insert([table.name, False])
+                # self.insert('meta_locks', [table.name, False])
+
+
+
 
     # locks

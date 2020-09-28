@@ -1,10 +1,10 @@
 TODOS
 
 - query opt, user priviledges
-- metadata add
 - indexes/btree add
 - doc
 - where should be separate and dumbed down
 - add select and join tables to db
 - cast on csv
-- locking tables
+- select return values not only tables
+- save and load db (show locks realtime) - remove saves from tables
