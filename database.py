@@ -1,21 +1,63 @@
 from __future__ import annotations
 import pickle
 from table import Table
-from time import sleep
+from time import sleep, localtime, strftime
+import os
 
 class Database:
     '''
     Database class contains tables.
     '''
 
-    def __init__(self):
+    def __init__(self, name, load=True):
         self.tables = {}
-        self.len = 0
-        self.meta = {}
-        # self.meta.update({'length': Table('length', ['table_name', 'no_of_rows'], [str, int])})
+        self.name = name
+
+        self.savedir = f'dbdata/{name}_db'
+
+        if load:
+            try:
+                self.load(self.savedir)
+                print(f'"{name}" loaded')
+                return
+            except:
+                print(f"'{name}' db does not exist, creating new.")
+                pass
+
+        if not os.path.exists('dbdata'):
+            os.mkdir('dbdata')
+        # replacing doesnt work
+        os.mkdir(self.savedir)
 
         self.create_table('meta_length',  ['table_name', 'no_of_rows'], [str, int])
         self.create_table('meta_locks',  ['table_name', 'locked'], [str, str])
+
+        ## saves ##
+        # self.meta.update({'length': Table('length', ['table_name', 'no_of_rows'], [str, int])}
+
+    def save(self):
+        '''
+        Save db as a pkl file. This method saves the db object, ie all the tables and attributes.
+        '''
+        for name, table in self.tables.items():
+            with open(f'{self.savedir}/{name}.pkl', 'wb') as f:
+                pickle.dump(table, f)
+
+    def _save_locks(self):
+        '''
+        Save db as a pkl file. This method saves the db object, ie all the tables and attributes.
+        '''
+        with open(f'{self.savedir}/meta_locks.pkl', 'wb') as f:
+            pickle.dump(self.tables['meta_locks'], f)
+
+    def load(self, path):
+        for file in os.listdir(path):
+            f = open(path+'/'+file, 'rb')
+            tmp_dict = pickle.load(f)
+            f.close()
+            name = f'{file.split(".")[0]}'
+            self.tables.update({name: tmp_dict})
+            setattr(self, name, self.tables[name])
 
     #### IO ####
 
@@ -23,7 +65,6 @@ class Database:
         '''
         recalculate the number of tables in the Database
         '''
-        self.len = len(self.tables)
         self._update_meta_length()
         self._update_meta_locks()
 
@@ -57,28 +98,6 @@ class Database:
         del self.tables[table_name]
         delattr(self, table_name)
         self._update()
-
-
-    def save(self, filename):
-        '''
-        Save db as a pkl file. This method saves the db object, ie all the tables and attributes.
-        '''
-        if filename.split('.')[-1] != 'pkl':
-            raise ValueError(f'ERROR -> Savefile needs .pkl extention')
-
-        with open(filename, 'wb') as f:
-            pickle.dump(self.__dict__, f)
-
-
-    def load(self, filename):
-        '''
-        Load a db from a saved db_object
-        '''
-        f = open(filename, 'rb')
-        tmp_dict = pickle.load(f)
-        f.close()
-
-        self.__dict__.update(tmp_dict)
 
 
     def table_from_csv(self, filename, name=None, column_types=None):
@@ -121,34 +140,43 @@ class Database:
     ##### table functions #####
 
     def cast_column(self, table_name, column_name, cast_type):
+        self.load(self.savedir)
         self.lock_table(table_name)
         self.tables[table_name]._cast_column(column_name, cast_type)
         self.unlock_table(table_name)
         self._update()
+        self.save()
 
     def insert(self, table_name, row):
+        self.load(self.savedir)
         self.lock_table(table_name)
         self.tables[table_name]._insert(row)
         # sleep(2)
         self.unlock_table(table_name)
         self._update()
+        self.save()
 
     def update_row(self, table_name, set_value, set_column, column_name, operator, value):
+        self.load(self.savedir)
         self.lock_table(table_name)
         self.tables[table_name]._update_row(set_value, set_column, column_name, operator, value)
         self.unlock_table(table_name)
         self._update()
+        self.save()
 
     def delete(self, table_name, column_name, operator, value):
+        self.load(self.savedir)
         self.lock_table(table_name)
         self.tables[table_name]._delete_where(column_name, operator, value)
         self.unlock_table(table_name)
         self._update()
+        self.save()
 
     def select(self, table_name, column_name, operator, value):
         return self.tables[table_name]._select_where(column_name, operator, value)
 
     def show_table(self, table_name, no_of_rows=5):
+        self.load(self.savedir)
         self.tables[table_name].show(no_of_rows, self.is_locked(table_name))
 
     def order_by(self, table_name, column_name, desc=False):
@@ -161,15 +189,28 @@ class Database:
         return self.tables[left_table_name]._comparison_join(self.tables[right_table_name], column_name_left, column_name_right, operator='==')
 
     def lock_table(self, table_name):
+        if self.is_locked(table_name):
+            print(f'"{table_name}" table is currently locked')
+            return
         self.tables['meta_locks']._update_row(True, 'locked', 'table_name', '==', table_name)
-        print(f'Locking table "{table_name}"')
+        self._save_locks()
+        # print(f'Locking table "{table_name}"')
 
     def unlock_table(self, table_name):
         self.tables['meta_locks']._update_row(False, 'locked', 'table_name', '==', table_name)
-        print(f'Unlocking table "{table_name}"')
+        self._save_locks()
+        # print(f'Unlocking table "{table_name}"')
 
     def is_locked(self, table_name):
-        return self.select('meta_locks', 'table_name', '==', table_name).locked[0]
+
+        with open(f'{self.savedir}/meta_locks.pkl', 'rb') as f:
+            self.tables.update({'meta_locks': pickle.load(f)})
+            self.meta_locks = self.tables['meta_locks']
+
+        try:
+            return self.select('meta_locks', 'table_name', '==', table_name).locked[0]
+        except IndexError:
+            return
     #
     # def lock_table(self, table_name):
     #     tables[table_name]._
@@ -194,8 +235,3 @@ class Database:
 
                 self.tables['meta_locks']._insert([table.name, False])
                 # self.insert('meta_locks', [table.name, False])
-
-
-
-
-    # locks

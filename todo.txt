@@ -8,3 +8,4 @@ TODOS
 - cast on csv
 - select return values not only tables
 - save and load db (show locks realtime) - remove saves from tables
+add to tables includes setattr

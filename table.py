@@ -25,6 +25,7 @@ class Table:
         if load is not None:
             if isinstance(load, dict):
                 self.__dict__.update(load)
+                self._update()
             elif isinstance(load, str):
                 self._load_from_file(load)
 
