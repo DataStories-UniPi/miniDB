@@ -136,7 +136,7 @@ class Table:
         dict = {(key):([self.data[i] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
         return Table(load=dict)
 
-    def show(self, no_of_rows=5, is_locked=False):
+    def show(self, no_of_rows=None, is_locked=False):
         if is_locked:
             print(f"\n## {self.name} (locked) ##")
         else:
@@ -160,40 +160,22 @@ class Table:
 
 
 
-    def _order_by(self, column_name, desc=False):
+    def order_by(self, column_name, desc=False):
+        column = self.columns[self.column_names.index(column_name)]
+        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=not desc)
+        # print(idx)
+        dict = {(key):([self.data[i] for i in idx] if key=="data" else value) for key, value in self.__dict__.items()}
+        return Table(load=dict)
+
+
+    def _sort(self, column_name, desc=False):
         column = self.columns[self.column_names.index(column_name)]
         idx = sorted(range(len(column)), key=lambda k: column[k], reverse=not desc)
         # print(idx)
         self.data = [self.data[i] for i in idx]
         self._update()
 
-    def _natural_join(self, table_right: Table, column_name):
-        try:
-            column_index_left = self.column_names.index(column_name)
-            column_index_right = table_right.column_names.index(column_name)
-        except:
-            raise Exception(f'Column "{column_name}" doesnt exist in both tables.')
-
-        left_names = [f'{self.name}_{colname}' for colname in self.column_names]
-        right_names = [f'{table_right.name}_{colname}' for colname in table_right.column_names]
-
-
-        join_table_name = f'{self.name}_join_{table_right.name}'
-        join_table_colnames = left_names+right_names[:column_index_right]+right_names[column_index_right+1:]
-        join_table_coltypes = self.column_types+table_right.column_types[:column_index_right]+table_right.column_types[column_index_right+1:]
-        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
-
-        # this code is dumb on purpose... it needs to illustrate the underline technique
-        for row_left in self.data:
-            left_value = row_left[column_index_left]
-            for row_right in table_right.data:
-                right_value = row_right[column_index_right]
-                if left_value == right_value: #EQ_OP
-                    join_table._insert(row_left+row_right[:column_index_right]+row_right[column_index_right+1:])
-
-        return join_table
-
-    def _comparison_join(self, table_right: Table, column_name_left, column_name_right, operator='=='):
+    def _inner_join(self, table_right: Table, column_name_left, column_name_right, operator='=='):
         try:
             column_index_left = self.column_names.index(column_name_left)
             column_index_right = table_right.column_names.index(column_name_right)

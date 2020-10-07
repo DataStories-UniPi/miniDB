@@ -141,7 +141,7 @@ class Database:
 
     def cast_column(self, table_name, column_name, cast_type):
         self.load(self.savedir)
-        self.lock_table(table_name)
+        self.lockX_table(table_name)
         self.tables[table_name]._cast_column(column_name, cast_type)
         self.unlock_table(table_name)
         self._update()
@@ -149,7 +149,7 @@ class Database:
 
     def insert(self, table_name, row):
         self.load(self.savedir)
-        self.lock_table(table_name)
+        self.lockX_table(table_name)
         self.tables[table_name]._insert(row)
         # sleep(2)
         self.unlock_table(table_name)
@@ -158,7 +158,7 @@ class Database:
 
     def update_row(self, table_name, set_value, set_column, column_name, operator, value):
         self.load(self.savedir)
-        self.lock_table(table_name)
+        self.lockX_table(table_name)
         self.tables[table_name]._update_row(set_value, set_column, column_name, operator, value)
         self.unlock_table(table_name)
         self._update()
@@ -166,31 +166,46 @@ class Database:
 
     def delete(self, table_name, column_name, operator, value):
         self.load(self.savedir)
-        self.lock_table(table_name)
+        self.lockX_table(table_name)
         self.tables[table_name]._delete_where(column_name, operator, value)
         self.unlock_table(table_name)
         self._update()
         self.save()
 
     def select(self, table_name, column_name, operator, value):
-        return self.tables[table_name]._select_where(column_name, operator, value)
-
-    def show_table(self, table_name, no_of_rows=5):
         self.load(self.savedir)
-        self.tables[table_name].show(no_of_rows, self.is_locked(table_name))
-
-    def order_by(self, table_name, column_name, desc=False):
-        self.tables[table_name]._order_by(column_name, desc=desc)
-
-    def natural_join(self, left_table_name, right_table_name, column_name, save_name=None):
-        return self.tables[left_table_name]._natural_join(self.tables[right_table_name], column_name)
-
-    def comparison_join(self, left_table_name, right_table_name, column_name_left, column_name_right, operator='==', save_name=None):
-        return self.tables[left_table_name]._comparison_join(self.tables[right_table_name], column_name_left, column_name_right, operator='==')
-
-    def lock_table(self, table_name):
         if self.is_locked(table_name):
             print(f'"{table_name}" table is currently locked')
+            return
+        return self.tables[table_name]._select_where(column_name, operator, value)
+
+    def show_table(self, table_name, no_of_rows=None):
+        self.load(self.savedir)
+        if self.is_locked(table_name):
+            print(f'"{table_name}" table is currently locked')
+            return
+        self.tables[table_name].show(no_of_rows, self.is_locked(table_name))
+
+    def sort(self, table_name, column_name, desc=False):
+        self.load(self.savedir)
+        self.lockX_table(table_name)
+        self.tables[table_name]._sort(column_name, desc=desc)
+        self.unlock_table(table_name)
+        self._update()
+        self.save()
+
+    def inner_join(self, left_table_name, right_table_name, column_name_left, column_name_right, operator='==', save_name=None):
+        self.load(self.savedir)
+        if self.is_locked(left_table_name) or self.is_locked(right_table_name):
+            print(f'Table/Tables are currently locked')
+            return
+        return self.tables[left_table_name]._inner_join(self.tables[right_table_name], column_name_left, column_name_right, operator='==')
+
+    def lockX_table(self, table_name):
+        if self.is_locked(table_name):
+            print(f'"{table_name}" table is currently locked')
+            return
+        if table_name[:4]=='meta':
             return
         self.tables['meta_locks']._update_row(True, 'locked', 'table_name', '==', table_name)
         self._save_locks()
@@ -202,7 +217,8 @@ class Database:
         # print(f'Unlocking table "{table_name}"')
 
     def is_locked(self, table_name):
-
+        if table_name[:4]=='meta':
+            return False
         with open(f'{self.savedir}/meta_locks.pkl', 'rb') as f:
             self.tables.update({'meta_locks': pickle.load(f)})
             self.meta_locks = self.tables['meta_locks']
@@ -211,9 +227,6 @@ class Database:
             return self.select('meta_locks', 'table_name', '==', table_name).locked[0]
         except IndexError:
             return
-    #
-    # def lock_table(self, table_name):
-    #     tables[table_name]._
 
     #### META ####
 

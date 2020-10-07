@@ -16,7 +16,7 @@ class Btree:
 
     def add_node_to_level(self, level, index=-1, node=[[],[]]):
         if index==-1:
-            self.tree[level][len(bt.tree[level])] = node
+            self.tree[level][len(self.tree[level])] = node
         else:
             self.tree[level][index] = node
 
@@ -114,7 +114,7 @@ class Btree:
 
 
     def find_parent(self, v, level):
-        for key, value in bt.tree[level].items():
+        for key, value in self.tree[level].items():
             if v in value[1]:
                 return key
 
@@ -127,7 +127,6 @@ class Btree:
         if len(self.tree[level][index][0])==self.b:
 #             print('overflow')
             self.split_node(level, index)
-
 
 
     def find(self, element):
