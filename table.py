@@ -50,7 +50,6 @@ class Table:
             self.column_types = column_types
             self._no_of_columns = len(column_names)
             self.data = []
-            self.path = f'{self.name}_tmp.pkl'
 
             self._update()
 
@@ -58,9 +57,6 @@ class Table:
         self.columns = [[row[i] for row in self.data] for i in range(self._no_of_columns)]
         for ind, col in enumerate(self.column_names):
             setattr(self, col, self.columns[ind])
-
-        with open(self.path, 'wb') as f:
-            pickle.dump(self.__dict__, f)
 
     def _cast_column(self, column_name, cast_type):
         column_idx = self.column_names.index(column_name)
@@ -128,12 +124,22 @@ class Table:
         dict = {(key):([self.data[i] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
         return Table(load=dict)
 
-    def _select_where(self, column_name, operator, value):
+    def _select_where(self, return_columns, column_name, operator, value):
         # TODO: this needs to be dumbed down
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
+        else:
+            return_cols = [self.column_names.index(colname) for colname in return_columns]
+
         column = self.columns[self.column_names.index(column_name)]
         rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
 
-        dict = {(key):([self.data[i] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+
+        dict['column_names'] = [self.column_names[i] for i in return_cols]
+        dict['column_types']   = [self.column_types[i] for i in return_cols]
+        dict['_no_of_columns'] = len(return_cols)
+
         return Table(load=dict)
 
     def show(self, no_of_rows=None, is_locked=False):
@@ -142,14 +148,6 @@ class Table:
         else:
             print(f"\n## {self.name} ##")
         print(tabulate(self.data[:no_of_rows], headers=self.column_names))
-
-    def _save(self, filename):
-        if filename.split('.')[-1] != 'pkl':
-            raise ValueError(f'ERROR -> Savefile needs .pkl extention')
-
-        self.path = filename
-        with open(self.path, 'wb') as f:
-            pickle.dump(self.__dict__, f)
 
     def _load_from_file(self, filename):
         f = open(filename, 'rb')

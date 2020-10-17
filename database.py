@@ -172,12 +172,12 @@ class Database:
         self._update()
         self.save()
 
-    def select(self, table_name, column_name, operator, value):
+    def select(self, table_name, columns, column_name, operator, value):
         self.load(self.savedir)
         if self.is_locked(table_name):
             print(f'"{table_name}" table is currently locked')
             return
-        return self.tables[table_name]._select_where(column_name, operator, value)
+        return self.tables[table_name]._select_where(columns, column_name, operator, value)
 
     def show_table(self, table_name, no_of_rows=None):
         self.load(self.savedir)
@@ -224,7 +224,7 @@ class Database:
             self.meta_locks = self.tables['meta_locks']
 
         try:
-            return self.select('meta_locks', 'table_name', '==', table_name).locked[0]
+            return self.select('meta_locks', ['locked'], 'table_name', '==', table_name).locked[0]
         except IndexError:
             return
 
