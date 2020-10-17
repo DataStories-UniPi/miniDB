@@ -31,6 +31,7 @@ class Database:
 
         self.create_table('meta_length',  ['table_name', 'no_of_rows'], [str, int])
         self.create_table('meta_locks',  ['table_name', 'locked'], [str, str])
+        self.save()
 
         ## saves ##
         # self.meta.update({'length': Table('length', ['table_name', 'no_of_rows'], [str, int])}
@@ -84,7 +85,7 @@ class Database:
         else:
             raise Exception(f'"{name}" attribute already exists in "{self.__class__.__name__} "class.')
         # self.no_of_tables += 1
-        # self._update()
+        self._update()
 
 
     def drop_table(self, table_name):
@@ -109,24 +110,30 @@ class Database:
         if name is None:
             name=filename.split('.')[:-1][0]
 
+        if column_types is None:
+            column_types = [str for _ in colnames]
+
         file = open(filename, 'r')
 
         first_line=True
         for line in file.readlines():
             if first_line:
                 colnames = line.strip('\n').split(',')
-                self.create_table(name=name, column_names=colnames, column_types=[str for _ in colnames])
+                self.create_table(name=name, column_names=colnames, column_types=column_types)
+                self.lockX_table(name)
                 first_line = False
                 continue
+            self.tables[name]._insert(line.strip('\n').split(','))
 
-            self.insert(name, line.strip('\n').split(','))
+        self.unlock_table(name)
+        self._update()
+        self.save()
 
 
-    def table_from_pkl(self, path):
+    def table_from_object(self, new_table):
         '''
-        Load a table from a pkl file. tmp tables and saved tables are all saved using the pkl extention.
+        Add table obj to database.
         '''
-        new_table = Table(load=path)
 
         if new_table.name not in self.__dir__():
             setattr(self, new_table.name, new_table)
@@ -135,12 +142,16 @@ class Database:
 
         self.tables.update({new_table.name: new_table})
         self._update()
+        self.save()
+
 
 
     ##### table functions #####
 
     def cast_column(self, table_name, column_name, cast_type):
         self.load(self.savedir)
+        if self.is_locked(table_name):
+            return
         self.lockX_table(table_name)
         self.tables[table_name]._cast_column(column_name, cast_type)
         self.unlock_table(table_name)
@@ -149,6 +160,8 @@ class Database:
 
     def insert(self, table_name, row):
         self.load(self.savedir)
+        if self.is_locked(table_name):
+            return
         self.lockX_table(table_name)
         self.tables[table_name]._insert(row)
         # sleep(2)
@@ -156,40 +169,53 @@ class Database:
         self._update()
         self.save()
 
-    def update_row(self, table_name, set_value, set_column, column_name, operator, value):
-        self.load(self.savedir)
-        self.lockX_table(table_name)
-        self.tables[table_name]._update_row(set_value, set_column, column_name, operator, value)
-        self.unlock_table(table_name)
-        self._update()
-        self.save()
-
-    def delete(self, table_name, column_name, operator, value):
-        self.load(self.savedir)
-        self.lockX_table(table_name)
-        self.tables[table_name]._delete_where(column_name, operator, value)
-        self.unlock_table(table_name)
-        self._update()
-        self.save()
-
-    def select(self, table_name, columns, column_name, operator, value):
+    def update_row(self, table_name, set_value, set_column, condition):
         self.load(self.savedir)
         if self.is_locked(table_name):
-            print(f'"{table_name}" table is currently locked')
             return
-        return self.tables[table_name]._select_where(columns, column_name, operator, value)
+        self.lockX_table(table_name)
+        self.tables[table_name]._update_row(set_value, set_column, condition)
+        self.unlock_table(table_name)
+        self._update()
+        self.save()
+
+    def delete(self, table_name, condition):
+        self.load(self.savedir)
+        if self.is_locked(table_name):
+            return
+        self.lockX_table(table_name)
+        self.tables[table_name]._delete_where(condition)
+        self.unlock_table(table_name)
+        self._update()
+        self.save()
+
+    def select(self, table_name, columns, condition=None, order_by=None, asc=False,\
+               top_k=None, save_as=None, return_object=False):
+        self.load(self.savedir)
+        if self.is_locked(table_name):
+            return
+        table = self.tables[table_name]._select_where(columns, condition, order_by, asc, top_k)
+        if save_as is not None:
+            table.name = save_as
+            self.table_from_object(table)
+        else:
+            if return_object:
+                return table
+            else:
+                table.show()
 
     def show_table(self, table_name, no_of_rows=None):
         self.load(self.savedir)
         if self.is_locked(table_name):
-            print(f'"{table_name}" table is currently locked')
             return
         self.tables[table_name].show(no_of_rows, self.is_locked(table_name))
 
-    def sort(self, table_name, column_name, desc=False):
+    def sort(self, table_name, column_name, asc=False):
         self.load(self.savedir)
+        if self.is_locked(table_name):
+            return
         self.lockX_table(table_name)
-        self.tables[table_name]._sort(column_name, desc=desc)
+        self.tables[table_name]._sort(column_name, asc=asc)
         self.unlock_table(table_name)
         self._update()
         self.save()
@@ -202,11 +228,9 @@ class Database:
         return self.tables[left_table_name]._inner_join(self.tables[right_table_name], column_name_left, column_name_right, operator='==')
 
     def lockX_table(self, table_name):
-        if self.is_locked(table_name):
-            print(f'"{table_name}" table is currently locked')
-            return
         if table_name[:4]=='meta':
             return
+
         self.tables['meta_locks']._update_row(True, 'locked', 'table_name', '==', table_name)
         self._save_locks()
         # print(f'Locking table "{table_name}"')
@@ -224,7 +248,11 @@ class Database:
             self.meta_locks = self.tables['meta_locks']
 
         try:
-            return self.select('meta_locks', ['locked'], 'table_name', '==', table_name).locked[0]
+            res = self.select('meta_locks', ['locked'], f'table_name=={table_name}', return_object=True).locked[0]
+            if res:
+                print(f'"{table_name}" table is currently locked')
+            return res
+
         except IndexError:
             return
 
@@ -237,7 +265,7 @@ class Database:
             if table.name not in self.meta_length.table_name:
                 self.tables['meta_length']._insert([table.name, 0])
 
-            self.tables['meta_length']._update_row(len(table.data), 'no_of_rows', 'table_name', '==', table.name)
+            self.tables['meta_length']._update_row(len(table.data), 'no_of_rows', f'table_name=={table_name}')
             # self.update_row('meta_length', len(table.data), 'no_of_rows', 'table_name', '==', table.name)
 
     def _update_meta_locks(self):

@@ -2,7 +2,7 @@ from __future__ import annotations
 from tabulate import tabulate
 import pickle
 import os
-from misc import get_op
+from misc import get_op, split_condition
 
 class Table:
     '''
@@ -66,6 +66,7 @@ class Table:
         self._update()
 
 
+
     def _insert(self, row):
         # row = row.split(',')
 
@@ -81,7 +82,9 @@ class Table:
         self.data.append(row)
         self._update()
 
-    def _update_row(self, set_value, set_column, column_name, operator, value):
+    def _update_row(self, set_value, set_column, condition):
+        column_name, operator, value = self._parse_condition(condition)
+
         column = self.columns[self.column_names.index(column_name)]
         set_column_idx = self.column_names.index(set_column)
 
@@ -101,7 +104,8 @@ class Table:
         self._update()
 
 
-    def _delete_where(self, column_name, operator, value):
+    def _delete_where(self, condition):
+        column_name, operator, value = self._parse_condition(condition)
 
         indexes_to_del = []
 
@@ -124,30 +128,43 @@ class Table:
         dict = {(key):([self.data[i] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
         return Table(load=dict)
 
-    def _select_where(self, return_columns, column_name, operator, value):
-        # TODO: this needs to be dumbed down
+    def _select_where(self, return_columns, condition=None, order_by=None, asc=False, top_k=None):
+
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
         else:
             return_cols = [self.column_names.index(colname) for colname in return_columns]
 
-        column = self.columns[self.column_names.index(column_name)]
-        rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
 
+        if condition is not None:
+            column_name, operator, value = self._parse_condition(condition)
+            column = self.columns[self.column_names.index(column_name)]
+            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+        else:
+            rows = [i for i in range(len(self.columns[0]))]
+
+        rows = rows[:top_k]
+        # TODO: this needs to be dumbed down
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
 
         dict['column_names'] = [self.column_names[i] for i in return_cols]
         dict['column_types']   = [self.column_types[i] for i in return_cols]
         dict['_no_of_columns'] = len(return_cols)
 
-        return Table(load=dict)
+        if order_by is None:
+            return Table(load=dict)
+        else:
+            return Table(load=dict).order_by(order_by, asc)
 
     def show(self, no_of_rows=None, is_locked=False):
         if is_locked:
             print(f"\n## {self.name} (locked) ##")
         else:
             print(f"\n## {self.name} ##")
-        print(tabulate(self.data[:no_of_rows], headers=self.column_names))
+
+        headers = [f'{col} ({tp.__name__})' for col, tp in zip(self.column_names, self.column_types)]
+        print(tabulate(self.data[:no_of_rows], headers=headers))
 
     def _load_from_file(self, filename):
         f = open(filename, 'rb')
@@ -158,22 +175,23 @@ class Table:
 
 
 
-    def order_by(self, column_name, desc=False):
+    def order_by(self, column_name, asc=False):
         column = self.columns[self.column_names.index(column_name)]
-        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=not desc)
+        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=not asc)
         # print(idx)
         dict = {(key):([self.data[i] for i in idx] if key=="data" else value) for key, value in self.__dict__.items()}
         return Table(load=dict)
 
 
-    def _sort(self, column_name, desc=False):
+    def _sort(self, column_name, asc=False):
         column = self.columns[self.column_names.index(column_name)]
-        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=not desc)
+        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=not asc)
         # print(idx)
         self.data = [self.data[i] for i in idx]
         self._update()
 
-    def _inner_join(self, table_right: Table, column_name_left, column_name_right, operator='=='):
+    def _inner_join(self, table_right: Table, condition):
+        column_name_left, operator, column_name_right = self._parse_condition(condition, both_columns=True)
         try:
             column_index_left = self.column_names.index(column_name_left)
             column_index_right = table_right.column_names.index(column_name_right)
@@ -198,3 +216,23 @@ class Table:
                     join_table._insert(row_left+row_right)
 
         return join_table
+
+
+
+    def _parse_condition(self, condition, both_columns=False):
+        if both_columns:
+            return split_condition(condition)
+        left, op, right = split_condition(condition)
+        if left in self.column_names:
+            column_name = left
+            coltype = self.column_types[self.column_names.index(column_name)]
+            value = coltype(right)
+        elif right in self.column_names:
+            column_name = right
+            coltype = self.column_types[self.column_names.index(column_name)]
+            value = coltype(left)
+        else:
+            raise ValueError(f'Condition is not valid (cant find column name)')
+            return
+
+        return column_name, op, value
