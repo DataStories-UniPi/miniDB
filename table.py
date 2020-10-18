@@ -20,7 +20,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, load=None):
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
 
         if load is not None:
             if isinstance(load, dict):
@@ -50,8 +50,14 @@ class Table:
             self.column_types = column_types
             self._no_of_columns = len(column_names)
             self.data = []
+            if primary_key is not None:
+                self.pk_idx = self.column_names.index(primary_key)
+            else:
+                self.pk_idx = None
+
 
             self._update()
+
 
     def _update(self):
         self.columns = [[row[i] for row in self.data] for i in range(self._no_of_columns)]
@@ -66,8 +72,7 @@ class Table:
         self._update()
 
 
-
-    def _insert(self, row):
+    def _insert(self, row, insert_stack=[]):
         # row = row.split(',')
 
         if len(row)!=self._no_of_columns:
@@ -76,10 +81,18 @@ class Table:
         for i in range(len(row)):
             try:
                 row[i] = self.column_types[i](row[i])
+
             except:
                 raise ValueError(f'ERROR -> Value {row[i]} is not of type {self.column_types[i]}.')
-                return
-        self.data.append(row)
+
+            if i==self.pk_idx and row[i] in self.columns[self.pk_idx]:
+                # check pk
+                raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
+
+        if insert_stack != []:
+            self.data[insert_stack[-1]] = row
+        else:
+            self.data.append(row)
         self._update()
 
     def _update_row(self, set_value, set_column, condition):
@@ -98,12 +111,6 @@ class Table:
                 # print(f"Updated {len(indexes_to_del)} rows")
 
 
-    def _delete(self, row_no):
-
-        self.data.pop(row_no)
-        self._update()
-
-
     def _delete_where(self, condition):
         column_name, operator, value = self._parse_condition(condition)
 
@@ -116,10 +123,15 @@ class Table:
 
         # we pop from highest to lowest index in order to avoid removing the wrong item
         for index in sorted(indexes_to_del, reverse=True):
-            self.data.pop(index)
+            print('del', index)
+            if self.name[:4] != 'meta':
+                self.data[index] = [None for _ in range(len(self.column_names))]
+            else:
+                self.data.pop(index)
 
         self._update()
         print(f"Deleted {len(indexes_to_del)} rows")
+        return indexes_to_del
 
 
     def _select_indx(self, rows):
@@ -164,6 +176,8 @@ class Table:
             print(f"\n## {self.name} ##")
 
         headers = [f'{col} ({tp.__name__})' for col, tp in zip(self.column_names, self.column_types)]
+        if self.pk_idx is not None:
+            headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
         print(tabulate(self.data[:no_of_rows], headers=headers))
 
     def _load_from_file(self, filename):
@@ -207,13 +221,19 @@ class Table:
         join_table_coltypes = self.column_types+table_right.column_types
         join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
 
+        no_of_ops = 0
         # this code is dumb on purpose... it needs to illustrate the underline technique
         for row_left in self.data:
             left_value = row_left[column_index_left]
             for row_right in table_right.data:
                 right_value = row_right[column_index_right]
+                no_of_ops+=1
                 if get_op(operator, left_value, right_value): #EQ_OP
                     join_table._insert(row_left+row_right)
+
+        print(f'## Select ops -> {no_of_ops}')
+        print(f'# Left table size -> {len(self.data)}')
+        print(f'# Right table size -> {len(table_right.data)}')
 
         return join_table
 
