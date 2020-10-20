@@ -10,13 +10,22 @@ class Node:
         self.is_leaf = is_leaf
 
 
-    def find(self, value):
+    def find(self, value, return_ops=False):
+        ops = 0
         if self.is_leaf:
             return
         for index, existing_val in enumerate(self.values):
+            ops+=1
             if value<existing_val:
-                return self.keys[index]
-        return self.keys[-1]
+                if return_ops:
+                    return self.keys[index], ops
+                else:
+                    return self.keys[index]
+
+        if return_ops:
+            return self.keys[-1], ops
+        else:
+            return self.keys[-1]
 
 
     def insert(self, value, key, key1=None):
@@ -49,16 +58,23 @@ class Btree:
             self.nodes.append(Node(self.b, is_leaf=True))
             self.root = 0
         index = self._search(value)
-        print(index)
         self.nodes[index].insert(value,key)
         if len(self.nodes[index].values)==self.b:
             self.split(index)
 
-    def _search(self, value):
+    def _search(self, value, return_ops=False):
+        ops=0
         node = self.nodes[self.root]
         while not node.is_leaf:
-            node = self.nodes[node.find(value)]
-        return self.nodes.index(node)
+            idx, ops1 = node.find(value, return_ops=True)
+            node = self.nodes[idx]
+            ops += ops1
+
+        if return_ops:
+            return self.nodes.index(node), ops
+        else:
+            return self.nodes.index(node)
+
 
     def split(self, node_id):
         node = self.nodes[node_id]
@@ -79,6 +95,8 @@ class Btree:
             right = Node(self.b, right_values, right_keys,\
                         parent=node.parent, is_leaf=node.is_leaf)
             node.right_sibling = None
+            for key in right_keys:
+                self.nodes[key].parent = len(self.nodes)
 
 
         node.values = node.values[:len(node.values)//2]
@@ -100,17 +118,79 @@ class Btree:
                 self.split(node.parent)
 
 
+    # def show(self):
+    #     for pos, node in enumerate(self.nodes):
+    #         print(f'## {pos} ##')
+    #         node.show()
+    #         print('----')
+
     def show(self):
-        for pos, node in enumerate(self.nodes):
-            print(f'## {pos} ##')
-            node.show()
+        nds = []
+        nds.append(self.root)
+        for key in nds:
+            if self.nodes[key].is_leaf:
+                continue
+            nds.extend(self.nodes[key].keys)
+
+        for key in nds:
+            print(f'## {key} ##')
+            self.nodes[key].show()
             print('----')
 
-    def find(self, value):
-        leaf_idx = self._search(value)
-        try:
-            res = self.nodes[leaf_idx].keys[self.nodes[leaf_idx].values.index(value)]
-            print('Found')
-            return res
-        except:
-            print('Not found')
+
+
+
+
+
+    def find(self, value, operator='=='):
+        results = []
+        leaf_idx, ops = self._search(value, True)
+        target_node = self.nodes[leaf_idx]
+
+        if operator == '==':
+            try:
+                results.append(target_node.keys[target_node.values.index(value)])
+                # print('Found')
+            except:
+                # print('Not found')
+                pass
+
+        if operator == '>':
+            for idx, node_value in enumerate(target_node.values):
+                ops+=1
+                if value < node_value:
+                    results.append(target_node.keys[idx])
+            while target_node.right_sibling is not None:
+                target_node = self.nodes[target_node.right_sibling]
+                results.extend(target_node.keys)
+
+
+        if operator == '>=':
+            for idx, node_value in enumerate(target_node.values):
+                ops+=1
+                if value <= node_value:
+                    results.append(target_node.keys[idx])
+            while target_node.right_sibling is not None:
+                target_node = self.nodes[target_node.right_sibling]
+                results.extend(target_node.keys)
+
+        if operator == '<':
+            for idx, node_value in enumerate(target_node.values):
+                ops+=1
+                if value > node_value:
+                    results.append(target_node.keys[idx])
+            while target_node.left_sibling is not None:
+                target_node = self.nodes[target_node.left_sibling]
+                results.extend(target_node.keys)
+
+        if operator == '<=':
+            for idx, node_value in enumerate(target_node.values):
+                ops+=1
+                if value >= node_value:
+                    results.append(target_node.keys[idx])
+            while target_node.left_sibling is not None:
+                target_node = self.nodes[target_node.left_sibling]
+                results.extend(target_node.keys)
+
+        print(f'With BTree -> {ops} eq operations')
+        return results

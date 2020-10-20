@@ -219,12 +219,12 @@ class Database:
         if self.is_locked(table_name):
             return
 
-        if self._has_index(table_name):
-            bt = self._load_idx()
-            # TODO: add code here
+        if self._has_index(table_name) and condition is not None:
+            index_name = self.select('meta_indexes', '*', f'table_name=={table_name}', return_object=True).index_name[0]
+            bt = self._load_idx(index_name)
+            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, asc, top_k)
         else:
             table = self.tables[table_name]._select_where(columns, condition, order_by, asc, top_k)
-
         if save_as is not None:
             table.name = save_as
             self.table_from_object(table)
@@ -323,7 +323,6 @@ class Database:
             if table.name[:4]=='meta':
                 continue
             if table.name not in self.meta_insert_stack.table_name:
-                print('jey')
                 self.tables['meta_insert_stack']._insert([table.name, []])
 
 
@@ -362,11 +361,11 @@ class Database:
     def _has_index(self, table_name):
         return table_name in self.tables['meta_indexes'].table_name
 
-    def _save_index(index_name, index):
+    def _save_index(self, index_name, index):
         with open(f'{self.savedir}/{index_name}_index.pkl', 'wb') as f:
             pickle.dump(index, f)
 
-    def _load_idx(index_name):
+    def _load_idx(self, index_name):
         f = open(f'{self.savedir}/{index_name}_index.pkl', 'rb')
         idx = pickle.load(f)
         f.close()
