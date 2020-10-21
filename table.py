@@ -12,6 +12,7 @@ class Table:
         - a table name (string)
         - column names (list of strings)
         - column types (list of functions like str/int etc)
+        - primary (name of the primary key column)
 
     OR
 
@@ -23,15 +24,18 @@ class Table:
     def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
 
         if load is not None:
+            # if load is a dict, replace the object dict with it (replaces the object with the specified one)
             if isinstance(load, dict):
                 self.__dict__.update(load)
                 self._update()
+            # if load is str, load from a file
             elif isinstance(load, str):
                 self._load_from_file(load)
 
+        # if name, columns_names and column types are not none
         elif (name is not None) and (column_names is not None) and (column_types is not None):
 
-            self.name = name
+            self._name = name
 
             if len(column_names)!=len(column_types):
                 raise ValueError('Need same number of column names and types.')
@@ -42,6 +46,8 @@ class Table:
 
             for col in self.column_names:
                 if col not in self.__dir__():
+                    # this is used in order to be able to call a column using its name as an attribute.
+                    # example: instead of table.columns['column_name'], we do table.column_name
                     setattr(self, col, [])
                     self.columns.append([])
                 else:
@@ -49,7 +55,9 @@ class Table:
 
             self.column_types = column_types
             self._no_of_columns = len(column_names)
-            self.data = []
+            self.data = [] # data is a list of lists, a list of rows that is.
+
+            # if primary key is set, keep its index as an attribute
             if primary_key is not None:
                 self.pk_idx = self.column_names.index(primary_key)
             else:
@@ -58,53 +66,73 @@ class Table:
 
             self._update()
 
+    # if any of the name, columns_names and column types are none. return an empty table object
+
 
     def _update(self):
+        '''
+        Update all the available column with the appended rows.
+        '''
         self.columns = [[row[i] for row in self.data] for i in range(self._no_of_columns)]
         for ind, col in enumerate(self.column_names):
             setattr(self, col, self.columns[ind])
 
     def _cast_column(self, column_name, cast_type):
+        '''
+        Cast all values of a column using a specified type.
+        '''
+        # get the column from its name
         column_idx = self.column_names.index(column_name)
+        # for every column's value in each row, replace it with itself but casted as the specified type
         for i in range(len(self.data)):
             self.data[i][column_idx] = cast_type(self.data[i][column_idx])
+        # change the type of the column
         self.column_types[column_idx] = cast_type
         self._update()
 
 
     def _insert(self, row, insert_stack=[]):
-        # row = row.split(',')
-
+        '''
+        Insert row to table
+        '''
         if len(row)!=self._no_of_columns:
             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {self._no_of_columns} columns exist')
 
         for i in range(len(row)):
+            # for each value, cast and replace it in row.
             try:
                 row[i] = self.column_types[i](row[i])
 
             except:
                 raise ValueError(f'ERROR -> Value {row[i]} is not of type {self.column_types[i]}.')
 
+            # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.columns[self.pk_idx]:
-                # check pk
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
 
+        # if insert_stack is not empty, append to its last index
         if insert_stack != []:
             self.data[insert_stack[-1]] = row
-        else:
+        else: # else append to the end
             self.data.append(row)
         self._update()
 
     def _update_row(self, set_value, set_column, condition):
+        '''
+        update where Condition
+        '''
+        # parse the condition
         column_name, operator, value = self._parse_condition(condition)
 
+        # get the condition and the set column
         column = self.columns[self.column_names.index(column_name)]
         set_column_idx = self.column_names.index(set_column)
 
         # set_columns_indx = [self.column_names.index(set_column_name) for set_column_name in set_column_names]
 
+        # for each value in column, if condition, replace it with set_value
         for row_ind, column_value in enumerate(column):
-            if value == column_value:
+            if get_op(operator, column_value, value):
                 self.data[row_ind][set_column_idx] = set_value
 
         self._update()
@@ -112,6 +140,11 @@ class Table:
 
 
     def _delete_where(self, condition):
+        '''
+        Deletes rows where condition is met.
+        Important: delete replaces the rows to be deleted with rows filled with Nones,
+        These rows are then appened to the insrt_stack
+        '''
         column_name, operator, value = self._parse_condition(condition)
 
         indexes_to_del = []
@@ -124,7 +157,7 @@ class Table:
         # we pop from highest to lowest index in order to avoid removing the wrong item
         for index in sorted(indexes_to_del, reverse=True):
             print('del', index)
-            if self.name[:4] != 'meta':
+            if self._name[:4] != 'meta':
                 self.data[index] = [None for _ in range(len(self.column_names))]
             else:
                 self.data.pop(index)
@@ -217,9 +250,9 @@ class Table:
 
     def show(self, no_of_rows=None, is_locked=False):
         if is_locked:
-            print(f"\n## {self.name} (locked) ##")
+            print(f"\n## {self._name} (locked) ##")
         else:
-            print(f"\n## {self.name} ##")
+            print(f"\n## {self._name} ##")
 
         headers = [f'{col} ({tp.__name__})' for col, tp in zip(self.column_names, self.column_types)]
         if self.pk_idx is not None:
@@ -258,11 +291,11 @@ class Table:
         except:
             raise Exception(f'Columns dont exist in one or both tables.')
 
-        left_names = [f'{self.name}_{colname}' for colname in self.column_names]
-        right_names = [f'{table_right.name}_{colname}' for colname in table_right.column_names]
+        left_names = [f'{self._name}_{colname}' for colname in self.column_names]
+        right_names = [f'{table_right._name}_{colname}' for colname in table_right.column_names]
 
 
-        join_table_name = f'{self.name}_join_{table_right.name}'
+        join_table_name = f'{self._name}_join_{table_right._name}'
         join_table_colnames = left_names+right_names
         join_table_coltypes = self.column_types+table_right.column_types
         join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
