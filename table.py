@@ -143,7 +143,7 @@ class Table:
         '''
         Deletes rows where condition is met.
         Important: delete replaces the rows to be deleted with rows filled with Nones,
-        These rows are then appened to the insrt_stack
+        These rows are then appened to the insert_stack
         '''
         column_name, operator, value = self._parse_condition(condition)
 
@@ -155,61 +155,75 @@ class Table:
                 indexes_to_del.append(index)
 
         # we pop from highest to lowest index in order to avoid removing the wrong item
+        # since we dont delete, we dont have to to pop in that order, but since delete is used
+        # to delete from meta tables too, we still implement it.
+
         for index in sorted(indexes_to_del, reverse=True):
             print('del', index)
             if self._name[:4] != 'meta':
+                # if the table is not a metatable, replace the row with a row of nones
                 self.data[index] = [None for _ in range(len(self.column_names))]
             else:
                 self.data.pop(index)
 
         self._update()
         print(f"Deleted {len(indexes_to_del)} rows")
+        # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
 
 
     def _select_indx(self, rows):
+        '''
+        select using row of indexes (not used rn but might be usefull)
+        '''
+        # if not list, make list
         if not isinstance(rows, list):
             rows = [rows]
+        # copy the old dict, but only the rows of data with index in rows
         dict = {(key):([self.data[i] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
         return Table(load=dict)
 
     def _select_where(self, return_columns, condition=None, order_by=None, asc=False, top_k=None):
+        '''
+        Select and return a table containing specified columns and rows where condition is met
+        '''
 
+        # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
         else:
             return_cols = [self.column_names.index(colname) for colname in return_columns]
 
-
+        # if condition is None, return all rows
+        # if not, return the rows with values where condition is met for value
         if condition is not None:
             column_name, operator, value = self._parse_condition(condition)
             column = self.columns[self.column_names.index(column_name)]
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
-            # print('###')
-            # print(rows)
-            # print('###')
-            # return
-
         else:
             rows = [i for i in range(len(self.columns[0]))]
 
+        # top k rows
         rows = rows[:top_k]
-        # TODO: this needs to be dumbed down
+        # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
 
+        # we need to set the new column names/types and no of columns, since we might
+        # only return some columns
         dict['column_names'] = [self.column_names[i] for i in return_cols]
         dict['column_types']   = [self.column_types[i] for i in return_cols]
         dict['_no_of_columns'] = len(return_cols)
 
+        # order by the return table if specified
         if order_by is None:
             return Table(load=dict)
         else:
             return Table(load=dict).order_by(order_by, asc)
 
 
-
     def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, asc=False, top_k=None):
 
+        # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
         else:
@@ -217,22 +231,32 @@ class Table:
 
 
         column_name, operator, value = self._parse_condition(condition)
+
+        # if the column in condition is not a primary key, abort the select
         if column_name != self.column_names[self.pk_idx]:
             print('Column is not PK. Aborting')
+
+        # here we run the same select twice, sequentially and using the btree.
+        # we then check the results match and compare performance (number of operation)
         column = self.columns[self.column_names.index(column_name)]
+
+        # sequential
         rows1 = []
         opsseq = 0
         for ind, x in enumerate(column):
             opsseq+=1
             if get_op(operator, x, value):
                 rows1.append(ind)
+
         print(f'Without Btree -> {opsseq} eq operations')
+        # btree find
         rows = bt.find(value, operator)
         print('### Seq result ###')
         print(rows1)
         print('### Index result ###')
         print(rows)
 
+        # same as simple select from now on
         rows = rows[:top_k]
         # TODO: this needs to be dumbed down
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
@@ -247,61 +271,57 @@ class Table:
             return Table(load=dict).order_by(order_by, asc)
 
 
-
-    def show(self, no_of_rows=None, is_locked=False):
-        if is_locked:
-            print(f"\n## {self._name} (locked) ##")
-        else:
-            print(f"\n## {self._name} ##")
-
-        headers = [f'{col} ({tp.__name__})' for col, tp in zip(self.column_names, self.column_types)]
-        if self.pk_idx is not None:
-            headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
-        print(tabulate(self.data[:no_of_rows], headers=headers))
-
-    def _load_from_file(self, filename):
-        f = open(filename, 'rb')
-        tmp_dict = pickle.load(f)
-        f.close()
-
-        self.__dict__.update(tmp_dict)
-
-
-
     def order_by(self, column_name, asc=False):
+        '''
+        Order by based on column
+        '''
+        # get column, sort values and return sorted indexes
         column = self.columns[self.column_names.index(column_name)]
         idx = sorted(range(len(column)), key=lambda k: column[k], reverse=not asc)
-        # print(idx)
+        # return table but arange data using idx list (sorted indexes)
         dict = {(key):([self.data[i] for i in idx] if key=="data" else value) for key, value in self.__dict__.items()}
         return Table(load=dict)
 
 
     def _sort(self, column_name, asc=False):
+        '''
+        Same as order by, but its persistant
+        '''
         column = self.columns[self.column_names.index(column_name)]
         idx = sorted(range(len(column)), key=lambda k: column[k], reverse=not asc)
         # print(idx)
         self.data = [self.data[i] for i in idx]
         self._update()
 
+
     def _inner_join(self, table_right: Table, condition):
+        '''
+        Join table (left) with a supplied table (right) where condition is met.
+        '''
+        # get columns and operator
         column_name_left, operator, column_name_right = self._parse_condition(condition, both_columns=True)
+        # try to find both columns, if you fail raise error
         try:
             column_index_left = self.column_names.index(column_name_left)
             column_index_right = table_right.column_names.index(column_name_right)
         except:
             raise Exception(f'Columns dont exist in one or both tables.')
 
+        # get the column names of both tables with the table name in front
+        # ex. for left -> name becomes left_table_name_name etc
         left_names = [f'{self._name}_{colname}' for colname in self.column_names]
         right_names = [f'{table_right._name}_{colname}' for colname in table_right.column_names]
 
-
+        # define the new tables name, its column names and types
         join_table_name = f'{self._name}_join_{table_right._name}'
         join_table_colnames = left_names+right_names
         join_table_coltypes = self.column_types+table_right.column_types
         join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
 
+        # count the number of operations (<,> etc)
         no_of_ops = 0
         # this code is dumb on purpose... it needs to illustrate the underline technique
+        # for each value in left column and right column, if condition, append the corresponding row to the new table
         for row_left in self.data:
             left_value = row_left[column_index_left]
             for row_right in table_right.data:
@@ -310,17 +330,42 @@ class Table:
                 if get_op(operator, left_value, right_value): #EQ_OP
                     join_table._insert(row_left+row_right)
 
-        print(f'## Select ops -> {no_of_ops}')
+        print(f'## Select ops no. -> {no_of_ops}')
         print(f'# Left table size -> {len(self.data)}')
         print(f'# Right table size -> {len(table_right.data)}')
 
         return join_table
 
 
+    def show(self, no_of_rows=None, is_locked=False):
+        '''
+        Pretty print the table
+        '''
+        # if the table is locked, add locked keyword to title
+        if is_locked:
+            print(f"\n## {self._name} (locked) ##")
+        else:
+            print(f"\n## {self._name} ##")
+
+        # headers -> "column name (column type)"
+        headers = [f'{col} ({tp.__name__})' for col, tp in zip(self.column_names, self.column_types)]
+        if self.pk_idx is not None:
+            # table has a primary key, add PK next to the appropriate column
+            headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
+        # print using tabulate
+        print(tabulate(self.data[:no_of_rows], headers=headers))
+
 
     def _parse_condition(self, condition, both_columns=False):
+        '''
+        Parse the single string condition and return column/s value and operator
+        '''
+        # if both_columns (used by the join function) return the names of the names of the columns (left first)
         if both_columns:
             return split_condition(condition)
+
+        # if not, figure out witch value is the column name and which is the actual value used to compare to.
+        # cast the value with the specified column's type and return the column name, the operator and the casted value
         left, op, right = split_condition(condition)
         if left in self.column_names:
             column_name = left
@@ -335,3 +380,14 @@ class Table:
             return
 
         return column_name, op, value
+
+
+    def _load_from_file(self, filename):
+        '''
+        Load table from a pkl file (not used currently)
+        '''
+        f = open(filename, 'rb')
+        tmp_dict = pickle.load(f)
+        f.close()
+
+        self.__dict__.update(tmp_dict)
