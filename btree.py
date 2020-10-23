@@ -164,32 +164,43 @@ class Btree:
             # if nonleafs should be connected change the following two lines and add siblings
             right = Node(self.b, right_values, right_keys,\
                         parent=node.parent, is_leaf=node.is_leaf)
+            # make sure that a non leaf node doesnt have a parent
             node.right_sibling = None
+            # the right node's kids should have him as a parent (if not all nodes will have left as parent)
             for key in right_keys:
                 self.nodes[key].parent = len(self.nodes)
 
-
+        # old node (left) keeps only the first half of the values/keys
         node.values = node.values[:len(node.values)//2]
         node.keys = node.keys[:len(node.keys)//2]
 
+        # append the new node (right) to the nodes list
         self.nodes.append(right)
 
+        # If the new nodes have no parents (a new level needs to be added
         if node.parent is None:
             # its the root that is split
+            # new root contains the parent value and keys to the two recently split nodes
             parent = Node(self.b, [new_parent_value], [node_id, len(self.nodes)-1]\
                           ,parent=node.parent, is_leaf=False)
-            self.root = len(self.nodes)
+            # set root, and parent of split celss to the index of the new root node (len of nodes-1)
             self.nodes.append(parent)
+            self.root = len(self.nodes)-1
             node.parent = len(self.nodes)-1
             right.parent = len(self.nodes)-1
         else:
+            # insert the parent value to the parent
             self.nodes[node.parent].insert(new_parent_value, len(self.nodes)-1)
+            # check whether the parent needs to be split 
             if len(self.nodes[node.parent].values)==self.b:
                 self.split(node.parent)
 
 
 
     def show(self):
+        '''
+        Show important info for each node (sort the by level - root first, then left to right)
+        '''
         nds = []
         nds.append(self.root)
         for key in nds:
@@ -203,18 +214,29 @@ class Btree:
             print('----')
 
 
-    def find(self, value, operator='=='):
+    def find(self, operator='==', value):
+        '''
+        Return keys of elements where btree_value"operator"value.
+        Important, the user supplied "value" is the right value of the operation. That is why the operation are reversed below.
+        The left value of the op is the btree value.
+        '''
         results = []
+        # find the index of the node that the element should exist in
         leaf_idx, ops = self._search(value, True)
         target_node = self.nodes[leaf_idx]
 
         if operator == '==':
+            # if the element exist, append to list, else pass and return
             try:
                 results.append(target_node.keys[target_node.values.index(value)])
                 # print('Found')
             except:
                 # print('Not found')
                 pass
+                          
+        # for all other ops, the code is the same, only the operations themselves and the sibling indexes change
+        # for > and >= (btree value is >/>= of user supplied value), we return all the right siblings (all values are larger than current cell)
+        # for < and <= (btree value is </<= of user supplied value), we return all the left siblings (all values are smaller than current cell)
 
         if operator == '>':
             for idx, node_value in enumerate(target_node.values):
@@ -253,5 +275,6 @@ class Btree:
                 target_node = self.nodes[target_node.left_sibling]
                 results.extend(target_node.keys)
 
+        # print the number of operations (usefull for benchamrking)
         print(f'With BTree -> {ops} eq operations')
         return results
