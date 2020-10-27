@@ -352,8 +352,11 @@ class Table:
         if self.pk_idx is not None:
             # table has a primary key, add PK next to the appropriate column
             headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
+        # detect the rows that are no tfull of nones (these rows have been deleted)
+        # if we dont skip these rows, the returning table has empty rows at the deleted positions
+        non_none_rows = [row for row in self.data if any(row)]
         # print using tabulate
-        print(tabulate(self.data[:no_of_rows], headers=headers))
+        print(tabulate(non_none_rows[:no_of_rows], headers=headers))
 
 
     def _parse_condition(self, condition, both_columns=False):

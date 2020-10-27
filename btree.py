@@ -138,7 +138,7 @@ class Btree:
         Split the node with index=node_id
         '''
         # fetch the node to be split
-        node = self.nodes[node_id
+        node = self.nodes[node_id]
         # the value that will be propagated to the parent is the middle one.
         new_parent_value = node.values[len(node.values)//2]
         if node.is_leaf:
@@ -191,7 +191,7 @@ class Btree:
         else:
             # insert the parent value to the parent
             self.nodes[node.parent].insert(new_parent_value, len(self.nodes)-1)
-            # check whether the parent needs to be split 
+            # check whether the parent needs to be split
             if len(self.nodes[node.parent].values)==self.b:
                 self.split(node.parent)
 
@@ -214,7 +214,7 @@ class Btree:
             print('----')
 
 
-    def find(self, operator='==', value):
+    def find(self, value, operator='=='):
         '''
         Return keys of elements where btree_value"operator"value.
         Important, the user supplied "value" is the right value of the operation. That is why the operation are reversed below.
@@ -233,7 +233,7 @@ class Btree:
             except:
                 # print('Not found')
                 pass
-                          
+
         # for all other ops, the code is the same, only the operations themselves and the sibling indexes change
         # for > and >= (btree value is >/>= of user supplied value), we return all the right siblings (all values are larger than current cell)
         # for < and <= (btree value is </<= of user supplied value), we return all the left siblings (all values are smaller than current cell)

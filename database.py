@@ -360,9 +360,9 @@ class Database:
             self.table_from_object(res)
         else:
             if return_object:
-                return table
+                return res
             else:
-                table.show()
+                res.show()
 
     def lockX_table(self, table_name):
         '''
@@ -480,7 +480,7 @@ class Database:
         table_name -> table's name (needs to exist in database)
         new_stack -> the stack that will be used to replace the existing one.
         '''
-        return self.update_row('meta_insert_stack', new_stack, 'indexes', f'table_name=={table_name}')
+        return self.update('meta_insert_stack', new_stack, 'indexes', f'table_name=={table_name}')
 
 
     # indexes

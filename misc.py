@@ -20,5 +20,6 @@ def split_condition(condition):
            '<': operator.lt}
 
     for op_key in ops.keys():
-        if len(splt:=condition.split(op_key))>1:
+        splt=condition.split(op_key)
+        if len(splt)>1:
             return splt[0], op_key, splt[1]
