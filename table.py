@@ -250,7 +250,7 @@ class Table:
 
         print(f'Without Btree -> {opsseq} eq operations')
         # btree find
-        rows = bt.find(value, operator)
+        rows = bt.find(operator, value)
         print('### Seq result ###')
         print(rows1)
         print('### Index result ###')

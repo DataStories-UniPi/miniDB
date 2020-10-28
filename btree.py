@@ -214,7 +214,7 @@ class Btree:
             print('----')
 
 
-    def find(self, value, operator='=='):
+    def find(self, operator, value):
         '''
         Return keys of elements where btree_value"operator"value.
         Important, the user supplied "value" is the right value of the operation. That is why the operation are reversed below.
@@ -241,7 +241,7 @@ class Btree:
         if operator == '>':
             for idx, node_value in enumerate(target_node.values):
                 ops+=1
-                if value < node_value:
+                if node_value > value:
                     results.append(target_node.keys[idx])
             while target_node.right_sibling is not None:
                 target_node = self.nodes[target_node.right_sibling]
@@ -251,7 +251,7 @@ class Btree:
         if operator == '>=':
             for idx, node_value in enumerate(target_node.values):
                 ops+=1
-                if value <= node_value:
+                if node_value >= value:
                     results.append(target_node.keys[idx])
             while target_node.right_sibling is not None:
                 target_node = self.nodes[target_node.right_sibling]
@@ -260,7 +260,7 @@ class Btree:
         if operator == '<':
             for idx, node_value in enumerate(target_node.values):
                 ops+=1
-                if value > node_value:
+                if node_value < value:
                     results.append(target_node.keys[idx])
             while target_node.left_sibling is not None:
                 target_node = self.nodes[target_node.left_sibling]
@@ -269,7 +269,7 @@ class Btree:
         if operator == '<=':
             for idx, node_value in enumerate(target_node.values):
                 ops+=1
-                if value >= node_value:
+                if node_value <= value:
                     results.append(target_node.keys[idx])
             while target_node.left_sibling is not None:
                 target_node = self.nodes[target_node.left_sibling]
