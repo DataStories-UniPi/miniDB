@@ -30,4 +30,4 @@ The database wil be save with the name "smdb". You can load the database in anot
 ```
 
 ## Contributors
-George S. Theodoropoulos, Yannis Theodoridis; Data Science Lab., University of Piraeus.
+George S. Theodoropoulos, Yannis Kontoulis, Yannis Theodoridis; Data Science Lab., University of Piraeus.
