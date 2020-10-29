@@ -13,7 +13,7 @@ pip install tabulate
 
 TBA
 
-## Loading the smallRelations database
+## Loading the [smallRelations database](https://www.db-book.com/db6/lab-dir/sample_tables-dir/index.html)
 
 To create a database containing the smallRelations tables and get an interactive shell, run 
 ``` Python
