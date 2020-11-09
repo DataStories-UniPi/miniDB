@@ -211,31 +211,33 @@ class Database:
         self._update()
         self.save()
 
-    def insert(self, table_name, row):
+    def insert(self, table_name, row, lock_load_save=True):
         '''
         Inserts into table
 
         table_name -> table's name (needs to exist in database)
         row -> a list of the values that are going to be inserted (will be automatically casted to predifined type)
+        lock_load_save -> If false, user need to load, lock and save the states of the database (CAUTION). Usefull for bulk loading
         '''
-        self.load(self.savedir)
-        if self.is_locked(table_name):
-            return
-        # fetch the insert_stack. For more info on the insert_stack
-        # check the insert_stack meta table
+        if lock_load_save:
+            self.load(self.savedir)
+            if self.is_locked(table_name):
+                return
+            # fetch the insert_stack. For more info on the insert_stack
+            # check the insert_stack meta table
+            self.lockX_table(table_name)
         insert_stack = self._get_insert_stack_for_table(table_name)
-        self.lockX_table(table_name)
         try:
             self.tables[table_name]._insert(row, insert_stack)
         except Exception as e:
             print(e)
             print('ABORTED')
         # sleep(2)
-        self.unlock_table(table_name)
-        self._update()
-        self.save()
         self._update_insert_stack_for_tb(table_name, insert_stack[:-1])
-        self.save()
+        if lock_load_save:
+            self.unlock_table(table_name)
+            self._update()
+            self.save()
 
 
     def update(self, table_name, set_value, set_column, condition):
@@ -486,8 +488,9 @@ class Database:
 
         table_name -> table's name (needs to exist in database)
         '''
-        res = self.select('meta_insert_stack', '*', f'table_name=={table_name}', return_object=True).indexes[0]
-        return res
+        return self.tables['meta_insert_stack']._select_where('*', f'table_name=={table_name}').indexes[0]
+        # res = self.select('meta_insert_stack', '*', f'table_name=={table_name}', return_object=True).indexes[0]
+        # return res
 
     def _update_insert_stack_for_tb(self, table_name, new_stack):
         '''
@@ -496,7 +499,7 @@ class Database:
         table_name -> table's name (needs to exist in database)
         new_stack -> the stack that will be used to replace the existing one.
         '''
-        return self.update('meta_insert_stack', new_stack, 'indexes', f'table_name=={table_name}')
+        self.tables['meta_insert_stack']._update_row(new_stack, 'indexes', f'table_name=={table_name}')
 
 
     # indexes

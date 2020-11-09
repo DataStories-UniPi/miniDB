@@ -10,7 +10,10 @@ def get_op(op, a, b):
                 '<=': operator.le,
                 '==': operator.eq}
 
-    return ops[op](a,b)
+    try:
+        return ops[op](a,b)
+    except TypeError:  # if a or b is None (deleted record), python3 raises typerror
+        return False
 
 def split_condition(condition):
     ops = {'>=': operator.ge,
