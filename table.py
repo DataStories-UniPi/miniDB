@@ -191,6 +191,8 @@ class Table:
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
+        elif isinstance(return_columns, str):
+            raise Exception(f'Return columns should be "*" or of type list. (the second parameter is return_columns not condition)')
         else:
             return_cols = [self.column_names.index(colname) for colname in return_columns]
 
@@ -356,7 +358,7 @@ class Table:
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]
         # print using tabulate
-        print(tabulate(non_none_rows[:no_of_rows], headers=headers))
+        print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
 
 
     def _parse_condition(self, condition, both_columns=False):
