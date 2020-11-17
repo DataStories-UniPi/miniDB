@@ -503,7 +503,7 @@ class Database:
 
 
     # indexes
-    def create_index(self, table_name, index_name):
+    def create_index(self, table_name, index_name, index_type='Btree'):
         '''
         Create an index on a specified table with a given name.
         Important: An index can only be created on a primary key. Thus the user does not specify the column
@@ -515,11 +515,14 @@ class Database:
             print('## ERROR - Cant create index. Table has no primary key.')
             return
         if index_name not in self.tables['meta_indexes'].index_name:
-            # insert a record with the name of the index and the table on which it's created to the meta_indexes table
-            self.tables['meta_indexes']._insert([table_name, index_name])
-            # crate the actual index
-            self._construct_index(table_name, index_name)
-            self.save()
+            # currently only btree is supported. This can be changed by adding another if.
+            if index_type=='Btree':
+                print('Creating Btree index ')
+                # insert a record with the name of the index and the table on which it's created to the meta_indexes table
+                self.tables['meta_indexes']._insert([table_name, index_name])
+                # crate the actual index
+                self._construct_index(table_name, index_name)
+                self.save()
         else:
             print('## ERROR - Cant create index. Another index with the same name already exists.')
             return

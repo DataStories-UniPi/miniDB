@@ -16,6 +16,7 @@ def get_op(op, a, b):
         return False
 
 def split_condition(condition):
+    condition = condition.replace(' ','') # remove all whitespaces
     ops = {'>=': operator.ge,
            '<=': operator.le,
            '==': operator.eq,
