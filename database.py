@@ -86,7 +86,7 @@ class Database:
         '''
         self._update_meta_length()
         self._update_meta_locks()
-        self._update_insert_stack()
+        self._update_meta_insert_stack()
 
 
     def create_table(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
@@ -233,7 +233,7 @@ class Database:
             print(e)
             print('ABORTED')
         # sleep(2)
-        self._update_insert_stack_for_tb(table_name, insert_stack[:-1])
+        self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
         if lock_load_save:
             self.unlock_table(table_name)
             self._update()
@@ -461,7 +461,7 @@ class Database:
                 self.tables['meta_locks']._insert([table._name, False])
                 # self.insert('meta_locks', [table._name, False])
 
-    def _update_insert_stack(self):
+    def _update_meta_insert_stack(self):
         '''
         updates the meta_insert_stack table
         '''
@@ -480,7 +480,7 @@ class Database:
         indexes -> The list of indexes that will be added to the insert stack (the indexes of the newly deleted elements)
         '''
         old_lst = self._get_insert_stack_for_table(table_name)
-        self._update_insert_stack_for_tb(table_name, old_lst+indexes)
+        self._update_meta_insert_stack_for_tb(table_name, old_lst+indexes)
 
     def _get_insert_stack_for_table(self, table_name):
         '''
@@ -492,7 +492,7 @@ class Database:
         # res = self.select('meta_insert_stack', '*', f'table_name=={table_name}', return_object=True).indexes[0]
         # return res
 
-    def _update_insert_stack_for_tb(self, table_name, new_stack):
+    def _update_meta_insert_stack_for_tb(self, table_name, new_stack):
         '''
         Replaces the insert stack of a table with the one that will be supplied by the user
 

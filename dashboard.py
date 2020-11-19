@@ -9,5 +9,3 @@ while True:
         if sys.argv[2]=='y' and name[:4]!='meta':
             continue
         db.show_table(name)
-    sleep(1)
-    os.system('cls' if os.name == 'nt' else "printf '\033c'")

@@ -159,7 +159,6 @@ class Table:
         # to delete from meta tables too, we still implement it.
 
         for index in sorted(indexes_to_del, reverse=True):
-            print('del', index)
             if self._name[:4] != 'meta':
                 # if the table is not a metatable, replace the row with a row of nones
                 self.data[index] = [None for _ in range(len(self.column_names))]
@@ -171,17 +170,6 @@ class Table:
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
 
-
-    def _select_indx(self, rows):
-        '''
-        select using row of indexes (not used rn but might be usefull)
-        '''
-        # if not list, make list
-        if not isinstance(rows, list):
-            rows = [rows]
-        # copy the old dict, but only the rows of data with index in rows
-        dict = {(key):([self.data[i] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
-        return Table(load=dict)
 
     def _select_where(self, return_columns, condition=None, order_by=None, asc=False, top_k=None):
         '''
