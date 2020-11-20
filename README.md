@@ -6,7 +6,7 @@ The miniDB project is a minimal and easy to expand and develop for RMDBS tool, w
 
 Install the two dependencies with the following command:
 ``` Python
-pip install tabulate graphviz
+pip install tabulate graphviz numpy
 ```
 
 ## Documentation
