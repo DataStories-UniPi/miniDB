@@ -9,6 +9,13 @@ Install the two dependencies with the following command:
 pip install tabulate graphviz numpy
 ```
 
+Graphviz package is also needed. Linux systems can just do the following:
+``` Bash
+sudo apt-get install graphviz
+```
+Visit [https://graphviz.org/download/](https://graphviz.org/download/) for more information.
+
+
 ## Documentation
 
 TBA
