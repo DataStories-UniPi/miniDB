@@ -4,9 +4,9 @@ The miniDB project is a minimal and easy to expand and develop for RMDBS tool, w
 
 ## Installation
 
-Install the only dependency with the following command:
+Install the two dependencies with the following command:
 ``` Python
-pip install tabulate
+pip install tabulate graphviz
 ```
 
 ## Documentation
@@ -15,7 +15,7 @@ TBA
 
 ## Loading the [smallRelations database](https://www.db-book.com/db6/lab-dir/sample_tables-dir/index.html)
 
-To create a database containing the smallRelations tables and get an interactive shell, run 
+To create a database containing the smallRelations tables and get an interactive shell, run
 ``` Python
 python -i smallRelationsInsertFile.py
 ```

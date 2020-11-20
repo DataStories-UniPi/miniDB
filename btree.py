@@ -1,3 +1,4 @@
+from graphviz import Source
 '''
 https://en.wikipedia.org/wiki/B%2B_tree
 '''
@@ -6,11 +7,11 @@ class Node:
     '''
     Node abstraction. Represents a single bucket
     '''
-    def __init__(self, b, values=[], keys=[],\
+    def __init__(self, b, values=[], ptrs=[],\
                  left_sibling=None, right_sibling=None, parent=None, is_leaf=False):
         self.b = b # branching factor
         self.values = values # Values (the data from the pk column)
-        self.keys = keys # Keys (the indexes of each datapoint or the index of another bucket)
+        self.ptrs = ptrs # ptrs (the indexes of each datapoint or the index of another bucket)
         self.left_sibling = left_sibling # the index of a buckets left sibling
         self.right_sibling = right_sibling # the index of a buckets right sibling
         self.parent = parent # the index of a buckets parent
@@ -19,7 +20,7 @@ class Node:
 
     def find(self, value, return_ops=False):
         '''
-        Returns the index of the next node to search for a value if the node is not a leaf (a keys of the available ones).
+        Returns the index of the next node to search for a value if the node is not a leaf (a ptrs of the available ones).
         If it is a leaf (we have found the appropriate node), it returns nothing.
 
         value: the value that we are searching for
@@ -30,52 +31,57 @@ class Node:
             return
 
         # for each value in the node, if the user supplied value is smaller, return the btrees value index
-        # else (no value in the node is larger) return the last key
+        # else (no value in the node is larger) return the last ptr
         for index, existing_val in enumerate(self.values):
             ops+=1
             if value<existing_val:
                 if return_ops:
-                    return self.keys[index], ops
+                    return self.ptrs[index], ops
                 else:
-                    return self.keys[index]
+                    return self.ptrs[index]
 
         if return_ops:
-            return self.keys[-1], ops
+            return self.ptrs[-1], ops
         else:
-            return self.keys[-1]
+            return self.ptrs[-1]
 
 
-    def insert(self, value, key, key1=None):
+    def insert(self, value, ptr, ptr1=None):
         '''
-        Insert the value and its key/s to the appropriate place (node wise).
-        User can input two keys to insert to a non leaf node.
+        Insert the value and its ptr/s to the appropriate place (node wise).
+        User can input two ptrs to insert to a non leaf node.
 
         value: the value that we are inserting to the node
-        key: the key of the inserted value (its index for example)
-        key1: the 2nd key (in case the user wants to insert into a nonleaf node for ex)
+        ptr: the ptr of the inserted value (its index for example)
+        ptr1: the 2nd ptr (in case the user wants to insert into a nonleaf node for ex)
 
         '''
-        # for each value in the node, if the user supplied value is smaller, insert the value and its key into that position
-        # if a second key is provided, insert it right next to the 1st key
-        # else (no value in the node is larger) append value and key/s to the back of the list.
+        # for each value in the node, if the user supplied value is smaller, insert the value and its ptr into that position
+        # if a second ptr is provided, insert it right next to the 1st ptr
+        # else (no value in the node is larger) append value and ptr/s to the back of the list.
+
         for index, existing_val in enumerate(self.values):
             if value<existing_val:
+
                 self.values.insert(index, value)
-                self.keys.insert(index, key)
-                if key1:
-                    self.keys.insert(index+1, key1)
+                self.ptrs.insert(index+1, ptr)
+
+                if ptr1:
+                    self.ptrs.insert(index+1, ptr1)
                 return
         self.values.append(value)
-        self.keys.append(key)
-        if key1:
-            self.keys.append(key1)
+        self.ptrs.append(ptr)
+        if ptr1:
+            self.ptrs.append(ptr1)
+
+
 
     def show(self):
         '''
         print the node's value and important info
         '''
         print('Values', self.values)
-        print('Keys', self.keys)
+        print('ptrs', self.ptrs)
         print('Parent', self.parent)
         print('LS', self.left_sibling)
         print('RS', self.right_sibling)
@@ -90,20 +96,20 @@ class Btree:
         self.nodes = [] # list of nodes. Every new node is appended here
         self.root = None # the index of the root node
 
-    def insert(self, value, key, rkey=None):
+    def insert(self, value, ptr, rptr=None):
         '''
-        Insert the value and its key/s to the appropriate node (node-level insertion is covered by the node object).
-        User can input two keys to insert to a non leaf node.
+        Insert the value and its ptr/s to the appropriate node (node-level insertion is covered by the node object).
+        User can input two ptrs to insert to a non leaf node.
         '''
         # if the tree is empty, add the first node and set the root index to 0 (the only node's index)
         if self.root is None:
             self.nodes.append(Node(self.b, is_leaf=True))
             self.root = 0
 
-        # find the index of the node that the value and its key/s should be inserted to (_search)
+        # find the index of the node that the value and its ptr/s should be inserted to (_search)
         index = self._search(value)
         # insert to it
-        self.nodes[index].insert(value,key)
+        self.nodes[index].insert(value,ptr)
         # if the node has more elements than b-1, split the node
         if len(self.nodes[index].values)==self.b:
             self.split(index)
@@ -145,34 +151,36 @@ class Btree:
             # if the node is a leaf, the parent value should be a part of the new node (right)
             # Important: in a b+tree, every value should appear in a leaf
             right_values = node.values[len(node.values)//2:]
-            right_keys   = node.keys[len(node.keys)//2:]
+            right_ptrs   = node.ptrs[len(node.ptrs)//2:]
 
-            # create the new node with the right half of the old nodes values and keys (including the middle ones)
-            right = Node(self.b, right_values, right_keys,\
+            # create the new node with the right half of the old nodes values and ptrs (including the middle ones)
+            right = Node(self.b, right_values, right_ptrs,\
                          left_sibling=node_id, right_sibling=node.right_sibling, parent=node.parent, is_leaf=node.is_leaf)
             # since the new node (right) will be the next one to be appended to the nodes list
             # its index will be equal to the length of the nodes list.
             # Thus we set the old nodes (now left) right sibling to the right nodes future index (len of nodes)
+            if node.right_sibling is not None:
+                self.nodes[node.right_sibling].left_sibling = len(self.nodes)
             node.right_sibling = len(self.nodes)
 
 
         else:
             # if the node is not a leaf, the parent value shoudl NOT be part of the new node
             right_values = node.values[len(node.values)//2+1:]
-            right_keys   = node.keys[len(node.keys)//2:]
+            right_ptrs   = node.ptrs[len(node.ptrs)//2:]
 
             # if nonleafs should be connected change the following two lines and add siblings
-            right = Node(self.b, right_values, right_keys,\
+            right = Node(self.b, right_values, right_ptrs,\
                         parent=node.parent, is_leaf=node.is_leaf)
             # make sure that a non leaf node doesnt have a parent
             node.right_sibling = None
             # the right node's kids should have him as a parent (if not all nodes will have left as parent)
-            for key in right_keys:
-                self.nodes[key].parent = len(self.nodes)
+            for ptr in right_ptrs:
+                self.nodes[ptr].parent = len(self.nodes)
 
-        # old node (left) keeps only the first half of the values/keys
+        # old node (left) keeps only the first half of the values/ptrs
         node.values = node.values[:len(node.values)//2]
-        node.keys = node.keys[:len(node.keys)//2]
+        node.ptrs = node.ptrs[:len(node.ptrs)//2]
 
         # append the new node (right) to the nodes list
         self.nodes.append(right)
@@ -180,9 +188,10 @@ class Btree:
         # If the new nodes have no parents (a new level needs to be added
         if node.parent is None:
             # its the root that is split
-            # new root contains the parent value and keys to the two recently split nodes
+            # new root contains the parent value and ptrs to the two recently split nodes
             parent = Node(self.b, [new_parent_value], [node_id, len(self.nodes)-1]\
                           ,parent=node.parent, is_leaf=False)
+
             # set root, and parent of split celss to the index of the new root node (len of nodes-1)
             self.nodes.append(parent)
             self.root = len(self.nodes)-1
@@ -190,10 +199,12 @@ class Btree:
             right.parent = len(self.nodes)-1
         else:
             # insert the parent value to the parent
+
             self.nodes[node.parent].insert(new_parent_value, len(self.nodes)-1)
             # check whether the parent needs to be split
             if len(self.nodes[node.parent].values)==self.b:
                 self.split(node.parent)
+
 
 
 
@@ -203,20 +214,54 @@ class Btree:
         '''
         nds = []
         nds.append(self.root)
-        for key in nds:
-            if self.nodes[key].is_leaf:
+        for ptr in nds:
+            if self.nodes[ptr].is_leaf:
                 continue
-            nds.extend(self.nodes[key].keys)
+            nds.extend(self.nodes[ptr].ptrs)
 
-        for key in nds:
-            print(f'## {key} ##')
-            self.nodes[key].show()
+        for ptr in nds:
+            print(f'## {ptr} ##')
+            self.nodes[ptr].show()
             print('----')
+
+
+    def plot(self):
+        ## arrange the nodes top to bottom left to right
+        nds = []
+        nds.append(self.root)
+        for ptr in nds:
+            if self.nodes[ptr].is_leaf:
+                continue
+            nds.extend(self.nodes[ptr].ptrs)
+
+        # add each node and each link
+        g = 'digraph G{\nforcelabels=true;\n'
+
+        for i in nds:
+            node = self.nodes[i]
+            g+=f'{i} [label="{node.values}"]\n'
+            if node.is_leaf:
+                continue
+                # if node.left_sibling is not None:
+                #     g+=f'"{node.values}"->"{self.nodes[node.left_sibling].values}" [color="blue" constraint=false];\n'
+                # if node.right_sibling is not None:
+                #     g+=f'"{node.values}"->"{self.nodes[node.right_sibling].values}" [color="green" constraint=false];\n'
+                #
+                # g+=f'"{node.values}"->"{self.nodes[node.parent].values}" [color="red" constraint=false];\n'
+            else:
+                for child in node.ptrs:
+                    g+=f'{child} [label="{self.nodes[child].values}"]\n'
+                    g+=f'{i}->{child};\n'
+        g +="}"
+
+        src = Source(g)
+        src.render('bplustree', view=True)
+
 
 
     def find(self, operator, value):
         '''
-        Return keys of elements where btree_value"operator"value.
+        Return ptrs of elements where btree_value"operator"value.
         Important, the user supplied "value" is the right value of the operation. That is why the operation are reversed below.
         The left value of the op is the btree value.
         '''
@@ -228,7 +273,7 @@ class Btree:
         if operator == '==':
             # if the element exist, append to list, else pass and return
             try:
-                results.append(target_node.keys[target_node.values.index(value)])
+                results.append(target_node.ptrs[target_node.values.index(value)])
                 # print('Found')
             except:
                 # print('Not found')
@@ -242,38 +287,38 @@ class Btree:
             for idx, node_value in enumerate(target_node.values):
                 ops+=1
                 if node_value > value:
-                    results.append(target_node.keys[idx])
+                    results.append(target_node.ptrs[idx])
             while target_node.right_sibling is not None:
                 target_node = self.nodes[target_node.right_sibling]
-                results.extend(target_node.keys)
+                results.extend(target_node.ptrs)
 
 
         if operator == '>=':
             for idx, node_value in enumerate(target_node.values):
                 ops+=1
                 if node_value >= value:
-                    results.append(target_node.keys[idx])
+                    results.append(target_node.ptrs[idx])
             while target_node.right_sibling is not None:
                 target_node = self.nodes[target_node.right_sibling]
-                results.extend(target_node.keys)
+                results.extend(target_node.ptrs)
 
         if operator == '<':
             for idx, node_value in enumerate(target_node.values):
                 ops+=1
                 if node_value < value:
-                    results.append(target_node.keys[idx])
+                    results.append(target_node.ptrs[idx])
             while target_node.left_sibling is not None:
                 target_node = self.nodes[target_node.left_sibling]
-                results.extend(target_node.keys)
+                results.extend(target_node.ptrs)
 
         if operator == '<=':
             for idx, node_value in enumerate(target_node.values):
                 ops+=1
                 if node_value <= value:
-                    results.append(target_node.keys[idx])
+                    results.append(target_node.ptrs[idx])
             while target_node.left_sibling is not None:
                 target_node = self.nodes[target_node.left_sibling]
-                results.extend(target_node.keys)
+                results.extend(target_node.ptrs)
 
         # print the number of operations (usefull for benchamrking)
         print(f'With BTree -> {ops} eq operations')
