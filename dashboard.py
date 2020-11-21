@@ -6,6 +6,6 @@ db = Database(sys.argv[1])
 
 while True:
     for name in list(db.tables): 
-        if sys.argv[2]=='y' and name[:4]!='meta':
+        if sys.argv[2]=='meta' and name[:4]!='meta':
             continue
         db.show_table(name)
