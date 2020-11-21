@@ -1,10 +1,12 @@
 from btree import Btree
 from numpy import random
+import sys
 '''
 Test the Btree
 '''
 
-NUM = 10
+NUM = int(sys.argv[1])
+B = int(sys.argv[2])
 
 lst = []
 
@@ -13,7 +15,7 @@ while len(lst)!=NUM:
     if new_v not in lst:
         lst.append(new_v)
 
-bt = Btree(3)
+bt = Btree(B)
 
 for ind, el in enumerate(lst):
     bt.insert(el, ind)
