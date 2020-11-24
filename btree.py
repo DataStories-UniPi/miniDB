@@ -321,5 +321,5 @@ class Btree:
                 results.extend(target_node.ptrs)
 
         # print the number of operations (usefull for benchamrking)
-        print(f'With BTree -> {ops} eq operations')
+        print(f'With BTree -> {ops} comparison operations')
         return results

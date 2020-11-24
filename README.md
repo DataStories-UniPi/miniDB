@@ -18,7 +18,7 @@ Visit [https://graphviz.org/download/](https://graphviz.org/download/) for more 
 
 ## Documentation
 
-TBA
+The file [documentation.pdf](documentation.pdf) contains a detailed description of the miniDB library (in Greek).
 
 ## Loading the [smallRelations database](https://www.db-book.com/db6/lab-dir/sample_tables-dir/index.html)
 

@@ -5,6 +5,7 @@ from time import sleep, localtime, strftime
 import os
 from btree import Btree
 import shutil
+from misc import split_condition
 
 class Database:
     '''
@@ -309,7 +310,8 @@ class Database:
         if self.is_locked(table_name):
             return
         self.lockX_table(table_name)
-        if self._has_index(table_name) and condition is not None:
+        condition_column = split_condition(condition)[0]
+        if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
             index_name = self.select('meta_indexes', '*', f'table_name=={table_name}', return_object=True).index_name[0]
             bt = self._load_idx(index_name)
             table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, asc, top_k)

@@ -222,6 +222,8 @@ class Table:
 
         column_name, operator, value = self._parse_condition(condition)
 
+        print("1: ", type(value), " 2: ", self.column_types[self.column_names.index(column_name)])
+
         # if the column in condition is not a primary key, abort the select
         if column_name != self.column_names[self.pk_idx]:
             print('Column is not PK. Aborting')
@@ -238,7 +240,7 @@ class Table:
             if get_op(operator, x, value):
                 rows1.append(ind)
 
-        print(f'Without Btree -> {opsseq} eq operations')
+        print(f'Without Btree -> {opsseq} comparison operations')
         # btree find
         rows = bt.find(operator, value)
         print('### Seq result ###')
@@ -349,30 +351,21 @@ class Table:
         print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
 
 
-    def _parse_condition(self, condition, both_columns=False):
+    def _parse_condition(self, condition, join=False):
         '''
         Parse the single string condition and return column/s value and operator
         '''
         # if both_columns (used by the join function) return the names of the names of the columns (left first)
-        if both_columns:
+        if join:
             return split_condition(condition)
 
-        # if not, figure out witch value is the column name and which is the actual value used to compare to.
         # cast the value with the specified column's type and return the column name, the operator and the casted value
         left, op, right = split_condition(condition)
-        if left in self.column_names:
-            column_name = left
-            coltype = self.column_types[self.column_names.index(column_name)]
-            value = coltype(right)
-        elif right in self.column_names:
-            column_name = right
-            coltype = self.column_types[self.column_names.index(column_name)]
-            value = coltype(left)
-        else:
+        if left not in self.column_names:
             raise ValueError(f'Condition is not valid (cant find column name)')
-            return
+        coltype = self.column_types[self.column_names.index(column_name)]
 
-        return column_name, op, value
+        return column_name, op, coltype(right)
 
 
     def _load_from_file(self, filename):
