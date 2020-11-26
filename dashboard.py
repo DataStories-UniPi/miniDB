@@ -1,6 +1,5 @@
 from database import Database
-import sys, os
-from time import sleep
+import sys
 
 db = Database(sys.argv[1])
 
