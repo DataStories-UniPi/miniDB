@@ -1,4 +1,3 @@
-from graphviz import Source
 '''
 https://en.wikipedia.org/wiki/B%2B_tree
 '''
@@ -254,10 +253,12 @@ class Btree:
                     g+=f'{i}->{child};\n'
         g +="}"
 
-        src = Source(g)
-        src.render('bplustree', view=True)
-
-
+        try:
+            from graphviz import Source
+            src = Source(g)
+            src.render('bplustree', view=True)
+        except ImportError:
+            print('Failed to import package for plotting. Make sure graphviz is installed ($ pip install graphviz). Ignoring.')
 
     def find(self, operator, value):
         '''
