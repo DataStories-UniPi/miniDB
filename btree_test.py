@@ -1,5 +1,5 @@
 from btree import Btree
-from numpy import random
+from random import randrange
 import sys
 '''
 Test the Btree
@@ -11,7 +11,7 @@ B = int(sys.argv[2])
 lst = []
 
 while len(lst)!=NUM:
-    new_v = random.randint(100)
+    new_v = randrange(100)
     if new_v not in lst:
         lst.append(new_v)
 
