@@ -25,7 +25,6 @@ class Database:
                 return
             except:
                 print(f"'{name}' db does not exist, creating new.")
-                pass
 
         # create dbdata directory if it doesnt exist
         if not os.path.exists('dbdata'):
@@ -120,7 +119,10 @@ class Database:
 
         self.tables.pop(table_name)
         delattr(self, table_name)
-        os.remove(f'{self.savedir}/{table_name}.pkl')
+        if os.path.isfile(f'{self.savedir}/{table_name}.pkl'):
+            os.remove(f'{self.savedir}/{table_name}.pkl')
+        else:
+            print(f"'{self.savedir}/{table_name}.pkl' does not exist.")
         self.delete('meta_locks', f'table_name=={table_name}')
         self.delete('meta_length', f'table_name=={table_name}')
         self.delete('meta_insert_stack', f'table_name=={table_name}')
