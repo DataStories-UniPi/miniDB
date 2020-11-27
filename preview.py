@@ -1,11 +1,8 @@
 import matplotlib.pyplot as plt
 import os
-from pylab import rcParams
-    
-def preview(plot=None):
-    rcParams['figure.figsize'] = 5,5
 
-    labels = [name for name in os.listdir('.') if os.path.isdir(name)]
+def preview(plot=False):
+    labels = [name for name in os.listdir('dbdata') if os.path.isdir(name)]
     sizes = []
 
     for db in labels:
@@ -30,8 +27,12 @@ def preview(plot=None):
     fig.gca().add_artist(centre_circle)
 
     plt.tight_layout()
+    plt.figure(figsize=(5,5))
 
-    if plot is None:
-        plt.show()
-    else:
+    if plot:
         plt.savefig(plot)
+    else:
+        plt.show()
+
+if __name__ == '__main__':
+    preview(plot=str(sys.argv[1]))
