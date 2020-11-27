@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 import os
 
-def preview(plot=False):
-    labels = [name for name in os.listdir('dbdata') if os.path.isdir(name)]
+def preview(dirname='dbdata', plot=False):
+    labels = [name for name in os.listdir(dirname) if os.path.isdir(name)]
     sizes = []
 
     for db in labels:
@@ -35,4 +35,4 @@ def preview(plot=False):
         plt.show()
 
 if __name__ == '__main__':
-    preview(plot=str(sys.argv[1]))
+    preview(dirname=str(sys.argv[1]))
