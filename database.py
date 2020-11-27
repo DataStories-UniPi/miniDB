@@ -21,10 +21,10 @@ class Database:
         if load:
             try:
                 self.load(self.savedir)
-                print(f'"{name}" loaded')
+                print(f'Loaded "{name}".')
                 return
             except:
-                print(f"'{name}' db does not exist, creating new.")
+                print(f'"{name}" db does not exist, creating new.')
 
         # create dbdata directory if it doesnt exist
         if not os.path.exists('dbdata'):
@@ -102,9 +102,9 @@ class Database:
         if name not in self.__dir__():
             setattr(self, name, self.tables[name])
         else:
-            raise Exception(f'"{name}" attribute already exists in "{self.__class__.__name__} "class.')
+            raise Exception(f'Attribute "{name}" already exists in class "{self.__class__.__name__}".')
         # self.no_of_tables += 1
-        print(f'New table {name}')
+        print(f'New table "{name}"')
         self._update()
         self.save()
 
@@ -122,7 +122,7 @@ class Database:
         if os.path.isfile(f'{self.savedir}/{table_name}.pkl'):
             os.remove(f'{self.savedir}/{table_name}.pkl')
         else:
-            print(f"'{self.savedir}/{table_name}.pkl' does not exist.")
+            print(f'"{self.savedir}/{table_name}.pkl" does not exist.')
         self.delete('meta_locks', f'table_name=={table_name}')
         self.delete('meta_length', f'table_name=={table_name}')
         self.delete('meta_insert_stack', f'table_name=={table_name}')
@@ -163,7 +163,7 @@ class Database:
     def table_to_csv(self, table_name, filename=None):
         res = ''
         for row in [self.tables[table_name].column_names]+self.tables[table_name].data:
-            res+=str(row)[1:-1].replace("'", '').replace('"','').replace(' ','')+'\n'
+            res+=str(row)[1:-1].replace('\'', '').replace('"','').replace(' ','')+'\n'
 
         if filename is None:
             filename = f'{table_name}.csv'
@@ -180,7 +180,7 @@ class Database:
         if new_table._name not in self.__dir__():
             setattr(self, new_table._name, new_table)
         else:
-            raise Exception(f'"{new_table._name}" attribute already exists in "{self.__class__.__name__} "class.')
+            raise Exception(f'"{new_table._name}" attribute already exists in class "{self.__class__.__name__}".')
         self._update()
         self.save()
 
@@ -426,7 +426,7 @@ class Database:
         try:
             res = self.select('meta_locks', ['locked'], f'table_name=={table_name}', return_object=True).locked[0]
             if res:
-                print(f'"{table_name}" table is currently locked')
+                print(f'Table "{table_name}" is currently locked.')
             return res
 
         except IndexError:
@@ -522,7 +522,7 @@ class Database:
         if index_name not in self.tables['meta_indexes'].index_name:
             # currently only btree is supported. This can be changed by adding another if.
             if index_type=='Btree':
-                print('Creating Btree index ')
+                print('Creating Btree index.')
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
                 self.tables['meta_indexes']._insert([table_name, index_name])
                 # crate the actual index
