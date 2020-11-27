@@ -258,7 +258,9 @@ class Btree:
             src = Source(g)
             src.render('bplustree', view=True)
         except ImportError:
-            print('Failed to import package for plotting. Make sure graphviz is installed ($ pip install graphviz). Ignoring.')
+            print('"graphviz" package not found. Writing to graph.gv.')
+            with open('graph.gv','w') as f:
+                f.write(g)
 
     def find(self, operator, value):
         '''
