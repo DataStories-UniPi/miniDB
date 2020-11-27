@@ -1,19 +1,21 @@
 import matplotlib.pyplot as plt
 import os
+import sys
 
 def preview(dirname='dbdata', plot=False):
-    labels = [name for name in os.listdir(dirname) if os.path.isdir(name)]
+    labels = [name for name in os.listdir(dirname) if os.path.isdir(dirname+'/'+name)]
     sizes = []
 
     for db in labels:
         total_size = 0
         start_path = db
-        for path, dirs, files in os.walk(start_path):
+        for path, dirs, files in os.walk(dirname+'/'+start_path):
             for f in files:
                 fp = os.path.join(path, f)
                 total_size += os.path.getsize(fp)
         sizes.append(total_size)
 
+    plt.figure(figsize=(5, 5))
     plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90, pctdistance=0.85)
 
     plt.title('Total DB Size Distribution', fontsize=18)
@@ -27,7 +29,6 @@ def preview(dirname='dbdata', plot=False):
     fig.gca().add_artist(centre_circle)
 
     plt.tight_layout()
-    plt.figure(figsize=(5,5))
 
     if plot:
         plt.savefig(plot)
