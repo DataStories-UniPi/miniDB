@@ -1,4 +1,3 @@
-from graphviz import Source
 '''
 https://en.wikipedia.org/wiki/B%2B_tree
 '''
@@ -254,10 +253,14 @@ class Btree:
                     g+=f'{i}->{child};\n'
         g +="}"
 
-        src = Source(g)
-        src.render('bplustree', view=True)
-
-
+        try:
+            from graphviz import Source
+            src = Source(g)
+            src.render('bplustree', view=True)
+        except ImportError:
+            print('"graphviz" package not found. Writing to graph.gv.')
+            with open('graph.gv','w') as f:
+                f.write(g)
 
     def find(self, operator, value):
         '''
