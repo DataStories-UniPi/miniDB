@@ -1,20 +1,30 @@
 # miniDB
 
-The miniDB project is a minimal and easy to expand and develop for RMDBS tool, written excusivelly in python3. MiniDB's main goal is to provide the user with as much functionality as posssible while being easy to understand and even easier to expand. Thus, miniDB's primary market are students and researchers that want to work with a tool that they can understand through and through while being able to add a new feature as quickly as possible.
+The miniDB project is a minimal and easy to expand and develop for RMDBS tool, written excusivelly in Python 3. MiniDB's main goal is to provide the user with as much functionality as posssible while being easy to understand and even easier to expand. Thus, miniDB's primary market are students and researchers that want to work with a tool that they can understand through and through, while being able to implement additional features as quickly as possible.
 
 ## Installation
 
-Install the two dependencies with the following command:
-``` Python
-pip install tabulate graphviz
+```bash
+git clone https://github.com/DataStories-UniPi/miniDB.git
+cd miniDB
+pip install -r requirements.txt
 ```
 
-Graphviz package is also needed. Linux systems can just do the following:
-``` Bash
+The last command will install the packages found in [`requirements.txt`](https://github.com/DataStories-UniPi/miniDB/blob/master/requirements.txt). MiniDB is based on the following dependencies:
+* `tabulate` (for text formatting)
+* `graphviz` (for graph visualizations; optional)
+* `matplotlib` (for plotting; optional)
+
+Alternatively, the above dependencies can be installed with the following command:
+```python
+pip install tabulate graphviz matplotlib
+```
+
+Linux users can optionally install the `Graphviz` package to visualize graphs:
+```bash
 sudo apt-get install graphviz
 ```
-Visit [https://graphviz.org/download/](https://graphviz.org/download/) for more information.
-
+Installation instructions for non-Linux users can be found [here](https://graphviz.org/download/).
 
 ## Documentation
 
@@ -27,11 +37,11 @@ To create a database containing the smallRelations tables and get an interactive
 python -i smallRelationsInsertFile.py
 ```
 You can the access the database through the db object that will be available. For example, you can show the contents of the student table by running the following command:
-``` Python
+```python
 >> db.show_table('student')
 ```
-The database wil be save with the name "smdb". You can load the database in another python shell by running the following commands:
-``` Python
+The database wil be save with the name `smdb`. You can load the database in a separate Python shell by running the following commands:
+```python
 >> from database import Database
 >> db = Database("smdb", load=True)
 ```
