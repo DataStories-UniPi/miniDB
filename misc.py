@@ -15,6 +15,7 @@ def get_op(op, a, b):
     except TypeError:  # if a or b is None (deleted record), python3 raises typerror
         return False
 
+
 def split_condition(condition):
     condition = condition.replace(' ','') # remove all whitespaces
     ops = {'>=': operator.ge,
