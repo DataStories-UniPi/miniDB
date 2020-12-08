@@ -4,6 +4,8 @@ The miniDB project is a minimal and easy to expand and develop for RMDBS tool, w
 
 ## Installation
 
+Python 3.7 or newer is needed. To download and build the project run:
+
 ```bash
 git clone https://github.com/DataStories-UniPi/miniDB.git
 cd miniDB
