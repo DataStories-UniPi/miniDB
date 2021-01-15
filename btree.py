@@ -166,7 +166,10 @@ class Btree:
         else:
             # if the node is not a leaf, the parent value shoudl NOT be part of the new node
             right_values = node.values[len(node.values)//2+1:]
-            right_ptrs   = node.ptrs[len(node.ptrs)//2:]
+            if self.b%2==1:
+                right_ptrs = node.ptrs[len(node.ptrs)//2:]
+            else:
+                right_ptrs = node.ptrs[len(node.ptrs)//2+1:]
 
             # if nonleafs should be connected change the following two lines and add siblings
             right = Node(self.b, right_values, right_ptrs,\
@@ -179,7 +182,10 @@ class Btree:
 
         # old node (left) keeps only the first half of the values/ptrs
         node.values = node.values[:len(node.values)//2]
-        node.ptrs = node.ptrs[:len(node.ptrs)//2]
+        if self.b%2==1:
+            node.ptrs = node.ptrs[:len(node.ptrs)//2]
+        else:
+            node.ptrs = node.ptrs[:len(node.ptrs)//2+1]
 
         # append the new node (right) to the nodes list
         self.nodes.append(right)
