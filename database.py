@@ -7,6 +7,16 @@ from btree import Btree
 import shutil
 from misc import split_condition
 
+#----task 1.1.1----------#
+from ordered_file import Graduates
+#create an object of Graduate class
+gr = Graduates()
+#fill in the data table with the rows
+gr.ins_data()
+#create a global insert list
+mylist = []
+#------------------------#
+
 class Database:
     '''
     Database class contains tables.
@@ -15,9 +25,8 @@ class Database:
     def __init__(self, name, load=True):
         self.tables = {}
         self._name = name
-
         self.savedir = f'dbdata/{name}_db'
-
+        
         if load:
             try:
                 self.load(self.savedir)
@@ -42,6 +51,14 @@ class Database:
         self.create_table('meta_insert_stack',  ['table_name', 'indexes'], [str, list])
         self.create_table('meta_indexes',  ['table_name', 'index_name'], [str, str])
         self.save()
+        
+        #----task 1.1.1----------#
+        #create a table 'graduates'
+        self.create_table('graduates', ['id', 'name', 'surname', 'department', 'grade'], [str,str,str,str,int], primary_key='id')
+        #fill in the table with the values of data table
+        for i in range(17) : 
+            self.insert('graduates', gr.data[i])
+        #------------------------#
 
 
 
@@ -214,6 +231,7 @@ class Database:
         self._update()
         self.save()
 
+    
     def insert(self, table_name, row, lock_load_save=True):
         '''
         Inserts into table
@@ -230,6 +248,16 @@ class Database:
             # check the insert_stack meta table
             self.lockX_table(table_name)
         insert_stack = self._get_insert_stack_for_table(table_name)
+        
+        #----task 1.1.1----------#
+        global mylist
+        #call the function that check if the row that given from the user exist
+        #if it's not exist then add this row to 'mylist'
+        if self.check_if_exist(row) == False :
+            mylist.append(row)
+         
+        #------------------------#
+        
         try:
             self.tables[table_name]._insert(row, insert_stack)
         except Exception as e:
@@ -241,7 +269,18 @@ class Database:
             self.unlock_table(table_name)
             self._update()
             self.save()
-
+        
+    #----task 1.1.1----------#
+    #check if every value-row of data table corresponds to the row that was given and return a true or false flag
+    def check_if_exist(self, row):
+        flag=False
+        for i in range(17): 
+            if gr.data[i][0] == row[0]:
+                flag=True
+                
+        return flag
+    #------------------------#               
+        
 
     def update(self, table_name, set_value, set_column, condition):
         '''
@@ -581,3 +620,13 @@ class Database:
         index = pickle.load(f)
         f.close()
         return index
+
+
+       
+	
+	
+	
+db = Database('ofdb', load=False)
+#db.insert('graduates',['022827', 'Panagiwta', 'Kalika', 'CS', '9'])
+	
+	
