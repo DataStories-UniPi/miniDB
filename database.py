@@ -277,10 +277,29 @@ class Database:
         for i in range(17): 
             if gr.data[i][0] == row[0]:
                 flag=True
-                
+                 
         return flag
     #------------------------#               
         
+        
+    #----task 1.1.2----------#
+    def add_into_table(self):
+    	global mylist
+    	while True:
+            #the limit for the stack is 5 rows
+            if len(mylist) > 5:
+            	#ckeck the last column for the sorting
+            	#I want to add the row at the last of the same numbers
+                for j in range(16, 0, -1):
+                    if mylist[len(mylist)-1][4] > gr.data[j][4]:
+                        if mylist[len(mylist)-1][4] == gr.data[j-1][4]:
+                        	#keep only the last item of mylist, add it to the data list and remove it (pop) from mylist 
+                            gr.data.insert(j, mylist[len(mylist)-1:len(mylist)])
+                            mylist.pop()
+            else:
+                break
+                
+    #------------------------# 
 
     def update(self, table_name, set_value, set_column, condition):
         '''
@@ -622,11 +641,17 @@ class Database:
         return index
 
 
+db = Database('ofdb', load=False)
+db.insert('graduates',['022827', 'Panagiwta', 'Kalika', 'CS', 9])
+db.insert('graduates',['028327', 'Kwnstantinos', 'Kalipsos', 'PLYL', 8])
+db.insert('graduates',['029087', 'Marios', 'Mpenetatos', 'RLAW', 9])
+db.insert('graduates',['737087', 'Petroula', 'Mpika', 'THEOL', 8])
+db.insert('graduates',['098587', 'Iwsif', 'Porfuriou', 'EC', 6])
+db.insert('graduates',['098092', 'Petros', 'Pappas', 'DS', 10])
+db.insert('graduates',['025392', 'Dionusia', 'Meletiou', 'THEOL', 7])
+
+db.add_into_table()
        
 	
 	
-	
-db = Database('ofdb', load=False)
-#db.insert('graduates',['022827', 'Panagiwta', 'Kalika', 'CS', '9'])
-	
-	
+
