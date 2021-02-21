@@ -8,14 +8,10 @@ import shutil
 from misc import split_condition
 
 #----task 1.1.1----------#
-from ordered_file import Graduates
-#create an object of Graduate class
-gr = Graduates()
-#fill in the data table with the rows
-gr.ins_data()
 #create a global insert list
-mylist = []
+insert_stack_list = []
 #------------------------#
+
 
 class Database:
     '''
@@ -25,8 +21,9 @@ class Database:
     def __init__(self, name, load=True):
         self.tables = {}
         self._name = name
+
         self.savedir = f'dbdata/{name}_db'
-        
+
         if load:
             try:
                 self.load(self.savedir)
@@ -52,14 +49,29 @@ class Database:
         self.create_table('meta_indexes',  ['table_name', 'index_name'], [str, str])
         self.save()
         
-        #----task 1.1.1----------#
+         #----task 1.1.1----------#
         #create a table 'graduates'
         self.create_table('graduates', ['id', 'name', 'surname', 'department', 'grade'], [str,str,str,str,int], primary_key='id')
-        #fill in the table with the values of data table
-        for i in range(17) : 
-            self.insert('graduates', gr.data[i])
-        #------------------------#
+        
+        
+        file1 = open('ordered_file.txt', 'r')
+        Lines = file1.readlines()
+        j=1
+        for i in Lines:
+            tablerow = self.convert(i)
+            j=j+1
+            #fill in the table with the values of sorted file
+            self.insert('graduates', [tablerow[0], tablerow[1], tablerow[2], tablerow[3], tablerow[4]])
+        file1.close()
 
+    def convert(self, string): 
+        '''
+        Take a string and return a list of its split by space
+        '''
+        li = list(string.split(" ")) 
+        return li 
+        
+         #------------------------#
 
 
     def save(self):
@@ -217,7 +229,6 @@ class Database:
         '''
         Change the type of the specified column and cast all the prexisting values.
         Basically executes type(value) for every value in column and saves
-
         table_name -> table's name (needs to exist in database)
         column_name -> the column that will be casted (needs to exist in table)
         cast_type -> needs to be a python type like str int etc. NOT in ''
@@ -231,11 +242,9 @@ class Database:
         self._update()
         self.save()
 
-    
     def insert(self, table_name, row, lock_load_save=True):
         '''
         Inserts into table
-
         table_name -> table's name (needs to exist in database)
         row -> a list of the values that are going to be inserted (will be automatically casted to predifined type)
         lock_load_save -> If false, user need to load, lock and save the states of the database (CAUTION). Usefull for bulk loading
@@ -249,14 +258,16 @@ class Database:
             self.lockX_table(table_name)
         insert_stack = self._get_insert_stack_for_table(table_name)
         
+        
         #----task 1.1.1----------#
-        global mylist
+        global insert_stack_list
         #call the function that check if the row that given from the user exist
-        #if it's not exist then add this row to 'mylist'
+        #if it's not exist then add this row to 'insert_stack_list'
         if self.check_if_exist(row) == False :
-            mylist.append(row)
+            insert_stack_list.append(row)
          
         #------------------------#
+        
         
         try:
             self.tables[table_name]._insert(row, insert_stack)
@@ -269,49 +280,144 @@ class Database:
             self.unlock_table(table_name)
             self._update()
             self.save()
-        
+    
+    
     #----task 1.1.1----------#
-    #check if every value-row of data table corresponds to the row that was given and return a true or false flag
+   
     def check_if_exist(self, row):
+        '''
+        check if every value-row of data table corresponds to the row that was given and return a true or false flag
+        row -> a list of the values that are going to be inserted 
+        '''
+        file1 = open('ordered_file.txt', 'r')
+        Lines = file1.readlines()
         flag=False
-        for i in range(17): 
-            if gr.data[i][0] == row[0]:
+        for i in Lines: 
+            tablerow = self.convert(i)
+            if tablerow[0] == row[0]:
                 flag=True
-                 
+             
+        file1.close()    
         return flag
-    #------------------------#               
         
-        
+    #------------------------#   
+    
     #----task 1.1.2----------#
-    def add_into_table(self):
-    	global mylist
-    	while True:
-            #the limit for the stack is 5 rows
-            if len(mylist) > 5:
-            	#ckeck the last column for the sorting
-            	#I want to add the row at the last of the same numbers
-                for j in range(16, 0, -1):
-                    if mylist[len(mylist)-1][4] > gr.data[j][4]:
-                        if mylist[len(mylist)-1][4] == gr.data[j-1][4]:
-                        	#keep only the last item of mylist, add it to the data list and remove it (pop) from mylist 
-                            gr.data.insert(j, mylist[len(mylist)-1:len(mylist)])
-                            mylist.pop()
-            else:
-                break
-                
-    #------------------------# 
+    def embody_list(self, table, layout_key):
+        '''
+        Embody the insert_stack_list to a table
+        table -> The table in which we want to embody the list
+        layout_key -> The key that is used for the sorting of the table
+        '''
+        global insert_stack_list
+        self.sort(table, layout_key)  #graduates, grades
+        
+        file1 = open('ordered_file.txt', 'r')
+        Lines = file1.readlines()
+        self.grades =[]
+        for i in Lines:
+            tablerow = db.convert(i)
+            self.grades.append(int(tablerow[4]))    
+        self.grades.sort(reverse=True)
+        print("grades: ", self.grades)
+        file1.close()
+        
+        file1 = open('ordered_file.txt', 'a+')
+        #our limit for the stack list is 5, 
+        #every element after that index will been removed and added into file
+        for i in range(len(insert_stack_list)-1, 4, -1):
+            grade= insert_stack_list[i].pop()
+            department= insert_stack_list[i].pop()
+            surname= insert_stack_list[i].pop()
+            name= insert_stack_list[i].pop()
+            id= insert_stack_list[i].pop()
+            line = id + " " + name +" " + surname +" " + department +" " + str(grade) + "\n"
+            file1.write(line)
+        file1.close()
+            
+   #------------------------# 
+   
+   #----task 1.1.3----------#
+   
+    def binary_search(self, arr, key):
+        '''
+        Binary search in a sorted file with duplicates 
+        file_name -> a sorted file
+        key -> key search value
+        '''
+   
+        first_index = self.FirstOccurrence (arr, key)
+        last_index  = self.LastOccurrence (arr, key); 
 
+        if (first_index == -1 or last_index == - 1) :
+            print("Element does not exist")
+        else :
+            print("First Occourance of " + str(key) + " is at index : " + str(len(arr)-first_index))
+            print("Last Occourance of " + str(key) + " is at index : " + str(len(arr)-last_index))
+            print("Total Count : "+ str(last_index - first_index + 1)) 
+
+
+    def FirstOccurrence (self, array, n) :
+        '''
+        Return the index of the value where present the first time
+        '''
+        beg = 0;
+        end = len(array) - 1;
+
+        while (beg <= end) :
+
+            mid = int (beg + (end-beg)/2)
+
+            if (array[mid] == n) :
+                if (mid-1 >= 0 and array[mid-1] == n) :
+                    end = mid-1
+                    continue
+
+                return mid 
+
+            elif (array[mid] < n) :
+                beg = mid + 1 
+            else :
+                end = mid - 1 
+
+        return -1  
+
+    def LastOccurrence (self, array, n) :
+        '''
+        Return the index of the value where present the last time
+        '''
+        beg = 0;
+        end = len(array)-1
+
+        while (beg <= end) :
+
+            mid = int(beg + (end-beg)/2)
+
+            if (array[mid] == n) :
+                if (mid+1 < len(array) and array[mid+1] == n) :
+                    beg = mid + 1 
+                    continue
+                return mid 
+
+            elif (array[mid] < n) :
+                beg = mid + 1 
+            else :
+                end = mid - 1;
+
+        return -1; 
+
+   #------------------------# 
+   
+   
     def update(self, table_name, set_value, set_column, condition):
         '''
         Update the value of a column where condition is met.
-
         table_name -> table's name (needs to exist in database)
         set_value -> the new value of the predifined column_name
         set_column -> the column that will be altered
         condition -> a condition using the following format :
                     'column[<,<=,==,>=,>]value' or
                     'value[<,<=,==,>=,>]column'.
-
                     operatores supported -> (<,<=,==,>=,>)
         '''
         self.load(self.savedir)
@@ -326,12 +432,10 @@ class Database:
     def delete(self, table_name, condition):
         '''
         Delete rows of a table where condition is met.
-
         table_name -> table's name (needs to exist in database)
         condition -> a condition using the following format :
                     'column[<,<=,==,>=,>]value' or
                     'value[<,<=,==,>=,>]column'.
-
                     operatores supported -> (<,<=,==,>=,>)
         '''
         self.load(self.savedir)
@@ -351,20 +455,17 @@ class Database:
                top_k=None, save_as=None, return_object=False):
         '''
         Selects and outputs a table's data where condtion is met.
-
         table_name -> table's name (needs to exist in database)
         columns -> The columns that will be part of the output table (use '*' to select all the available columns)
         condition -> a condition using the following format :
                     'column[<,<=,==,>=,>]value' or
                     'value[<,<=,==,>=,>]column'.
-
                     operatores supported -> (<,<=,==,>=,>)
         order_by -> A column name that signals that the resulting table should be ordered based on it. Def: None (no ordering)
         asc -> If True order by will return results using an ascending order. Def: False
         top_k -> A number (int) that defines the number of rows that will be returned. Def: None (all rows)
         save_as -> The name that will be used to save the resulting table in the database. Def: None (no save)
         return_object -> If true, the result will be a table object (usefull for internal usage). Def: False (the result will be printed)
-
         '''
         self.load(self.savedir)
         if self.is_locked(table_name):
@@ -391,7 +492,6 @@ class Database:
     def show_table(self, table_name, no_of_rows=None):
         '''
         Print a table using a nice tabular design (tabulate)
-
         table_name -> table's name (needs to exist in database)
         '''
         self.load(self.savedir)
@@ -402,7 +502,6 @@ class Database:
     def sort(self, table_name, column_name, asc=False):
         '''
         Sorts a table based on a column
-
         table_name -> table's name (needs to exist in database)
         column_name -> the column that will be used to sort
         asc -> If True sort will return results using an ascending order. Def: False
@@ -425,7 +524,6 @@ class Database:
         condition -> a condition using the following format :
                     'column[<,<=,==,>=,>]value' or
                     'value[<,<=,==,>=,>]column'.
-
                     operatores supported -> (<,<=,==,>=,>)
         save_as -> The name that will be used to save the resulting table in the database. Def: None (no save)
         return_object -> If true, the result will be a table object (usefull for internal usage). Def: False (the result will be printed)
@@ -448,7 +546,6 @@ class Database:
     def lockX_table(self, table_name):
         '''
         Locks the specified table using the exclusive lock (X)
-
         table_name -> table's name (needs to exist in database)
         '''
         if table_name[:4]=='meta':
@@ -461,7 +558,6 @@ class Database:
     def unlock_table(self, table_name):
         '''
         Unlocks the specified table that is exclusivelly locked (X)
-
         table_name -> table's name (needs to exist in database)
         '''
         self.tables['meta_locks']._update_row(False, 'locked', f'table_name=={table_name}')
@@ -471,7 +567,6 @@ class Database:
     def is_locked(self, table_name):
         '''
         Check whether the specified table is exclusivelly locked (X)
-
         table_name -> table's name (needs to exist in database)
         '''
         if table_name[:4]=='meta':  # meta tables will never be locked (they are internal)
@@ -538,7 +633,6 @@ class Database:
     def _add_to_insert_stack(self, table_name, indexes):
         '''
         Added the supplied indexes to the insert stack of the specified table
-
         table_name -> table's name (needs to exist in database)
         indexes -> The list of indexes that will be added to the insert stack (the indexes of the newly deleted elements)
         '''
@@ -548,7 +642,6 @@ class Database:
     def _get_insert_stack_for_table(self, table_name):
         '''
         Return the insert stack of the specified table
-
         table_name -> table's name (needs to exist in database)
         '''
         return self.tables['meta_insert_stack']._select_where('*', f'table_name=={table_name}').indexes[0]
@@ -558,7 +651,6 @@ class Database:
     def _update_meta_insert_stack_for_tb(self, table_name, new_stack):
         '''
         Replaces the insert stack of a table with the one that will be supplied by the user
-
         table_name -> table's name (needs to exist in database)
         new_stack -> the stack that will be used to replace the existing one.
         '''
@@ -570,7 +662,6 @@ class Database:
         '''
         Create an index on a specified table with a given name.
         Important: An index can only be created on a primary key. Thus the user does not specify the column
-
         table_name -> table's name (needs to exist in database)
         index_name -> name of the created index
         '''
@@ -593,7 +684,6 @@ class Database:
     def _construct_index(self, table_name, index_name):
         '''
         Construct a btree on a table and save.
-
         table_name -> table's name (needs to exist in database)
         index_name -> name of the created index
         '''
@@ -609,7 +699,6 @@ class Database:
     def _has_index(self, table_name):
         '''
         Check whether the specified table's primary key column is indexed
-
         table_name -> table's name (needs to exist in database)
         '''
         return table_name in self.tables['meta_indexes'].table_name
@@ -617,7 +706,6 @@ class Database:
     def _save_index(self, index_name, index):
         '''
         Save the index object
-
         index_name -> name of the created index
         index -> the actual index object (btree object)
         '''
@@ -632,15 +720,18 @@ class Database:
     def _load_idx(self, index_name):
         '''
         load and return the specified index
-
         index_name -> name of the created index
         '''
         f = open(f'{self.savedir}/indexes/meta_{index_name}_index.pkl', 'rb')
         index = pickle.load(f)
         f.close()
         return index
-
-
+        
+        
+        
+"""
+1.1.1
+"""    
 db = Database('ofdb', load=False)
 db.insert('graduates',['022827', 'Panagiwta', 'Kalika', 'CS', 9])
 db.insert('graduates',['028327', 'Kwnstantinos', 'Kalipsos', 'PLYL', 8])
@@ -650,8 +741,18 @@ db.insert('graduates',['098587', 'Iwsif', 'Porfuriou', 'EC', 6])
 db.insert('graduates',['098092', 'Petros', 'Pappas', 'DS', 10])
 db.insert('graduates',['025392', 'Dionusia', 'Meletiou', 'THEOL', 7])
 
-db.add_into_table()
-       
-	
-	
+"""
+1.1.2
+"""
+db.embody_list('graduates', 'grade')
+
+"""
+1.1.3
+"""
+file1 = open("ordered_file.txt", 'r')
+#x: search number
+x=7
+db.grades.sort(reverse=False)
+db.result = db.binary_search(db.grades, x)
+
 
