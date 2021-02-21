@@ -749,7 +749,7 @@ db.embody_list('graduates', 'grade')
 """
 1.1.3
 """
-file1 = open("ordered_file.txt", 'r')
+
 #x: search number
 x=7
 db.grades.sort(reverse=False)
