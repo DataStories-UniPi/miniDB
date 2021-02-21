@@ -1,5 +1,5 @@
 import operator
-
+import math as math
 def get_op(op, a, b):
     '''
     Get op as a function of a and b by using a symbol
