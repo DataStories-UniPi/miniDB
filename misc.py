@@ -8,7 +8,8 @@ def get_op(op, a, b):
                 '<': operator.lt,
                 '>=': operator.ge,
                 '<=': operator.le,
-                '==': operator.eq}
+                '==': operator.eq,
+                '!=': operator.ne}#--NOT equal
 
     try:
         return ops[op](a,b)
@@ -21,7 +22,8 @@ def split_condition(condition):
            '<=': operator.le,
            '==': operator.eq,
            '>': operator.gt,
-           '<': operator.lt}
+           '<': operator.lt,
+           '!=': operator.ne}#--NOT equal
 
     for op_key in ops.keys():
         splt=condition.split(op_key)
