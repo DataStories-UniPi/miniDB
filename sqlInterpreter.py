@@ -164,7 +164,6 @@ class SqlInterpreter:
             else:
                 select = '*' if "*" in select else select
                 top = None if top is None else int(top)
-                print(top)
                 self.db.select(source_table[0], select, condition, order_by, asc, top, save_as)
 
             print("SELECT query [ " + query + " ] was successful")
@@ -174,37 +173,14 @@ class SqlInterpreter:
 
 def main():
     inter = SqlInterpreter()
-    inter.interpret("CREATE DATABASE testDb")
-    inter.interpret("LOAD DATABASE testDb")
+    print("Please Type your queries. If you need to exit, please type exit()")
+    while True:
+        print()
+        query = input()
+        if query == 'exit()':
+            break
+        else:
+            inter.interpret(query)
 
-
-    inter.interpret("CREATE TABLE parts (PRIMARY KEY serial str, type str)")
-    inter.interpret("CREATE TABLE cars (PRIMARY KEY model str, brand str)")
-    """inter.interpret("ALTER TABLE testTable ALTER COLUMN col1 TYPE str")
-    inter.interpret("ALTER TABLE testTable ALTER COLUMN col2 TYPE str")
-    inter.interpret("ALTER TABLE testTable ALTER COLUMN col3 TYPE str")"""
-    #inter.interpret("CREATE INDEX testIndex ON testTable(col1)")
-    #inter.interpret("DROP INDEX testIndex")
-    #inter.interpret("COPY testTable2 FROM hello.csv")
-    #inter.interpret("EXPORT testTable TO hello.csv")
-    inter.interpret("INSERT INTO parts VALUES (toyota, wiper)")
-    inter.interpret("INSERT INTO cars VALUES (toyota, tacoma)")
-    ##inter.interpret("UPDATE testTable SET col1=testvalue1 WHERE col1==testvalue1")
-
-    #inter.interpret("SELECT * FROM parts WHERE serial==toyota")
-    #inter.interpret("SELECT col1, col2 FROM testTable WHERE col1==testvalue1 TOP 10 ORDER BY col1")
-    inter.interpret("SELECT * FROM parts INNER JOIN cars ON serial==model")
-
-    #inter.interpret("SELECT * FROM parts INNER JOIN cars ON serial==model WHERE parts_serial==toyota")
-
-
-    inter.interpret("DROP TABLE parts")
-    inter.interpret("DROP TABLE cars")
-    #inter.interpret("DELETE FROM table WHERE condition")
-    #inter.interpret("UPDATE table SET column=value WHERE CONDITION")
-    #inter.interpret("SELECT * FROM table WHERE condition")
-
-    #inter.interpret("SAVE DATABASE name")
-    #inter.interpret("DROP DATABASE name")
 if __name__ == '__main__':
     main()
