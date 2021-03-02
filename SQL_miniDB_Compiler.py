@@ -12,7 +12,7 @@ global SQL_dict  # SQL Dictionary
 SQL_dict = ['SELECT', 'CREATE', 'INSERT', 'UPDATE', 'DELETE',
 'DROP', 'LOAD', 'INNER', 'JOIN', 'ON', 'WHERE', 'FROM', 'ORDER',
 'BY', 'IN', 'INTO', 'TABLE', 'DATABASE', 'SET', 'ALTER', 'INDEX', 'ASC', 'DESC'
-, 'VALUES', 'SET', 'ALTER']
+, 'VALUES', 'SET', 'ALTER', 'UNLOCK']
 
 global db_load
 db_load = 0
@@ -58,7 +58,7 @@ def delQuestionMark(qsplit):
 
 
 def executeOperation(qsplit, db):  # Called after basicSyntaxCheck and executes the operation
-    op_dict = {'SELECT': SELECT, 'INSERT': INSERT, 'DELETE': DELETE}  # operation dictionary
+    op_dict = {'SELECT': SELECT, 'INSERT': INSERT, 'UPDATE': UPDATE, 'UNLOCK': UNLOCK}  # operation dictionary
     flag = op_dict[qsplit[0]](qsplit, db)  # return operation
 
     return flag
@@ -99,12 +99,12 @@ def splitTableColumn(str):
     split_list = str.split('.')  # split on '.' to separete the Tabe_name from Column_name
 
     if len(split_list)==1:  # no '.' to split on. str = Column_name
-        return split_list
+        return split_list  # return [ col_name ] if no table_name provided
 
     if len(split_list)==2:
         spl_list.append(split_list[1])  # append Column_name to spl_list[0]
         spl_list.append(split_list[0])  # append Table_name to spl_list[1]
-        return spl_list
+        return spl_list  # return [ col_name, table_name ]
 
     return 0  # if len(split_list)>2 means multiple '.' inside the str, invalid condition segment
 
@@ -142,7 +142,7 @@ def parseCondition(qsplit, idx, table1, table2=None, cond_name='WHERE'):  # pars
             print(f"\n\n--Invalid syntax: Condition segment error in '{cond_name}' clause--")
             return 0
 
-        spl = splitTableColumn(split[0])
+        spl = splitTableColumn(split[0])  # split on '.' between table_name and column_name
         print(f"DEBUG info--splitTableField(split[0]):    {spl}")  # DEBUG
 
 
@@ -152,7 +152,7 @@ def parseCondition(qsplit, idx, table1, table2=None, cond_name='WHERE'):  # pars
 
 
         if len(spl)==1:
-            return [split[0]+split[2]+split[1], 1]  # Column + operator + Value (1 is for check in INNER JOIN since table.column is only valid)
+            return [split[0]+split[2]+split[1], 1]  # Column + operator + Value (1 is for check in INNER JOIN since 'table.column' format is only valid)
 
         if len(spl)==2:
             if spl[1]!=table1 and spl[1]!=table2:
@@ -688,11 +688,19 @@ def LOAD(qsplit):
         print(f"\n\n--Invalid syntax: Database '{db_name}' name is  not valid--")
         return 0
 
-    db = Database(db_name, 1)
+    try:
+        db = Database(db_name, 1)
+    except Exception:
+        print("\n\n---ERROR LOADING DATABASE--")
+        return 0
+
     return db
 #-------------------------------------------------------------------------------
 #---------------------------End of LOAD Database--------------------------------
 #-------------------------------------------------------------------------------
+'''
+            ---------  INSERT ----------
+'''
 #------------------------INSERT-------------------------------------------------
 def INSERT(qsplit, db):
     if db==0:
@@ -717,7 +725,7 @@ def INSERT(qsplit, db):
     value_split = qsplit[4:]
     print(f"DEBUG info--VALUES: '{value_split}'")
     if value_split[0][0]!='(' or value_split[-1][-1]!=')':
-        print("\n\n--Invalid syntax: Values must be inside parentheis--")
+        print("\n\n--Invalid syntax: Values must be inside parentesis--")
         return 0
 
     # remove parenthesis from the VALUES split
@@ -733,12 +741,25 @@ def INSERT(qsplit, db):
     print(f"DEBUG info--VALUES without parenthesis: '{value_split}'")
     # miniDB call
 
-    db.insert(table1, value_split)
+    for i in range(len(value_split)):  # if value_split is numeric, set it as int
+        if value_split[i].isnumeric():
+            value_split[i] = int(value_split[i])
+
+
+    try:
+        db.insert(table1, value_split)
+    except Exception:
+        print("\n\n---ERROR on INSERT---")
+        db.unlock_table(table1)
+        return 0
 
     return 1
 #-------------------------------------------------------------------------------
-#-------------------------------------------------------------------------------
-def DELETE(qsplit, db):
+'''
+            ------     UPDATE --------------------
+'''
+#---------------------------UPDATE----------------------------------------------
+def UPDATE(qsplit, db):
     if db==0:
         print("\n\n--LOAD A DATABASE--")
         return 0
@@ -746,31 +767,108 @@ def DELETE(qsplit, db):
 
     qsplit_len = len(qsplit)
 
-    #  DELETE FROM table1 SET ... legal length = 5
-    if qsplit_len!=5 or qsplit[1]!='FROM' or qsplit[3]!='WHERE':
+    #  UPDATE table1 SET column=value WHERE Condition
+    if qsplit_len!=6 or qsplit[2]!='SET' or qsplit[4]!='WHERE':
         return 0
 
-    table1 = qsplit[2]
+    table1 = qsplit[1]
     flag = checkTableColumnSyntax(table1)
     if flag==0:
         print(f"\n\n--Invalid syntax: Table: '{table1}' syntax not valid--")
         return 0
 
+    col_value= ""
+    column = ""
 
-    condition = parseCondition(qsplit, 4, table1)
-    if not condition:
+    '''
+        column=value as well as WHERE condition syntax, must non contain spaces
+    '''
+    # get the Value
+    col_value = qsplit[3]  # column = value
+    vsplit = col_value.split('=')  # vsplit = [ column, value ]
+    print(f'DEBUG info--splitCondition(condition[0]): {vsplit}')  # DEBUG
+    if len(vsplit)!=2:
+        print("\n\n--Invalid syntax: Column value not valid--")
+        return 0
+
+    spl = splitTableColumn(vsplit[0])  # split on '.' between table_name and column_name
+    print(f"DEBUG info--splitTableField(split[0]):    {spl}")  # DEBUG
+
+
+    if spl==0 or not checkTableColumnSyntax(vsplit[0]):
+        print("\n\n--Invalid syntax: Column value not valid--")
         return 0
 
 
-    db.delete(table1, condition)
+    if len(spl)==1:
+        column = spl[0]
 
+    else:
 
-#-----------------------END OF FUNCTIONS----------------------------------------
+        if len(spl)==2:
+            if spl[1]!=table1:
+                print(f"\n\n--Possible error: in Condition, Table '{spl[1]}' doesnt match Table ", f"'{table1}'--")
+                return 0
+
+        column = spl[0]
+
+    value = vsplit[1]
+    if value.isnumeric():
+        value = int(value)  # if value string is numeric, return integer value
+
+    WHERE_condition = parseCondition(qsplit, 5, table1)
+    if not WHERE_condition:
+        return 0  # invalid condition
+
+    print("column: ", column, " value: ", value, " condition: ", WHERE_condition)
+
+    if not WHERE_condition:
+        return 0
+
+    try:
+        db.update(table1, value, column, WHERE_condition[0])
+    except Exception:
+        print("\n\n--Error on UPDATE--")
+        db.unlock_table('classroom')
+        return 0
+
+    return 1
 #-------------------------------------------------------------------------------
-# SQL query start up
+#--------------------------End UPDATE OPERATION---------------------------------
+#-------------------------------------------------------------------------------
+def UNLOCK(qsplit, db):
+    if db==0:
+        print("\n\n--LOAD A DATABASE--")
+        return 0
 
 
-#db_load  Database('smdb', 1)
+    qsplit_len = len(qsplit)
+
+    #  UNLOCK TABLE table1
+    if qsplit_len!=3 or qsplit[1]!='TABLE':
+        return 0
+
+    table1 = qsplit[1]
+    flag = checkTableColumnSyntax(table1)
+    if flag==0:
+        print(f"\n\n--Invalid syntax: Table: '{table1}' syntax not valid--")
+        return 0
+
+    try:
+        db.unlock_table(table1)
+    except Exception:
+        print("\n\n---ERROR on UNLOCK---")
+        return 0
+
+    return 1
+#-------------------------------------------------------------------------------
+#------------------------End of UNLOLCK=----------------------------------------
+#-------------------------------------------------------------------------------
+#-----------------------END OF OPERATIONS---------------------------------------
+#-------------------------------------------------------------------------------
+'''
+    ------ MAIN ROUTINE -----------------
+'''
 #-------------------------------------------------------------------------------
 #------------------------------MAIN ROUTINE-------------------------------------
 #-------------------------------------------------------------------------------
