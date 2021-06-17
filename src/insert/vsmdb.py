@@ -1,6 +1,9 @@
-from database import Database
+#run using:
+#python3 -i -m src.insert.vsmdb
+
+from ..db import database
 # create db with name "smdb"
-db = Database('vsmdb', load=False)
+db = database.Database('vsmdb', load=False)
 # create a single table named "classroom"
 db.create_table('classroom', ['building', 'room_number', 'capacity'], [str,str,int])
 # insert 5 rows
