@@ -1,6 +1,10 @@
 from ..db.btree import Btree
 from random import randrange
 import sys
+
+import os
+os.environ["PATH"] += os.pathsep + 'C:/Program Files/Graphviz/bin/'
+
 '''
 Test the Btree
 '''
