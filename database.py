@@ -9,7 +9,7 @@ from misc import split_condition
 
 class Database:
     '''
-    Database class contains tables.
+    Main Database class, containing tables.
     '''
 
     def __init__(self, name, load=True):
@@ -47,7 +47,7 @@ class Database:
 
     def save(self):
         '''
-        Save db as a pkl file. This method saves the db object, ie all the tables and attributes.
+        Save database as a pkl file. This method saves the database object, including all tables and attributes.
         '''
         for name, table in self.tables.items():
             with open(f'{self.savedir}/{name}.pkl', 'wb') as f:
@@ -55,14 +55,17 @@ class Database:
 
     def _save_locks(self):
         '''
-        Save db as a pkl file. This method saves the db object, ie all the tables and attributes.
+        Stores the meta_locks table to file as meta_locks.pkl.
         '''
         with open(f'{self.savedir}/meta_locks.pkl', 'wb') as f:
             pickle.dump(self.tables['meta_locks'], f)
 
     def load(self, path):
         '''
-        Load all the tables that are part of the db (indexs are noted loaded here)
+        Load all tables that are part of the database (indices noted here are loaded).
+
+        Args:
+            path: string. Directory (path) of the database on the system.
         '''
         for file in os.listdir(path):
 
@@ -76,13 +79,16 @@ class Database:
             setattr(self, name, self.tables[name])
 
     def drop_db(self):
+        '''
+        Drop database table.
+        '''
         shutil.rmtree(self.savedir)
 
     #### IO ####
 
     def _update(self):
         '''
-        Update all the meta tables.
+        Update all meta tables.
         '''
         self._update_meta_length()
         self._update_meta_locks()
@@ -91,10 +97,14 @@ class Database:
 
     def create_table(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
         '''
-        This method create a new table. This table is saved and can be accessed by
-        db_object.tables['table_name']
-        or
-        db_object.table_name
+        This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
+
+        Args:
+            name: string. Name of table.
+            column_names: list. Names of columns.
+            column_types: list. Types of columns.
+            primary_key: string. The primary key (if it exists).
+            load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
         self.tables.update({name: Table(name=name, column_names=column_names, column_types=column_types, primary_key=primary_key, load=load)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
@@ -111,7 +121,10 @@ class Database:
 
     def drop_table(self, table_name):
         '''
-        Drop table with name 'table_name' from current db
+        Drop table from current database.
+
+        Args:
+            table_name: string. Name of table.
         '''
         self.load(self.savedir)
         if self.is_locked(table_name):
@@ -133,9 +146,12 @@ class Database:
 
     def table_from_csv(self, filename, name=None, column_types=None, primary_key=None):
         '''
-        Create a table from a csv file.
-        If name is not specified, filename's name is used
-        If column types are not specified, all are regarded to be of type str
+        Creates table from CSV file.
+
+        Args:
+            filename: string. CSV filename. If not specified, filename's name will be used.
+            column_types: list. Types of columns. If not specified, all will be set to type str.
+            primary_key: string. The primary key (if it exists).
         '''
         if name is None:
             name=filename.split('.')[:-1][0]
@@ -161,6 +177,13 @@ class Database:
 
 
     def table_to_csv(self, table_name, filename=None):
+        '''
+        Transform table to CSV.
+
+        Args:
+            table_name: string. Name of table.
+            filename: string. Output CSV filename.
+        '''
         res = ''
         for row in [self.tables[table_name].column_names]+self.tables[table_name].data:
             res+=str(row)[1:-1].replace('\'', '').replace('"','').replace(' ','')+'\n'
@@ -173,7 +196,10 @@ class Database:
 
     def table_from_object(self, new_table):
         '''
-        Add table obj to database.
+        Add table object to database.
+
+        Args:
+            new_table: string. Name of new table.
         '''
 
         self.tables.update({new_table._name: new_table})
@@ -198,12 +224,13 @@ class Database:
 
     def cast_column(self, table_name, column_name, cast_type):
         '''
-        Change the type of the specified column and cast all the prexisting values.
-        Basically executes type(value) for every value in column and saves
+        Modify the type of the specified column and cast all prexisting values.
+        (Executes type() for every value in column and saves)
 
-        table_name -> table's name (needs to exist in database)
-        column_name -> the column that will be casted (needs to exist in table)
-        cast_type -> needs to be a python type like str int etc. NOT in ''
+        Args:
+            table_name: string. Name of table (must be part of database).
+            column_name: string. The column that will be casted (must be part of database).
+            cast_type: type. Cast type (do not encapsulate in quotes).
         '''
         self.load(self.savedir)
         if self.is_locked(table_name):
@@ -216,11 +243,12 @@ class Database:
 
     def insert(self, table_name, row, lock_load_save=True):
         '''
-        Inserts into table
+        Inserts data to given table.
 
-        table_name -> table's name (needs to exist in database)
-        row -> a list of the values that are going to be inserted (will be automatically casted to predifined type)
-        lock_load_save -> If false, user need to load, lock and save the states of the database (CAUTION). Usefull for bulk loading
+        Args:
+            table_name: string. Name of table (must be part of database).
+            row: list. A list of values to be inserted (will be casted to a predifined type automatically).
+            lock_load_save: boolean. If False, user needs to load, lock and save the states of the database (CAUTION). Useful for bulk-loading.
         '''
         if lock_load_save:
             self.load(self.savedir)
@@ -245,16 +273,17 @@ class Database:
 
     def update(self, table_name, set_value, set_column, condition):
         '''
-        Update the value of a column where condition is met.
+        Update the value of a column where a condition is met.
 
-        table_name -> table's name (needs to exist in database)
-        set_value -> the new value of the predifined column_name
-        set_column -> the column that will be altered
-        condition -> a condition using the following format :
-                    'column[<,<=,==,>=,>]value' or
-                    'value[<,<=,==,>=,>]column'.
-
-                    operatores supported -> (<,<=,==,>=,>)
+        Args:
+            table_name: string. Name of table (must be part of database).
+            set_value: string. New value of the predifined column name.
+            set_column: string. The column to be altered.
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+                
+                Operatores supported: (<,<=,==,>=,>)
         '''
         self.load(self.savedir)
         if self.is_locked(table_name):
@@ -267,14 +296,15 @@ class Database:
 
     def delete(self, table_name, condition):
         '''
-        Delete rows of a table where condition is met.
+        Delete rows of table where condition is met.
 
-        table_name -> table's name (needs to exist in database)
-        condition -> a condition using the following format :
-                    'column[<,<=,==,>=,>]value' or
-                    'value[<,<=,==,>=,>]column'.
-
-                    operatores supported -> (<,<=,==,>=,>)
+        Args:
+            table_name: string. Name of table (must be part of database).
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+                
+                Operatores supported: (<,<=,==,>=,>)
         '''
         self.load(self.savedir)
         if self.is_locked(table_name):
@@ -294,19 +324,19 @@ class Database:
         '''
         Selects and outputs a table's data where condtion is met.
 
-        table_name -> table's name (needs to exist in database)
-        columns -> The columns that will be part of the output table (use '*' to select all the available columns)
-        condition -> a condition using the following format :
-                    'column[<,<=,==,>=,>]value' or
-                    'value[<,<=,==,>=,>]column'.
-
-                    operatores supported -> (<,<=,==,>=,>)
-        order_by -> A column name that signals that the resulting table should be ordered based on it. Def: None (no ordering)
-        asc -> If True order by will return results using an ascending order. Def: False
-        top_k -> A number (int) that defines the number of rows that will be returned. Def: None (all rows)
-        save_as -> The name that will be used to save the resulting table in the database. Def: None (no save)
-        return_object -> If true, the result will be a table object (usefull for internal usage). Def: False (the result will be printed)
-
+        Args:
+            table_name: string. Name of table (must be part of database).
+            columns: list. The columns that will be part of the output table (use '*' to select all available columns)
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+                
+                Operatores supported: (<,<=,==,>=,>)
+            order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
+            asc: boolean. If True, order_by will return results in ascending order (False by default).
+            top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
+            save_as: string. The name that will be used to save the resulting table into the database (no save if None).
+            return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
         '''
         self.load(self.savedir)
         if self.is_locked(table_name):
@@ -332,9 +362,10 @@ class Database:
 
     def show_table(self, table_name, no_of_rows=None):
         '''
-        Print a table using a nice tabular design (tabulate)
+        Print table in a readable tabular design (using tabulate).
 
-        table_name -> table's name (needs to exist in database)
+        Args:
+            table_name: string. Name of table (must be part of database).
         '''
         self.load(self.savedir)
         if self.is_locked(table_name):
@@ -343,11 +374,12 @@ class Database:
 
     def sort(self, table_name, column_name, asc=False):
         '''
-        Sorts a table based on a column
+        Sorts a table based on a column.
 
-        table_name -> table's name (needs to exist in database)
-        column_name -> the column that will be used to sort
-        asc -> If True sort will return results using an ascending order. Def: False
+        Args:
+            table_name: string. Name of table (must be part of database).
+            column_name: string. the column name that will be used to sort.
+            asc: If True sort will return results in ascending order (False by default).
         '''
 
         self.load(self.savedir)
@@ -362,15 +394,17 @@ class Database:
     def inner_join(self, left_table_name, right_table_name, condition, save_as=None, return_object=False):
         '''
         Join two tables that are part of the database where condition is met.
-        left_table_name -> left table's name (needs to exist in database)
-        right_table_name -> right table's name (needs to exist in database)
-        condition -> a condition using the following format :
-                    'column[<,<=,==,>=,>]value' or
-                    'value[<,<=,==,>=,>]column'.
 
-                    operatores supported -> (<,<=,==,>=,>)
-        save_as -> The name that will be used to save the resulting table in the database. Def: None (no save)
-        return_object -> If true, the result will be a table object (usefull for internal usage). Def: False (the result will be printed)
+        Args:
+            left_table_name: string. Left table's name (must be part of database).
+            right_table_name: string. Right table's name (must be part of database).
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+                
+                Operatores supported: (<,<=,==,>=,>)
+        save_as: string. The output filename that will be used to save the resulting table in the database (won't save if None).
+        return_object: boolean. If True, the result will be a table object (useful for internal usage - the result will be printed by default).
         '''
         self.load(self.savedir)
         if self.is_locked(left_table_name) or self.is_locked(right_table_name):
@@ -389,9 +423,10 @@ class Database:
 
     def lockX_table(self, table_name):
         '''
-        Locks the specified table using the exclusive lock (X)
+        Locks the specified table using the exclusive lock (X).
 
-        table_name -> table's name (needs to exist in database)
+        Args:
+            table_name: string. Table name (must be part of database).
         '''
         if table_name[:4]=='meta':
             return
@@ -402,9 +437,10 @@ class Database:
 
     def unlock_table(self, table_name):
         '''
-        Unlocks the specified table that is exclusivelly locked (X)
+        Unlocks the specified table that is exclusively locked (X).
 
-        table_name -> table's name (needs to exist in database)
+        Args:
+            table_name: string. Table name (must be part of database).
         '''
         self.tables['meta_locks']._update_row(False, 'locked', f'table_name=={table_name}')
         self._save_locks()
@@ -412,9 +448,10 @@ class Database:
 
     def is_locked(self, table_name):
         '''
-        Check whether the specified table is exclusivelly locked (X)
+        Check whether the specified table is exclusively locked (X).
 
-        table_name -> table's name (needs to exist in database)
+        Args:
+            table_name: string. Table name (must be part of database).
         '''
         if table_name[:4]=='meta':  # meta tables will never be locked (they are internal)
             return False
@@ -440,7 +477,7 @@ class Database:
 
     def _update_meta_length(self):
         '''
-        updates the meta_length table.
+        Updates the meta_length table.
         '''
         for table in self.tables.values():
             if table._name[:4]=='meta': #skip meta tables
@@ -456,7 +493,7 @@ class Database:
 
     def _update_meta_locks(self):
         '''
-        updates the meta_locks table
+        Updates the meta_locks table.
         '''
         for table in self.tables.values():
             if table._name[:4]=='meta': #skip meta tables
@@ -468,7 +505,7 @@ class Database:
 
     def _update_meta_insert_stack(self):
         '''
-        updates the meta_insert_stack table
+        Updates the meta_insert_stack table.
         '''
         for table in self.tables.values():
             if table._name[:4]=='meta': #skip meta tables
@@ -479,19 +516,21 @@ class Database:
 
     def _add_to_insert_stack(self, table_name, indexes):
         '''
-        Added the supplied indexes to the insert stack of the specified table
+        Adds provided indices to the insert stack of the specified table.
 
-        table_name -> table's name (needs to exist in database)
-        indexes -> The list of indexes that will be added to the insert stack (the indexes of the newly deleted elements)
+        Args:
+            table_name: string. Table name (must be part of database).
+            indexes: list. The list of indices that will be added to the insert stack (the indices of the newly deleted elements).
         '''
         old_lst = self._get_insert_stack_for_table(table_name)
         self._update_meta_insert_stack_for_tb(table_name, old_lst+indexes)
 
     def _get_insert_stack_for_table(self, table_name):
         '''
-        Return the insert stack of the specified table
+        Returns the insert stack of the specified table.
 
-        table_name -> table's name (needs to exist in database)
+        Args:
+            table_name: string. Table name (must be part of database).
         '''
         return self.tables['meta_insert_stack']._select_where('*', f'table_name=={table_name}').column_by_name('indexes')[0]
         # res = self.select('meta_insert_stack', '*', f'table_name=={table_name}', return_object=True).indexes[0]
@@ -499,10 +538,11 @@ class Database:
 
     def _update_meta_insert_stack_for_tb(self, table_name, new_stack):
         '''
-        Replaces the insert stack of a table with the one that will be supplied by the user
+        Replaces the insert stack of a table with the one supplied by the user.
 
-        table_name -> table's name (needs to exist in database)
-        new_stack -> the stack that will be used to replace the existing one.
+        Args:
+            table_name: string. Table name (must be part of database).
+            new_stack: string. The stack that will be used to replace the existing one.
         '''
         self.tables['meta_insert_stack']._update_row(new_stack, 'indexes', f'table_name=={table_name}')
 
@@ -510,11 +550,12 @@ class Database:
     # indexes
     def create_index(self, table_name, index_name, index_type='Btree'):
         '''
-        Create an index on a specified table with a given name.
-        Important: An index can only be created on a primary key. Thus the user does not specify the column
+        Creates an index on a specified table with a given name.
+        Important: An index can only be created on a primary key (the user does not specify the column).
 
-        table_name -> table's name (needs to exist in database)
-        index_name -> name of the created index
+        Args:
+            table_name: string. Table name (must be part of database).
+            index_name: string. Name of the created index.
         '''
         if self.tables[table_name].pk_idx is None: # if no primary key, no index
             print('## ERROR - Cant create index. Table has no primary key.')
@@ -536,8 +577,9 @@ class Database:
         '''
         Construct a btree on a table and save.
 
-        table_name -> table's name (needs to exist in database)
-        index_name -> name of the created index
+        Args:
+            table_name: string. Table name (must be part of database).
+            index_name: string. Name of the created index.
         '''
         bt = Btree(3) # 3 is arbitrary
 
@@ -550,18 +592,20 @@ class Database:
 
     def _has_index(self, table_name):
         '''
-        Check whether the specified table's primary key column is indexed
+        Check whether the specified table's primary key column is indexed.
 
-        table_name -> table's name (needs to exist in database)
+        Args:
+            table_name: string. Table name (must be part of database).
         '''
         return table_name in self.tables['meta_indexes'].table_name
 
     def _save_index(self, index_name, index):
         '''
-        Save the index object
+        Save the index object.
 
-        index_name -> name of the created index
-        index -> the actual index object (btree object)
+        Args:
+            index_name: string. Name of the created index.
+            index: obj. The actual index object (btree object).
         '''
         try:
             os.mkdir(f'{self.savedir}/indexes')
@@ -573,9 +617,10 @@ class Database:
 
     def _load_idx(self, index_name):
         '''
-        load and return the specified index
+        Load and return the specified index.
 
-        index_name -> name of the created index
+        Args:
+            index_name: string. Name of created index.
         '''
         f = open(f'{self.savedir}/indexes/meta_{index_name}_index.pkl', 'rb')
         index = pickle.load(f)

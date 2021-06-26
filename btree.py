@@ -20,10 +20,11 @@ class Node:
     def find(self, value, return_ops=False):
         '''
         Returns the index of the next node to search for a value if the node is not a leaf (a ptrs of the available ones).
-        If it is a leaf (we have found the appropriate node), it returns nothing.
+        If it is a leaf (we have found the appropriate node), nothing is returned.
 
-        value: the value that we are searching for
-        return_ops: set to True if you want to use the number of operations (for benchmarking)
+        Args:
+            value: float. The value being searched for.
+            return_ops: boolean. Set to True if you want to use the number of operations (for benchmarking).
         '''
         ops = 0 # number of operations (<>= etc). Used for benchmarking
         if self.is_leaf: #
@@ -50,10 +51,10 @@ class Node:
         Insert the value and its ptr/s to the appropriate place (node wise).
         User can input two ptrs to insert to a non leaf node.
 
-        value: the value that we are inserting to the node
-        ptr: the ptr of the inserted value (its index for example)
-        ptr1: the 2nd ptr (in case the user wants to insert into a nonleaf node for ex)
-
+        Args:
+            value: float. The value we are inserting to the node.
+            ptr: float. The ptr of the inserted value (e.g. its index).
+            ptr1: float. The 2nd ptr (e.g. in case the user wants to insert into a nonleaf node).
         '''
         # for each value in the node, if the user supplied value is smaller, insert the value and its ptr into that position
         # if a second ptr is provided, insert it right next to the 1st ptr
@@ -77,7 +78,7 @@ class Node:
 
     def show(self):
         '''
-        print the node's value and important info
+        Print the node's value and relevant information.
         '''
         print('Values', self.values)
         print('ptrs', self.ptrs)
@@ -99,6 +100,10 @@ class Btree:
         '''
         Insert the value and its ptr/s to the appropriate node (node-level insertion is covered by the node object).
         User can input two ptrs to insert to a non leaf node.
+
+        Args:
+            value: float. The input value.
+            ptr: float. The ptr of the inserted value (e.g. its index).
         '''
         # if the tree is empty, add the first node and set the root index to 0 (the only node's index)
         if self.root is None:
@@ -115,10 +120,11 @@ class Btree:
 
     def _search(self, value, return_ops=False):
         '''
-        Returns the index of the node that the given value exist or should exist in.
+        Returns the index of the node that the given value exists or should exist in.
 
-        value: the value that we are searching for
-        return_ops: set to True if you want to use the number of operations (for benchmarking)
+        Args:
+            value: float. The value being searched for.
+            return_ops: boolean. Set to True if you want to use the number of operations (for benchmarking).
         '''
         ops=0 # number of operations (<>= etc). Used for benchmarking
 
@@ -140,7 +146,10 @@ class Btree:
 
     def split(self, node_id):
         '''
-        Split the node with index=node_id
+        Split the node with index=node_id.
+
+        Args:
+            node_id: float. The corresponding ID of the node.
         '''
         # fetch the node to be split
         node = self.nodes[node_id]
@@ -215,7 +224,7 @@ class Btree:
 
     def show(self):
         '''
-        Show important info for each node (sort the by level - root first, then left to right)
+        Show important info for each node (sort by level - root first, then left to right).
         '''
         nds = []
         nds.append(self.root)
@@ -273,6 +282,10 @@ class Btree:
         Return ptrs of elements where btree_value"operator"value.
         Important, the user supplied "value" is the right value of the operation. That is why the operation are reversed below.
         The left value of the op is the btree value.
+
+        Args:
+            operator: string. The provided evaluation operator.
+            value: float. The value being searched for.
         '''
         results = []
         # find the index of the node that the element should exist in
