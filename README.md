@@ -44,7 +44,7 @@ You can the access the database through the db object that will be available. Fo
 ```
 The database wil be save with the name `smdb`. You can load the database in a separate Python shell by running the following commands:
 ```python
->> from database import Database
+>> from src.db.database import Database
 >> db = Database("smdb", load=True)
 ```
 

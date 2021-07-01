@@ -1,11 +1,11 @@
 from __future__ import annotations
 import pickle
-from table import Table
+from .table import Table
 from time import sleep, localtime, strftime
 import os
-from btree import Btree
+from .btree import Btree
 import shutil
-from misc import split_condition
+from .misc import split_condition
 
 class Database:
     '''
