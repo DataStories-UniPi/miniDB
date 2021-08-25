@@ -493,7 +493,7 @@ class Database:
 
         table_name -> table's name (needs to exist in database)
         '''
-        return self.tables['meta_insert_stack']._select_where('*', f'table_name=={table_name}').indexes[0]
+        return self.tables['meta_insert_stack']._select_where('*', f'table_name=={table_name}').column_by_name('indexes')[0]
         # res = self.select('meta_insert_stack', '*', f'table_name=={table_name}', return_object=True).indexes[0]
         # return res
 
@@ -542,7 +542,7 @@ class Database:
         bt = Btree(3) # 3 is arbitrary
 
         # for each record in the primary key of the table, insert its value and index to the btree
-        for idx, key in enumerate(self.tables[table_name].columns[self.tables[table_name].pk_idx]):
+        for idx, key in enumerate(self.tables[table_name].column_by_name[self.tables[table_name].pk]):
             bt.insert(key, idx)
         # save the btree
         self._save_index(index_name, bt)

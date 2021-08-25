@@ -4,6 +4,30 @@ import pickle
 import os
 from misc import get_op, split_condition
 
+
+"""
+
+ISSUES: 
+
+    Using cprofile, we reached the conclusion that _uddate should be removed. Its very slow. This and constant file i/o is a problem.
+
+    These problems are partially solved by a server based protocol.
+
+    Handling columns should be discussed. Generating column when a function is called is an option. (use property decorator)
+
+    Removing columns all together is another option. 
+
+    Server should be implemented ASAP. No need to be great, needs to work tho.
+
+    All queries should be run from file or REPL (psql like). Only way to interact with mdb should be the server. strip()
+
+TODO:
+
+    Simple REPL
+
+"""
+
+
 class Table:
     '''
     Table object represents a table inside a database
@@ -27,7 +51,7 @@ class Table:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
             if isinstance(load, dict):
                 self.__dict__.update(load)
-                self._update()
+                # self._update()
             # if load is str, load from a file
             elif isinstance(load, str):
                 self._load_from_file(load)
@@ -63,10 +87,13 @@ class Table:
             else:
                 self.pk_idx = None
 
-
-            self._update()
+            self.pk = primary_key
+            # self._update()
 
     # if any of the name, columns_names and column types are none. return an empty table object
+
+    def column_by_name(self, column_name):
+        return [row[self.column_names.index(column_name)] for row in self.data]
 
 
     def _update(self):
@@ -88,7 +115,7 @@ class Table:
             self.data[i][column_idx] = cast_type(self.data[i][column_idx])
         # change the type of the column
         self.column_types[column_idx] = cast_type
-        self._update()
+        # self._update()
 
 
     def _insert(self, row, insert_stack=[]):
@@ -107,7 +134,7 @@ class Table:
                 raise ValueError(f'ERROR -> Value {row[i]} is not of type {self.column_types[i]}.')
 
             # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
-            if i==self.pk_idx and row[i] in self.columns[self.pk_idx]:
+            if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
 
         # if insert_stack is not empty, append to its last index
@@ -115,7 +142,7 @@ class Table:
             self.data[insert_stack[-1]] = row
         else: # else append to the end
             self.data.append(row)
-        self._update()
+        # self._update()
 
     def _update_row(self, set_value, set_column, condition):
         '''
@@ -125,7 +152,7 @@ class Table:
         column_name, operator, value = self._parse_condition(condition)
 
         # get the condition and the set column
-        column = self.columns[self.column_names.index(column_name)]
+        column = self.column_by_name(column_name)
         set_column_idx = self.column_names.index(set_column)
 
         # set_columns_indx = [self.column_names.index(set_column_name) for set_column_name in set_column_names]
@@ -135,7 +162,7 @@ class Table:
             if get_op(operator, column_value, value):
                 self.data[row_ind][set_column_idx] = set_value
 
-        self._update()
+        # self._update()
                 # print(f"Updated {len(indexes_to_del)} rows")
 
 
@@ -149,7 +176,7 @@ class Table:
 
         indexes_to_del = []
 
-        column = self.columns[self.column_names.index(column_name)]
+        column = self.column_by_name(column_name)
         for index, row_value in enumerate(column):
             if get_op(operator, row_value, value):
                 indexes_to_del.append(index)
@@ -165,7 +192,7 @@ class Table:
             else:
                 self.data.pop(index)
 
-        self._update()
+        # self._update()
         print(f"Deleted {len(indexes_to_del)} rows")
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
@@ -188,10 +215,10 @@ class Table:
         # if not, return the rows with values where condition is met for value
         if condition is not None:
             column_name, operator, value = self._parse_condition(condition)
-            column = self.columns[self.column_names.index(column_name)]
+            column = self.column_by_name(column_name)
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
-            rows = [i for i in range(len(self.columns[0]))]
+            rows = [i for i in range(len(self.data))]
 
         # top k rows
         rows = rows[:top_k]
@@ -230,7 +257,7 @@ class Table:
 
         # here we run the same select twice, sequentially and using the btree.
         # we then check the results match and compare performance (number of operation)
-        column = self.columns[self.column_names.index(column_name)]
+        column = self.column_by_name(column_name)
 
         # sequential
         rows1 = []
@@ -268,7 +295,7 @@ class Table:
         Order by based on column
         '''
         # get column, sort values and return sorted indexes
-        column = self.columns[self.column_names.index(column_name)]
+        column = self.column_by_name(column_name)
         idx = sorted(range(len(column)), key=lambda k: column[k], reverse=not asc)
         # return table but arange data using idx list (sorted indexes)
         dict = {(key):([self.data[i] for i in idx] if key=="data" else value) for key, value in self.__dict__.items()}
@@ -279,11 +306,11 @@ class Table:
         '''
         Same as order by, but its persistant
         '''
-        column = self.columns[self.column_names.index(column_name)]
+        column = self.column_by_name(column_name)
         idx = sorted(range(len(column)), key=lambda k: column[k], reverse=not asc)
         # print(idx)
         self.data = [self.data[i] for i in idx]
-        self._update()
+        # self._update()
 
 
     def _inner_join(self, table_right: Table, condition):
