@@ -26,6 +26,7 @@ If you wish to exit, type: "exit".
 
 #! ISSUES
 #! Data types and pk in column importing from csv
+
 class Interpreter:
 
     def __init__(self, db_name):
@@ -113,7 +114,7 @@ class Interpreter:
             self.db.print_dbs()
 
 
-
+#* ΟΚ!
     def table_transactions(self, query): 
         '''
         Handles the creation, deletion, altering, importing from csv and exporting to csv of tables in a database.
@@ -127,7 +128,7 @@ class Interpreter:
                 pk_index = pk_temp_query.index('key') + 1
                 primary_key = pk_temp_query[pk_index]
 
-            stripped_query = query.lower().replace(',', '').replace('(', ' ').replace(')', ' ').replace(';', '').replace('primary', '').replace('key', '').split()
+            stripped_query = query.lower().replace(',', '').replace('(', '').replace(')', '').replace(';', '').replace('primary', '').replace('key', '').split()
             col_names = stripped_query[3:len(stripped_query) - 1:2]
             col_types = self.get_data_types(stripped_query[4::2])
             
@@ -142,7 +143,8 @@ class Interpreter:
             print(f'TABLE: { query.split()[2] } has been dropped.')
 
         elif re.search('alter|ALTER', query):
-            pass
+            data_type = self.get_data_types(query.split()[7])
+            self.db.cast_column(query.split()[2], query.split()[5], data_type)
 
         elif re.search('copy|COPY', query):
             # all column types are of string type by default and no primary key is added
@@ -166,7 +168,10 @@ class Interpreter:
         query -> The SQL query that will be interpreted.
         '''
         if re.search('insert|INSERT', query):
-            pass
+            stripped_query = query.lower().replace(',', '').replace('(', '').replace(')', '').replace(';', '')
+            index = stripped_query.index('values') + 6
+            self.db.insert(query.split()[2], stripped_query[index:].split())
+
         elif re.search('update|UPDATE', query):
             pass
         elif re.search('delete|DELETE', query):
