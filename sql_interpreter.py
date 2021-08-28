@@ -222,11 +222,14 @@ class Interpreter:
 
         query -> The SQL query that will be interpreted.
         '''
-        if re.search('select from where', query):
-            pass
-        elif re.search('select from join', query):
-            pass
-
+        if re.search('join|JOIN', query):
+            if re.search('where|WHERE', query):
+                'save as'
+            else:
+                condition = self.find_condition(query)
+                self.db.inner_join(query.split()[3], query.split()[6], condition)
+        else:
+            'select from where'
 
 
                             ######## START OF THE PROGRAM ########
