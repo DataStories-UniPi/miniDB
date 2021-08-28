@@ -96,6 +96,21 @@ class Interpreter:
 
 
 #* ΟΚ!
+    def find_condition(self,query):
+        '''
+        Given a query that includes a condition this method will the operator and the conditional terms.
+
+        query -> The SQL query that will be interpreted.
+        '''
+        split_query = query.lower().split()
+        for w in split_query:
+            if w == 'where': 
+                index = split_query.index(w)
+
+        return split_query[index + 1]
+         
+
+#* ΟΚ!
     def database_transactions(self, query):
         '''
         Handles the creation, loading and deletion of databases.
@@ -160,6 +175,7 @@ class Interpreter:
                 self.db.table_to_csv(query.split()[2], filename + '.csv')
 
 
+#* ΟΚ!
     def iud_transactions(self, query):
         '''
         Handles inserting, updating and deleting values in tables.
@@ -173,9 +189,13 @@ class Interpreter:
             self.db.insert(query.split()[2], stripped_query[index:].split())
 
         elif re.search('update|UPDATE', query):
-            pass
+            condition = self.find_condition(query)
+            column, value = query.split()[3].replace('=', ' ').split()
+            self.db.update(query.split()[1], value, column, condition)
+
         elif re.search('delete|DELETE', query):
-            pass
+            condition = self.find_condition(query)            
+            self.db.delete(query.split()[2], condition)
 
 
 #* ΟΚ!
@@ -196,10 +216,9 @@ class Interpreter:
             print(f'INDEX: { query.split()[2] } has been successfully dropped.')
 
 
-
     def select_transactions(self, query):
         '''
-        DESCRIPTION
+        Handles the selection of values from a table.
 
         query -> The SQL query that will be interpreted.
         '''
@@ -211,6 +230,7 @@ class Interpreter:
 
 
                             ######## START OF THE PROGRAM ########
+
 
 def main(): 
     '''
