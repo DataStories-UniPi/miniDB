@@ -214,7 +214,7 @@ class Database:
         self._update()
         self.save()
 
-    def insert(self, table_name, row, lock_load_save=True):
+    def insert(self, table_name, row, lock_load_save=True, append_to_insert_stack=False):
         '''
         Inserts into table
 
@@ -233,6 +233,22 @@ class Database:
         try:
             self.tables[table_name]._insert(row, insert_stack)
             if self.tables[table_name].file_type == 'o':
+				if append_to_insert_stack == True:
+						# Create the insert stack table when the first new row is inserted
+						if 'insert_stack' not in self.tables:
+							columns = []
+							for column in self.tables[table_name].column_names:
+								columns.append(column)
+							column_types = []
+							for column in self.tables[table_name].column_types:
+								column_types.append(column)
+							self.create_table(name='insert_stack', column_names=columns, column_types=column_types, load=None)
+
+						self.tables['insert_stack']._insert(row, insert_stack)
+					else:
+						self.tables[table_name]._insert(row, insert_stack)
+						self.tables[table_name]._sort(self.tables[table_name].order_column, True)
+			else:
                 self.tables[table_name]._sort(self.tables[table_name].order_column, True)
         except Exception as e:
             print(e)
@@ -292,7 +308,7 @@ class Database:
         self.save()
 
     def select(self, table_name, columns, condition=None, order_by=None, asc=False,\
-               top_k=None, save_as=None, return_object=False):
+               top_k=None, save_as=None, return_object=False, show_insert_stack_rows=False):
         '''
         Selects and outputs a table's data where condtion is met.
 
@@ -321,7 +337,7 @@ class Database:
             bt = self._load_idx(index_name)
             table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, asc, top_k)
         else:
-            table = self.tables[table_name]._select_where(columns, condition, order_by, asc, top_k)
+            table = self.tables[table_name]._select_where(columns, condition, order_by, asc, top_k, self.tables['insert_stack'].data, show_insert_stack_row)
         self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as
