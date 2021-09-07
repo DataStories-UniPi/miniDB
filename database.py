@@ -89,14 +89,14 @@ class Database:
         self._update_meta_insert_stack()
 
 
-    def create_table(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+    def create_table(self, name=None, column_names=None, column_types=None, primary_key=None, file_type=None, load=None):
         '''
         This method create a new table. This table is saved and can be accessed by
         db_object.tables['table_name']
         or
         db_object.table_name
         '''
-        self.tables.update({name: Table(name=name, column_names=column_names, column_types=column_types, primary_key=primary_key, load=load)})
+        self.tables.update({name: Table(name=name, column_names=column_names, column_types=column_types, primary_key=primary_key, file_type=file_type, load=load)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         if name not in self.__dir__():
@@ -232,6 +232,8 @@ class Database:
         insert_stack = self._get_insert_stack_for_table(table_name)
         try:
             self.tables[table_name]._insert(row, insert_stack)
+            if self.tables[table_name].file_type == 'o':
+                self.tables[table_name]._sort(self.tables[table_name].order_column, True)
         except Exception as e:
             print(e)
             print('ABORTED')
