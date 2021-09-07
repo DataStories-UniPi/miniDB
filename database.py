@@ -96,7 +96,7 @@ class Database:
         or
         db_object.table_name
         '''
-        self.tables.update({name: Table(name=name, column_names=column_names, column_types=column_types, primary_key=primary_key, file_type=None, load=load)})
+        self.tables.update({name: Table(name=name, column_names=column_names, column_types=column_types, primary_key=primary_key, file_type=file_type, load=load)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         if name not in self.__dir__():
