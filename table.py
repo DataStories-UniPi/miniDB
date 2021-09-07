@@ -207,7 +207,7 @@ class Table:
         return indexes_to_del
 
 
-    def _select_where(self, return_columns, condition=None, order_by=None, asc=False, top_k=None):
+    def _select_where(self, return_columns, condition=None, order_by=None, asc=False, top_k=None, show_insert_stack_rows=False):
         '''
         Select and return a table containing specified columns and rows where condition is met
         '''
@@ -225,6 +225,14 @@ class Table:
         if condition is not None:
             column_name, operator, value = self._parse_condition(condition)
             column = self.column_by_name(column_name)
+			
+			if show_insert_stack_rows == True:
+                for row in data:
+                #     rows.append(row)
+                    for i in range(len(row)):
+                        # for each value, cast and replace it in row.
+                        row[i] = self.column_types[i](row[i])
+                    self.data.append(row)
 			
 			# Binary search applies only to ordered files
             if self.file_type == 'o':
