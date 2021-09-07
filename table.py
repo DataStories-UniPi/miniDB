@@ -225,7 +225,70 @@ class Table:
         if condition is not None:
             column_name, operator, value = self._parse_condition(condition)
             column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+			
+			# Binary search applies only to ordered files
+            if self.file_type == 'o':
+                low = 0
+                high = len(self.data) - 1
+                mid = 0
+
+                if str(operator) == '==':
+                    while low <= high:
+                        mid = (high + low) // 2
+                        if self.data[mid][2] < value:
+                            low = mid + 1
+                        elif self.data[mid][2] > value:
+                            high = mid - 1
+                        else:
+                            rows = [mid]
+                            break
+                elif str(operator) == '>':
+                    while low <= high:
+                        mid = (high + low) // 2
+                        if self.data[mid][2] > value:
+                            rows = [mid]
+                            mid2 = mid - 1
+                            
+                            while self.data[mid2][2] > value:
+                                rows.append(mid2)
+                                mid2 -= 1
+                                if mid2 == 0:
+                                    break
+                            mid3 = mid + 1
+
+                            while self.data[mid3][2] > value:
+                                rows.append(mid3)
+                                mid3 += 1
+                                if mid3 == len(self.data):
+                                    break
+                            break
+                        else:
+                            low = mid + 1
+                else:
+                    while low <= high:
+                        mid = (high + low) // 2
+                        if self.data[mid][2] < value:
+                            rows = [mid]
+                            # break
+                            mid2 = mid - 1
+
+                            while self.data[mid2][2] < value:
+                                rows.append(mid2)
+                                mid2 -= 1
+                                if mid2 == 0:
+                                    break
+                            mid3 = mid + 1
+                            
+                            while self.data[mid3][2] < value:
+                                rows.append(mid3)
+                                mid3 += 1
+                                if mid3 == len(self.data):
+                                    break
+                            break
+                        else:
+                            high = mid - 1
+            else:
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]		
         else:
             rows = [i for i in range(len(self.data))]
 
