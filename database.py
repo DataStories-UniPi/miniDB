@@ -523,6 +523,11 @@ class Database:
         new_stack -> the stack that will be used to replace the existing one.
         '''
         self.tables['meta_insert_stack']._update_row(new_stack, 'indexes', f'table_name=={table_name}')
+		
+	def _insert_stack_to_table(self, table_name):
+        for row in self.tables['insert_stack'].data:
+            self.tables[table_name]._insert(row, insert_stack)
+        self.tables[table_name]._sort(self.tables[table_name].order_column, True)
 
 
     # indexes
