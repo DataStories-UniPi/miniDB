@@ -415,11 +415,12 @@ class Table:
             no_of_rows: int. Number of rows.
             is_locked: boolean. Whether it is locked (False by default).
         '''
+        output = ""
         # if the table is locked, add locked keyword to title
         if is_locked:
-            print(f"\n## {self._name} (locked) ##")
+            output += f"\n## {self._name} (locked) ##\n"
         else:
-            print(f"\n## {self._name} ##")
+            output += f"\n## {self._name} ##\n"
 
         # headers -> "column name (column type)"
         headers = [f'{col} ({tp.__name__})' for col, tp in zip(self.column_names, self.column_types)]
@@ -430,7 +431,8 @@ class Table:
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]
         # print using tabulate
-        print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
+        output += tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n'
+        return output
 
 
     def _parse_condition(self, condition, join=False):
