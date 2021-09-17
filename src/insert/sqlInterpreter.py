@@ -3,7 +3,7 @@ currentdir = os.path.dirname(os.path.realpath(__file__))
 parentdir = os.path.dirname(currentdir)
 sys.path.append(parentdir)
 
-from db import database as Database
+from db.database import Database
 import re
 import traceback
 
