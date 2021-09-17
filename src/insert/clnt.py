@@ -7,11 +7,15 @@ PORT = 65432        # The port used by the server
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((HOST, PORT))
-    while 1:
-        msg = input()
-        s.sendall(msg.encode())
-        data = s.recv(1024)
+    try:
+        while 1:
+            msg = input()
+            s.sendall(msg.encode())
+            data = s.recv(1024)
 
-        print('Received:', data.decode('utf-8'))
-        if msg=='exit()':
-            break
+            print('Received:', data.decode('utf-8'))
+            if msg=='exit()':
+                break
+    except Exception as e:
+        print(e)
+        s.close()
