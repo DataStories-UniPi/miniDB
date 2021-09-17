@@ -1,5 +1,6 @@
 #run using:
 #python3 -i -m src.insert.vsmdb
+
 def main():
     import os, sys
     currentdir = os.path.dirname(os.path.realpath(__file__))
