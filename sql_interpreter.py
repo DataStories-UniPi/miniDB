@@ -25,8 +25,11 @@ If you wish to exit, type: "exit".
 '''
 
 #! ISSUES
+#! Add exception handling 
 #! Data types and pk in column importing from csv
 
+
+#! MUST DO A TEST RUN
 class Interpreter:
 
     def __init__(self, db_name):
@@ -96,9 +99,9 @@ class Interpreter:
 
 
 #* ΟΚ!
-    def find_condition(self,query):
+    def find_condition(self, query):
         '''
-        Given a query that includes a condition this method will the operator and the conditional terms.
+        Given a query that includes a condition this method will return the conditional expression.
 
         query -> The SQL query that will be interpreted.
         '''
@@ -216,25 +219,24 @@ class Interpreter:
             print(f'INDEX: { query.split()[2] } has been successfully dropped.')
 
 
-    def select_transactions(self, query):
-        '''
-        Handles the selection of values from a table.
+def select_transactions(self, query):
+    '''
+    Handles the selection of values from a table.
 
-        query -> The SQL query that will be interpreted.
-        '''
-        if re.search('join|JOIN', query):
-            if re.search('where|WHERE', query):
-                'save as'
-            else:
-                condition = self.find_condition(query)
-                self.db.inner_join(query.split()[3], query.split()[6], condition)
+    query -> The SQL query that will be interpreted.
+    '''
+    if re.search('join|JOIN', query):
+        if re.search('where|WHERE', query):
+            'save as'
         else:
-            'select from where'
+            condition = self.find_condition(query)
+            self.db.inner_join(query.split()[3], query.split()[6], condition)
+    else:
+        'select from where'
 
 
-                            ######## START OF THE PROGRAM ########
 
-
+                            ######## Driver Code ########
 def main(): 
     '''
     This is the main function that handles the flow of the interpreter.
@@ -256,7 +258,6 @@ def main():
             interpreter.group_query(user_cmd)
 
 
-# driver code
 if __name__ == '__main__':
     try:
         main()
