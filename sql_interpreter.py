@@ -25,10 +25,8 @@ If you wish to exit, type: "exit".
 '''
 
 #! ISSUES
+
 #! Add exception handling 
-#! Data types and pk in column importing from csv
-
-
 #! MUST DO A TEST RUN
 class Interpreter:
 
@@ -219,21 +217,21 @@ class Interpreter:
             print(f'INDEX: { query.split()[2] } has been successfully dropped.')
 
 
-def select_transactions(self, query):
-    '''
-    Handles the selection of values from a table.
+    def select_transactions(self, query):
+        '''
+        Handles the selection of values from a table.
 
-    query -> The SQL query that will be interpreted.
-    '''
-    if re.search('join|JOIN', query):
-        if re.search('where|WHERE', query):
-            'save as'
+        query -> The SQL query that will be interpreted.
+        '''
+        if re.search('join|JOIN', query):
+            if re.search('where|WHERE', query):
+                condition = self.find_condition(query)
+                self.db.inner_join(query.split()[3], query.split()[6], condition, return_object=True)._select_where()
+            else:
+                condition = self.find_condition(query)
+                self.db.inner_join(query.split()[3], query.split()[6], condition)
         else:
-            condition = self.find_condition(query)
-            self.db.inner_join(query.split()[3], query.split()[6], condition)
-    else:
-        'select from where'
-
+            self.db.select()
 
 
                             ######## Driver Code ########
