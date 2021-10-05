@@ -24,10 +24,6 @@ If you wish to print all the available databases write: "print dbs"
 If you wish to exit, type: "exit".
 '''
 
-#! ISSUES
-
-#! Add exception handling 
-#! MUST DO A TEST RUN
 class Interpreter:
 
     def __init__(self, db_name):
@@ -45,7 +41,7 @@ class Interpreter:
         self.db = Database(self.db_name)
 
 
-#* ΟΚ!
+
     def group_queries(self, query):
         '''
         Handles the initial grouping of SQL queries.
@@ -71,7 +67,7 @@ class Interpreter:
             print('Unknown query:', query)
 
 
-#* ΟΚ!
+
     def get_data_types(self, raw_col_types):
         '''
         Returns the equivalent of SQL data types to Python data types.
@@ -96,7 +92,7 @@ class Interpreter:
         return col_types
 
 
-#* ΟΚ!
+
     def find_condition(self, query):
         '''
         Given a query that includes a condition this method will return the conditional expression.
@@ -111,7 +107,21 @@ class Interpreter:
         return split_query[index + 1]
          
 
-#* ΟΚ!
+    def find_keyword_index(self, query, keyword):
+        '''
+        Given a query that includes a given keyword this method will return the next index.
+
+        query -> The SQL query that will be interpreted.
+        keyword -> The keyword to locate.
+        '''
+        split_query = query.lower().split()
+        for w in split_query:
+            if w == keyword: 
+                index = split_query.index(w)
+
+        return index + 1
+
+
     def database_transactions(self, query):
         '''
         Handles the creation, loading and deletion of databases.
@@ -130,7 +140,7 @@ class Interpreter:
             self.db.print_dbs()
 
 
-#* ΟΚ!
+
     def table_transactions(self, query): 
         '''
         Handles the creation, deletion, altering, importing from csv and exporting to csv of tables in a database.
@@ -176,7 +186,7 @@ class Interpreter:
                 self.db.table_to_csv(query.split()[2], filename + '.csv')
 
 
-#* ΟΚ!
+
     def iud_transactions(self, query):
         '''
         Handles inserting, updating and deleting values in tables.
@@ -199,7 +209,7 @@ class Interpreter:
             self.db.delete(query.split()[2], condition)
 
 
-#* ΟΚ!
+
     def index_transactions(self, query): 
         '''
         Handles the creation and deletion of indices on tables.
@@ -220,6 +230,7 @@ class Interpreter:
     def select_transactions(self, query):
         '''
         Handles the selection of values from a table.
+        Supports only "SELECT INNER JOIN ON"
 
         query -> The SQL query that will be interpreted.
         '''
@@ -235,6 +246,7 @@ class Interpreter:
 
 
                             ######## Driver Code ########
+
 def main(): 
     '''
     This is the main function that handles the flow of the interpreter.
