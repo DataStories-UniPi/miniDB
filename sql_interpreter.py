@@ -230,7 +230,7 @@ class Interpreter:
     def select_transactions(self, query):
         '''
         Handles the selection of values from a table.
-        Supports only "SELECT INNER JOIN ON"
+        Fully supports only "SELECT INNER JOIN ON"
 
         query -> The SQL query that will be interpreted.
         '''
