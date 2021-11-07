@@ -6,6 +6,13 @@ import os
 from .btree import Btree
 import shutil
 from .misc import split_condition
+import logging
+import warnings
+import readline
+from tabulate import tabulate
+
+# Clear command cache (journal)
+readline.clear_history()
 
 class Database:
     '''
@@ -21,10 +28,10 @@ class Database:
         if load:
             try:
                 self.load(self.savedir)
-                print(f'Loaded "{name}".')
+                logging.info(f'Loaded "{name}".')
                 return
             except:
-                print(f'"{name}" db does not exist, creating new.')
+                warnings.warn(f'Database "{name}" does not exist. Creating new.')
 
         # create dbdata directory if it doesnt exist
         if not os.path.exists('dbdata'):
@@ -114,9 +121,9 @@ class Database:
         else:
             raise Exception(f'Attribute "{name}" already exists in class "{self.__class__.__name__}".')
         # self.no_of_tables += 1
-        print(f'New table "{name}"')
         self._update()
         self.save()
+        return f'Created table "{name}".'
 
 
     def drop_table(self, table_name):
@@ -135,7 +142,7 @@ class Database:
         if os.path.isfile(f'{self.savedir}/{table_name}.pkl'):
             os.remove(f'{self.savedir}/{table_name}.pkl')
         else:
-            print(f'"{self.savedir}/{table_name}.pkl" does not exist.')
+            warnings.warn(f'"{self.savedir}/{table_name}.pkl" not found.')
         self.delete('meta_locks', f'table_name=={table_name}')
         self.delete('meta_length', f'table_name=={table_name}')
         self.delete('meta_insert_stack', f'table_name=={table_name}')
@@ -261,8 +268,8 @@ class Database:
         try:
             self.tables[table_name]._insert(row, insert_stack)
         except Exception as e:
-            print(e)
-            print('ABORTED')
+            logging.info(e)
+            logging.info('ABORTED')
         # sleep(2)
         self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
         if lock_load_save:
@@ -358,7 +365,7 @@ class Database:
             if return_object:
                 return table
             else:
-                table.show()
+                return table.show()
 
     def show_table(self, table_name, no_of_rows=None):
         '''
@@ -408,7 +415,7 @@ class Database:
         '''
         self.load(self.savedir)
         if self.is_locked(left_table_name) or self.is_locked(right_table_name):
-            print(f'Table/Tables are currently locked')
+            warnings.warn(f'Table(s) are currently locked.')
             return
 
         res = self.tables[left_table_name]._inner_join(self.tables[right_table_name], condition)
@@ -463,11 +470,22 @@ class Database:
         try:
             res = self.select('meta_locks', ['locked'], f'table_name=={table_name}', return_object=True).locked[0]
             if res:
-                print(f'Table "{table_name}" is currently locked.')
+                logging.info(f'Table "{table_name}" is currently locked.')
             return res
 
         except IndexError:
             return
+
+    def journal(idx = None):
+        if idx != None:
+            cache_list = '\n'.join([str(readline.get_history_item(i + 1)) for i in range(readline.get_current_history_length())]).split('\n')[int(idx)]
+            out = tabulate({"Command": cache_list.split('\n')}, headers=["Command"])
+        else:
+            cache_list = '\n'.join([str(readline.get_history_item(i + 1)) for i in range(readline.get_current_history_length())])
+            out = tabulate({"Command": cache_list.split('\n')}, headers=["Index","Command"], showindex="always")
+        print(out)
+        #return out
+
 
     #### META ####
 
@@ -558,20 +576,18 @@ class Database:
             index_name: string. Name of the created index.
         '''
         if self.tables[table_name].pk_idx is None: # if no primary key, no index
-            print('## ERROR - Cant create index. Table has no primary key.')
-            return
+            raise Exception('Cannot create index. Table has no primary key.')
         if index_name not in self.tables['meta_indexes'].index_name:
             # currently only btree is supported. This can be changed by adding another if.
             if index_type=='Btree':
-                print('Creating Btree index.')
+                logging.info('Creating Btree index.')
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
                 self.tables['meta_indexes']._insert([table_name, index_name])
                 # crate the actual index
                 self._construct_index(table_name, index_name)
                 self.save()
         else:
-            print('## ERROR - Cant create index. Another index with the same name already exists.')
-            return
+            raise Exception('Cannot create index. Another index with the same name already exists.')
 
     def _construct_index(self, table_name, index_name):
         '''

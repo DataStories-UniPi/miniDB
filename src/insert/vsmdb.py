@@ -1,7 +1,13 @@
 #run using:
 #python3 -i -m src.insert.vsmdb
+
 def main():
-    from ..db import database
+    import os, sys
+    currentdir = os.path.dirname(os.path.realpath(__file__))
+    parentdir = os.path.dirname(currentdir)
+    sys.path.append(parentdir)
+
+    from db import database as database
     # create db with name "smdb"
     db = database.Database('vsmdb', load=False)
     # create a single table named "classroom"
