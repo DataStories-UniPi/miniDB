@@ -49,4 +49,4 @@ The database wil be save with the name `smdb`. You can load the database in a se
 ```
 
 ## Contributors
-George S. Theodoropoulos, Yannis Kontoulis, Yannis Theodoridis; Data Science Lab., University of Piraeus.
+George S. Theodoropoulos, Bill Argiropoulos, Yannis Kontoulis, Apostolos Spanakis-Misirlis, Yannis Theodoridis; Data Science Lab., University of Piraeus.
