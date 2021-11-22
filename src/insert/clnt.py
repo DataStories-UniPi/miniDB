@@ -2,6 +2,7 @@
 
 import socket
 import sys
+import readline ## this is for repl history dont delete pls thanks
 
 HOST = '127.0.0.1'  # The server's hostname or IP address
 PORT = 15043        # The port used by the server
