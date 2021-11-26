@@ -3,44 +3,15 @@ import re
 from pprint import pprint
 import sys
 
-def match_parens(text):
-    # print(text)
-    d = []
-    istart = []
-    for i, c in enumerate(text):
-        if c == '(':
-            istart.append(i)
-        if c == ')':
-            try:
-                d.append((istart.pop(),i)) 
-            except IndexError:
-                raise ValueError('Too many closing parentheses')
-    if istart:  # check if stack is empty afterwards
-        raise ValueError('Too many opening parentheses')
-    
-    return d[-1] if d else None
-
-
-
 
 def search_between(s, first, last):
-
-    # return re.search(fr'{a}(.*){b}', line).group(1)
     try:
         start = s.index( first ) + len( first )
         end = s.index( last, start )
     except:
-        try:
-            end = s.index( ';', start )
-        except:
-            return
+        return
     return s[start:end]
 
-def next_word(line, a):
-    try:
-        return re.search(fr'{a}(.*)', line).group(1).split(';')[0].split(' ')[0]
-    except:
-        return 
 
 def create_table(query):
     table_name = search_between(query, 'table', '(')
@@ -48,9 +19,11 @@ def create_table(query):
     column_types = [val.strip().split(' ')[1] for val in search_between(query,'(', ')').split(',')]
     print(f'creating table {table_name} with cols {column_names} and types {column_types}')
 
+
 def drop_table(query):
     table_name = search_between(query,'table', ';')
     print(f'droping table -> {table_name}')
+
 
 def cast_table(query):
     colname = search_between(query,'cast', 'from')
@@ -93,7 +66,6 @@ def select_table(dic):
 
     # for 
     columns = search_between(query,'select', 'from')
-    # table_name = next_word(query, 'from')
     table_name = search_between(query,'from ', ' ')
 
     condition = search_between(query,'where ', ' ')
@@ -151,8 +123,16 @@ def create_query_plan(query, keywords, action):
 
     if action=='select':
         dic = evaluate_from_clause(dic)
-    
-    
+        
+        if dic['order by'] is not None:
+            if 'desc' in dic['order by']:
+                dic['desc'] = True
+            else:
+                dic['desc'] = False
+            dic['order by'] = dic['order by'].removesuffix(' asc').removesuffix(' desc')
+            
+        else:
+            dic['desc'] = None
     return dic
 
 def evaluate_from_clause(dic):
@@ -241,6 +221,25 @@ def interpret(query):
 
     # return actions[action](dic)
 
+def execute_dic(dic):
+    from database import Database
+    # create db with name "smdb"
+    db = Database('vsmdb', load=False)
+    db.create_table('classroom', ['building', 'room_number', 'capacity'], [str,str,int])
+    # insert 5 rows
+    db.insert('classroom', ['Packard', '101', '500'])
+    db.insert('classroom', ['Painter', '514', '10'])
+    db.insert('classroom', ['Taylor', '3128', '70'])
+    db.insert('classroom', ['Watson', '100', '30'])
+    db.insert('classroom', ['Watson', '120', '50'])
+    
+    action = list(dic.keys())[0]
+    try:
+        getattr(db, action)(*dic.values())
+    except AttributeError:
+        raise NotImplementedError("Class `{}` does not implement `{}`".format(db.__class__.__name__, action))
+
+
 
 
 if __name__ == "__main__":
@@ -249,5 +248,6 @@ if __name__ == "__main__":
         if line.startswith('--'): continue
         dic = interpret(line.lower())
         pprint(dic, sort_dicts=False)
+        execute_dic(dic)
 
 

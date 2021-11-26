@@ -1,15 +1,17 @@
 from __future__ import annotations
 import pickle
-from .table import Table
+from table import Table
 from time import sleep, localtime, strftime
-import os
-from .btree import Btree
+import os,sys
+from btree import Btree
 import shutil
-from .misc import split_condition
+from misc import split_condition
 import logging
 import warnings
 import readline
 from tabulate import tabulate
+
+sys.setrecursionlimit(100)
 
 # Clear command cache (journal)
 readline.clear_history()
@@ -123,7 +125,8 @@ class Database:
         # self.no_of_tables += 1
         self._update()
         self.save()
-        return f'Created table "{name}".'
+        # (self.tables[name])
+        print(f'Created table "{name}".')
 
 
     def drop_table(self, table_name):
@@ -326,8 +329,8 @@ class Database:
             self._add_to_insert_stack(table_name, deleted)
         self.save()
 
-    def select(self, table_name, columns, condition=None, order_by=None, asc=False,\
-               top_k=None, save_as=None, return_object=False):
+    def select(self, columns, table_name, condition, order_by=None, top_k=True,\
+               desc=None, save_as=None, return_object=False):
         '''
         Selects and outputs a table's data where condtion is met.
 
@@ -340,7 +343,7 @@ class Database:
                 
                 Operatores supported: (<,<=,==,>=,>)
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
-            asc: boolean. If True, order_by will return results in ascending order (False by default).
+            desc: boolean. If True, order_by will return results in descending order (True by default).
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
             save_as: string. The name that will be used to save the resulting table into the database (no save if None).
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
@@ -352,11 +355,11 @@ class Database:
         if condition is not None:
             condition_column = split_condition(condition)[0]
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
-            index_name = self.select('meta_indexes', '*', f'table_name=={table_name}', return_object=True).index_name[0]
+            index_name = self.select('*', 'meta_indexes', f'table_name=={table_name}', return_object=True).index_name[0]
             bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, asc, top_k)
+            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k)
         else:
-            table = self.tables[table_name]._select_where(columns, condition, order_by, asc, top_k)
+            table = self.tables[table_name]._select_where(columns, condition, order_by, desc, top_k)
         self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as
@@ -468,7 +471,7 @@ class Database:
             self.meta_locks = self.tables['meta_locks']
 
         try:
-            res = self.select('meta_locks', ['locked'], f'table_name=={table_name}', return_object=True).locked[0]
+            res = self.select(['locked'],'meta_locks',  f'table_name=={table_name}', return_object=True).locked[0]
             if res:
                 logging.info(f'Table "{table_name}" is currently locked.')
             return res

@@ -2,7 +2,7 @@ from __future__ import annotations
 from tabulate import tabulate
 import pickle
 import os
-from .misc import get_op, split_condition
+from misc import get_op, split_condition
 
 
 """
@@ -223,7 +223,7 @@ class Table:
         return indexes_to_del
 
 
-    def _select_where(self, return_columns, condition=None, order_by=None, asc=False, top_k=None):
+    def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -235,7 +235,7 @@ class Table:
                 
                 Operatores supported: (<,<=,==,>=,>)
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
-            asc: boolean. If True, order_by will return results in ascending order (False by default).
+            desc: boolean. If True, order_by will return results in descending order (False by default).
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
 
@@ -271,10 +271,10 @@ class Table:
         if order_by is None:
             return Table(load=dict)
         else:
-            return Table(load=dict).order_by(order_by, asc)
+            return Table(load=dict).order_by(order_by, desc)
 
 
-    def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, asc=False, top_k=None):
+    def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, desc=True, top_k=None):
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
@@ -323,35 +323,35 @@ class Table:
         if order_by is None:
             return Table(load=dict)
         else:
-            return Table(load=dict).order_by(order_by, asc)
+            return Table(load=dict).order_by(order_by, desc)
 
 
-    def order_by(self, column_name, asc=False):
+    def order_by(self, column_name, desc=True):
         '''
         Order by based on column.
 
         Args:
             column_name: string. Name of column.
-            asc: boolean. If True, order_by will return results in ascending order (False by default).
+            desc: boolean. If True, order_by will return results in descending order (False by default).
         '''
         # get column, sort values and return sorted indexes
         column = self.column_by_name(column_name)
-        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=not asc)
+        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=desc)
         # return table but arange data using idx list (sorted indexes)
         dict = {(key):([self.data[i] for i in idx] if key=="data" else value) for key, value in self.__dict__.items()}
         return Table(load=dict)
 
 
-    def _sort(self, column_name, asc=False):
+    def _sort(self, column_name, desc=True):
         '''
         Same as order_by, but it's persistent.
 
         Args:
             column_name: string. Name of column.
-            asc: boolean. If True, order_by will return results in ascending order (False by default).
+            desc: boolean. If True, order_by will return results in descending order (False by default).
         '''
         column = self.column_by_name(column_name)
-        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=not asc)
+        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=desc)
         # print(idx)
         self.data = [self.data[i] for i in idx]
         # self._update()
@@ -431,8 +431,7 @@ class Table:
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]
         # print using tabulate
-        output += tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n'
-        return output
+        print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
 
 
     def _parse_condition(self, condition, join=False):
