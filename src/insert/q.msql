@@ -1,0 +1,7 @@
+--select * from (select * from (SELECT * FROM TEACH));
+--select * from t1;
+select name,age from teachers where age>50 top 10;
+--select name,city from t1 inner join t2 on c1=c2;
+select name,city from t1 inner join t2 on c1=c2 where cond;
+select * from (select * from (SELECT * FROM TEACH));
+-- select * from _ph1_, select * from _ph2_, select * from teach
