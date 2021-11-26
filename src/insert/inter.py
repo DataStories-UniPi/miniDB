@@ -131,92 +131,36 @@ def create_index(query):
 def drop_index(query):
     pass
 
-def create_query_plan(query):
-    actions = {'create table': create_table,
-               'drop table': drop_table,
-               'cast': cast_table,
-               'import': import_table,
-               'export': export_table,
-               'insert into': insert_into_table,
-               'select': select_table,
-               'lock table': lock_table,
-               'delete from': delete_table,
-               'update table': update_table,
-               'create database': create_database,
-               'drop database': drop_database,
-               'save database': save_database,
-               'load database': load_database,
-               'create index': create_index,
-               'drop index': drop_index
-               }
+def create_query_plan(query, keywords, action):
 
-    all_kw = list(actions.keys())+\
-    ['where', 'from', 'to', 'values', 'top', 'order by', 'using', 'set', 'mode']
-    
-    # print(all_kw)
-    if query[-1]!=';':
-        query+=';'
+    dic = {val: None for val in keywords}
 
-    # qs = []
-    # i = 0
-    # while 1:
-    #     parens = match_parens(query)
-    #     if parens is None:
-    #         qs.append(query)
-    #         break
-    #     qs.append(query[:parens[0]]+f'_ph{i}_'+query[parens[1]+1:])
-    #     i+=1
-    #     query = query[parens[0]+1:parens[1]]
-    
-    # for i in range(len(qs)):
-    #     if qs[i][-1]!=';':
-    #         qs[i] = qs[i]+';'
-
-    # print(qs)
-    # sys.exit()
-
-
-    # print('###')
-
-    # for i in range(len(parens)+1):
-    #     actq = query[:parens[i][0]]+query[parens[i][0]+1:]
-    #     print(actq)
-    # print('###')
-    # dics = []
-    # for q in qs:
     ql = query.split(' ')
-    for i,dbkt in enumerate(zip(ql,ql[1:])):
-        dbk = f'{dbkt[0]} {dbkt[1]}'
-        if dbk in all_kw:
-            ql[i] = dbk
-            ql.pop(i+1)
-    action = ql[0]
-    if action=='create index': 
-        all_kw.append('on')
-    # print(ql)
 
-    kws = []
-    for i in range(len(ql)):
-        if ql[i] in all_kw:
-            kws.append(ql[i])
-    kws.append(';')
-    # print(query)
-    # print('KEYWORDS -> ', kws)
-    
-    dic = {}
-    for kw1, kw2 in zip(kws,kws[1:]):
+    kw_in_query = []
+    for i in range(len(ql)-1):
+        if ql[i] in keywords:
+            kw_in_query.append(ql[i])
+        elif f'{ql[i]} {ql[i+1]}' in keywords:
+            kw_in_query.append(f'{ql[i]} {ql[i+1]}')
+    kw_in_query.append(';')
+    # print(kw_in_query)
+
+    for kw1, kw2 in zip(kw_in_query,kw_in_query[1:]):
         dic[kw1] = search_between(query,kw1,kw2).strip()
 
-    if 'from' in dic.keys():
+    if action=='select':
         dic = evaluate_from_clause(dic)
     
     
-    return dic, action
+    return dic
 
 def evaluate_from_clause(dic):
     join_types = ['inner','left', 'right', 'full']
-    # if dic['from'][0] == '(' and dic['from'][-1] == ')':
-    #     dic['from'] = create_query_plan(dic['from'][1:-1])[0]
+    if dic['from'][0] == '(' and dic['from'][-1] == ')':
+        subquery = dic['from'][1:-1]
+        dic['from'] = interpret(subquery)
+
     if 'join' in dic['from']:
         join_dic = {}
         join_sent = dic['from'].split(' ')
@@ -231,30 +175,56 @@ def evaluate_from_clause(dic):
             join_dic['left'] = join_sent[jidx-1]
         join_dic['right'] = join_sent[jidx+1]
         join_dic['on'] = ''.join(join_sent[join_sent.index('on')+1:])
-        dic['from'] = join_dic
+        dic['from'] = {'join': join_dic}
         # pass
         
     return dic
 
+    # kw_per_action = {'create table': create_table,
+    #                  'drop table': drop_table,
+    #                  'cast': cast_table,
+    #                  'import': import_table,
+    #                  'export': export_table,
+    #                  'insert into': insert_into_table,
+    #                  'select': select_table,
+    #                  'lock table': lock_table,
+    #                  'delete from': delete_table,
+    #                  'update table': update_table,
+    #                  'create database': create_database,
+    #                  'drop database': drop_database,
+    #                  'save database': save_database,
+    #                  'load database': load_database,
+    #                  'create index': create_index,
+    #                  'drop index': drop_index
+    #                  }
+
 def interpret(query):
-    actions = {'create table': create_table,
-               'drop table': drop_table,
-               'cast': cast_table,
-               'import': import_table,
-               'export': export_table,
-               'insert into': insert_into_table,
-               'select': select_table,
-               'lock table': lock_table,
-               'delete from': delete_table,
-               'update table': update_table,
-               'create database': create_database,
-               'drop database': drop_database,
-               'save database': save_database,
-               'load database': load_database,
-               'create index': create_index,
-               'drop index': drop_index
-               }
-    dic, action = create_query_plan(query)
+    kw_per_action = {'create table': ['create table'],
+                     'drop table': ['drop table'],
+                     'cast': ['cast', 'from', 'to'],
+                     'import': ['import', 'from'],
+                     'export': ['export', 'to'],
+                     'insert into': ['insert into', 'values'],
+                     'select': ['select', 'from', 'where', 'order by', 'top'],
+                     'lock table': ['lock', 'mode'],
+                     'delete from': ['delete from', 'where'],
+                     'update table': ['update table', 'set', 'where'],
+                     'create database': ['create database'],
+                     'drop database': ['drop database'],
+                     'save database': ['save database'],
+                     'load database': ['load database'],
+                     'create index': ['create index', 'on', 'using'],
+                     'drop index': ['drop index']
+                     }
+
+    if query[-1]!=';':
+        query+=';'
+
+    for kw in kw_per_action.keys():
+        if query.startswith(kw):
+            action = kw
+
+    return create_query_plan(query, kw_per_action[action], action)
 
     # pprint(dic, sort_dicts=False)
 
@@ -266,7 +236,6 @@ def interpret(query):
     #     for key in dics[i]:
     #         if dics[i][key] == f'_ph{i}_':
     #             dics[i][key] = dics[i+1]
-    pprint(dic, sort_dicts=False)
     # # print('###')
     # print(kws[0])
 
@@ -278,5 +247,7 @@ if __name__ == "__main__":
     fname = os.getenv('SQL')
     for line in open(fname, 'r').read().splitlines():
         if line.startswith('--'): continue
-        interpret(line.lower())
+        dic = interpret(line.lower())
+        pprint(dic, sort_dicts=False)
+
 
