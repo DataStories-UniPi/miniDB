@@ -77,7 +77,7 @@ class Table:
                 else:
                     raise Exception(f'"{col}" attribute already exists in "{self.__class__.__name__} "class.')
 
-            self.column_types = column_types
+            self.column_types = [eval(ct) for ct in column_types]
             self._no_of_columns = len(column_names)
             self.data = [] # data is a list of lists, a list of rows that is.
 
@@ -135,11 +135,10 @@ class Table:
 
         for i in range(len(row)):
             # for each value, cast and replace it in row.
-            try:
-                row[i] = self.column_types[i](row[i])
-
-            except:
-                raise ValueError(f'ERROR -> Value {row[i]} is not of type {self.column_types[i]}.')
+            # try:
+            row[i] = self.column_types[i](row[i])
+            # except:
+            #     raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
 
             # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
@@ -152,7 +151,7 @@ class Table:
             self.data.append(row)
         # self._update()
 
-    def _update_row(self, set_value, set_column, condition):
+    def _update_rows(self, set_value, set_column, condition):
         '''
         Update where Condition is met.
 

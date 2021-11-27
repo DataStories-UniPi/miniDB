@@ -1,8 +1,9 @@
 create database project1;
 load database project1;
-save database project1;
+--save database project1;
 drop database project1;
 drop table t1;
+create table teachers (name str PRIMARY KEY, age int, salary float);
 create table teachers (name str, age int, salary float);
 cast c1 from t1 to int;
 import t1 from t1.csv;

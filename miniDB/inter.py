@@ -2,7 +2,18 @@ import os
 import re
 from pprint import pprint
 import sys
+import readline
+import traceback
 
+# art font is big
+art = '''
+             _         _  _____   ____  
+            (_)       (_)|  __ \ |  _ \     
+  _ __ ___   _  _ __   _ | |  | || |_) |
+ | '_ ` _ \ | || '_ \ | || |  | ||  _ < 
+ | | | | | || || | | || || |__| || |_) |
+ |_| |_| |_||_||_| |_||_||_____/ |____/   2021 - v3                                
+'''   
 
 def search_between(s, first, last):
     try:
@@ -133,6 +144,24 @@ def create_query_plan(query, keywords, action):
             
         else:
             dic['desc'] = None
+
+    if action=='create table':
+        args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
+        dic['create table'] = dic['create table'].removesuffix(args).strip()
+        arg_nopk = args.replace('primary key', '')[1:-1]
+        arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
+        dic['column_names'] = ','.join([val[0] for val in arglist])
+        dic['column_types'] = ','.join([val[1] for val in arglist])
+        if 'primary key' in args:
+            arglist = args[1:-1].split(' ')
+            dic['primary key'] = arglist[arglist.index('primary')-2]
+        else:
+            dic['primary key'] = None
+    
+    if action=='import': 
+        dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
+        # dic['import table'] = dic.pop(action)
+        
     return dic
 
 def evaluate_from_clause(dic):
@@ -224,16 +253,16 @@ def interpret(query):
 def execute_dic(dic):
     from database import Database
     # create db with name "smdb"
-    db = Database('vsmdb', load=False)
-    db.create_table('classroom', ['building', 'room_number', 'capacity'], [str,str,int])
-    # insert 5 rows
-    db.insert('classroom', ['Packard', '101', '500'])
-    db.insert('classroom', ['Painter', '514', '10'])
-    db.insert('classroom', ['Taylor', '3128', '70'])
-    db.insert('classroom', ['Watson', '100', '30'])
-    db.insert('classroom', ['Watson', '120', '50'])
+    db = Database('phdb', load=True)
+    # db.create_table('classroom', ['building', 'room_number', 'capacity'], [str,str,int])
+    # # insert 5 rows
+    # db.insert('classroom', ['Packard', '101', '500'])
+    # db.insert('classroom', ['Painter', '514', '10'])
+    # db.insert('classroom', ['Taylor', '3128', '70'])
+    # db.insert('classroom', ['Watson', '100', '30'])
+    # db.insert('classroom', ['Watson', '120', '50'])
     
-    action = list(dic.keys())[0]
+    action = list(dic.keys())[0].replace(' ','_')
     try:
         getattr(db, action)(*dic.values())
     except AttributeError:
@@ -244,10 +273,32 @@ def execute_dic(dic):
 
 if __name__ == "__main__":
     fname = os.getenv('SQL')
-    for line in open(fname, 'r').read().splitlines():
-        if line.startswith('--'): continue
-        dic = interpret(line.lower())
-        pprint(dic, sort_dicts=False)
-        execute_dic(dic)
+    sbs = bool(int(os.getenv('SBS',0)))
+    if fname is not None:
+        for line in open(fname, 'r').read().splitlines():
+            if line.startswith('--'): continue
+            dic = interpret(line.lower())
+            pprint(dic, sort_dicts=False)
+            if sbs: 
+                if input()!='x':
+                    execute_dic(dic)
+    else:
+        print(art)
+        while 1:
+            line = input('> ').lower()
+            try:
+                if line=='exit':
+                    break
+                if line.startswith('explain'):
+                    dic = interpret(line.removeprefix('explain '))
+                    pprint(dic, sort_dicts=False)
+                else:
+                    dic = interpret(line)
+                    execute_dic(dic)
+            except Exception:
+                print(traceback.format_exc())
+                # print(e)
 
 
+                
+                
