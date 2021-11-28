@@ -12,7 +12,7 @@ art = '''
   _ __ ___   _  _ __   _ | |  | || |_) |
  | '_ ` _ \ | || '_ \ | || |  | ||  _ < 
  | | | | | || || | | || || |__| || |_) |
- |_| |_| |_||_||_| |_||_||_____/ |____/   2021 - v3                                
+ |_| |_| |_||_||_| |_||_||_____/ |____/   2021 - v3.1                               
 '''   
 
 def search_between(s, first, last):
@@ -268,7 +268,18 @@ def execute_dic(dic):
     except AttributeError:
         raise NotImplementedError("Class `{}` does not implement `{}`".format(db.__class__.__name__, action))
 
+def interpret_meta(command):
+    """
+    lsdb - list databases
+    lstb - list tables
+    """
+    commands_dict = {
+        'lsdb': lambda command: [fold.removesuffix('_db') for fold in os.listdir('dbdata')],
+        'lstb': lambda command: [pklf.removesuffix('.pkl') for pklf in os.listdir(f'dbdata/{command.split(" ")[-1]}_db')\
+            if pklf.endswith('.pkl')]
+    }
 
+    [print(val) for val in commands_dict[command[1:].split(' ')[0]](command)]
 
 
 if __name__ == "__main__":
@@ -285,11 +296,17 @@ if __name__ == "__main__":
     else:
         print(art)
         while 1:
-            line = input('> ').lower()
+            try:
+                line = input('> ').lower()
+            except (KeyboardInterrupt, EOFError):
+                print('\nbye!')
+                break
             try:
                 if line=='exit':
                     break
-                if line.startswith('explain'):
+                if line.startswith('.'):
+                    interpret_meta(line)
+                elif line.startswith('explain'):
                     dic = interpret(line.removeprefix('explain '))
                     pprint(dic, sort_dicts=False)
                 else:
