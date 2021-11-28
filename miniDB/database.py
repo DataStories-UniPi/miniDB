@@ -237,7 +237,7 @@ class Database:
         self._update()
         self.save_database()
 
-    def insert_into(self, table_name, row, lock_load_save=True):
+    def insert_into(self, table_name, row_str, lock_load_save=True):
         '''
         Inserts data to given table.
 
@@ -246,6 +246,7 @@ class Database:
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             lock_load_save: boolean. If False, user needs to load, lock and save the states of the database (CAUTION). Useful for bulk-loading.
         '''
+        row = row_str.split(',')
         if lock_load_save:
             self.load_database()
             if self.is_locked(table_name):
