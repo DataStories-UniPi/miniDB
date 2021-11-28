@@ -73,6 +73,12 @@ def create_query_plan(query, keywords, action):
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
         # dic['import table'] = dic.pop(action)
+
+    if action=='insert into':
+        if dic['values'][0] == '(' and dic['values'][-1] == ')':
+            dic['values'] = dic['values'][1:-1]
+        else:
+            raise ValueError('Your parens are not right m8')
         
     return dic
 
