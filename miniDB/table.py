@@ -78,7 +78,8 @@ class Table:
                 else:
                     raise Exception(f'"{col}" attribute already exists in "{self.__class__.__name__} "class.')
 
-            self.column_types = [eval(ct) for ct in column_types]
+            print(isinstance(column_types[0], type))
+            self.column_types = [eval(ct) if not isinstance(ct, type) else ct for ct in column_types]
             self._no_of_columns = len(column_names)
             self.data = [] # data is a list of lists, a list of rows that is.
 

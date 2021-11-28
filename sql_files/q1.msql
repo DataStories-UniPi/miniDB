@@ -1,1 +1,2 @@
 select name,city from t1 inner join t2 on c1=c2 order by c3 asc;
+--select * from (select * from (SELECT * FROM TEACH));

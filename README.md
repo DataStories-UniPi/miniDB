@@ -48,5 +48,8 @@ The database wil be save with the name `smdb`. You can load the database in a se
 >> db = Database("smdb", load=True)
 ```
 
+## TODOS
+Joins (recursive dicts), input hist, start-end (inter renaming)
+
 ## Contributors
 George S. Theodoropoulos, Bill Argiropoulos, Yannis Kontoulis, Apostolos Spanakis-Misirlis, Yannis Theodoridis; Data Science Lab., University of Piraeus.

@@ -338,11 +338,15 @@ class Database:
         '''
         # print(table_name)
         self.load_database()
+        if condition is not None:
+            condition_column = split_condition(condition)[0]
+
+        if isinstance(table_name,Table):
+            return table_name._select_where(columns, condition, order_by, desc, top_k).show()
+
         if self.is_locked(table_name):
             return
         self.lock_table(table_name, mode='x')
-        if condition is not None:
-            condition_column = split_condition(condition)[0]
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
             index_name = self.select('*', 'meta_indexes', f'table_name=={table_name}', return_object=True).index_name[0]
             bt = self._load_idx(index_name)
@@ -390,7 +394,7 @@ class Database:
         self._update()
         self.save_database()
 
-    def join(self, mode,left_table_name, right_table_name, condition, save_as=None, return_object=False):
+    def join(self, mode,left_table_name, right_table_name, condition, save_as=None, return_object=True):
         '''
         Join two tables that are part of the database where condition is met.
 
@@ -411,6 +415,7 @@ class Database:
             return
 
         if mode=='inner':
+            print(condition)
             res = self.tables[left_table_name]._inner_join(self.tables[right_table_name], condition)
         else:
             raise NotImplementedError

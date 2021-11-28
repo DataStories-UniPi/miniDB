@@ -17,3 +17,5 @@ db.insert_into('classroom', 'Painter,514,10')
 db.insert_into('classroom', 'Taylor,3128,70')
 db.insert_into('classroom', 'Watson,100,30')
 db.insert_into('classroom', 'Watson,120,50')
+
+print(db.tables['classroom'].building)

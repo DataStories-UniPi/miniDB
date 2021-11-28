@@ -95,14 +95,14 @@ def evaluate_from_clause(dic):
             raise ValueError('Too many joins')
         jidx = join_sent.index('join')
         if join_sent[jidx-1] in join_types:
-            join_dic['mode'] = join_sent[jidx-1]
+            join_dic['join'] = join_sent[jidx-1]
             join_dic['left'] = join_sent[jidx-2]
         else:
-            join_dic['mode'] = 'inner'
+            join_dic['join'] = 'inner'
             join_dic['left'] = join_sent[jidx-1]
         join_dic['right'] = join_sent[jidx+1]
         join_dic['on'] = ''.join(join_sent[join_sent.index('on')+1:])
-        dic['from'] = {'join': join_dic}
+        dic['from'] = join_dic
         # pass
         
     return dic
@@ -145,10 +145,15 @@ def execute_dic(dic):
     # db.insert('classroom', ['Taylor', '3128', '70'])
     # db.insert('classroom', ['Watson', '100', '30'])
     # db.insert('classroom', ['Watson', '120', '50'])
+    for key in dic.keys():
+        if isinstance(dic[key],dict):
+            dic[key] = execute_dic(dic[key])
     
     action = list(dic.keys())[0].replace(' ','_')
     # try:
-    getattr(db, action)(*dic.values())
+    res = getattr(db, action)(*dic.values())
+
+    return res
     # except AttributeError:
     #     raise NotImplementedError("Class `{}` does not implement `{}`".format(db.__class__.__name__, action))
 
@@ -200,9 +205,11 @@ if __name__ == "__main__":
             if line.startswith('--'): continue
             dic = interpret(line.lower())
             pprint(dic, sort_dicts=False)
+            execute_dic(dic)
+
             if sbs: 
                 if input()!='x':
-                    execute_dic(dic, db)
+                    execute_dic(dic)
     else:
         print(art)
         while 1:
