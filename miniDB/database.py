@@ -498,7 +498,8 @@ class Database:
         for table in self.tables.values():
             if table._name[:4]=='meta': #skip meta tables
                 continue
-            if table._name not in self.tables['meta_length'].table_name: # if new table, add record with 0 no. of rows
+            if table._name not in self.tables['meta_length'].column_by_name('table_name'): # if new table, add record with 0 no. of rows
+                print(f"{table._name} is not in {self.tables['meta_length'].column_by_name('table_name')}")
                 self.tables['meta_length']._insert([table._name, 0])
 
             # the result needs to represent the rows that contain data. Since we use an insert_stack
@@ -514,7 +515,7 @@ class Database:
         for table in self.tables.values():
             if table._name[:4]=='meta': #skip meta tables
                 continue
-            if table._name not in self.tables['meta_locks'].table_name:
+            if table._name not in self.tables['meta_locks'].column_by_name('table_name'):
 
                 self.tables['meta_locks']._insert([table._name, False])
                 # self.insert('meta_locks', [table._name, False])
@@ -526,7 +527,7 @@ class Database:
         for table in self.tables.values():
             if table._name[:4]=='meta': #skip meta tables
                 continue
-            if table._name not in self.tables['meta_insert_stack'].table_name:
+            if table._name not in self.tables['meta_insert_stack'].column_by_name('table_name'):
                 self.tables['meta_insert_stack']._insert([table._name, []])
 
 
@@ -575,7 +576,7 @@ class Database:
         '''
         if self.tables[table_name].pk_idx is None: # if no primary key, no index
             raise Exception('Cannot create index. Table has no primary key.')
-        if index_name not in self.tables['meta_indexes'].index_name:
+        if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
             # currently only btree is supported. This can be changed by adding another if.
             if index_type=='Btree':
                 logging.info('Creating Btree index.')
@@ -611,7 +612,7 @@ class Database:
         Args:
             table_name: string. Table name (must be part of database).
         '''
-        return table_name in self.tables['meta_indexes'].table_name
+        return table_name in self.tables['meta_indexes'].column_by_name('table_name')
 
     def _save_index(self, index_name, index):
         '''
