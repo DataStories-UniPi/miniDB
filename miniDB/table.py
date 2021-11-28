@@ -65,7 +65,6 @@ class Table:
                 raise ValueError('Need same number of column names and types.')
 
             self.column_names = column_names
-            print('self print', self.column_names)
 
             self.columns = []
 
@@ -78,7 +77,6 @@ class Table:
                 else:
                     raise Exception(f'"{col}" attribute already exists in "{self.__class__.__name__} "class.')
 
-            print(isinstance(column_types[0], type))
             self.column_types = [eval(ct) if not isinstance(ct, type) else ct for ct in column_types]
             self._no_of_columns = len(column_names)
             self.data = [] # data is a list of lists, a list of rows that is.
@@ -243,10 +241,8 @@ class Table:
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
-        elif isinstance(return_columns, str):
-            raise Exception(f'Return columns should be "*" or of type list. (the second parameter is return_columns not condition)')
         else:
-            return_cols = [self.column_names.index(colname) for colname in return_columns]
+            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
@@ -380,8 +376,8 @@ class Table:
 
         # get the column names of both tables with the table name in front
         # ex. for left -> name becomes left_table_name_name etc
-        left_names = [f'{self._name}_{colname}' for colname in self.column_names]
-        right_names = [f'{table_right._name}_{colname}' for colname in table_right.column_names]
+        left_names = [f'{self._name}.{colname}' for colname in self.column_names]
+        right_names = [f'{table_right._name}.{colname}' for colname in table_right.column_names]
 
         # define the new tables name, its column names and types
         join_table_name = f'{self._name}_join_{table_right._name}'
@@ -400,10 +396,6 @@ class Table:
                 no_of_ops+=1
                 if get_op(operator, left_value, right_value): #EQ_OP
                     join_table._insert(row_left+row_right)
-
-        print(f'## Select ops no. -> {no_of_ops}')
-        print(f'# Left table size -> {len(self.data)}')
-        print(f'# Right table size -> {len(table_right.data)}')
 
         return join_table
 

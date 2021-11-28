@@ -136,9 +136,9 @@ class Database:
             os.remove(f'{self.savedir}/{table_name}.pkl')
         else:
             warnings.warn(f'"{self.savedir}/{table_name}.pkl" not found.')
-        self.delete_table('meta_locks', f'table_name=={table_name}')
-        self.delete_table('meta_length', f'table_name=={table_name}')
-        self.delete_table('meta_insert_stack', f'table_name=={table_name}')
+        self.delete_table('meta_locks', f'table_name={table_name}')
+        self.delete_table('meta_length', f'table_name={table_name}')
+        self.delete_table('meta_insert_stack', f'table_name={table_name}')
 
         # self._update()
         self.save_database()
@@ -318,7 +318,7 @@ class Database:
         self.save_database()
 
     def select(self, columns, table_name, condition, order_by=None, top_k=True,\
-               desc=None, save_as=None, return_object=False):
+               desc=None, save_as=None, return_object=True):
         '''
         Selects and outputs a table's data where condtion is met.
 
@@ -338,21 +338,21 @@ class Database:
         '''
         # print(table_name)
         self.load_database()
+        if isinstance(table_name,Table):
+            return table_name._select_where(columns, condition, order_by, desc, top_k)
+
         if condition is not None:
             condition_column = split_condition(condition)[0]
-
-        if isinstance(table_name,Table):
-            return table_name._select_where(columns, condition, order_by, desc, top_k).show()
 
         if self.is_locked(table_name):
             return
         self.lock_table(table_name, mode='x')
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
-            index_name = self.select('*', 'meta_indexes', f'table_name=={table_name}', return_object=True).index_name[0]
+            index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).index_name[0]
             bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k)
+            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, int(top_k))
         else:
-            table = self.tables[table_name]._select_where(columns, condition, order_by, desc, top_k)
+            table = self.tables[table_name]._select_where(columns, condition, order_by, desc, int(top_k))
         self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as
@@ -394,13 +394,13 @@ class Database:
         self._update()
         self.save_database()
 
-    def join(self, mode,left_table_name, right_table_name, condition, save_as=None, return_object=True):
+    def join(self, mode, left_table, right_table, condition, save_as=None, return_object=True):
         '''
         Join two tables that are part of the database where condition is met.
 
         Args:
-            left_table_name: string. Left table's name (must be part of database).
-            right_table_name: string. Right table's name (must be part of database).
+            left_table: string. Name of the left table (must be in DB) or Table obj.
+            right_table: string. Name of the right table (must be in DB) or Table obj.
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
@@ -410,13 +410,15 @@ class Database:
         return_object: boolean. If True, the result will be a table object (useful for internal usage - the result will be printed by default).
         '''
         self.load_database()
-        if self.is_locked(left_table_name) or self.is_locked(right_table_name):
+        left_table = left_table if isinstance(left_table, Table) else self.tables[left_table] 
+        right_table = right_table if isinstance(right_table, Table) else self.tables[right_table] 
+
+        if self.is_locked(left_table) or self.is_locked(right_table):
             warnings.warn(f'Table(s) are currently locked.')
             return
 
         if mode=='inner':
-            print(condition)
-            res = self.tables[left_table_name]._inner_join(self.tables[right_table_name], condition)
+            res = left_table._inner_join(right_table, condition)
         else:
             raise NotImplementedError
 
@@ -440,7 +442,7 @@ class Database:
             return
 
         if mode=='x':
-            self.tables['meta_locks']._update_rows(True, 'locked', f'table_name=={table_name}')
+            self.tables['meta_locks']._update_rows(True, 'locked', f'table_name={table_name}')
         else:
             raise NotImplementedError
         self._save_locks()
@@ -453,7 +455,7 @@ class Database:
         Args:
             table_name: string. Table name (must be part of database).
         '''
-        self.tables['meta_locks']._update_rows(False, 'locked', f'table_name=={table_name}')
+        self.tables['meta_locks']._update_rows(False, 'locked', f'table_name={table_name}')
         self._save_locks()
         # print(f'Unlocking table "{table_name}"')
 
@@ -464,14 +466,14 @@ class Database:
         Args:
             table_name: string. Table name (must be part of database).
         '''
-        if table_name[:4]=='meta':  # meta tables will never be locked (they are internal)
+        if isinstance(table_name,Table) or table_name[:4]=='meta':  # meta tables will never be locked (they are internal)
             return False
 
         with open(f'{self.savedir}/meta_locks.pkl', 'rb') as f:
             self.tables.update({'meta_locks': pickle.load(f)})
 
         try:
-            res = self.select(['locked'],'meta_locks',  f'table_name=={table_name}', return_object=True).locked[0]
+            res = self.select('locked','meta_locks',  f'table_name={table_name}', return_object=True).locked[0]
             if res:
                 logging.info(f'Table "{table_name}" is currently locked.')
             return res
@@ -504,13 +506,12 @@ class Database:
             if table._name[:4]=='meta': #skip meta tables
                 continue
             if table._name not in self.tables['meta_length'].column_by_name('table_name'): # if new table, add record with 0 no. of rows
-                print(f"{table._name} is not in {self.tables['meta_length'].column_by_name('table_name')}")
                 self.tables['meta_length']._insert([table._name, 0])
 
             # the result needs to represent the rows that contain data. Since we use an insert_stack
             # some rows are filled with Nones. We skip these rows.
             non_none_rows = len([row for row in table.data if any(row)])
-            self.tables['meta_length']._update_rows(non_none_rows, 'no_of_rows', f'table_name=={table._name}')
+            self.tables['meta_length']._update_rows(non_none_rows, 'no_of_rows', f'table_name={table._name}')
             # self.update_row('meta_length', len(table.data), 'no_of_rows', 'table_name', '==', table._name)
 
     def _update_meta_locks(self):
@@ -554,8 +555,8 @@ class Database:
         Args:
             table_name: string. Table name (must be part of database).
         '''
-        return self.tables['meta_insert_stack']._select_where('*', f'table_name=={table_name}').column_by_name('indexes')[0]
-        # res = self.select('meta_insert_stack', '*', f'table_name=={table_name}', return_object=True).indexes[0]
+        return self.tables['meta_insert_stack']._select_where('*', f'table_name={table_name}').column_by_name('indexes')[0]
+        # res = self.select('meta_insert_stack', '*', f'table_name={table_name}', return_object=True).indexes[0]
         # return res
 
     def _update_meta_insert_stack_for_tb(self, table_name, new_stack):
@@ -566,7 +567,7 @@ class Database:
             table_name: string. Table name (must be part of database).
             new_stack: string. The stack that will be used to replace the existing one.
         '''
-        self.tables['meta_insert_stack']._update_rows(new_stack, 'indexes', f'table_name=={table_name}')
+        self.tables['meta_insert_stack']._update_rows(new_stack, 'indexes', f'table_name={table_name}')
 
 
     # indexes

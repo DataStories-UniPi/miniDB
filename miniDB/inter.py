@@ -151,9 +151,7 @@ def execute_dic(dic):
     
     action = list(dic.keys())[0].replace(' ','_')
     # try:
-    res = getattr(db, action)(*dic.values())
-
-    return res
+    return getattr(db, action)(*dic.values())
     # except AttributeError:
     #     raise NotImplementedError("Class `{}` does not implement `{}`".format(db.__class__.__name__, action))
 
@@ -205,11 +203,13 @@ if __name__ == "__main__":
             if line.startswith('--'): continue
             dic = interpret(line.lower())
             pprint(dic, sort_dicts=False)
-            execute_dic(dic)
+            result = execute_dic(dic)
 
             if sbs: 
                 if input()!='x':
-                    execute_dic(dic)
+                    result = execute_dic(dic)
+            if result is not None:
+                result.show()
     else:
         print(art)
         while 1:
@@ -230,7 +230,9 @@ if __name__ == "__main__":
                     pprint(dic, sort_dicts=False)
                 else:
                     dic = interpret(line)
-                    execute_dic(dic)
+                    result = execute_dic(dic)
+                    if result is not None:
+                        result.show()
             except Exception:
                 print(traceback.format_exc())
                 # print(e)
