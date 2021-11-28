@@ -29,7 +29,7 @@ class Database:
 
         if load:
             try:
-                self.load_database(name)
+                self.load_database()
                 logging.info(f'Loaded "{name}".')
                 return
             except:
@@ -46,14 +46,11 @@ class Database:
             pass
 
         # create all the meta tables
-        self.create_table('meta_length', 'table_name, no_of_rows', 'str, int')
-        self.create_table('meta_locks', 'table_name, locked', 'str, bool')
-        self.create_table('meta_insert_stack', 'table_name, indexes', 'str, list')
-        self.create_table('meta_indexes', 'table_name, index_name', 'str, str')
+        self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
+        self.create_table('meta_locks', 'table_name,locked', 'str,bool')
+        self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
+        self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
         self.save_database()
-
-    def create_database(self, name):
-        self.__init__(name, load=False)
 
     def save_database(self):
         '''
@@ -70,14 +67,14 @@ class Database:
         with open(f'{self.savedir}/meta_locks.pkl', 'wb') as f:
             pickle.dump(self.tables['meta_locks'], f)
 
-    def load_database(self, name):
+    def load_database(self):
         '''
         Load all tables that are part of the database (indices noted here are loaded).
 
         Args:
             path: string. Directory (path) of the database on the system.
         '''
-        path = f'dbdata/{name}_db'
+        path = f'dbdata/{self._name}_db'
         for file in os.listdir(path):
 
             if file[-3:]!='pkl': # if used to load only pkl files
@@ -88,12 +85,6 @@ class Database:
             name = f'{file.split(".")[0]}'
             self.tables.update({name: tmp_dict})
             # setattr(self, name, self.tables[name])
-
-    def drop_database(self, name):
-        '''
-        Drop database table.
-        '''
-        shutil.rmtree(f'dbdata/{name}_db')
 
     #### IO ####
 
@@ -117,6 +108,7 @@ class Database:
             primary_key: string. The primary key (if it exists).
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
+        # print('here -> ', column_names.split(','))
         self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
@@ -134,7 +126,7 @@ class Database:
         Args:
             table_name: string. Name of table.
         '''
-        self.load_database(self.savedir)
+        self.load_database()
         if self.is_locked(table_name):
             return
 
@@ -152,7 +144,7 @@ class Database:
         self.save_database()
 
 
-    def import_table(self, name, filename, column_types=None, primary_key=None):
+    def import_table(self, table_name, filename, column_types=None, primary_key=None):
         '''
         Creates table from CSV file.
 
@@ -169,13 +161,13 @@ class Database:
                 colnames = line.strip('\n').split(',')
                 if column_types is None:
                     column_types = [str for _ in colnames]
-                self.create_table(name=name, column_names=",".join(colnames), column_types=",".join(column_types), primary_key=primary_key)
-                self.lockX_table(name)
+                self.create_table(name=table_name, column_names=",".join(colnames), column_types=",".join(column_types), primary_key=primary_key)
+                self.lock_table(table_name, mode='x')
                 first_line = False
                 continue
-            self.tables[name]._insert(line.strip('\n').split(','))
+            self.tables[table_name]._insert(line.strip('\n').split(','))
 
-        self.unlock_table(name)
+        self.unlock_table(table_name)
         self._update()
         self.save_database()
 
@@ -236,10 +228,10 @@ class Database:
             column_name: string. The column that will be casted (must be part of database).
             cast_type: type. Cast type (do not encapsulate in quotes).
         '''
-        self.load_database(self.savedir)
+        self.load_database()
         if self.is_locked(table_name):
             return
-        self.lockX_table(table_name)
+        self.lock_table(table_name, mode='x')
         self.tables[table_name]._cast_column(column_name, cast_type)
         self.unlock_table(table_name)
         self._update()
@@ -255,12 +247,12 @@ class Database:
             lock_load_save: boolean. If False, user needs to load, lock and save the states of the database (CAUTION). Useful for bulk-loading.
         '''
         if lock_load_save:
-            self.load_database(self.savedir)
+            self.load_database()
             if self.is_locked(table_name):
                 return
             # fetch the insert_stack. For more info on the insert_stack
             # check the insert_stack meta table
-            self.lockX_table(table_name)
+            self.lock_table(table_name, mode='x')
         insert_stack = self._get_insert_stack_for_table(table_name)
         try:
             self.tables[table_name]._insert(row, insert_stack)
@@ -290,10 +282,10 @@ class Database:
                 Operatores supported: (<,<=,==,>=,>)
         '''
         set_column, set_value = set_args.replace(' ','').split('=')
-        self.load_database(self.savedir)
+        self.load_database()
         if self.is_locked(table_name):
             return
-        self.lockX_table(table_name)
+        self.lock_table(table_name, mode='x')
         self.tables[table_name]._update_rows(set_value, set_column, condition)
         self.unlock_table(table_name)
         self._update()
@@ -311,10 +303,10 @@ class Database:
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
-        self.load_database(self.savedir)
+        self.load_database()
         if self.is_locked(table_name):
             return
-        self.lockX_table(table_name)
+        self.lock_table(table_name, mode='x')
         deleted = self.tables[table_name]._delete_where(condition)
         self.unlock_table(table_name)
         self._update()
@@ -343,11 +335,11 @@ class Database:
             save_as: string. The name that will be used to save the resulting table into the database (no save if None).
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
         '''
-        print(table_name)
-        self.load_database(self.savedir)
+        # print(table_name)
+        self.load_database()
         if self.is_locked(table_name):
             return
-        self.lockX_table(table_name)
+        self.lock_table(table_name, mode='x')
         if condition is not None:
             condition_column = split_condition(condition)[0]
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
@@ -373,7 +365,7 @@ class Database:
         Args:
             table_name: string. Name of table (must be part of database).
         '''
-        self.load_database(self.savedir)
+        self.load_database()
         if self.is_locked(table_name):
             return
         self.tables[table_name].show(no_of_rows, self.is_locked(table_name))
@@ -388,10 +380,10 @@ class Database:
             asc: If True sort will return results in ascending order (False by default).
         '''
 
-        self.load_database(self.savedir)
+        self.load_database()
         if self.is_locked(table_name):
             return
-        self.lockX_table(table_name)
+        self.lock_table(table_name, mode='x')
         self.tables[table_name]._sort(column_name, asc=asc)
         self.unlock_table(table_name)
         self._update()
@@ -412,7 +404,7 @@ class Database:
         save_as: string. The output filename that will be used to save the resulting table in the database (won't save if None).
         return_object: boolean. If True, the result will be a table object (useful for internal usage - the result will be printed by default).
         '''
-        self.load_database(self.savedir)
+        self.load_database()
         if self.is_locked(left_table_name) or self.is_locked(right_table_name):
             warnings.warn(f'Table(s) are currently locked.')
             return
@@ -470,7 +462,7 @@ class Database:
             return False
 
         with open(f'{self.savedir}/meta_locks.pkl', 'rb') as f:
-            self.tables.update({'meta_locks': pickle.load_database(f)})
+            self.tables.update({'meta_locks': pickle.load(f)})
 
         try:
             res = self.select(['locked'],'meta_locks',  f'table_name=={table_name}', return_object=True).locked[0]
@@ -488,7 +480,7 @@ class Database:
         else:
             cache_list = '\n'.join([str(readline.get_history_item(i + 1)) for i in range(readline.get_current_history_length())])
             out = tabulate({"Command": cache_list.split('\n')}, headers=["Index","Command"], showindex="always")
-        print(out)
+        print('journal:', out)
         #return out
 
 
@@ -644,6 +636,6 @@ class Database:
             index_name: string. Name of created index.
         '''
         f = open(f'{self.savedir}/indexes/meta_{index_name}_index.pkl', 'rb')
-        index = pickle.load_database(f)
+        index = pickle.load(f)
         f.close()
         return index

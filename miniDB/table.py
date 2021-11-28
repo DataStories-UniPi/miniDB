@@ -65,6 +65,7 @@ class Table:
                 raise ValueError('Need same number of column names and types.')
 
             self.column_names = column_names
+            print('self print', self.column_names)
 
             self.columns = []
 

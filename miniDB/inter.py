@@ -1,9 +1,11 @@
+from database import Database
 import os
 import re
 from pprint import pprint
 import sys
 import readline
 import traceback
+import shutil
 
 # art font is big
 art = '''
@@ -21,98 +23,8 @@ def search_between(s, first, last):
         end = s.index( last, start )
     except:
         return
-    return s[start:end]
+    return s[start:end].strip()
 
-
-def create_table(query):
-    table_name = search_between(query, 'table', '(')
-    column_names = [val.strip().split(' ')[0] for val in search_between(query,'(', ')').split(',')]
-    column_types = [val.strip().split(' ')[1] for val in search_between(query,'(', ')').split(',')]
-    print(f'creating table {table_name} with cols {column_names} and types {column_types}')
-
-
-def drop_table(query):
-    table_name = search_between(query,'table', ';')
-    print(f'droping table -> {table_name}')
-
-
-def cast_table(query):
-    colname = search_between(query,'cast', 'from')
-    tablename = search_between(query,'from', 'to')
-    coltype = search_between(query,'to', ';')
-    print(f'casting col {colname} from table {tablename} to {coltype}')
-
-def import_table(query):
-    table_name = search_between(query,'import', 'from')
-    csv_name = search_between(query,'from', ';')
-    print(f'importing table -> {table_name} from {csv_name}')
-
-def export_table(query):
-    table_name = search_between(query,'export', 'to')
-    csv_name = search_between(query,'to', ';')
-    print(f'Exporting table -> {table_name} to file {csv_name}')
-
-def insert_into_table(query):
-    table_name = search_between(query,'into', 'values')
-    values = search_between(search_between(query,'values', ';'),'[', ']').split(',')
-    print(f'will insert {values} into {table_name}')
-
-def select_table(dic):
-    # print(query)
-    # project_args = ['select']
-    # evaluate from
-
-    print(dic)
-    return
-    dic['from'] = {
-
-    }
-
-    select_args = ['select', 'from', 'where', 'order by', 'top']
-    # qp = {
-    #     'project': query['select'],
-    #     'from':  
-    # }
-
-
-    # for 
-    columns = search_between(query,'select', 'from')
-    table_name = search_between(query,'from ', ' ')
-
-    condition = search_between(query,'where ', ' ')
-    
-    order_by = search_between(query,'order by ', ' ')
-    asc = 'asc' in search_between(query, order_by, ';') if order_by is not None else None
-    top_k = search_between(query,'top ', ' ')
-
-    print(f'select {columns,table_name,condition,order_by,asc,top_k}')
-
-def lock_table(query):
-    pass
-
-def delete_table(query):
-    pass
-
-def update_table(query):
-    pass
-
-def create_database(query):
-    pass
-
-def save_database(query):
-    pass
-
-def drop_database(query):
-    pass
-
-def load_database(query):
-    pass
-
-def create_index(query):
-    pass
-
-def drop_index(query):
-    pass
 
 def create_query_plan(query, keywords, action):
 
@@ -130,7 +42,7 @@ def create_query_plan(query, keywords, action):
     # print(kw_in_query)
 
     for kw1, kw2 in zip(kw_in_query,kw_in_query[1:]):
-        dic[kw1] = search_between(query,kw1,kw2).strip()
+        dic[kw1] = search_between(query,kw1,kw2)
 
     if action=='select':
         dic = evaluate_from_clause(dic)
@@ -189,24 +101,6 @@ def evaluate_from_clause(dic):
         
     return dic
 
-    # kw_per_action = {'create table': create_table,
-    #                  'drop table': drop_table,
-    #                  'cast': cast_table,
-    #                  'import': import_table,
-    #                  'export': export_table,
-    #                  'insert into': insert_into_table,
-    #                  'select': select_table,
-    #                  'lock table': lock_table,
-    #                  'delete from': delete_table,
-    #                  'update table': update_table,
-    #                  'create database': create_database,
-    #                  'drop database': drop_database,
-    #                  'save database': save_database,
-    #                  'load database': load_database,
-    #                  'create index': create_index,
-    #                  'drop index': drop_index
-    #                  }
-
 def interpret(query):
     kw_per_action = {'create table': ['create table'],
                      'drop table': ['drop table'],
@@ -218,10 +112,10 @@ def interpret(query):
                      'lock table': ['lock', 'mode'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
-                     'create database': ['create database'],
-                     'drop database': ['drop database'],
-                     'save database': ['save database'],
-                     'load database': ['load database'],
+                    #  'create database': ['create database'],
+                    #  'drop database': ['drop database'],
+                    #  'save database': ['save database'],
+                    #  'load database': ['load database'],
                      'create index': ['create index', 'on', 'using'],
                      'drop index': ['drop index']
                      }
@@ -235,25 +129,8 @@ def interpret(query):
 
     return create_query_plan(query, kw_per_action[action], action)
 
-    # pprint(dic, sort_dicts=False)
-
-    #evaluate f
-
-    #     dics.append(dic)
-    
-    # for i in range(0,len(dics)-1)[::-1]:
-    #     for key in dics[i]:
-    #         if dics[i][key] == f'_ph{i}_':
-    #             dics[i][key] = dics[i+1]
-    # # print('###')
-    # print(kws[0])
-
-    # return actions[action](dic)
-
 def execute_dic(dic):
-    from database import Database
-    # create db with name "smdb"
-    db = Database('phdb', load=True)
+    
     # db.create_table('classroom', ['building', 'room_number', 'capacity'], [str,str,int])
     # # insert 5 rows
     # db.insert('classroom', ['Packard', '101', '500'])
@@ -263,28 +140,54 @@ def execute_dic(dic):
     # db.insert('classroom', ['Watson', '120', '50'])
     
     action = list(dic.keys())[0].replace(' ','_')
-    try:
-        getattr(db, action)(*dic.values())
-    except AttributeError:
-        raise NotImplementedError("Class `{}` does not implement `{}`".format(db.__class__.__name__, action))
+    # try:
+    getattr(db, action)(*dic.values())
+    # except AttributeError:
+    #     raise NotImplementedError("Class `{}` does not implement `{}`".format(db.__class__.__name__, action))
 
 def interpret_meta(command):
     """
     lsdb - list databases
     lstb - list tables
     """
+    # global db
+    action = command[1:].split(' ')[0].removesuffix(';')
+    print('actions is', action)
+
+    db_name = db._name if search_between(command, action,';')=='' else search_between(command, action,';')
+    print('dbname is', db_name)
+
+    def list_databases(db_name):
+        [print(fold.removesuffix('_db')) for fold in os.listdir('dbdata')]
+    
+    def list_tables(db_name):
+        [print(pklf.removesuffix('.pkl')) for pklf in os.listdir(f'dbdata/{db_name}_db') if pklf.endswith('.pkl')]
+
+    def change_db(db_name):
+        global db
+        db = Database(db_name, load=True)
+    
+    def remove_db(db_name):
+        shutil.rmtree(f'dbdata/{db_name}_db')
+
     commands_dict = {
-        'lsdb': lambda command: [fold.removesuffix('_db') for fold in os.listdir('dbdata')],
-        'lstb': lambda command: [pklf.removesuffix('.pkl') for pklf in os.listdir(f'dbdata/{command.split(" ")[-1]}_db')\
-            if pklf.endswith('.pkl')]
+        'lsdb': list_databases,
+        'lstb': list_tables,
+        'cdb': change_db,
+        'rmdb': remove_db,
     }
 
-    [print(val) for val in commands_dict[command[1:].split(' ')[0]](command)]
+    commands_dict[action](db_name)
 
 
 if __name__ == "__main__":
+    # create db with name "smdb"
     fname = os.getenv('SQL')
+    dbname = os.getenv('DB')
     sbs = bool(int(os.getenv('SBS',0)))
+
+    db = Database(dbname, load=True)
+
     if fname is not None:
         for line in open(fname, 'r').read().splitlines():
             if line.startswith('--'): continue
@@ -292,12 +195,14 @@ if __name__ == "__main__":
             pprint(dic, sort_dicts=False)
             if sbs: 
                 if input()!='x':
-                    execute_dic(dic)
+                    execute_dic(dic, db)
     else:
         print(art)
         while 1:
             try:
-                line = input('> ').lower()
+                line = input(f'({db._name})> ').lower()
+                if line[-1]!=';':
+                    line+=';'
             except (KeyboardInterrupt, EOFError):
                 print('\nbye!')
                 break
