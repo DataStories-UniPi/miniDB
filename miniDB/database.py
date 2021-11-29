@@ -131,7 +131,6 @@ class Database:
             return
 
         self.tables.pop(table_name)
-        delattr(self, table_name)
         if os.path.isfile(f'{self.savedir}/{table_name}.pkl'):
             os.remove(f'{self.savedir}/{table_name}.pkl')
         else:
@@ -158,10 +157,10 @@ class Database:
         first_line=True
         for line in file.readlines():
             if first_line:
-                colnames = line.strip('\n').split(',')
+                colnames = line.strip('\n')
                 if column_types is None:
-                    column_types = [str for _ in colnames]
-                self.create_table(name=table_name, column_names=",".join(colnames), column_types=",".join(column_types), primary_key=primary_key)
+                    column_types = ",".join(['str' for _ in colnames.split(',')])
+                self.create_table(name=table_name, column_names=colnames, column_types=column_types, primary_key=primary_key)
                 self.lock_table(table_name, mode='x')
                 first_line = False
                 continue
@@ -232,7 +231,7 @@ class Database:
         if self.is_locked(table_name):
             return
         self.lock_table(table_name, mode='x')
-        self.tables[table_name]._cast_column(column_name, cast_type)
+        self.tables[table_name]._cast_column(column_name, eval(cast_type))
         self.unlock_table(table_name)
         self._update()
         self.save_database()
@@ -348,11 +347,11 @@ class Database:
             return
         self.lock_table(table_name, mode='x')
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
-            index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).index_name[0]
+            index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, int(top_k))
+            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k)
         else:
-            table = self.tables[table_name]._select_where(columns, condition, order_by, desc, int(top_k))
+            table = self.tables[table_name]._select_where(columns, condition, order_by, desc, top_k)
         self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as
@@ -571,7 +570,7 @@ class Database:
 
 
     # indexes
-    def create_index(self, index_name, table_name, index_type='Btree'):
+    def create_index(self, index_name, table_name, index_type='btree'):
         '''
         Creates an index on a specified table with a given name.
         Important: An index can only be created on a primary key (the user does not specify the column).
@@ -584,7 +583,7 @@ class Database:
             raise Exception('Cannot create index. Table has no primary key.')
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
             # currently only btree is supported. This can be changed by adding another if.
-            if index_type=='Btree':
+            if index_type=='btree':
                 logging.info('Creating Btree index.')
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
                 self.tables['meta_indexes']._insert([table_name, index_name])
@@ -605,7 +604,7 @@ class Database:
         bt = Btree(3) # 3 is arbitrary
 
         # for each record in the primary key of the table, insert its value and index to the btree
-        for idx, key in enumerate(self.tables[table_name].column_by_name[self.tables[table_name].pk]):
+        for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
             bt.insert(key, idx)
         # save the btree
         self._save_index(index_name, bt)

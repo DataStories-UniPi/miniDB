@@ -78,7 +78,6 @@ class Table:
                     raise Exception(f'"{col}" attribute already exists in "{self.__class__.__name__} "class.')
 
             self.column_types = [eval(ct) if not isinstance(ct, type) else ct for ct in column_types]
-            self._no_of_columns = len(column_names)
             self.data = [] # data is a list of lists, a list of rows that is.
 
             # if primary key is set, keep its index as an attribute
@@ -100,7 +99,7 @@ class Table:
         '''
         Update all the available columns with the appended rows.
         '''
-        self.columns = [[row[i] for row in self.data] for i in range(self._no_of_columns)]
+        self.columns = [[row[i] for row in self.data] for i in range(len(self.column_names))]
         for ind, col in enumerate(self.column_names):
             setattr(self, col, self.columns[ind])
 
@@ -130,8 +129,8 @@ class Table:
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             insert_stack: list. The insert stack (empty by default).
         '''
-        if len(row)!=self._no_of_columns:
-            raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {self._no_of_columns} columns exist')
+        if len(row)!=len(self.column_names):
+            raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
 
         for i in range(len(row)):
             # for each value, cast and replace it in row.
@@ -217,7 +216,6 @@ class Table:
                 self.data.pop(index)
 
         # self._update()
-        print(f"Deleted {len(indexes_to_del)} rows")
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
 
@@ -254,7 +252,7 @@ class Table:
             rows = [i for i in range(len(self.data))]
 
         # top k rows
-        rows = rows[:top_k]
+        # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
 
@@ -262,13 +260,14 @@ class Table:
         # only return some columns
         dict['column_names'] = [self.column_names[i] for i in return_cols]
         dict['column_types']   = [self.column_types[i] for i in return_cols]
-        dict['_no_of_columns'] = len(return_cols)
 
-        # order by the return table if specified
-        if order_by is None:
-            return Table(load=dict)
-        else:
-            return Table(load=dict).order_by(order_by, desc)
+        s_table = Table(load=dict) 
+        if order_by:
+            s_table.order_by(order_by, desc)
+
+        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
+
+        return s_table
 
 
     def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, desc=True, top_k=None):
@@ -315,33 +314,18 @@ class Table:
 
         dict['column_names'] = [self.column_names[i] for i in return_cols]
         dict['column_types']   = [self.column_types[i] for i in return_cols]
-        dict['_no_of_columns'] = len(return_cols)
 
-        if order_by is None:
-            return Table(load=dict)
-        else:
-            return Table(load=dict).order_by(order_by, desc)
+        s_table = Table(load=dict) 
+        if order_by:
+            s_table.order_by(order_by, desc)
 
+        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
+
+        return s_table
 
     def order_by(self, column_name, desc=True):
         '''
-        Order by based on column.
-
-        Args:
-            column_name: string. Name of column.
-            desc: boolean. If True, order_by will return results in descending order (False by default).
-        '''
-        # get column, sort values and return sorted indexes
-        column = self.column_by_name(column_name)
-        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=desc)
-        # return table but arange data using idx list (sorted indexes)
-        dict = {(key):([self.data[i] for i in idx] if key=="data" else value) for key, value in self.__dict__.items()}
-        return Table(load=dict)
-
-
-    def _sort(self, column_name, desc=True):
-        '''
-        Same as order_by, but it's persistent.
+        Order table based on column.
 
         Args:
             column_name: string. Name of column.

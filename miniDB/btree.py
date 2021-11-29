@@ -292,7 +292,7 @@ class Btree:
         leaf_idx, ops = self._search(value, True)
         target_node = self.nodes[leaf_idx]
 
-        if operator == '==':
+        if operator == '=':
             # if the element exist, append to list, else pass and return
             try:
                 results.append(target_node.ptrs[target_node.values.index(value)])

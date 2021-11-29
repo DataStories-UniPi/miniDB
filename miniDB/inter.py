@@ -162,16 +162,15 @@ def interpret_meta(command):
     """
     # global db
     action = command[1:].split(' ')[0].removesuffix(';')
-    print('actions is', action)
 
     db_name = db._name if search_between(command, action,';')=='' else search_between(command, action,';')
-    print('dbname is', db_name)
 
     def list_databases(db_name):
         [print(fold.removesuffix('_db')) for fold in os.listdir('dbdata')]
     
     def list_tables(db_name):
-        [print(pklf.removesuffix('.pkl')) for pklf in os.listdir(f'dbdata/{db_name}_db') if pklf.endswith('.pkl')]
+        [print(pklf.removesuffix('.pkl')) for pklf in os.listdir(f'dbdata/{db_name}_db') if pklf.endswith('.pkl')\
+            and not pklf.startswith('meta')]
 
     def change_db(db_name):
         global db
