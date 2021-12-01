@@ -246,7 +246,7 @@ class Database:
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             lock_load_save: boolean. If False, user needs to load, lock and save the states of the database (CAUTION). Useful for bulk-loading.
         '''
-        row = row_str.split(',')
+        row = row_str.strip().split(',')
         if lock_load_save:
             self.load_database()
             if self.is_locked(table_name):
