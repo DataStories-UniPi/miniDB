@@ -1,4 +1,3 @@
-from database import Database
 import os
 import re
 from pprint import pprint
@@ -6,7 +5,9 @@ import sys
 import readline
 import traceback
 import shutil
+sys.path.append('miniDB')
 
+from database import Database
 # art font is big
 art = '''
              _         _  _____   ____  
@@ -62,7 +63,7 @@ def create_query_plan(query, keywords, action):
             kw_positions.append(i)
         elif i!=len(ql)-1 and f'{ql[i]} {ql[i+1]}' in keywords and not in_paren(ql, i):
             kw_in_query.append(f'{ql[i]} {ql[i+1]}')
-            kw_positions.append(i)
+            kw_positions.append(i+1)
 
 
     for i in range(len(kw_in_query)-1):
@@ -111,7 +112,6 @@ def create_query_plan(query, keywords, action):
 def evaluate_from_clause(dic):
     join_types = ['inner', 'left', 'right', 'full']
     from_split = dic['from'].split(' ')
-    print('test -',from_split)
     if from_split[0] == '(' and from_split[-1] == ')':
         subquery = ' '.join(from_split[1:-1])
         dic['from'] = interpret(subquery)
@@ -231,13 +231,13 @@ if __name__ == "__main__":
             if line.startswith('--'): continue
             dic = interpret(line.lower())
             pprint(dic, sort_dicts=False)
-            # result = execute_dic(dic)
+            result = execute_dic(dic)
 
-            # if sbs: 
-            #     if input()!='x':
-            #         result = execute_dic(dic)
-            # if result is not None:
-            #     result.show()
+            if sbs: 
+                if input()!='x':
+                    result = execute_dic(dic)
+            if result is not None:
+                result.show()
     else:
         from prompt_toolkit import PromptSession
         from prompt_toolkit.history import FileHistory
