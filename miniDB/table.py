@@ -281,8 +281,6 @@ class Table:
 
         column_name, operator, value = self._parse_condition(condition)
 
-        print("1: ", type(value), " 2: ", self.column_types[self.column_names.index(column_name)])
-
         # if the column in condition is not a primary key, abort the select
         if column_name != self.column_names[self.pk_idx]:
             print('Column is not PK. Aborting')
@@ -299,13 +297,8 @@ class Table:
             if get_op(operator, x, value):
                 rows1.append(ind)
 
-        print(f'Without Btree -> {opsseq} comparison operations')
         # btree find
         rows = bt.find(operator, value)
-        print('### Seq result ###')
-        print(rows1)
-        print('### Index result ###')
-        print(rows)
 
         # same as simple select from now on
         rows = rows[:top_k]

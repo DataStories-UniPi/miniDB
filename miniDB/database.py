@@ -342,6 +342,8 @@ class Database:
 
         if condition is not None:
             condition_column = split_condition(condition)[0]
+        else:
+            condition_column = ''
 
         if self.is_locked(table_name):
             return

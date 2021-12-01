@@ -25,6 +25,25 @@ def search_between(s, first, last):
         return
     return s[start:end].strip()
 
+def match_parens(text):
+     # print(text)
+     d = []
+     istart = []
+     for i, c in enumerate(text):
+         if c == '(':
+             istart.append(i)
+         if c == ')':
+             try:
+                 d.append((istart.pop(),i)) 
+             except IndexError:
+                #  raise ValueError('Too many closing parentheses')
+                return -1
+     if istart:  # check if stack is empty afterwards
+        #  raise ValueError('Too many opening parentheses')
+        return -2
+
+     return d
+
 
 def create_query_plan(query, keywords, action):
 
@@ -32,11 +51,16 @@ def create_query_plan(query, keywords, action):
 
     ql = query.split(' ')
 
+    parens = match_parens(query)
+    print('parens', parens)
+
     kw_in_query = []
     for i in range(len(ql)-1):
-        if ql[i] in keywords:
+        print('1', ql[i],match_parens(query[:query.index(ql[i])])!=-2)
+        if ql[i] in keywords and match_parens(query[:query.index(ql[i])])!=-2:
             kw_in_query.append(ql[i])
-        elif f'{ql[i]} {ql[i+1]}' in keywords:
+        elif f'{ql[i]} {ql[i+1]}' in keywords and match_parens(query[:query.index(f'{ql[i]} {ql[i+1]}')])!=-2:
+            # print('2', match_parens(query[:query.index(f'{ql[i]} {ql[i+1]}')])!=-2)
             kw_in_query.append(f'{ql[i]} {ql[i+1]}')
     kw_in_query.append(';')
     # print(kw_in_query)
@@ -84,6 +108,7 @@ def create_query_plan(query, keywords, action):
 
 def evaluate_from_clause(dic):
     join_types = ['inner','left', 'right', 'full']
+    print('test -',dic['from'])
     if dic['from'][0] == '(' and dic['from'][-1] == ')':
         subquery = dic['from'][1:-1]
         dic['from'] = interpret(subquery)
