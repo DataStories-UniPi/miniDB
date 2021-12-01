@@ -1,0 +1,21 @@
+drop table t1;
+create table teachers (name str PRIMARY KEY, age int, salary float);
+create table teachers (name str, age int, salary float);
+cast c1 from t1 to int;
+import t1 from t1.csv;
+export t1 to t1.csv;
+create index ind1 on t1 using btree;
+drop index ind1;
+insert into t1 values (1,2,3);
+delete from t1 where c1>10;
+update table t1 set c1 = 1 where c2=3;
+select * from classroom;
+select * from classroom where capacity>10;
+select name,age from teachers where age >50 top 10;
+select name,city from t1 inner join t2 on c1=c2;
+select name,city from t1 inner join t2 on c1 = c2 order by c3 asc;
+lock table t1 mode S;
+lock table t1 mode X;
+select * from (select * from (SELECT * FROM TEACH));
+-- crea
+-- create, load, save, drop, cast, import, export, insert, select, lock, delete, update

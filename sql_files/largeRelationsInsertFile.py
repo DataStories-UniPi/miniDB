@@ -1,6 +1,5 @@
-from database import Database
-
-db = Database('lgdb', load=False)
+from ..db import database
+db = database.Database('lgdb', load=False)
 
 db.create_table('classroom', ['building', 'room_number', 'capacity'], [str,str,int])
 db.create_table('department', ['dept_name', 'building', 'budget'], [str,str,int], primary_key='dept_name')

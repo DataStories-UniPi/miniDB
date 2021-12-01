@@ -1,0 +1,3 @@
+--select * from (select * from (SELECT * FROM TEACH));
+--select * from t1;
+select * from classroom where capacity>50 order by capacity asc;

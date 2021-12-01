@@ -3,6 +3,13 @@ import os
 import sys
 
 def preview(dirname='dbdata', plot=False):
+    '''
+    Plots the distribution of the table size on disk.
+
+    Args:
+        dirname: string. The directory containing the database data.
+        plot: boolean. Will save to (image) file if True, will display the plot otherwise.
+    '''
     plt.figure(figsize=(5, 5))
 
     table_flag = False

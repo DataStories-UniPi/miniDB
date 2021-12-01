@@ -8,7 +8,7 @@ def get_op(op, a, b):
                 '<': operator.lt,
                 '>=': operator.ge,
                 '<=': operator.le,
-                '==': operator.eq}
+                '=': operator.eq}
 
     try:
         return ops[op](a,b)
@@ -19,7 +19,7 @@ def split_condition(condition):
     condition = condition.replace(' ','') # remove all whitespaces
     ops = {'>=': operator.ge,
            '<=': operator.le,
-           '==': operator.eq,
+           '=': operator.eq,
            '>': operator.gt,
            '<': operator.lt}
 

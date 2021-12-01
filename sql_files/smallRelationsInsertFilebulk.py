@@ -1,6 +1,6 @@
-from database import Database
+from ..db import database
 
-db = Database('smdbtest', load=False)
+db = database.Database('smdbtest', load=False)
 
 db.create_table('classroom', ['building', 'room_number', 'capacity'], [str,int,int])
 db.create_table('department', ['dept_name', 'building', 'budget'], [str,str,int], primary_key='dept_name')
