@@ -25,6 +25,9 @@ def search_between(s, first, last):
         return
     return s[start:end].strip()
 
+def in_paren(qsplit, ind):
+    return qsplit[:ind].count('(')>qsplit[:ind].count(')')
+
 def match_parens(text):
      # print(text)
      d = []
@@ -47,27 +50,26 @@ def match_parens(text):
 
 def create_query_plan(query, keywords, action):
 
-    dic = {val: None for val in keywords}
+    dic = {val: None for val in keywords if val!=';'}
 
-    ql = query.split(' ')
-
-    parens = match_parens(query)
-    print('parens', parens)
+    ql = [val for val in query.split(' ') if val !='']
 
     kw_in_query = []
-    for i in range(len(ql)-1):
-        print('1', ql[i],match_parens(query[:query.index(ql[i])])!=-2)
-        if ql[i] in keywords and match_parens(query[:query.index(ql[i])])!=-2:
+    kw_positions = []
+    for i in range(len(ql)):
+        if ql[i] in keywords and not in_paren(ql, i):
             kw_in_query.append(ql[i])
-        elif f'{ql[i]} {ql[i+1]}' in keywords and match_parens(query[:query.index(f'{ql[i]} {ql[i+1]}')])!=-2:
-            # print('2', match_parens(query[:query.index(f'{ql[i]} {ql[i+1]}')])!=-2)
+            kw_positions.append(i)
+        elif i!=len(ql)-1 and f'{ql[i]} {ql[i+1]}' in keywords and not in_paren(ql, i):
             kw_in_query.append(f'{ql[i]} {ql[i+1]}')
-    kw_in_query.append(';')
+            kw_positions.append(i)
+
+
+    for i in range(len(kw_in_query)-1):
+        dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
+
     # print(kw_in_query)
-
-    for kw1, kw2 in zip(kw_in_query,kw_in_query[1:]):
-        dic[kw1] = search_between(query,kw1,kw2)
-
+    # print(dic)
     if action=='select':
         dic = evaluate_from_clause(dic)
         
@@ -107,26 +109,39 @@ def create_query_plan(query, keywords, action):
     return dic
 
 def evaluate_from_clause(dic):
-    join_types = ['inner','left', 'right', 'full']
-    print('test -',dic['from'])
-    if dic['from'][0] == '(' and dic['from'][-1] == ')':
-        subquery = dic['from'][1:-1]
+    join_types = ['inner', 'left', 'right', 'full']
+    from_split = dic['from'].split(' ')
+    print('test -',from_split)
+    if from_split[0] == '(' and from_split[-1] == ')':
+        subquery = ' '.join(from_split[1:-1])
         dic['from'] = interpret(subquery)
 
-    if 'join' in dic['from']:
+    join_idx = [i for i,word in enumerate(from_split) if word=='join' and not in_paren(from_split,i)]
+    on_idx = [i for i,word in enumerate(from_split) if word=='on' and not in_paren(from_split,i)]
+    # print('jid',join_idx)
+    if join_idx:
+        join_idx = join_idx[0]
+        on_idx = on_idx[0]
         join_dic = {}
-        join_sent = dic['from'].split(' ')
-        if join_sent.count('join')>1:
-            raise ValueError('Too many joins')
-        jidx = join_sent.index('join')
-        if join_sent[jidx-1] in join_types:
-            join_dic['join'] = join_sent[jidx-1]
-            join_dic['left'] = join_sent[jidx-2]
+        # if from_split.count('join')>1:
+        #     raise ValueError('Too many joins')
+            # pass
+        # jidx = from_split.index('join')
+        if from_split[join_idx-1] in join_types:
+            join_dic['join'] = from_split[join_idx-1]
+            join_dic['left'] = ' '.join(from_split[:join_idx-1])
         else:
             join_dic['join'] = 'inner'
-            join_dic['left'] = join_sent[jidx-1]
-        join_dic['right'] = join_sent[jidx+1]
-        join_dic['on'] = ''.join(join_sent[join_sent.index('on')+1:])
+            join_dic['left'] = ' '.join(from_split[:join_idx])
+        join_dic['right'] = ' '.join(from_split[join_idx+1:on_idx])
+        join_dic['on'] = ''.join(from_split[on_idx+1:])
+
+        if join_dic['left'].startswith('(') and join_dic['left'].endswith(')'):
+            join_dic['left'] = interpret(join_dic['left'][1:-1].strip())
+
+        if join_dic['right'].startswith('(') and join_dic['right'].endswith(')'):
+            join_dic['right'] = interpret(join_dic['right'][1:-1].strip())
+
         dic['from'] = join_dic
         # pass
         
@@ -144,41 +159,30 @@ def interpret(query):
                      'unlock table': ['unlock table'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
-                    #  'create database': ['create database'],
-                    #  'drop database': ['drop database'],
-                    #  'save database': ['save database'],
-                    #  'load database': ['load database'],
                      'create index': ['create index', 'on', 'using'],
                      'drop index': ['drop index']
                      }
 
     if query[-1]!=';':
         query+=';'
+    
+    query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip()
+    # print('q', query)
 
     for kw in kw_per_action.keys():
         if query.startswith(kw):
             action = kw
 
-    return create_query_plan(query, kw_per_action[action], action)
+    return create_query_plan(query, kw_per_action[action]+[';'], action)
 
 def execute_dic(dic):
-    
-    # db.create_table('classroom', ['building', 'room_number', 'capacity'], [str,str,int])
-    # # insert 5 rows
-    # db.insert('classroom', ['Packard', '101', '500'])
-    # db.insert('classroom', ['Painter', '514', '10'])
-    # db.insert('classroom', ['Taylor', '3128', '70'])
-    # db.insert('classroom', ['Watson', '100', '30'])
-    # db.insert('classroom', ['Watson', '120', '50'])
+
     for key in dic.keys():
         if isinstance(dic[key],dict):
             dic[key] = execute_dic(dic[key])
     
     action = list(dic.keys())[0].replace(' ','_')
-    # try:
     return getattr(db, action)(*dic.values())
-    # except AttributeError:
-    #     raise NotImplementedError("Class `{}` does not implement `{}`".format(db.__class__.__name__, action))
 
 def interpret_meta(command):
     """
@@ -227,18 +231,24 @@ if __name__ == "__main__":
             if line.startswith('--'): continue
             dic = interpret(line.lower())
             pprint(dic, sort_dicts=False)
-            result = execute_dic(dic)
+            # result = execute_dic(dic)
 
-            if sbs: 
-                if input()!='x':
-                    result = execute_dic(dic)
-            if result is not None:
-                result.show()
+            # if sbs: 
+            #     if input()!='x':
+            #         result = execute_dic(dic)
+            # if result is not None:
+            #     result.show()
     else:
+        from prompt_toolkit import PromptSession
+        from prompt_toolkit.history import FileHistory
+        from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+
         print(art)
+        session = PromptSession(history=FileHistory('.inp_history'))
         while 1:
             try:
-                line = input(f'({db._name})> ').lower()
+                line = session.prompt(f'({db._name})> ', auto_suggest=AutoSuggestFromHistory()).lower()
+                # line = input(f'({db._name})> ').lower()
                 if line[-1]!=';':
                     line+=';'
             except (KeyboardInterrupt, EOFError):
@@ -262,5 +272,7 @@ if __name__ == "__main__":
                 # print(e)
 
 
-                
+
+
+                # while True:
                 

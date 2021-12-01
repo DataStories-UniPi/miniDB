@@ -11,7 +11,8 @@ import warnings
 import readline
 from tabulate import tabulate
 
-sys.setrecursionlimit(100)
+
+# sys.setrecursionlimit(100)
 
 # Clear command cache (journal)
 readline.clear_history()

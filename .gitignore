@@ -1,4 +1,5 @@
 dbdata/
+.inp_history
 .pytest_cache/
 __pycache__/
 .idea/

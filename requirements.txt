@@ -1,3 +1,4 @@
 tabulate
 graphviz
 matplotlib
+prompt_toolkit
