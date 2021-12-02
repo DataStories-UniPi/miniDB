@@ -424,6 +424,7 @@ class Database:
         else:
             raise NotImplementedError
 
+        print('TNAMe', res._name)
         if save_as is not None:
             res._name = save_as
             self.table_from_object(res)

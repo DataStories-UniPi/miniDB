@@ -347,17 +347,21 @@ class Table:
         # try to find both columns, if you fail raise error
         try:
             column_index_left = self.column_names.index(column_name_left)
+        except:
+            raise Exception(f'Column "{column_name_left}" dont exist in left table. Valid columns: {self.column_names}.')
+
+        try:
             column_index_right = table_right.column_names.index(column_name_right)
         except:
-            raise Exception(f'Columns dont exist in one or both tables.')
+            raise Exception(f'Column "{column_name_right}" dont exist in right table. Valid columns: {table_right.column_names}.')
 
         # get the column names of both tables with the table name in front
         # ex. for left -> name becomes left_table_name_name etc
-        left_names = [f'{self._name}.{colname}' for colname in self.column_names]
-        right_names = [f'{table_right._name}.{colname}' for colname in table_right.column_names]
+        left_names = [f'{self._name}.{colname}' if self._name!='' else colname for colname in self.column_names]
+        right_names = [f'{table_right._name}.{colname}' if table_right._name!='' else colname for colname in table_right.column_names]
 
         # define the new tables name, its column names and types
-        join_table_name = f'{self._name}_join_{table_right._name}'
+        join_table_name = ''
         join_table_colnames = left_names+right_names
         join_table_coltypes = self.column_types+table_right.column_types
         join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)

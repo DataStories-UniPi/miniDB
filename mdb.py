@@ -8,7 +8,7 @@ import shutil
 sys.path.append('miniDB')
 
 from database import Database
-# art font is big
+# art font is "big"
 art = '''
              _         _  _____   ____  
             (_)       (_)|  __ \ |  _ \     
