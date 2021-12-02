@@ -222,7 +222,6 @@ if __name__ == "__main__":
     # create db with name "smdb"
     fname = os.getenv('SQL')
     dbname = os.getenv('DB')
-    sbs = bool(int(os.getenv('SBS',0)))
 
     db = Database(dbname, load=True)
 
@@ -230,12 +229,7 @@ if __name__ == "__main__":
         for line in open(fname, 'r').read().splitlines():
             if line.startswith('--'): continue
             dic = interpret(line.lower())
-            pprint(dic, sort_dicts=False)
             result = execute_dic(dic)
-
-            if sbs: 
-                if input()!='x':
-                    result = execute_dic(dic)
             if result is not None:
                 result.show()
     else:
