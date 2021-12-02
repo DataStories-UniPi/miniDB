@@ -1,3 +1,7 @@
+<p align=center>
+  <img width="450" alt="mdblogo" src="https://user-images.githubusercontent.com/15364873/144466217-8430758c-63e4-4176-8f0f-30e2055f858d.png">
+</p>
+
 # miniDB
 
 The miniDB project is a minimal and easy to expand and develop for RMDBS tool, written excusivelly in Python 3. MiniDB's main goal is to provide the user with as much functionality as posssible while being easy to understand and even easier to expand. Thus, miniDB's primary market are students and researchers that want to work with a tool that they can understand through and through, while being able to implement additional features as quickly as possible.
