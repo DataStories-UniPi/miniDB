@@ -4,16 +4,8 @@ The miniDB project is a minimal and easy to expand and develop for RMDBS tool, w
 
 ## Installation
 
-Python 3.7 or newer is needed. To download and build the project run:
+Python 3.9 or newer is needed. To download and build the project run:
 
-### - Lab Specific - 
-```bash
-git clone --single-branch --branch lab https://github.com/DataStories-UniPi/miniDB.git
-cd miniDB
-pip install -r requirements.txt
-```
-
-### - Latest - 
 ```bash
 git clone https://github.com/DataStories-UniPi/miniDB.git
 cd miniDB
@@ -22,15 +14,11 @@ pip install -r requirements.txt
 
 The last command will install the packages found in [`requirements.txt`](https://github.com/DataStories-UniPi/miniDB/blob/master/requirements.txt). MiniDB is based on the following dependencies:
 * `tabulate` (for text formatting)
+* `prompt_toolkit` (for sql compiler input)
 * `graphviz` (for graph visualizations; optional)
 * `matplotlib` (for plotting; optional)
 
-Alternatively, the above dependencies can be installed with the following command:
-```python
-pip install tabulate graphviz matplotlib
-```
-
-Linux users can optionally install the `Graphviz` package to visualize graphs:
+Linux users will need to install the `Graphviz` package to visualize graphs:
 ```bash
 sudo apt-get install graphviz
 ```
@@ -42,22 +30,18 @@ The file [documentation.pdf](documentation.pdf) contains a detailed description 
 
 ## Loading the [smallRelations database](https://www.db-book.com/db6/lab-dir/sample_tables-dir/index.html)
 
-To create a database containing the smallRelations tables and get an interactive shell, run
-``` Python
-python -i smallRelationsInsertFile.py
+To create a database called _"smdb"_ containing the smallRelations tables and get an interactive shell, run
 ```
-You can the access the database through the db object that will be available. For example, you can show the contents of the student table by running the following command:
-```python
->> db.show_table('student')
+DB=smdb SQL=sql_files/smallRelationsInsertFile.sql python3.9 mdb.py
 ```
-The database wil be save with the name `smdb`. You can load the database in a separate Python shell by running the following commands:
-```python
->> from src.db.database import Database
->> db = Database("smdb", load=True)
+You can then access the database that is saved. You can either open an interactive interpreter with the following command:
 ```
-
-## TODOS
-Joins (recursive dicts), input hist, start-end (inter renaming)
+DB=smdb python3.9 mdb.py
+```
+or run a specific sql file with multiple commands using the following syntax:
+```
+DB=smdb SQL=YOUR_FILE python3.9 mdb.py
+```
 
 ## Contributors
 George S. Theodoropoulos, Bill Argiropoulos, Yannis Kontoulis, Apostolos Spanakis-Misirlis, Yannis Theodoridis; Data Science Lab., University of Piraeus.
