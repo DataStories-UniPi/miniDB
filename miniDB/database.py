@@ -136,9 +136,9 @@ class Database:
             os.remove(f'{self.savedir}/{table_name}.pkl')
         else:
             warnings.warn(f'"{self.savedir}/{table_name}.pkl" not found.')
-        self.delete_table('meta_locks', f'table_name={table_name}')
-        self.delete_table('meta_length', f'table_name={table_name}')
-        self.delete_table('meta_insert_stack', f'table_name={table_name}')
+        self.delete_from('meta_locks', f'table_name={table_name}')
+        self.delete_from('meta_length', f'table_name={table_name}')
+        self.delete_from('meta_insert_stack', f'table_name={table_name}')
 
         # self._update()
         self.save_database()
@@ -292,7 +292,7 @@ class Database:
         self._update()
         self.save_database()
 
-    def delete_table(self, table_name, condition):
+    def delete_from(self, table_name, condition):
         '''
         Delete rows of table where condition is met.
 
