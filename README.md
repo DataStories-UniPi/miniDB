@@ -8,19 +8,37 @@ The miniDB project is a minimal and easy to expand and develop for RMDBS tool, w
 
 ## Installation
 
-Python 3.9 or newer is needed. To download and build the project run:
+Python 3.9 or newer is needed. To download the project locally, run:
 
 ```bash
 git clone https://github.com/DataStories-UniPi/miniDB.git
 cd miniDB
+```
+
+### pip
+ To install the needed dependencies if you are using pip, run:
+ ```bash
 pip install -r requirements.txt
 ```
 
-The last command will install the packages found in [`requirements.txt`](https://github.com/DataStories-UniPi/miniDB/blob/master/requirements.txt). MiniDB is based on the following dependencies:
+### Ananconda
+If your are using Anaconda, run:
+ ```bash
+conda env create -f environment.yml
+```
+Then, to activate/deactivate the environement, run:
+ ```bash
+conda activate/deactivate mdb
+```
+
+If you have other python versions already installed, using Anaconda is adviced since it allows you to manage multiple python versions easily. 
+
+These commands will install the following dependencies:
 * `tabulate` (for text formatting)
 * `prompt_toolkit` (for sql compiler input)
 * `graphviz` (for graph visualizations; optional)
 * `matplotlib` (for plotting; optional)
+
 
 Linux users will need to install the `Graphviz` package to visualize graphs:
 ```bash
@@ -47,5 +65,5 @@ or run a specific sql file with multiple commands using the following syntax:
 DB=smdb SQL=YOUR_FILE python3.9 mdb.py
 ```
 
-## Contributors
-George S. Theodoropoulos, Bill Argiropoulos, Yannis Kontoulis, Apostolos Spanakis-Misirlis, Yannis Theodoridis; Data Science Lab., University of Piraeus.
+## The people
+George S. Theodoropoulos, Yannis Kontoulis, Yannis Theodoridis; Data Science Lab., University of Piraeus.
