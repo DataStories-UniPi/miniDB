@@ -62,8 +62,6 @@ def create_query_plan(query, keywords, action):
     for i in range(len(kw_in_query)-1):
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
 
-    # print(kw_in_query)
-    # print(dic)
     if action=='select':
         dic = evaluate_from_clause(dic)
         
@@ -92,7 +90,6 @@ def create_query_plan(query, keywords, action):
     
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
-        # dic['import table'] = dic.pop(action)
 
     if action=='insert into':
         if dic['values'][0] == '(' and dic['values'][-1] == ')':
@@ -114,15 +111,10 @@ def evaluate_from_clause(dic):
 
     join_idx = [i for i,word in enumerate(from_split) if word=='join' and not in_paren(from_split,i)]
     on_idx = [i for i,word in enumerate(from_split) if word=='on' and not in_paren(from_split,i)]
-    # print('jid',join_idx)
     if join_idx:
         join_idx = join_idx[0]
         on_idx = on_idx[0]
         join_dic = {}
-        # if from_split.count('join')>1:
-        #     raise ValueError('Too many joins')
-            # pass
-        # jidx = from_split.index('join')
         if from_split[join_idx-1] in join_types:
             join_dic['join'] = from_split[join_idx-1]
             join_dic['left'] = ' '.join(from_split[:join_idx-1])
@@ -139,7 +131,6 @@ def evaluate_from_clause(dic):
             join_dic['right'] = interpret(join_dic['right'][1:-1].strip())
 
         dic['from'] = join_dic
-        # pass
         
     return dic
 
@@ -166,7 +157,6 @@ def interpret(query):
         query+=';'
     
     query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip()
-    # print('q', query)
 
     for kw in kw_per_action.keys():
         if query.startswith(kw):
@@ -196,7 +186,6 @@ def interpret_meta(command):
     cdb - change/create database
     rmdb - delete database
     """
-    # global db
     action = command[1:].split(' ')[0].removesuffix(';')
 
     db_name = db._name if search_between(command, action,';')=='' else search_between(command, action,';')
@@ -226,7 +215,6 @@ def interpret_meta(command):
 
 
 if __name__ == "__main__":
-    # create db with name "smdb"
     fname = os.getenv('SQL')
     dbname = os.getenv('DB')
 
@@ -249,7 +237,6 @@ if __name__ == "__main__":
         while 1:
             try:
                 line = session.prompt(f'({db._name})> ', auto_suggest=AutoSuggestFromHistory()).lower()
-                # line = input(f'({db._name})> ').lower()
                 if line[-1]!=';':
                     line+=';'
             except (KeyboardInterrupt, EOFError):
@@ -270,10 +257,3 @@ if __name__ == "__main__":
                         result.show()
             except Exception:
                 print(traceback.format_exc())
-                # print(e)
-
-
-
-
-                # while True:
-                
