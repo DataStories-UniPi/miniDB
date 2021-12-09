@@ -48,7 +48,7 @@ class Database:
 
         # create all the meta tables
         self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
-        self.create_table('meta_locks', 'table_name,locked', 'str,bool')
+        self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
         self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
         self.save_database()
@@ -94,7 +94,7 @@ class Database:
         Update all meta tables.
         '''
         self._update_meta_length()
-        self._update_meta_locks()
+        # self._update_meta_locks()
         self._update_meta_insert_stack()
 
 
@@ -128,8 +128,7 @@ class Database:
             table_name: string. Name of table.
         '''
         self.load_database()
-        if self.is_locked(table_name):
-            return
+        self.lock_table(table_name)
 
         self.tables.pop(table_name)
         if os.path.isfile(f'{self.savedir}/{table_name}.pkl'):
@@ -162,12 +161,13 @@ class Database:
                 if column_types is None:
                     column_types = ",".join(['str' for _ in colnames.split(',')])
                 self.create_table(name=table_name, column_names=colnames, column_types=column_types, primary_key=primary_key)
-                self.lock_table(table_name, mode='x')
+                lock_ownership = self.lock_table(table_name, mode='x')
                 first_line = False
                 continue
             self.tables[table_name]._insert(line.strip('\n').split(','))
 
-        self.unlock_table(table_name)
+        if lock_ownership:
+             self.unlock_table(table_name)
         self._update()
         self.save_database()
 
@@ -229,15 +229,15 @@ class Database:
             cast_type: type. Cast type (do not encapsulate in quotes).
         '''
         self.load_database()
-        if self.is_locked(table_name):
-            return
-        self.lock_table(table_name, mode='x')
+        
+        lock_ownership = self.lock_table(table_name, mode='x')
         self.tables[table_name]._cast_column(column_name, eval(cast_type))
-        self.unlock_table(table_name)
+        if lock_ownership:
+            self.unlock_table(table_name)
         self._update()
         self.save_database()
 
-    def insert_into(self, table_name, row_str, lock_load_save=True):
+    def insert_into(self, table_name, row_str):
         '''
         Inserts data to given table.
 
@@ -247,13 +247,10 @@ class Database:
             lock_load_save: boolean. If False, user needs to load, lock and save the states of the database (CAUTION). Useful for bulk-loading.
         '''
         row = row_str.strip().split(',')
-        if lock_load_save:
-            self.load_database()
-            if self.is_locked(table_name):
-                return
-            # fetch the insert_stack. For more info on the insert_stack
-            # check the insert_stack meta table
-            self.lock_table(table_name, mode='x')
+        self.load_database()
+        # fetch the insert_stack. For more info on the insert_stack
+        # check the insert_stack meta table
+        lock_ownership = self.lock_table(table_name, mode='x')
         insert_stack = self._get_insert_stack_for_table(table_name)
         try:
             self.tables[table_name]._insert(row, insert_stack)
@@ -262,10 +259,11 @@ class Database:
             logging.info('ABORTED')
         # sleep(2)
         self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
-        if lock_load_save:
+
+        if lock_ownership:
             self.unlock_table(table_name)
-            self._update()
-            self.save_database()
+        self._update()
+        self.save_database()
 
 
     def update_table(self, table_name, set_args, condition):
@@ -284,11 +282,11 @@ class Database:
         '''
         set_column, set_value = set_args.replace(' ','').split('=')
         self.load_database()
-        if self.is_locked(table_name):
-            return
-        self.lock_table(table_name, mode='x')
+        
+        lock_ownership = self.lock_table(table_name, mode='x')
         self.tables[table_name]._update_rows(set_value, set_column, condition)
-        self.unlock_table(table_name)
+        if lock_ownership:
+            self.unlock_table(table_name)
         self._update()
         self.save_database()
 
@@ -305,11 +303,11 @@ class Database:
                 Operatores supported: (<,<=,==,>=,>)
         '''
         self.load_database()
-        if self.is_locked(table_name):
-            return
-        self.lock_table(table_name, mode='x')
+        
+        lock_ownership = self.lock_table(table_name, mode='x')
         deleted = self.tables[table_name]._delete_where(condition)
-        self.unlock_table(table_name)
+        if lock_ownership:
+            self.unlock_table(table_name)
         self._update()
         self.save_database()
         # we need the save above to avoid loading the old database that still contains the deleted elements
@@ -346,16 +344,17 @@ class Database:
         else:
             condition_column = ''
 
+        
+        # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
-        self.lock_table(table_name, mode='x')
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
             table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k)
         else:
             table = self.tables[table_name]._select_where(columns, condition, order_by, desc, top_k)
-        self.unlock_table(table_name)
+        # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as
             self.table_from_object(table)
@@ -365,6 +364,7 @@ class Database:
             else:
                 return table.show()
 
+
     def show_table(self, table_name, no_of_rows=None):
         '''
         Print table in a readable tabular design (using tabulate).
@@ -373,9 +373,9 @@ class Database:
             table_name: string. Name of table (must be part of database).
         '''
         self.load_database()
-        if self.is_locked(table_name):
-            return
+        
         self.tables[table_name].show(no_of_rows, self.is_locked(table_name))
+
 
     def sort(self, table_name, column_name, asc=False):
         '''
@@ -388,11 +388,11 @@ class Database:
         '''
 
         self.load_database()
-        if self.is_locked(table_name):
-            return
-        self.lock_table(table_name, mode='x')
+        
+        lock_ownership = self.lock_table(table_name, mode='x')
         self.tables[table_name]._sort(column_name, asc=asc)
-        self.unlock_table(table_name)
+        if lock_ownership:
+            self.unlock_table(table_name)
         self._update()
         self.save_database()
 
@@ -412,19 +412,18 @@ class Database:
         return_object: boolean. If True, the result will be a table object (useful for internal usage - the result will be printed by default).
         '''
         self.load_database()
+        if self.is_locked(left_table) or self.is_locked(right_table):
+            return
+
         left_table = left_table if isinstance(left_table, Table) else self.tables[left_table] 
         right_table = right_table if isinstance(right_table, Table) else self.tables[right_table] 
 
-        if self.is_locked(left_table) or self.is_locked(right_table):
-            warnings.warn(f'Table(s) are currently locked.')
-            return
 
         if mode=='inner':
             res = left_table._inner_join(right_table, condition)
         else:
             raise NotImplementedError
 
-        print('TNAMe', res._name)
         if save_as is not None:
             res._name = save_as
             self.table_from_object(res)
@@ -434,21 +433,35 @@ class Database:
             else:
                 res.show()
 
-    def lock_table(self, table_name, mode):
+    def lock_table(self, table_name, mode='x'):
         '''
         Locks the specified table using the exclusive lock (X).
 
         Args:
             table_name: string. Table name (must be part of database).
         '''
-        if table_name[:4]=='meta':
+        if table_name[:4]=='meta' or table_name not in self.tables.keys() or isinstance(table_name,Table):
             return
 
+        with open(f'{self.savedir}/meta_locks.pkl', 'rb') as f:
+            self.tables.update({'meta_locks': pickle.load(f)})
+
+        try:
+            pid = self.select('*','meta_locks',  f'table_name={table_name}', return_object=True).data[0][1]
+            if pid!=os.getpid():
+                raise Exception(f'Table "{table_name}" is locked by process with pid={pid}')
+            else:
+                return False
+
+        except IndexError:
+            pass
+
         if mode=='x':
-            self.tables['meta_locks']._update_rows(True, 'locked', f'table_name={table_name}')
+            self.tables['meta_locks']._insert([table_name, os.getpid(), mode])
         else:
             raise NotImplementedError
         self._save_locks()
+        return True
         # print(f'Locking table "{table_name}"')
 
     def unlock_table(self, table_name):
@@ -458,7 +471,10 @@ class Database:
         Args:
             table_name: string. Table name (must be part of database).
         '''
-        self.tables['meta_locks']._update_rows(False, 'locked', f'table_name={table_name}')
+        if table_name not in self.tables.keys():
+            raise Exception(f'Table "{table_name}" is not in database')
+
+        self.tables['meta_locks']._delete_where(f'table_name={table_name}')
         self._save_locks()
         # print(f'Unlocking table "{table_name}"')
 
@@ -469,6 +485,7 @@ class Database:
         Args:
             table_name: string. Table name (must be part of database).
         '''
+        print('il', table_name)
         if isinstance(table_name,Table) or table_name[:4]=='meta':  # meta tables will never be locked (they are internal)
             return False
 
@@ -476,13 +493,13 @@ class Database:
             self.tables.update({'meta_locks': pickle.load(f)})
 
         try:
-            res = self.select('locked','meta_locks',  f'table_name={table_name}', return_object=True).locked[0]
-            if res:
-                logging.info(f'Table "{table_name}" is currently locked.')
-            return res
+            pid = self.select('*','meta_locks',  f'table_name={table_name}', return_object=True).data[0][1]
+            if pid!=os.getpid():
+                raise Exception(f'Table "{table_name}" is locked by the process with pid={pid}')
 
         except IndexError:
-            return
+            pass
+        return False
 
     def journal(idx = None):
         if idx != None:

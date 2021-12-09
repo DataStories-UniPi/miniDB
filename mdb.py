@@ -8,6 +8,7 @@ import shutil
 sys.path.append('miniDB')
 
 from database import Database
+from table import Table
 # art font is "big"
 art = '''
              _         _  _____   ____  
@@ -225,7 +226,7 @@ if __name__ == "__main__":
             if line.startswith('--'): continue
             dic = interpret(line.lower())
             result = execute_dic(dic)
-            if result is not None:
+            if isinstance(result,Table):
                 result.show()
     else:
         from prompt_toolkit import PromptSession
@@ -253,7 +254,7 @@ if __name__ == "__main__":
                 else:
                     dic = interpret(line)
                     result = execute_dic(dic)
-                    if result is not None:
+                    if isinstance(result,Table):
                         result.show()
             except Exception:
                 print(traceback.format_exc())
