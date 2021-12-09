@@ -18,7 +18,11 @@ art = '''
  |_| |_| |_||_||_| |_||_||_____/ |____/   2021 - v3.2                               
 '''   
 
+
 def search_between(s, first, last):
+    '''
+    Search in 's' for the substring that is between 'first' and 'last'
+    '''
     try:
         start = s.index( first ) + len( first )
         end = s.index( last, start )
@@ -27,29 +31,18 @@ def search_between(s, first, last):
     return s[start:end].strip()
 
 def in_paren(qsplit, ind):
+    '''
+    Split string on space and return whether the item in index 'ind' is inside a parentheses
+    '''
     return qsplit[:ind].count('(')>qsplit[:ind].count(')')
-
-def match_parens(text):
-     # print(text)
-     d = []
-     istart = []
-     for i, c in enumerate(text):
-         if c == '(':
-             istart.append(i)
-         if c == ')':
-             try:
-                 d.append((istart.pop(),i)) 
-             except IndexError:
-                #  raise ValueError('Too many closing parentheses')
-                return -1
-     if istart:  # check if stack is empty afterwards
-        #  raise ValueError('Too many opening parentheses')
-        return -2
-
-     return d
 
 
 def create_query_plan(query, keywords, action):
+    '''
+    Given a query, the set of keywords that we expect to pe present and the overall action, return the query plan for this query.
+
+    This can and will be used recursively
+    '''
 
     dic = {val: None for val in keywords if val!=';'}
 
@@ -110,6 +103,9 @@ def create_query_plan(query, keywords, action):
     return dic
 
 def evaluate_from_clause(dic):
+    '''
+    Evaluate the part of the query (argument or subquery) that is supplied as the 'from' argument
+    '''
     join_types = ['inner', 'left', 'right', 'full']
     from_split = dic['from'].split(' ')
     if from_split[0] == '(' and from_split[-1] == ')':
@@ -148,6 +144,9 @@ def evaluate_from_clause(dic):
     return dic
 
 def interpret(query):
+    '''
+    Interpret the query.
+    '''
     kw_per_action = {'create table': ['create table'],
                      'drop table': ['drop table'],
                      'cast': ['cast', 'from', 'to'],
@@ -176,7 +175,9 @@ def interpret(query):
     return create_query_plan(query, kw_per_action[action]+[';'], action)
 
 def execute_dic(dic):
-
+    '''
+    Execute the given dictionary
+    '''
     for key in dic.keys():
         if isinstance(dic[key],dict):
             dic[key] = execute_dic(dic[key])
@@ -186,8 +187,14 @@ def execute_dic(dic):
 
 def interpret_meta(command):
     """
+    Interpret meta commands. These commands are used to handle DB stuff, something that can not be easily handled with mSQL given the current architecture.
+
+    The available meta commands are:
+
     lsdb - list databases
     lstb - list tables
+    cdb - change/create database
+    rmdb - delete database
     """
     # global db
     action = command[1:].split(' ')[0].removesuffix(';')
