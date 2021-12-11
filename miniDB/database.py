@@ -485,7 +485,6 @@ class Database:
         Args:
             table_name: string. Table name (must be part of database).
         '''
-        print('il', table_name)
         if isinstance(table_name,Table) or table_name[:4]=='meta':  # meta tables will never be locked (they are internal)
             return False
 
