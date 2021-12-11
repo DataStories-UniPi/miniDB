@@ -257,7 +257,6 @@ class Database:
         except Exception as e:
             logging.info(e)
             logging.info('ABORTED')
-        # sleep(2)
         self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
 
         if lock_ownership:
@@ -447,7 +446,7 @@ class Database:
             self.tables.update({'meta_locks': pickle.load(f)})
 
         try:
-            pid = self.select('*','meta_locks',  f'table_name={table_name}', return_object=True).data[0][1]
+            pid = self.tables['meta_locks']._select_where('pid',f'table_name={table_name}').data[0][0]
             if pid!=os.getpid():
                 raise Exception(f'Table "{table_name}" is locked by process with pid={pid}')
             else:
@@ -464,7 +463,7 @@ class Database:
         return True
         # print(f'Locking table "{table_name}"')
 
-    def unlock_table(self, table_name):
+    def unlock_table(self, table_name, force=False):
         '''
         Unlocks the specified table that is exclusively locked (X).
 
@@ -474,6 +473,14 @@ class Database:
         if table_name not in self.tables.keys():
             raise Exception(f'Table "{table_name}" is not in database')
 
+        if not force:
+            try:
+                # pid = self.select('*','meta_locks',  f'table_name={table_name}', return_object=True).data[0][1]
+                pid = self.tables['meta_locks']._select_where('pid',f'table_name={table_name}').data[0][0]
+                if pid!=os.getpid():
+                    raise Exception(f'Table "{table_name}" is locked by the process with pid={pid}')
+            except IndexError:
+                pass
         self.tables['meta_locks']._delete_where(f'table_name={table_name}')
         self._save_locks()
         # print(f'Unlocking table "{table_name}"')
@@ -492,7 +499,7 @@ class Database:
             self.tables.update({'meta_locks': pickle.load(f)})
 
         try:
-            pid = self.select('*','meta_locks',  f'table_name={table_name}', return_object=True).data[0][1]
+            pid = self.tables['meta_locks']._select_where('pid',f'table_name={table_name}').data[0][0]
             if pid!=os.getpid():
                 raise Exception(f'Table "{table_name}" is locked by the process with pid={pid}')
 

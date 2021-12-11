@@ -97,8 +97,16 @@ def create_query_plan(query, keywords, action):
             dic['values'] = dic['values'][1:-1]
         else:
             raise ValueError('Your parens are not right m8')
-        
+    
+    if action=='unlock table':
+        if dic['force'] is not None:
+            dic['force'] = True
+        else:
+            dic['force'] = False
+
     return dic
+
+
 
 def evaluate_from_clause(dic):
     '''
@@ -147,7 +155,7 @@ def interpret(query):
                      'insert into': ['insert into', 'values'],
                      'select': ['select', 'from', 'where', 'order by', 'top'],
                      'lock table': ['lock table', 'mode'],
-                     'unlock table': ['unlock table'],
+                     'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
                      'create index': ['create index', 'on', 'using'],
