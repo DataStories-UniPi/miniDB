@@ -67,4 +67,3 @@ DB=smdb SQL=YOUR_FILE python3.9 mdb.py
 
 ## The people
 George S. Theodoropoulos, Yannis Kontoulis, Yannis Theodoridis; Data Science Lab., University of Piraeus.
-nikolas
