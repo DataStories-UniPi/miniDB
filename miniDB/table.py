@@ -220,7 +220,7 @@ class Table:
         return indexes_to_del
 
 
-    def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None):
+    def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None, distinct=False):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -270,7 +270,7 @@ class Table:
         return s_table
 
 
-    def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, desc=True, top_k=None):
+    def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, desc=True, top_k=None, distinct=False):
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
