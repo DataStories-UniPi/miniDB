@@ -333,10 +333,18 @@ class Database:
             save_as: string. The name that will be used to save the resulting table into the database (no save if None).
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
         '''
+
+        # if the keyword 'distinct' is detected in columns,
+        #   - we remove it and 
+        #   - set the distinct flag to True.
+        if 'distinct' in columns:
+            columns = columns.replace('distinct ','')
+            distinct = True
+
         # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
-            return table_name._select_where(columns, condition, order_by, desc, top_k)
+            return table_name._select_where(columns, condition, order_by, desc, top_k, distinct)
 
         if condition is not None:
             if("IN" in condition.split() or "in" in condition.split()):
@@ -353,9 +361,9 @@ class Database:
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k)
+            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k, distinct)
         else:
-            table = self.tables[table_name]._select_where(columns, condition, order_by, desc, top_k)
+            table = self.tables[table_name]._select_where(columns, condition, order_by, desc, top_k, distinct)
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as
