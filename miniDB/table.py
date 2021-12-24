@@ -272,6 +272,22 @@ class Table:
                 column_name = condition_list[0]
                 column = self.column_by_name(column_name)
                 rows = [ind for ind, x in enumerate(column) if (str(x) in values)]
+
+            #implementation of the between operator in where condition
+            elif "BETWEEN" in condition.split() or "between" in condition.split():
+                condition_list = condition.split()
+                min = condition_list[2]
+                max = condition_list[4]
+                column_name = condition_list[0]
+                column = self.column_by_name(column_name)
+
+                #The try block will run in the case of a string comparison 'between' operation
+                try:
+                    rows = [ind for ind, x in enumerate(column) if x >= min and x <= max]
+                #The except block will run in the case of an integer comparison 'between' operation
+                except:
+                    rows = [ind for ind, x in enumerate(column) if (x >= int(min) and x <= int(max))]
+            
             else:
                 column_name, operator, value = self._parse_condition(condition)
                 column = self.column_by_name(column_name)
