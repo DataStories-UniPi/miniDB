@@ -245,9 +245,37 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            #implementation of the in operator in where condition
+            if "IN" in condition.split() or "in" in condition.split():
+                #split the condition that contains the 'in' operator and remove the parentheses.
+                #The 0th index points to the table name, The 1st is the 'in' operator
+                #and the permitted values are listed between the '(' and ')' elements
+                condition_list = condition.split()
+                values = condition_list[condition_list.index("(")+1:condition_list.index(")")]
+                values = [v.replace(",","") for v in values]
+                condition_list.remove("(")
+                condition_list.remove(")")
+
+                #if the values are given separated only by commas e.g. 5,3,2,1 then the permitted values are the elements of the split string
+                #else, we need to search every element with an index >= 2, split it at the commas and only keep the non-None values
+                #this way, we can accept both (5, 3, 10, 4) and (5,3, 10,4)
+                if(len(condition_list) == 3):
+                    values = condition_list[2].split(",")
+                else:
+                    values = []
+                    for v in condition_list[2:]:
+                        vv = v.split(",")
+                        for _ in vv:
+                            if(_ != ''):
+                                values.append(_)
+
+                column_name = condition_list[0]
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if (str(x) in values)]
+            else:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -448,3 +476,4 @@ class Table:
         f.close()
 
         self.__dict__.update(tmp_dict)
+
