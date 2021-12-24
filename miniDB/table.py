@@ -267,6 +267,9 @@ class Table:
 
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
 
+        # distinct = True # for testing
+        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+
         return s_table
 
 
