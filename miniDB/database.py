@@ -347,9 +347,11 @@ class Database:
             return table_name._select_where(columns, condition, order_by, desc, top_k, distinct)
 
         if condition is not None:
-            if("IN" in condition.split() or "in" in condition.split()):
+            if "IN" in condition.split() or "in" in condition.split():
                 condition_column = condition.split(" ")[0]
             elif "BETWEEN" in condition.split() or "between" in condition.split():
+                condition_column = condition.split(" ")[0]
+            elif "LIKE" in condition.split() or "like" in condition.split():
                 condition_column = condition.split(" ")[0]
             else:
                 condition_column = split_condition(condition)[0]

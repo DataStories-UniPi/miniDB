@@ -2,6 +2,7 @@ from __future__ import annotations
 from tabulate import tabulate
 import pickle
 import os
+import re
 from misc import get_op, split_condition
 
 
@@ -288,6 +289,17 @@ class Table:
                 except:
                     rows = [ind for ind, x in enumerate(column) if (x >= int(min) and x <= int(max))]
             
+            elif "LIKE" in condition.split() or "like" in condition.split():
+                condition_list = condition.split()
+                column_name = condition_list[0]
+                column = self.column_by_name(column_name)
+
+                # Convert SQL regex pattern to python regex pattern
+                regex = re.compile(condition_list[2].replace("%",".*").replace("_","."))
+
+                # Add the rows that fully match the regex given
+                rows = [ind for ind, x in enumerate(column) if regex.fullmatch(str(x))]
+
             else:
                 column_name, operator, value = self._parse_condition(condition)
                 column = self.column_by_name(column_name)
