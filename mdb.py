@@ -30,14 +30,12 @@ SE ENA LEKSIKO TELIKA EXOUME TA KEYWORDS MAZI ME AYTA POY EKTELOUN
 PX {'select': '*', 'from': 'table', ...}
 
 UPDATE 1: ENA LEKSIKO ANTIPROSWPEVEI ENA QUERY.
-select * from table1 where id=100; --> {'select': '*', 'from': 'table1', 'where': 'id=100'}
+select * from table1 where id=100; --> {'select': '*', 'from': 'table1', 'where': 'id=100', 'order by': None, 'top': None, 'desc': None}
 
 EXOUME EPISHS NESTED QUERIES
 select * from (select * from course) inner join teaches on course_id=course_id;
-{'select': '*', 'from': {'left': {'select': '*', 'from': 'course', 'order by': None, 'top': None, 'desc': None}, 'right': 'teaches', 'join': 'inner', 'on': 'course_id=course_id'}, 'where': None,'order by': None, 'top': None, 'desc': None}
+{'select': '*', 'from': {'left': {'select': '*', 'from': 'course', 'where': None, 'order by': None, 'top': None, 'desc': None}, 'right': 'teaches', 'join': 'inner', 'on': 'course_id=course_id'}, 'where': None,'order by': None, 'top': None, 'desc': None}
 
- 
- 
 
 """
 
