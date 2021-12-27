@@ -81,7 +81,7 @@ def create_query_plan(query, keywords, action):
     for i in range(len(kw_in_query)-1):
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]]) #ME EKAPSES THEODOROPOYLE, ANTE NA TO EKSHGHSW AYTO
                                                                                 
-          '''
+        '''
                     TRUST ME AT YOUR OWN RISK
           1.vriskoume to i-osto keyword toy query
           2.to keyword ayto apotelei key toy leksikou dic
@@ -91,7 +91,7 @@ def create_query_plan(query, keywords, action):
           SELECT c1, c2 FROM TABLE WHERE ID=3
           
           Gia to select tha exoyme: {'select': '*'} kai {'select': 'c1, c2'}
-          '''
+        '''
     if action=='select':
         dic = evaluate_from_clause(dic)
         
