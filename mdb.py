@@ -239,12 +239,13 @@ def execute_dic(dic):
     '''
     Execute the given dictionary
     '''
-    for key in dic.keys():
-        if isinstance(dic[key],dict):
+    for key in dic.keys(): #koitame ola ta kleidia tou leksikou poy ekteloume(select, from, where h insert into, values klp)
+        if isinstance(dic[key],dict): #an kapoio kleidi exei leksiko san value ektelese to anadromika
             dic[key] = execute_dic(dic[key])
     
-    action = list(dic.keys())[0].replace(' ','_')
-    return getattr(db, action)(*dic.values())
+    action = list(dic.keys())[0].replace(' ','_') #sto action(prwto key tou leksikou) vazoume '_' opou exei keno se periptwsh poy auto einai dyo lekseis. Ayto exei na kanei me th methodo pou kaleitai apo thn klash Database
+    return getattr(db, action)(*dic.values()) #apo to db object pou dhmiourghthhke sthn arxh ektelese th synarthsh poy legetai opws to action me orismata ta values tou leksikou
+                                              #px an action = select kai ta values einai *,table1,id=90 kai ta alla None, tha kalesei thn select(*,table1,id=90,...) apo thn Database
 
 def interpret_meta(command):
     """
