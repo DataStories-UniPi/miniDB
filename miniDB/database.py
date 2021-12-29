@@ -22,19 +22,19 @@ class Database:
     Main Database class, containing tables.
     '''
 
-    def __init__(self, name, load=True):
-        self.tables = {}
-        self._name = name
+    def __init__(self, name, load=True): #o constructor ths klashs Database pairnei san orismata to onoma ths vashs kai an prepei na thn kanei load(by def true)
+        self.tables = {} #edw kratountai ola ta table objects ths vashs. Domh leksikou: name: Tableobject
+        self._name = name #thetoume th metavlhth _name ths klashs  
 
-        self.savedir = f'dbdata/{name}_db'
+        self.savedir = f'dbdata/{name}_db' #to save directory einai enas fakelos me to onoma ths vashs mesa sto db data
 
         if load:
-            try:
+            try: # o stoxos einai na ginei load kai telos (vlepe load_database())
                 self.load_database()
                 logging.info(f'Loaded "{name}".')
                 return
             except:
-                warnings.warn(f'Database "{name}" does not exist. Creating new.')
+                warnings.warn(f'Database "{name}" does not exist. Creating new.') #an de ginei load dosame orisma vash poy den yparxei
 
         # create dbdata directory if it doesnt exist
         if not os.path.exists('dbdata'):
@@ -47,7 +47,7 @@ class Database:
             pass
 
         # create all the meta tables
-        self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
+        self.create_table('meta_length', 'table_name,no_of_rows', 'str,int') #otan ftiaxnetai mia vash aytoi oi pinakes proyparxoun
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
         self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
@@ -57,8 +57,8 @@ class Database:
         '''
         Save database as a pkl file. This method saves the database object, including all tables and attributes.
         '''
-        for name, table in self.tables.items():
-            with open(f'{self.savedir}/{name}.pkl', 'wb') as f:
+        for name, table in self.tables.items(): #iteration gia leksiko name-->key table-->value
+            with open(f'{self.savedir}/{name}.pkl', 'wb') as f: #anoigoume to arxeio .pkl me to onoma tou pinaka kai kanoume dump to table object
                 pickle.dump(table, f)
 
     def _save_locks(self):
@@ -75,13 +75,13 @@ class Database:
         Args:
             path: string. Directory (path) of the database on the system.
         '''
-        path = f'dbdata/{self._name}_db'
-        for file in os.listdir(path):
+        path = f'dbdata/{self._name}_db' #anoigoume to fakelo me to onoma ths vashs
+        for file in os.listdir(path): #gia ola ta pkl arxeia toy fakelou(pinakes)
 
             if file[-3:]!='pkl': # if used to load only pkl files
                 continue
-            f = open(path+'/'+file, 'rb')
-            tmp_dict = pickle.load(f)
+            f = open(path+'/'+file, 'rb') #anoigoume to arxeio kai pairnoume to table object. Sto leksiko prosthetoume gia key to name toy table me vash to onoma toy arxeiou
+            tmp_dict = pickle.load(f)     #kai gia value to table object
             f.close()
             name = f'{file.split(".")[0]}'
             self.tables.update({name: tmp_dict})
@@ -89,7 +89,7 @@ class Database:
 
     #### IO ####
 
-    def _update(self):
+    def _update(self): #kathe fora pou prosthetoume neo table kanoume update tous meta table
         '''
         Update all meta tables.
         '''
@@ -110,7 +110,7 @@ class Database:
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
         # print('here -> ', column_names.split(','))
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)})
+        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)}) #vazpume sto leksiko to onoma toy table me to table object
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
@@ -334,14 +334,14 @@ class Database:
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
         '''
         # print(table_name)
-        self.load_database()
+        self.load_database() #gemizoume to leksiko ths klashs me toys pinakes sta arxeia .pkl(name: table object)
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, order_by, desc, top_k)
 
-        if condition is not None:
-            condition_column = split_condition(condition)[0]
+        if condition is not None:#an exoume condition(o,ti akolouthei meta to where) pare to aristero kommati tou condition(h sthlh)
+            condition_column = split_condition(condition)[0] #h synarthsh split_condition vrisketai sto arxeio misc.py kai xwrizei ta stoixeia tou condition se lista
         else:
-            condition_column = ''
+            condition_column = '' #an den exoume condition
 
         
         # self.lock_table(table_name, mode='x')
