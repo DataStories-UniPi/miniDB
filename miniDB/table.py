@@ -50,7 +50,7 @@ class Table:
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
             if isinstance(load, dict):
-                self.__dict__.update(load)
+                self.__dict__.update(load) 
                 # self._update()
             # if load is str, load from a file
             elif isinstance(load, str):
@@ -59,34 +59,34 @@ class Table:
         # if name, columns_names and column types are not none
         elif (name is not None) and (column_names is not None) and (column_types is not None):
 
-            self._name = name
+            self._name = name #onoma table
 
-            if len(column_names)!=len(column_types):
+            if len(column_names)!=len(column_types): #an den exoume idio arithmo column(lista) kai typwn(lista)
                 raise ValueError('Need same number of column names and types.')
 
-            self.column_names = column_names
+            self.column_names = column_names #lista me onomata sthlwn
 
             self.columns = []
 
-            for col in self.column_names:
+            for col in self.column_names: 
                 if col not in self.__dir__():
                     # this is used in order to be able to call a column using its name as an attribute.
                     # example: instead of table.columns['column_name'], we do table.column_name
-                    setattr(self, col, [])
-                    self.columns.append([])
+                    setattr(self, col, []) #thetoume kathe ena onoma sthlhs ws attribute me timh []
+                    self.columns.append([]) #prosthetoume [] sth lista columns gia kathe column
                 else:
                     raise Exception(f'"{col}" attribute already exists in "{self.__class__.__name__} "class.')
 
-            self.column_types = [eval(ct) if not isinstance(ct, type) else ct for ct in column_types]
+            self.column_types = [eval(ct) if not isinstance(ct, type) else ct for ct in column_types] #gia kathe typo, apothikevoume ayton sth lista h thn ektelesh toy an den einai object typou type
             self.data = [] # data is a list of lists, a list of rows that is.
 
             # if primary key is set, keep its index as an attribute
             if primary_key is not None:
-                self.pk_idx = self.column_names.index(primary_key)
+                self.pk_idx = self.column_names.index(primary_key) #psaxnoume to index toy pk sth lista twn columns
             else:
                 self.pk_idx = None
 
-            self.pk = primary_key
+            self.pk = primary_key #primary key tou table
             # self._update()
 
     # if any of the name, columns_names and column types are none. return an empty table object

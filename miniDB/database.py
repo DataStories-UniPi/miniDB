@@ -333,7 +333,7 @@ class Database:
             save_as: string. The name that will be used to save the resulting table into the database (no save if None).
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
         '''
-        # print(table_name)
+        #print(table_name)
         self.load_database() #gemizoume to leksiko ths klashs me toys pinakes sta arxeia .pkl(name: table object)
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, order_by, desc, top_k) #se periptwsh poy san orisma sth select dwthei Table object kai oxi onoma table(px otan exoume nested query)
@@ -357,6 +357,7 @@ class Database:
         if save_as is not None: #ama theloume na swsoume ta apotelsmata tou select se ksexwristo pinaka
             table._name = save_as #dwse to prokathorismeno onoma ston pinaka
             self.table_from_object(table) #swse to table sto leksiko ths klashs, sto arxeio pkl kai san attribute ths klashs
+            
         else:
             if return_object: 
                 return table #epestrepse san object to table
