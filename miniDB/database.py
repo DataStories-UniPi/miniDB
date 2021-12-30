@@ -198,12 +198,12 @@ class Database:
             new_table: string. Name of new table.
         '''
 
-        self.tables.update({new_table._name: new_table})
-        if new_table._name not in self.__dir__():
+        self.tables.update({new_table._name: new_table}) #vale sto leskiko to neo table
+        if new_table._name not in self.__dir__(): #an den yparxei attribute ths klashs me to onoma toy table ftiakse ena kai apothikefse to table
             setattr(self, new_table._name, new_table)
         else:
-            raise Exception(f'"{new_table._name}" attribute already exists in class "{self.__class__.__name__}".')
-        self._update()
+            raise Exception(f'"{new_table._name}" attribute already exists in class "{self.__class__.__name__}".') #alliws an yparxei, exception
+        self._update() #update ta meta tables kai apothikefsh
         self.save_database()
 
 
@@ -336,7 +336,7 @@ class Database:
         # print(table_name)
         self.load_database() #gemizoume to leksiko ths klashs me toys pinakes sta arxeia .pkl(name: table object)
         if isinstance(table_name,Table):
-            return table_name._select_where(columns, condition, order_by, desc, top_k)
+            return table_name._select_where(columns, condition, order_by, desc, top_k) #se periptwsh poy san orisma sth select dwthei Table object kai oxi onoma table(px otan exoume nested query)
 
         if condition is not None:#an exoume condition(o,ti akolouthei meta to where) pare to aristero kommati tou condition(h sthlh)
             condition_column = split_condition(condition)[0] #h synarthsh split_condition vrisketai sto arxeio misc.py kai xwrizei ta stoixeia tou condition se lista
@@ -345,23 +345,23 @@ class Database:
 
         
         # self.lock_table(table_name, mode='x')
-        if self.is_locked(table_name):
+        if self.is_locked(table_name): #an to table einai kleidwmeno den mporoume na doume apotelesmata
             return
-        if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
+        if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]: #agnwsta ta index pros to paron
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
             table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k)
         else:
-            table = self.tables[table_name]._select_where(columns, condition, order_by, desc, top_k)
+            table = self.tables[table_name]._select_where(columns, condition, order_by, desc, top_k) #xwris index, edw kaleitai h synarthsh select ths table class gia to table kai epistrefetai to table object
         # self.unlock_table(table_name)
-        if save_as is not None:
-            table._name = save_as
-            self.table_from_object(table)
+        if save_as is not None: #ama theloume na swsoume ta apotelsmata tou select se ksexwristo pinaka
+            table._name = save_as #dwse to prokathorismeno onoma ston pinaka
+            self.table_from_object(table) #swse to table sto leksiko ths klashs, sto arxeio pkl kai san attribute ths klashs
         else:
-            if return_object:
-                return table
+            if return_object: 
+                return table #epestrepse san object to table
             else:
-                return table.show()
+                return table.show() #epestrepse sthn othonh to table
 
 
     def show_table(self, table_name, no_of_rows=None):
