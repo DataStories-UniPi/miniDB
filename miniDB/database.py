@@ -411,18 +411,18 @@ class Database:
         save_as: string. The output filename that will be used to save the resulting table in the database (won't save if None).
         return_object: boolean. If True, the result will be a table object (useful for internal usage - the result will be printed by default).
         '''
-        self.load_database()
-        if self.is_locked(left_table) or self.is_locked(right_table):
+        self.load_database() #gemizoume to leksiko ths klashs me toys pinakes sta arxeia .pkl(name: table object)
+        if self.is_locked(left_table) or self.is_locked(right_table): #ama exoume kleidwmenous pinakes de provaloume kati
             return
-
+        #se periptwsh poy o aristeros/deksios pinakas toy join einai nested query exoume Table object alliws string me to onoma tou kai to psaxnoume sto dict
         left_table = left_table if isinstance(left_table, Table) else self.tables[left_table] 
-        right_table = right_table if isinstance(right_table, Table) else self.tables[right_table] 
+        right_table = right_table if isinstance(right_table, Table) else self.tables[right_table]
 
-
+        #kaloume thn inner_join ths klashs Table me to left_table. Orismata to deksi table kai to on condition: "table1.column1=table2.column2"
         if mode=='inner':
-            res = left_table._inner_join(right_table, condition)
+            res = left_table._inner_join(right_table, condition) 
         else:
-            raise NotImplementedError
+            raise NotImplementedError #den ypostirizetai allo join(mono to inner)
 
         if save_as is not None:
             res._name = save_as

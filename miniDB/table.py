@@ -50,7 +50,7 @@ class Table:
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
             if isinstance(load, dict):
-                self.__dict__.update(load) 
+                self.__dict__.update(load) #to __dict__ klhrwnomeitai apo ola ta objects. Apoteleietai apo ta onomata kai tis times twn atrributes tou object
                 # self._update()
             # if load is str, load from a file
             elif isinstance(load, str):
@@ -93,6 +93,7 @@ class Table:
 
     def column_by_name(self, column_name):
         return [row[self.column_names.index(column_name)] for row in self.data]
+        #kathe row sto self.data einai lista. Vriskoume to index tou column name (estw i) kai epistrefoume mia lista me to i-osto stoixeio kathe listas row(ayto apotelei mia sthlh)
 
 
     def _update(self):
@@ -245,27 +246,35 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
+            column_name, operator, value = self._parse_condition(condition) #px gia "where id=10" exoume c_n="id", op="=" kai value=int(10)
+            column = self.column_by_name(column_name) #to column tha einai mia lista me oles tis times tou column_name
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            #pairnoume ta index twn grammwn pou ikonopoioun to condition. To get_op mas epistrefei true an isxei "x operator value" gia kapoio x
+            #sth sthlh pou mas endiaferei.px estw oti exoume gia to panw paradeigma: column=[2,7,10] tha kanei 2=10, 7=10 kai 10=10.
+            #tha exoume rows=[2] afou to trito stoixeio ikanopoiei to condition 
         else:
-            rows = [i for i in range(len(self.data))]
+            rows = [i for i in range(len(self.data))] #to data einai lista listwn ksekinontas apo to prwto row(pairnoume ola ta index twn rows)
 
         # top k rows
         # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
+        print(self.__dict__)
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+        # Sto leksiko __dict__ tou Table object(poy exei domh: onoma_attr: attr) tha vreis to onoma_attr="data" pou apotelei th lista listwn twn grammwn.
+        # tha allakseis th timh tou attr "data" se mia lista listwn pou periexei ta telika stoixeia pou theloyume na provaloume analoga ta select, where.
+        # to diamorfwmeno leksiko apothikevetai sthn dict. Ta upoloipa attributes kratane tis arxikes times tous
 
         # we need to set the new column names/types and no of columns, since we might
         # only return some columns
-        dict['column_names'] = [self.column_names[i] for i in return_cols]
-        dict['column_types']   = [self.column_types[i] for i in return_cols]
+        dict['column_names'] = [self.column_names[i] for i in return_cols] #sto parapanw dict tha diamorfwsoume ta attributes column_names kai column types
+        dict['column_types']   = [self.column_types[i] for i in return_cols] #gia na periexoun mono ta epithimta onomata stylwn kai typwn analoga to select, where
 
-        s_table = Table(load=dict) 
+        s_table = Table(load=dict) #ftiaxnoume ena neo table object pou ginetai initialise me to leksiko dict kai periexei ta epithimta apotelesmata
         if order_by:
-            s_table.order_by(order_by, desc)
+            s_table.order_by(order_by, desc) #kanoume order by analoga to column(1o orisma) kai thn taksinomhsh(2o orisma)
 
-        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
+        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data 
+        #an h timh top_k einai str krata mono tis prwtes int(top_k) listes sthn lista data(krata tis prwtes top_k grammes tou apotelesmatos)
 
         return s_table
 
@@ -324,10 +333,13 @@ class Table:
             column_name: string. Name of column.
             desc: boolean. If True, order_by will return results in descending order (False by default).
         '''
-        column = self.column_by_name(column_name)
-        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=desc)
+        column = self.column_by_name(column_name) #lista me oles tis times tou column_name
+        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=desc) 
+        # 1o orisma: dinoume mia lista me ola ta indeces ths listas columns. 2o orisma: lambda expression pou deixnei oti ta index
+        # tha taksinomhthoun me vash thn column
+        # px sorted([0,1,2], key=lambda x: lst[x]) opou lst=['b','c','a'] epistrefei [2,0,1]
         # print(idx)
-        self.data = [self.data[i] for i in idx]
+        self.data = [self.data[i] for i in idx] #vazoume tis listes grammes me th seira pou exei apothikeytei sthn idx
         # self._update()
 
 
@@ -422,15 +434,15 @@ class Table:
         '''
         # if both_columns (used by the join function) return the names of the names of the columns (left first)
         if join:
-            return split_condition(condition)
+            return split_condition(condition) # an prokeite gia join kai oxi gia where
 
         # cast the value with the specified column's type and return the column name, the operator and the casted value
-        left, op, right = split_condition(condition)
+        left, op, right = split_condition(condition) #pairnoume to column, to operator kai to value mesw tou split_condition
         if left not in self.column_names:
-            raise ValueError(f'Condition is not valid (cant find column name)')
-        coltype = self.column_types[self.column_names.index(left)]
+            raise ValueError(f'Condition is not valid (cant find column name)') #an den vrisketai to column tou where ston pinaka
+        coltype = self.column_types[self.column_names.index(left)] #vriskoume to typo toy column sth lista poy vriskontai oi typoi. To index tou onomatos sth lista columns einai idio me to index toy typou
 
-        return left, op, coltype(right)
+        return left, op, coltype(right) #epistrefoume column, operator kai typos_column(value)
 
 
     def _load_from_file(self, filename):
