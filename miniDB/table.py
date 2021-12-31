@@ -219,8 +219,19 @@ class Table:
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
 
+    def group_by_having(self, return_columns, condition, group_by_columns, having_condition=None, order_by=None, desc=True, top_k=None):
 
-    def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None):
+        group_by_cols = [self.column_names.index(col.strip()) for col in group_by_columns.split(",")]
+        return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(",")]
+
+        for col in return_columns:
+            if col not in group_by_columns:
+                raise Exception("All columns in select clause must appear in group by clause")
+
+
+
+
+    def _select_where(self, return_columns, condition=None, group_by_columns=None, having_condition=None, order_by=None, desc=True, top_k=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -239,9 +250,10 @@ class Table:
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
-        else:
+        elif group_by_columns is None:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
-
+        else:
+            return self.group_by_having(return_columns, condition, group_by_columns, having_condition, order_by, desc, top_k)
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
