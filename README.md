@@ -1,5 +1,5 @@
 <p align=center>
-  <img width="450" alt="mdblogo" src="https://user-images.githubusercontent.com/15364873/144466217-8430758c-63e4-4176-8f0f-30e2055f858d.png">
+  <img width="550" alt="mdblogo" src="https://user-images.githubusercontent.com/15364873/146045747-5dbdce9c-a70a-494b-8fdd-52ba932cdd19.png">
 </p>
 
 # miniDB
