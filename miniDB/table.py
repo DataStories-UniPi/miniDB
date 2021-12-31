@@ -258,7 +258,6 @@ class Table:
         # top k rows
         # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
-        print(self.__dict__)
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
         # Sto leksiko __dict__ tou Table object(poy exei domh: onoma_attr: attr) tha vreis to onoma_attr="data" pou apotelei th lista listwn twn grammwn.
         # tha allakseis th timh tou attr "data" se mia lista listwn pou periexei ta telika stoixeia pou theloyume na provaloume analoga ta select, where.

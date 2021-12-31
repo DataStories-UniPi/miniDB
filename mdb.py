@@ -79,7 +79,7 @@ def create_query_plan(query, keywords, action):
             kw_positions.append(i+1) #apothikevoyme to index ths deyterhs lekshs toy keyword
 
     for i in range(len(kw_in_query)-1):
-        dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]]) #ME EKAPSES THEODOROPOYLE, ANTE NA TO EKSHGHSW AYTO
+        dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]]).removesuffix(' order') #ME EKAPSES THEODOROPOYLE, ANTE NA TO EKSHGHSW AYTO
                                                                        
         '''
                     TRUST ME AT YOUR OWN RISK
@@ -91,6 +91,10 @@ def create_query_plan(query, keywords, action):
           SELECT c1, c2 FROM TABLE WHERE ID=3
           
           Gia to select tha exoyme: {'select': '*'} kai {'select': 'c1, c2'}
+          
+          y.g prosthethike to .removesuffix(' order') to opoio kanei to order by leitourgiko. Prin petage error otan empaine 
+          to order by meta to 'where' kai to 'from' dioti to condition tou 'where' kai to/ta tables toy 'from' epernan mazi 
+          thn leksh 'order' san value sto dic
         '''
     if action=='select':
         dic = evaluate_from_clause(dic)
@@ -215,7 +219,7 @@ def interpret(query):
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
-                     'select': ['select', 'from', 'where', 'group by', 'order by', 'top'],
+                     'select': ['select', 'from', 'where', 'order by', 'top'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
@@ -242,7 +246,7 @@ def execute_dic(dic):
     for key in dic.keys(): #koitame ola ta kleidia tou leksikou poy ekteloume(select, from, where h insert into, values klp)
         if isinstance(dic[key],dict): #an kapoio kleidi exei leksiko san value ektelese to anadromika
             dic[key] = execute_dic(dic[key])
-    
+
     action = list(dic.keys())[0].replace(' ','_') #sto action(prwto key tou leksikou) vazoume '_' opou exei keno se periptwsh poy auto einai dyo lekseis. Ayto exei na kanei me th methodo pou kaleitai apo thn klash Database
     return getattr(db, action)(*dic.values()) #apo to db object pou dhmiourghthhke sthn arxh ektelese th synarthsh poy legetai opws to action me orismata ta values tou leksikou
                                               #px an action = select kai ta values einai *,table1,id=90 kai ta alla None, tha kalesei thn select(*,table1,id=90,...) apo thn Database
