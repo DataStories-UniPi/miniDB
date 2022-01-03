@@ -5,29 +5,6 @@ import os
 from misc import get_op, split_condition
 
 
-"""
-
-ISSUES: 
-
-    Using cprofile, we reached the conclusion that _uddate should be removed. Its very slow. This and constant file i/o is a problem.
-
-    These problems are partially solved by a server based protocol.
-
-    Handling columns should be discussed. Generating column when a function is called is an option. (use property decorator)
-
-    Removing columns all together is another option. 
-
-    Server should be implemented ASAP. No need to be great, needs to work tho.
-
-    All queries should be run from file or REPL (psql like). Only way to interact with mdb should be the server. strip()
-
-TODO:
-
-    Simple REPL
-
-"""
-
-
 class Table:
     '''
     Table object represents a table inside a database
@@ -158,10 +135,10 @@ class Table:
             set_value: string. The provided set value.
             set_column: string. The column to be altered.
             condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+                'column[<,<=,=,>=,>]value' or
+                'value[<,<=,=,>=,>]column'.
                 
-                Operatores supported: (<,<=,==,>=,>)
+                Operatores supported: (<,<=,=,>=,>)
         '''
         # parse the condition
         column_name, operator, value = self._parse_condition(condition)
