@@ -436,6 +436,68 @@ class Database:
 
         if mode=='inner':
             res = left_table._inner_join(right_table, condition)
+        elif mode=='inlj':
+            #if both the tables cannot be indexed, then do a simple inner join
+            if left_table.pk is None and right_table.pk is None:
+                print("Index-nested-loop join cannot be executed. Using inner join instead.\n")
+                res = left_table._inner_join(right_table,condition)
+            else:
+                reversed = False
+                #if the right table cannot be indexed and the left can, we reverse them
+                if(right_table.pk is None):
+                    temp = right_table
+                    right_table = left_table
+                    left_table = temp
+                    reversed = True
+
+                #Create the index of the second table
+                index = Btree(3) # 3 is arbitrary
+                # for each record in the primary key of the table, insert its value and index to the btree
+                for idx, key in enumerate(right_table.column_by_name(right_table.pk)):
+                    index.insert(key, idx)
+                
+                left_names = [f'{left_table._name}.{colname}' if left_table._name!='' else colname for colname in left_table.column_names]
+                right_names = [f'{right_table._name}.{colname}' if right_table._name!='' else colname for colname in right_table.column_names]
+                
+                # get columns and operator
+                column_name_left, operator, column_name_right = Table()._parse_condition(condition, join=True)
+                # try to find both columns, if you fail raise error
+                try:
+                    column_index_left = left_table.column_names.index(column_name_left)
+                except:
+                    raise Exception(f'Column "{column_name_left}" dont exist in left table. Valid columns: {left_table.column_names}.')
+
+                try:
+                    column_index_right = right_table.column_names.index(column_name_right)
+                except:
+                    raise Exception(f'Column "{column_name_right}" dont exist in right table. Valid columns: {right_table.column_names}.')
+
+                join_table_name = ''
+                join_table_colnames = left_names + right_names if not reversed else right_names + left_names
+                join_table_coltypes = left_table.column_types + right_table.column_types if not reversed else right_table.column_types + left_table.column_types
+                join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
+
+                #implementation of the index-nested-loop join
+                #if the tables had been reversed in the beginning, then the joined table appears
+                #with the tables shown in the order they appeared in the query
+                if(not reversed):
+                    for row_left in left_table.data:
+                        left_value = row_left[column_index_left]
+                        results = index.find(operator,left_value)
+                        if(len(results)>0):
+                            for _ in results:
+                                join_table._insert(row_left + right_table.data[_])
+                else:
+                    print('x')
+                    for row_left in left_table.data:
+                        left_value = row_left[column_index_left]
+                        results = index.find(operator,left_value)
+                        if(len(results)>0):
+                            for _ in results:
+                                join_table._insert(right_table.data[_] + row_left)
+                
+                res = join_table
+
         else:
             raise NotImplementedError
 
