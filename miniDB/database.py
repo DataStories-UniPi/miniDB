@@ -332,6 +332,7 @@ class Database:
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
             save_as: string. The name that will be used to save the resulting table into the database (no save if None).
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
+            distinct: boolean. If True, the resulting table will contain only unique rows.
         '''
 
         # if the keyword 'distinct' is detected in columns,

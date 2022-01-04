@@ -235,6 +235,7 @@ class Table:
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (False by default).
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
+            distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
         '''
 
         # if * return all columns, else find the column indexes for the columns specified
