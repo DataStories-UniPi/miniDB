@@ -295,8 +295,10 @@ class Table:
                 column_name = condition_list[0]
                 column = self.column_by_name(column_name)
 
+                sql_regex = ' '.join(condition_list[2:])
+
                 # Convert SQL regex pattern to python regex pattern
-                regex = re.compile(condition_list[2].replace("%",".*").replace("_","."))
+                regex = re.compile(sql_regex.replace("'","").replace("%",".*").replace("_","."))
 
                 # Add the rows that fully match the regex given
                 rows = [ind for ind, x in enumerate(column) if regex.fullmatch(str(x))]
