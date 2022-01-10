@@ -10,6 +10,7 @@ sys.path.append('miniDB')
 from database import Database
 from table import Table
 #testsad
+#newtest
 # art font is "big"
 art = '''
              _         _  _____   ____  
