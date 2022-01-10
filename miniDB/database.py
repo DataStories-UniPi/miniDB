@@ -94,7 +94,6 @@ class Database:
         Update all meta tables.
         '''
         self._update_meta_length()
-        # self._update_meta_locks()
         self._update_meta_insert_stack()
 
 
