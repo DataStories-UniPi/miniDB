@@ -9,8 +9,6 @@ sys.path.append('miniDB')
 
 from database import Database
 from table import Table
-#dfsdfs
-
 # art font is "big"
 art = '''
              _         _  _____   ____  
