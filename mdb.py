@@ -9,7 +9,6 @@ sys.path.append('miniDB')
 
 from database import Database
 from table import Table
-from random import random
 # art font is "big"
 art = '''
              _         _  _____   ____  
