@@ -3,6 +3,7 @@ from tabulate import tabulate
 import pickle
 import os
 from misc import get_op, split_condition
+from collections import OrderedDict
 
 
 class Table:
@@ -197,7 +198,7 @@ class Table:
         return indexes_to_del
 
 
-    def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None):
+    def _select_where(self, return_columns, condition=None,group_by=None, order_by=None, desc=True, top_k=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -241,13 +242,15 @@ class Table:
         s_table = Table(load=dict) 
         if order_by:
             s_table.order_by(order_by, desc)
+        if group_by:
+            s_table.group_by(group_by)
 
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
 
         return s_table
 
 
-    def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, desc=True, top_k=None):
+    def _select_where_with_btree(self, return_columns, bt, condition,group_by=None, order_by=None, desc=True, top_k=None):
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
@@ -288,6 +291,8 @@ class Table:
         s_table = Table(load=dict) 
         if order_by:
             s_table.order_by(order_by, desc)
+        if group_by:
+            s_table.group_by(group_by)
 
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
 
@@ -303,10 +308,24 @@ class Table:
         '''
         column = self.column_by_name(column_name)
         idx = sorted(range(len(column)), key=lambda k: column[k], reverse=desc)
-        # print(idx)
         self.data = [self.data[i] for i in idx]
         # self._update()
 
+
+
+    def group_by(self,column_name):
+        column = self.column_by_name(column_name)
+        #remove duplicate elements 
+        print(self.data)
+        elements= []
+        positions=[]
+        for idx, val in enumerate(column):
+            if val not in elements:
+                elements.append(val)
+                positions.append(idx)
+        print(positions)
+        self.data = [self.data[i] for i in positions]
+        #self.data = [self.data[i] for i in range(0,len(res)]
 
     def _inner_join(self, table_right: Table, condition):
         '''
