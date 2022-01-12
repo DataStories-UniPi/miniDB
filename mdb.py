@@ -70,6 +70,8 @@ def create_query_plan(query, keywords, action):
         
         if dic['order by'] is not None:
             dic['from'] = dic['from'].removesuffix(' order')
+            if dic['where'] is not None:
+                dic['where'] = dic['where'].removesuffix(' order')
             if 'desc' in dic['order by']:
                 dic['desc'] = True
             else:
@@ -78,7 +80,15 @@ def create_query_plan(query, keywords, action):
             
         else:
             dic['desc'] = None
+        
+        if dic['group by'] is not None:
+            if dic['where'] is not None:
+                dic['where'] = dic['where'].removesuffix(' group')
 
+            if dic['order by'] is not None:
+                dic['group by'] = dic['group by'].removesuffix(' order')
+            dic['from'] = dic['from'].removesuffix(' group')
+           
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
@@ -156,7 +166,7 @@ def interpret(query):
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
-                     'select': ['select', 'from', 'where', 'order by', 'top'],
+                     'select': ['select', 'from', 'where','group by' ,'order by', 'top'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
