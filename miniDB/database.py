@@ -516,6 +516,35 @@ class Database:
         print('journal:', out)
         #return out
 
+    global views
+    views=[]
+
+    def create_view(self, table_name):
+        views+=table_name
+
+
+    def drop_view(self,table_name):
+
+        #checking if the given table is a view
+        if table_name in views:
+            self.load_database()
+            self.lock_table(table_name)
+
+            self.tables.pop(table_name)
+            if os.path.isfile(f'{self.savedir}/{table_name}.pkl'):
+                os.remove(f'{self.savedir}/{table_name}.pkl')
+            else:
+                warnings.warn(f'"{self.savedir}/{table_name}.pkl" not found.')
+            self.delete_from('meta_locks', f'table_name={table_name}')
+            self.delete_from('meta_length', f'table_name={table_name}')
+            self.delete_from('meta_insert_stack', f'table_name={table_name}')
+
+            self.save_database()
+        else:
+            print("the table name that you have entered is not a view!")
+
+
+
 
     #### META ####
 
@@ -672,3 +701,4 @@ class Database:
         index = pickle.load(f)
         f.close()
         return index
+
