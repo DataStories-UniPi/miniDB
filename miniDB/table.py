@@ -222,9 +222,53 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            #In operator in where clause using left and right parenthesis
+            if "in" in condition.split():
+                split_con = condition.split() #condition in where clause is split in order to check the given values in "in" operator and remove the left and right parenthesis from it
+                split_con.remove("(")
+                split_con.remove(")")
+                in_op_val = split_con[2].split(",")#split all given values inside the parenthesis with comma delimeter used
+                column_name = split_con[0]
+                column = self.column_by_name(column_name)
+                rows=[] #list to keep the indexes of table rows that satisfy the given values in "in" operator
+                for i, j in enumerate(column):
+                    if str(j) in in_op_val:
+                        rows.append(i)#if the value in "in" operator is found in column values then add its index in the list
+
+            #Between operator in where clause
+            elif "between" in condition.split():
+                split_con = condition.split()
+                if (split_con[3]!='and'):# if user types something else than "and" then alert him and exit
+                    print('You should use "and" between low and high value')
+                    exit()
+                else:
+                    left_val = split_con[2] #low value inserted
+                    right_val = split_con[4] #high value inserted
+                    column_name = split_con[0]
+                    column = self.column_by_name(column_name)
+                    rows = []
+                    if (left_val.isdigit() and right_val.isdigit()):#if the values in "between" operator are both integers
+                        for i, j in enumerate(column):
+                            if j >= int(left_val) and j <= int(right_val):
+                                rows.append(i)  # if the values in "between" operator satisfy the >= and <= in column values then add its index in the list
+                    else:# if user types strings in "between" values alert him and exit
+                        print('Cannot compare strings')
+                        exit()
+
+            #Like operator in where clause
+            elif "like" in condition.split():
+                split_con = condition.split()
+                column_name = split_con[0]
+                column = self.column_by_name(column_name)
+                pattern = re.compile(split_con[2].replace("%", ".*").replace("_", "."))#We create a pattern that will be then matched in column values
+                rows = []
+                for i, j in enumerate(column):
+                    if pattern.match(str(j)):
+                        rows.append(i)  # if the value in "like" operator is found like a pattern in column values then add its index in the list
+            else:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
 
