@@ -249,7 +249,7 @@ class Table:
                     rows = []
                     if (left_val.isdigit() and right_val.isdigit()):#if the values in "between" operator are both integers
                         for i, j in enumerate(column):
-                            if j >= int(left_val) and j <= int(right_val):
+                            if int(j) >= int(left_val) and int(j) <= int(right_val):
                                 rows.append(i)  # if the values in "between" operator satisfy the >= and <= in column values then add its index in the list
                     else:# if user types strings in "between" values alert him and exit
                         print('Cannot compare strings')
