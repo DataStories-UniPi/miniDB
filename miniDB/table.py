@@ -4,6 +4,7 @@ import pickle
 import os
 from misc import get_op, split_condition
 from collections import OrderedDict
+ 
 
 
 class Table:
@@ -23,6 +24,8 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
+
+
     def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
 
         if load is not None:
@@ -198,6 +201,7 @@ class Table:
         return indexes_to_del
 
 
+    
     def _select_where(self, return_columns, condition=None,group_by=None, order_by=None, desc=True, top_k=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
@@ -217,8 +221,27 @@ class Table:
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
+            """for i in self.column_names:
+                if 
+            """
+            print(return_cols)
+            #print(self.return_cols)
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+            #return_columns1=return_columns.split(",")
+            #print(return_columns1)
+            
+                
+            #for i in return_columns1:
+               # if re.search('max(\D)' , i) :
+               # x=search_betweeen(i,"max(",")")
+                #if x is not None:
+                   #print()
+                
+
+
+            #return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+            
 
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
@@ -441,3 +464,5 @@ class Table:
         f.close()
 
         self.__dict__.update(tmp_dict)
+
+    
