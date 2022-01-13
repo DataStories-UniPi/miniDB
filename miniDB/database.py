@@ -512,16 +512,21 @@ class Database:
             out = tabulate({"Command": cache_list.split('\n')}, headers=["Command"])
         else:
             cache_list = '\n'.join([str(readline.get_history_item(i + 1)) for i in range(readline.get_current_history_length())])
-            out = tabulate({"Command": cache_list.split('\n')}, headers=["Index","Command"], showindex="always")
+            out = tabulate({"Command": cache_list.split('\n')}, headers=["Index", "Command"], showindex="always")
         print('journal:', out)
         #return out
 
     global views
     views=[]
+    #instead of list we can create a view table
 
     def create_view(self, table_name):
-        views+=table_name
+        views += table_name
+        self.view() is True
+        return table_name
 
+    def view(self):
+        return False
 
     def drop_view(self,table_name):
 
@@ -701,4 +706,3 @@ class Database:
         index = pickle.load(f)
         f.close()
         return index
-

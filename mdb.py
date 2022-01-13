@@ -119,8 +119,8 @@ def evaluate_from_clause(dic):
         subquery = ' '.join(from_split[1:-1])
         dic['from'] = interpret(subquery)
 
-    join_idx = [i for i,word in enumerate(from_split) if word=='join' and not in_paren(from_split,i)]
-    on_idx = [i for i,word in enumerate(from_split) if word=='on' and not in_paren(from_split,i)]
+    join_idx = [i for i, word in enumerate(from_split) if word == 'join' and not in_paren(from_split, i)]
+    on_idx = [i for i, word in enumerate(from_split) if word == 'on' and not in_paren(from_split, i)]
     if join_idx:
         join_idx = join_idx[0]
         on_idx = on_idx[0]
@@ -161,12 +161,12 @@ def interpret(query):
                      'update table': ['update table', 'set', 'where'],
                      'create index': ['create index', 'on', 'using'],
                      'drop index': ['drop index'],
-                     'create view': ['create view','on'],
+                     'create view': ['create view', 'on', 'select'],
                      'drop view': ['drop view']
                      }
 
-    if query[-1]!=';':
-        query+=';'
+    if query[-1] != ';':
+        query += ';'
     
     query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip()
 

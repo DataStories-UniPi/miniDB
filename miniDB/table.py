@@ -3,7 +3,7 @@ from tabulate import tabulate
 import pickle
 import os
 from misc import get_op, split_condition
-
+from database import Database
 
 class Table:
     '''
@@ -207,7 +207,7 @@ class Table:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
-                Operatores supported: (<,<=,==,>=,>)
+                Operators supported: (<,<=,==,>=,>)
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (False by default).
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
@@ -236,15 +236,18 @@ class Table:
         # we need to set the new column names/types and no of columns, since we might
         # only return some columns
         dict['column_names'] = [self.column_names[i] for i in return_cols]
-        dict['column_types']   = [self.column_types[i] for i in return_cols]
+        dict['column_types'] = [self.column_types[i] for i in return_cols]
 
         s_table = Table(load=dict) 
         if order_by:
             s_table.order_by(order_by, desc)
 
-        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
+        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k, str) else s_table.data
 
-        return s_table
+        if Database.view is True:
+            Database.create_table(self, Database.create_view(), dict['column_names'], dict['column_types'], None, None)
+        else:
+            return s_table
 
 
     def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, desc=True, top_k=None):
@@ -289,7 +292,7 @@ class Table:
         if order_by:
             s_table.order_by(order_by, desc)
 
-        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
+        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k, str) else s_table.data
 
         return s_table
 
