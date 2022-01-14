@@ -5,6 +5,7 @@ import sys
 import readline
 import traceback
 import shutil
+
 sys.path.append('miniDB')
 
 from database import Database
@@ -21,15 +22,16 @@ art = '''
 
 
 def search_between(s, first, last):
-    '''
-    Search in 's' for the substring that is between 'first' and 'last'
-    '''
-    try:
-        start = s.index( first ) + len( first )
-        end = s.index( last, start )
-    except:
-        return
-    return s[start:end].strip()
+        '''
+        Search in 's' for the substring that is between 'first' and 'last'
+        '''
+        try:
+            start = s.index( first ) + len( first )
+            end = s.index( last, start )
+        except:
+            return
+        return s[start:end].strip()
+
 
 def in_paren(qsplit, ind):
     '''

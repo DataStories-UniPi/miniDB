@@ -1,11 +1,21 @@
 from __future__ import annotations
+from signal import valid_signals
 from tabulate import tabulate
 import pickle
 import os
 from misc import get_op, split_condition
 from collections import OrderedDict
  
-
+def search_between(s, first, last):
+        '''
+        Search in 's' for the substring that is between 'first' and 'last'
+        '''
+        try:
+            start = s.index( first ) + len( first )
+            end = s.index( last, start )
+        except:
+            return
+        return s[start:end].strip()
 
 class Table:
     '''
@@ -25,6 +35,7 @@ class Table:
 
     '''
 
+    
 
     def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
 
@@ -71,6 +82,8 @@ class Table:
             # self._update()
 
     # if any of the name, columns_names and column types are none. return an empty table object
+
+    
 
     def column_by_name(self, column_name):
         return [row[self.column_names.index(column_name)] for row in self.data]
@@ -217,51 +230,97 @@ class Table:
             desc: boolean. If True, order_by will return results in descending order (False by default).
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
-
+        aggregate_functions = {
+                'max': None,
+                'min': None,
+                'count': None,
+                'avg': None,
+                'sum': None,
+                }
+        found = False
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
             """for i in self.column_names:
                 if 
             """
-            print(return_cols)
+            #print(return_cols)
             #print(self.return_cols)
         else:
-            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
-            #return_columns1=return_columns.split(",")
-            #print(return_columns1)
             
-                
-            #for i in return_columns1:
-               # if re.search('max(\D)' , i) :
-               # x=search_betweeen(i,"max(",")")
-                #if x is not None:
-                   #print()
-                
-
-
-            #return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+            splitted_columns=return_columns.split(",")
+            splitted_columns= [x.replace(' ','') for x in splitted_columns]
+            #print(splitted_columns)
             
+            
+            
+            for i in splitted_columns:
+                for key, value in aggregate_functions.items():
+                    in_parenthesis = search_between(i,key+"(",")")
+                    if in_parenthesis is not None:
+                        found = True #found at least one aggreagate function
+                        #print("true")
+                        splitted_columns[splitted_columns.index(i)] = in_parenthesis
+                        if(value is None):
+                            aggregate_functions[key]= [in_parenthesis]
+                        else:
+                            aggregate_functions[key].append(in_parenthesis) 
+                        
+                    
+            #print(splitted_columns)
+            
+            #print(aggregate_functions)
+            return_cols = [self.column_names.index(col.strip()) for col in splitted_columns]
 
+            #print(self.column_names[return_cols[0]])
+            #print(self.column_by_name("tot_cred"))
+            
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
             column_name, operator, value = self._parse_condition(condition)
             column = self.column_by_name(column_name)
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            #print(rows)
         else:
             rows = [i for i in range(len(self.data))]
+            #print(self.data[0][2])
 
-        # top k rows
-        # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
-        # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
-        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+        max_element = []
+        max_index = []
+        
+        if(found):
+            if aggregate_functions['max'] is not None:
+                    max_column = [i for i in aggregate_functions['max']]
+                    column_data = []
+                    for i in max_column:
+                        column_data.append(self.column_by_name(i))
 
-        # we need to set the new column names/types and no of columns, since we might
-        # only return some columns
+                    max_element = [max(i) for i in column_data]
+                    #print(max_element)
+                    for i in range(len(max_element)):
+                        max_index.append([column_data[i].index( max_element[i])])
+                    #print(max_index)
+                    '''dict = {
+                            for key,value in self.__dict__.items():
+                                if key=="data":
+                                    key:[[self.data[i][j] for j in return_cols] for i in rows]
+                                else:
+                                    key:value
+                    }'''
+                    dict = {(key):([[self.data[i][j] for j in return_cols] for i in max_index[0]] if key=="data" else value) for key,value in self.__dict__.items()}
+        else:
+            # top k rows
+            # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
+            # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
+            dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+            #print(dict)
+            # we need to set the new column names/types and no of columns, since we might
+            # only return some columns
         dict['column_names'] = [self.column_names[i] for i in return_cols]
         dict['column_types']   = [self.column_types[i] for i in return_cols]
 
+        #print(dict)
         s_table = Table(load=dict) 
         if order_by:
             s_table.order_by(order_by, desc)
