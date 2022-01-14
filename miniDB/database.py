@@ -314,7 +314,7 @@ class Database:
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
 
-    def select(self, columns, table_name, condition, order_by=None, top_k=True,\
+    def select(self, columns, table_name, condition, group_by=None, having=None, order_by=None, top_k=True,\
                desc=None, save_as=None, return_object=True, distinct=False):
         '''
         Selects and outputs a table's data where condtion is met.
@@ -345,7 +345,7 @@ class Database:
         # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
-            return table_name._select_where(columns, condition, order_by, desc, top_k, distinct)
+            return table_name._select_where(columns, condition, group_by, having, order_by, desc, top_k, distinct)
 
         if condition is not None:
             if "IN" in condition.split() or "in" in condition.split():
@@ -366,9 +366,9 @@ class Database:
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k, distinct)
+            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, group_by, having, order_by, desc, top_k, distinct)
         else:
-            table = self.tables[table_name]._select_where(columns, condition, order_by, desc, top_k, distinct)
+            table = self.tables[table_name]._select_where(columns, condition, group_by, having, order_by, desc, top_k, distinct)
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as

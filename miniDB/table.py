@@ -4,7 +4,8 @@ import pickle
 import os
 import re
 from misc import get_op, split_condition
-
+from statistics import mean # used to calculate the avg in group by
+import copy
 
 """
 
@@ -221,7 +222,7 @@ class Table:
         return indexes_to_del
 
 
-    def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None, distinct=False):
+    def _select_where(self, return_columns, condition=None, group_by=None, having=None, order_by=None, desc=True, top_k=None, distinct=False):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -238,11 +239,71 @@ class Table:
             distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
         '''
 
+        def _groupby_sum(column):
+            # Check if column items are numeric
+            if not any([ self.column_types[self.column_names.index(column)] is x for x in [int, float]  ]): raise ValueError(f"{column} is not numeric")
+            
+            for x, y in dict.items():
+                if any(isinstance(i, list) for i in y):
+                    dict2[x].append( sum( [ z[self.column_names.index(column)] for z in y ] ) )
+                else:
+                    dict2[x].append( y[self.column_names.index(column)] )
+
+        def _groupby_avg(column):
+            if not any([ self.column_types[self.column_names.index(column)] is x for x in [int, float]  ]): raise ValueError(f"{column} is not numeric")
+            
+            for x, y in dict.items():
+                if any(isinstance(i, list) for i in y):
+                    dict2[x].append( mean( list(filter( (None).__ne__,[ z[self.column_names.index(column)] for z in y ] )) ) )
+                else:
+                    dict2[x].append( y[self.column_names.index(column)] )
+            
+        def _groupby_min(column):
+            for x, y in dict.items():
+                if any(isinstance(i, list) for i in y):
+                    dict2[x].append( min( list(filter( (None).__ne__,[ z[self.column_names.index(column)] for z in y ] ))) )
+                else:
+                    dict2[x].append( y[self.column_names.index(column)] )
+
+        def _groupby_max(column):
+            for x, y in dict.items():
+                if any(isinstance(i, list) for i in y):
+                    dict2[x].append( max( list(filter( (None).__ne__,[ z[self.column_names.index(column)] for z in y ] ))) )
+                else:
+                    dict2[x].append( y[self.column_names.index(column)] )
+
+        def _groupby_count(column):
+            for x, y in dict.items():
+                dict2[x].append(len(y))
+
+        agg_funcs = {'sum': _groupby_sum, 'avg':_groupby_avg, 'min':_groupby_min, 'max':_groupby_max, 'count':_groupby_count}
+
+        def _groupby_agg_func_input(column):
+            # If column is agg func
+            try:
+                if column.split(' (')[0] in agg_funcs.keys():
+                    return re.findall("\(([^\)]+)\)", column)[0].strip()
+                else:
+                    return column
+            except AttributeError:
+                return column
+
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
         else:
-            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+            return_cols = []
+            for col in return_columns.split(','):
+                # if column not an agg function
+                if col.split(' (')[0] not in agg_funcs.keys():
+                    return_cols.append(self.column_names.index(col.strip()))
+                else:
+                    if _groupby_agg_func_input(col) == "*":  
+                        return_cols.append(col)
+                    else:
+                        # make sure that col that is in agg func exists
+                        self.column_names.index(_groupby_agg_func_input(col))
+                        return_cols.append(col)
 
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
@@ -278,17 +339,17 @@ class Table:
             #implementation of the between operator in where condition
             elif "BETWEEN" in condition.split() or "between" in condition.split():
                 condition_list = condition.split()
-                min = condition_list[2]
-                max = condition_list[4]
+                _min = condition_list[2]
+                _max = condition_list[4]
                 column_name = condition_list[0]
                 column = self.column_by_name(column_name)
 
                 #The try block will run in the case of a string comparison 'between' operation
                 try:
-                    rows = [ind for ind, x in enumerate(column) if x >= min and x <= max]
+                    rows = [ind for ind, x in enumerate(column) if x >= _min and x <= _max]
                 #The except block will run in the case of an integer comparison 'between' operation
                 except:
-                    rows = [ind for ind, x in enumerate(column) if (x >= int(min) and x <= int(max))]
+                    rows = [ind for ind, x in enumerate(column) if (x >= int(_min) and x <= int(_max))]
             
             elif "LIKE" in condition.split() or "like" in condition.split():
                 condition_list = condition.split()
@@ -310,15 +371,76 @@ class Table:
         else:
             rows = [i for i in range(len(self.data))]
 
-        # top k rows
-        # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
-        # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
-        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
 
-        # we need to set the new column names/types and no of columns, since we might
-        # only return some columns
-        dict['column_names'] = [self.column_names[i] for i in return_cols]
-        dict['column_types']   = [self.column_types[i] for i in return_cols]
+        if group_by:
+            
+            # GROUP BY Checkers
+            ## Check if any GROUP BY clause is aggregate function
+            if any([x.split(' (')[0] in agg_funcs.keys() for x in group_by.split(',')]): raise ValueError("Aggregate functions are not allowed in GROUP BY")
+            ## Check if selected columns (except of aggregate functions) are also clause of GROUP BY
+            if not set(set([x for x in return_columns.split(',') if x.split(' (')[0] not in agg_funcs.keys()])).issubset( group_by.split(',') ): raise ValueError("A column you have selected, is not clause of group by.")
+
+            # dict structure creation
+            unique_values = set( [value[self.column_names.index(group_by)] for value in self.data] )
+            dict = {x:[] for x in unique_values }
+            dict2 = copy.deepcopy(dict)
+
+            # Group data by a specific column
+            for value in unique_values:
+                for row in self.data:
+                    if row[self.column_names.index(group_by)] == value:
+                        dict[row[self.column_names.index(group_by)]].append(row)
+
+
+            # Create final table
+            for cur_sel_column in return_columns.split(','): # [x for x in return_columns.split(',') if x.split(' (')[0] in agg_funcs]:
+                # Calculate aggregate functions if selected
+                if cur_sel_column.split(' (')[0] in agg_funcs.keys():
+                    agg_funcs.get( cur_sel_column.split(' (')[0] )( _groupby_agg_func_input(cur_sel_column) )
+
+            
+            dict = dict2 ; del dict2 # set the final table
+            dict2 = {}
+
+            for x in dict:
+                dict[x].insert(return_columns.index(group_by), x)
+            
+            dict2['data'] = list(dict.values())
+            dict = dict2 ; del dict2 # set the final table
+
+            dict['column_names'] = [i for i in return_columns.split(',')]
+            dict['_name'] = self._name
+
+            dict['column_types'] = []
+            for i in return_columns.split(','):
+                if i.split(' (')[0] in agg_funcs.keys():
+                    if i.split(' (')[0] in ['count','sum']:
+                        dict['column_types'].append(type(1))
+                    elif i.split(' (')[0] == 'avg':
+                        dict['column_types'].append(type(1.1))
+                    else:
+                        dict['column_types'].append(self.column_types[self.column_names.index(_groupby_agg_func_input(i))])
+                else:
+                        dict['column_types'].append(self.column_types[self.column_names.index(_groupby_agg_func_input(i))])
+
+            for key,value in self.__dict__.items():
+                if key not in dict.keys():
+                    dict[key] = value
+
+        else:
+
+            # top k rows
+            # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
+            # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
+            dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+
+            
+            # we need to set the new column names/types and no of columns, since we might
+            # only return some columns
+            dict['column_names'] = [self.column_names[i] for i in return_cols]
+            dict['column_types'] = [self.column_types[i] for i in return_cols]
+
+        
 
         s_table = Table(load=dict) 
         if order_by:
@@ -332,7 +454,7 @@ class Table:
         return s_table
 
 
-    def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, desc=True, top_k=None, distinct=False):
+    def _select_where_with_btree(self, return_columns, bt, condition, group_by=None, having=None, order_by=None, desc=True, top_k=None, distinct=False):
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
