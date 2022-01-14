@@ -1,5 +1,4 @@
 from __future__ import annotations
-from signal import valid_signals
 from tabulate import tabulate
 import pickle
 import os
