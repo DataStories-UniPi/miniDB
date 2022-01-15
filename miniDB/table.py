@@ -273,8 +273,68 @@ class Table:
                     dict2[x].append( y[self.column_names.index(column)] )
 
         def _groupby_count(column):
-            for x, y in dict.items():
-                dict2[x].append(len(y))
+            if column == "*":
+                for x, y in dict.items():
+                    dict2[x].append(len(y))
+            else:
+                dict_lengths = {x:0 for x in unique_values }
+                for x,y in dict.items():
+                    for q in y:
+                        print(q)
+                        if q[self.column_names.index(column)] is not None:
+                            dict_lengths[x] += 1
+                for x,y in dict_lengths.items():
+                    dict2[x].append( dict_lengths[x] )
+
+        def _groupby_having_condition_exec(condition):
+            # gets all the variables of the condition
+            con_list = re.split('\s*>=\s*|\s*<=\s*|\s*>\s*|\s*<\s*|\s*=\s*',condition)
+            # get all operators of the condition
+            con_ops = [ x.strip() for x in re.findall('\s*>=\s*|\s*<=\s*|\s*>\s*|\s*<\s*|\s*=\s*',condition) ]
+            con_ops_pos = []
+
+            for i in range( len(con_list) ):
+                if i % 2 == 0:
+                    con_list.insert(i+1, con_ops[0] )
+                    con_ops_pos.append(i+1)
+                    con_ops.pop(0)
+            del con_ops
+
+            for i in con_ops_pos:
+                # check if a or b is a column's value or user's input
+                temp_a = False
+                temp_b = False
+                try:
+                    a = return_columns.split(',').index(con_list[i-1])
+                except ValueError:
+                    a = int(con_list[i-1])
+                    temp_a = True
+                try:
+                    b = return_columns.split(',').index(con_list[i+1])
+                except ValueError:
+                    b = int(con_list[i+1])
+                    temp_b = True
+                
+                # do the operations
+                if (temp_a) and (temp_b):
+                    for y in range( len(dict['data']) ):
+                        if not get_op(con_list[i], a, b):
+                            dict['data'][y] = None
+                elif (temp_a) and (not temp_b):
+                    for y in range( len(dict['data']) ):
+                        if not get_op(con_list[i], a, dict['data'][y][b]):
+                            dict['data'][y] = None
+                elif (not temp_a) and (temp_b):
+                    for y in range( len(dict['data']) ):
+                        if not get_op(con_list[i], dict['data'][y][a], b):
+                            dict['data'][y] = None
+                else:
+                    for y in range( len(dict['data']) ):
+                        if not get_op(con_list[i], dict['data'][y][a], dict['data'][y][b]):
+                            dict['data'][y] = None
+
+                dict['data'] = list(filter( (None).__ne__,[ z for z in dict['data'] ] ))
+
 
         agg_funcs = {'sum': _groupby_sum, 'avg':_groupby_avg, 'min':_groupby_min, 'max':_groupby_max, 'count':_groupby_count}
 
@@ -293,6 +353,10 @@ class Table:
             return_cols = [i for i in range(len(self.column_names))]
         else:
             return_cols = []
+
+            # fix return_columns format
+            return_columns = re.sub('\s*,\s*',',',return_columns)
+
             for col in return_columns.split(','):
                 # if column not an agg function
                 if col.split(' (')[0] not in agg_funcs.keys():
@@ -393,7 +457,7 @@ class Table:
 
 
             # Create final table
-            for cur_sel_column in return_columns.split(','): # [x for x in return_columns.split(',') if x.split(' (')[0] in agg_funcs]:
+            for cur_sel_column in return_columns.split(','):
                 # Calculate aggregate functions if selected
                 if cur_sel_column.split(' (')[0] in agg_funcs.keys():
                     agg_funcs.get( cur_sel_column.split(' (')[0] )( _groupby_agg_func_input(cur_sel_column) )
@@ -405,12 +469,15 @@ class Table:
             for x in dict:
                 dict[x].insert(return_columns.index(group_by), x)
             
+            # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
             dict2['data'] = list(dict.values())
             dict = dict2 ; del dict2 # set the final table
 
+            if having is not None:
+                _groupby_having_condition_exec(having)
+
             dict['column_names'] = [i for i in return_columns.split(',')]
             dict['_name'] = self._name
-
             dict['column_types'] = []
             for i in return_columns.split(','):
                 if i.split(' (')[0] in agg_funcs.keys():
