@@ -36,7 +36,7 @@ def in_paren(qsplit, ind):
     Split string on space and return whether the item in index 'ind' is inside a parentheses
     '''
     return qsplit[:ind].count('(')>qsplit[:ind].count(')')
-    #lklj
+    #lklj   asasas
 
 
 def create_query_plan(query, keywords, action):
