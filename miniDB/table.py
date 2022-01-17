@@ -1,4 +1,6 @@
 from __future__ import annotations
+import sys
+from tokenize import group
 from tabulate import tabulate
 import pickle
 import os
@@ -213,7 +215,102 @@ class Table:
         return indexes_to_del
 
 
-    
+    def aggregate_implementation(self,aggregate_functions,rows):
+        elements_of_all_aggregate_functions = []
+        aggregate_columns = []
+        if aggregate_functions['max'] is not None:
+                max_column = [i for i in aggregate_functions['max']]
+                
+                max_column_data = []
+                for i in max_column:
+                    max_column_data.append(self.column_by_name(i)) #gives all the data-rows(as a list) of the i column
+                
+
+                max_column_data = [[max_column_data[i][j] for j in rows] for i in range(len(max_column))] #keep only the rows selected above in condition
+                max_element = [max(i) for i in max_column_data] #contains the max element of each column we are looking for max()
+                
+                elements_of_all_aggregate_functions += max_element
+                aggregate_columns+=max_column
+                #print(max_element)
+                
+                #print(max_element)
+                '''for i in range(len(max_element)):
+                    max_index.append([max_column_data[i].index( max_element[i])]) #contains each list's max element's index'''
+        
+        if aggregate_functions['min'] is not None:
+                min_column = [i for i in aggregate_functions['min']]
+                min_column_data = []
+                for i in min_column:
+                    min_column_data.append(self.column_by_name(i)) #gives all the data-rows(as a list) of the i column
+                
+                min_column_data = [[min_column_data[i][j] for j in rows] for i in range(len(min_column))] #keep only the rows selected above in condition
+
+                min_element = [min(i) for i in min_column_data] #contains the min element of each column we are looking for min()
+                elements_of_all_aggregate_functions += min_element
+                aggregate_columns+=min_column
+        if aggregate_functions['count'] is not None:
+                count_column = [i for i in aggregate_functions['count']]
+                count_column_data = []
+                for i in count_column:
+                    count_column_data.append(self.column_by_name(i)) #gives all the data-rows(as a list) of the i column
+                
+                count_column_data = [[count_column_data[i][j] for j in rows] for i in range(len(count_column))] #keep only the rows selected above in condition
+
+                count_element = [len(i) for i in count_column_data] #contains the count element of each column we are looking for count()
+                elements_of_all_aggregate_functions+= count_element
+                aggregate_columns+=count_column
+        if aggregate_functions['avg'] is not None:
+                avg_column = [i for i in aggregate_functions['avg']]
+                avg_column_data = []
+                for i in avg_column:
+                    avg_column_data.append(self.column_by_name(i)) #gives all the data-rows(as a list) of the i column
+                
+                avg_column_data = [[avg_column_data[i][j] for j in rows] for i in range(len(avg_column))] #keep only the rows selected above in condition
+
+                avg_element = [sum(i)/len(i) for i in avg_column_data] #contains the avg element of each column we are looking for avg()
+                elements_of_all_aggregate_functions+= avg_element
+                aggregate_columns+=avg_column
+        if aggregate_functions['sum'] is not None:
+                sum_column = [i for i in aggregate_functions['sum']]
+                sum_column_data = []
+                for i in sum_column:
+                    sum_column_data.append(self.column_by_name(i)) #gives all the data-rows(as a list) of the i column
+                
+                sum_column_data = [[sum_column_data[i][j] for j in rows] for i in range(len(sum_column))] #keep only the rows selected above in condition
+
+                sum_element = [sum(i) for i in sum_column_data] #contains the sum element of each column we are looking for sum()
+                elements_of_all_aggregate_functions+= sum_element
+                aggregate_columns+=sum_column
+
+                '''for key,value in self.__dict__.items():
+                            if key=="data":
+                                for k in range(len(max_index)):
+                                    for i in return_cols:
+                                            for j in max_index[k]:
+                                                dict = { key: [self.data[j][i]] }       
+                            else:
+                                dict = {key:value}'''
+        print(elements_of_all_aggregate_functions)
+        #dict = {(key):([[self.data[i][j] for j in return_cols for i in max_index[k]] for k in range(len([max_index]))]  if key=="data" else value) for key,value in self.__dict__.items()}
+        dict = {(key):([elements_of_all_aggregate_functions]if key=="data" else value) for key,value in self.__dict__.items()}
+        #dict = {(key):([[self.data[i][j] for j in return_cols] for i in [elements_of_all_aggregate_functions]] if key=="data" else value) for key,value in self.__dict__.items()}
+        
+        return_cols = [self.column_names.index(col.strip()) for col in aggregate_columns]
+        
+        aggr_fun_col= []
+        for key, value in aggregate_functions.items():
+            if value is not None:
+                for i in range(len(value)):
+                    aggr_fun_col.append(key)
+        #print(aggr_fun_col)
+        
+        dict['column_names'] = [aggr_fun_col[i]+"(" +self.column_names[j]+ ")" for i,j in enumerate(return_cols)]
+        dict['column_types'] = [None for i in return_cols]
+        dict['pk_idx'] = None
+        dict['pk'] = None
+        return dict
+
+
     def _select_where(self, return_columns, condition=None,group_by=None, order_by=None, desc=True, top_k=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
@@ -236,19 +333,23 @@ class Table:
                 'avg': None,
                 'sum': None,
                 }
-        found = False
+        found = False #if at least one aggregate function was found
+
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
-            return_cols = [i for i in range(len(self.column_names))]
-            """for i in self.column_names:
-                if 
-            """
+            if not group_by:
+                return_cols = [i for i in range(len(self.column_names))]
+            else:
+                sys.exit("\n you have to select the column you use for group by")
             #print(return_cols)
             #print(self.return_cols)
         else:
             
             splitted_columns=return_columns.split(",")
             splitted_columns= [x.replace(' ','') for x in splitted_columns]
+            
+            if group_by is not None and group_by not in splitted_columns:
+                sys.exit("\n you have to select the column you use for group by") 
             #print(splitted_columns)
             
             
@@ -269,11 +370,20 @@ class Table:
             #print(splitted_columns)
             
             #print(aggregate_functions)
-            return_cols = [self.column_names.index(col.strip()) for col in splitted_columns]
-
+            if not group_by:
+                return_cols = [self.column_names.index(col.strip()) for col in splitted_columns]
+            else:
+                if not found:
+                    return_cols = [self.column_names.index(group_by)]
+                else:
+                    return_cols = [self.column_names.index(col.strip()) for col in splitted_columns]
+            
+            #return_cols = [self.column_names.index(col.strip()) for col in splitted_columns]
+            
+            #print(splitted_columns)
             #print(self.column_names[return_cols[0]])
             #print(self.column_by_name("tot_cred"))
-            
+        #print(return_cols)   
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
@@ -284,30 +394,56 @@ class Table:
         else:
             rows = [i for i in range(len(self.data))]
             #print(self.data[0][2])
-
-        max_element = []
-        max_index = []
+            
         
         if(found):
-            if aggregate_functions['max'] is not None:
+            if not group_by:
+                dict = self.aggregate_implementation(aggregate_functions,rows)
+                #print(dict)
+            else:
+                all_columns = [group_by]
+                if aggregate_functions['max'] is not None:
                     max_column = [i for i in aggregate_functions['max']]
-                    column_data = []
+                    max_column_data = []
                     for i in max_column:
-                        column_data.append(self.column_by_name(i))
+                        max_column_data.append(self.column_by_name(i)) #gives all the data-rows(as a list) of the i column
+                    
+                    max_column_data = [[max_column_data[i][j] for j in rows] for i in range(len(max_column))] #keep only the rows selected above in condition
+                    group_by_column_data = self.column_by_name(group_by)
+                    
+                    group_data = list(sorted(set(group_by_column_data),key = group_by_column_data.index))
+                    all_columns+=max_column
+                    max_all = []
+                    for k in range(len(max_column_data)):
+                        max =[None]*len(group_data)
+                        for i in range(len(max_column_data[k])):
+                            for j in range(len(group_data)):
+                                if group_by_column_data[i]==group_data[j]:
+                                    if max[j] is None:
+                                        max[j] = max_column_data[k][i] 
+                                    else:
+                                        if max_column_data[k][i] > max[j]:
+                                            max[j] = max_column_data[k][i] 
+                        max_all.append(max)
+                    max_all.insert(0,group_data)
+                
+                dict = {(key):(zip(*max_all) if key=="data" else value) for key,value in self.__dict__.items()}
+            
+                return_cols = [self.column_names.index(col.strip()) for col in all_columns]
+    
+                aggr_fun_col= []
+                for key, value in aggregate_functions.items():
+                    if value is not None:
+                        for i in range(len(value)):
+                            aggr_fun_col.append(key)
+                aggr_fun_col.insert(0,"")
+                
+                dict['column_names'] = [aggr_fun_col[i]+"(" +self.column_names[j]+ ")" if i!=0 else self.column_names[j]for i,j in enumerate(return_cols)]
+                dict['column_types'] = [None for i in return_cols]
+                dict['pk_idx'] = None
+                dict['pk'] = None
+                    
 
-                    max_element = [max(i) for i in column_data]
-                    #print(max_element)
-                    for i in range(len(max_element)):
-                        max_index.append([column_data[i].index( max_element[i])])
-                    #print(max_index)
-                    '''dict = {
-                            for key,value in self.__dict__.items():
-                                if key=="data":
-                                    key:[[self.data[i][j] for j in return_cols] for i in rows]
-                                else:
-                                    key:value
-                    }'''
-                    dict = {(key):([[self.data[i][j] for j in return_cols] for i in max_index[0]] if key=="data" else value) for key,value in self.__dict__.items()}
         else:
             # top k rows
             # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
@@ -316,18 +452,19 @@ class Table:
             #print(dict)
             # we need to set the new column names/types and no of columns, since we might
             # only return some columns
-        dict['column_names'] = [self.column_names[i] for i in return_cols]
-        dict['column_types']   = [self.column_types[i] for i in return_cols]
+            dict['column_names'] = [ self.column_names[i] for i in return_cols]
+            dict['column_types'] = [self.column_types[i] for i in return_cols]
 
-        #print(dict)
+        
         s_table = Table(load=dict) 
         if order_by:
             s_table.order_by(order_by, desc)
-        if group_by:
+        if group_by and not found:
+            #print(s_table.column_names)
             s_table.group_by(group_by)
 
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
-
+        
         return s_table
 
 
@@ -397,14 +534,14 @@ class Table:
     def group_by(self,column_name):
         column = self.column_by_name(column_name)
         #remove duplicate elements 
-        print(self.data)
+        #print(column)
         elements= []
         positions=[]
         for idx, val in enumerate(column):
             if val not in elements:
                 elements.append(val)
                 positions.append(idx)
-        print(positions)
+        #print(positions)
         self.data = [self.data[i] for i in positions]
         #self.data = [self.data[i] for i in range(0,len(res)]
 
@@ -474,7 +611,8 @@ class Table:
             output += f"\n## {self._name} ##\n"
 
         # headers -> "column name (column type)"
-        headers = [f'{col} ({tp.__name__})' for col, tp in zip(self.column_names, self.column_types)]
+        #headers = [f'{col} ({tp.__name__})' for col, tp in zip(self.column_names, self.column_types)]
+        headers = [f'{col} ({tp.__name__})' if tp is not None else f'{col}' for col, tp in zip(self.column_names, self.column_types)]
         if self.pk_idx is not None:
             # table has a primary key, add PK next to the appropriate column
             headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
