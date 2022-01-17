@@ -36,7 +36,6 @@ def in_paren(qsplit, ind):
     Split string on space and return whether the item in index 'ind' is inside a parentheses
     '''
     return qsplit[:ind].count('(')>qsplit[:ind].count(')')
-    #lklj   asasas
 
 
 def create_query_plan(query, keywords, action):
@@ -59,6 +58,8 @@ def create_query_plan(query, keywords, action):
         elif i!=len(ql)-1 and f'{ql[i]} {ql[i+1]}' in keywords and not in_paren(ql, i):
             kw_in_query.append(f'{ql[i]} {ql[i+1]}')
             kw_positions.append(i+1)
+   # print(kw_in_query)
+   # print(kw_positions)
 
 
     for i in range(len(kw_in_query)-1):
@@ -79,12 +80,61 @@ def create_query_plan(query, keywords, action):
             dic['desc'] = None
 
     if action=='create table':
-        args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
+        args = dic['create table'][dic['create table'].index('('):dic['create table'].rindex(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
         arg_nopk = args.replace('primary key', '')[1:-1]
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+        if 'foreign key' in args:
+           # print(args)
+            fkeyres = [i.start() for i in re.finditer('foreign key',args )]
+            frefres = [i.start() for i in re.finditer('references',args )]            
+            
+            if len(fkeyres)==len(frefres):
+                full = args[fkeyres[0]:]                    
+                l=[val.strip().split(' ') for val in full.split(',')]
+                dic['foreign keys'] = [[val[2] for val in l]]
+                dic['foreign table'] = [[val[4] for val in l]]
+                dic['foreign table key'] = [[val[6] for val in l]]
+                print(dic['foreign keys'])
+                print(dic['foreign table'])
+                print(dic['foreign table key'])
+                '''
+                k=[]
+                for i in range(len(fkeyres)):
+                    full = args[fkeyres[i]:]                    
+                  #  print(full)
+                    l=[val.strip().split(' ') for val in full.split(',')]
+                    print(l)
+                    #dic['foreign keys '] = ','.join([val[2] for val in l])
+                    dic['foreign keys'] = [[val[2] for val in l]]
+                    dic['foreign tables'] = [[val[4] for val in l]]
+                    print(dic['foreign keys'])
+                    print(dic['foreign tables'])
+                    print('To i einai : '+ str(i))
+                    #print('To len einai : '+ str(len(l[i])))
+                    print (l[0][2])
+                    for j in range(2,8,2):
+                        print('To j einai : '+ str(j))
+                        #k.append(l[i][j],l[i][5],l[i][7])                    
+                        k.append(l[0][j])                    
+                print(k)
+             #   print(fkeyres)
+             #   print(frefres)
+             #   print('ok')
+             '''
+            else:
+                raise ValueError('Your parens are not right m8')
+            '''
+            myforeignkeyindex = args.find('foreign key')        
+            myreferenceskeyindex=args.find('references')        
+            print(args)
+            myargs=args[myforeignkeyindex:myreferenceskeyindex]
+            print (myargs)
+            myreferences= args[myreferenceskeyindex:]
+            print (myreferences)
+            '''
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]
@@ -95,8 +145,29 @@ def create_query_plan(query, keywords, action):
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
     if action=='insert into':
-        if dic['values'][0] == '(' and dic['values'][-1] == ')':
-            dic['values'] = dic['values'][1:-1]
+        if dic['values'] is not None:
+            if dic['values'][0] == '(' and dic['values'][-1] == ')':
+                dic['values'] = dic['values'][1:-1]            
+        elif dic['select'] is not None:
+            dic['select']='select '+dic['select']
+            k=interpret(dic['select'])            
+            result=execute_dic(k)
+            non_none_rows = [row for row in result.data if any(row)] 
+            print(len(non_none_rows))
+            for i_row in non_none_rows: 
+              #  print(i_row)         
+                #my_lst_str = ','.join(map(str, non_none_rows[0]))            
+                my_lst_str = ','.join(map(str, i_row))            
+                query='insert into ' + dic['insert into'] + ' values ('+ my_lst_str +')' 
+                #del k['select']
+                #del dic['select']            
+               # print('metaaaaaa')
+               # print(query)              
+                k=interpret(query)            
+                if 'select' in k: del k['select']            
+               # print(k)    
+                result=execute_dic(k)
+            if 'select' in dic: del dic['select']                                  
         else:
             raise ValueError('Your parens are not right m8')
     
@@ -154,7 +225,8 @@ def interpret(query):
                      'cast': ['cast', 'from', 'to'],
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
-                     'insert into': ['insert into', 'values'],
+                     #'insert into': ['insert into', 'values'],
+                     'insert into': ['insert into', 'values','select'],
                      'select': ['select', 'from', 'where', 'order by', 'top'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
@@ -182,8 +254,8 @@ def execute_dic(dic):
     for key in dic.keys():
         if isinstance(dic[key],dict):
             dic[key] = execute_dic(dic[key])
-    
-    action = list(dic.keys())[0].replace(' ','_')
+    action = list(dic.keys())[0].replace(' ','_')   
+ #   print(*dic.values()) 
     return getattr(db, action)(*dic.values())
 
 def interpret_meta(command):
