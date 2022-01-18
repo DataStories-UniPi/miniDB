@@ -141,6 +141,21 @@ class Database:
         # self._update()
         self.save_database()
 
+    def create_view(self, name, columns, table_name, condition,group_by=None, order_by=None, top_k=True,desc=None):
+        #Display select(execute query)
+        self.select(columns, table_name, condition,group_by, order_by, top_k,return_object=False)
+        #create view(execute query, then save the outcome as table object)
+        x=self.select(columns, table_name, condition,group_by, order_by, top_k,return_object=True)
+        #add table object to database
+        self.tables.update({name: x})
+        self._update()
+        self.save_database()
+        print(f'Created view "{name}".')
+
+    def drop_view(self,table_name):
+        self.drop_table(table_name)
+        print(f'Deleted view "{table_name}".')
+
 
     def import_table(self, table_name, filename, column_types=None, primary_key=None):
         '''
