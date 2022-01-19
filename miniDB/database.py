@@ -613,27 +613,53 @@ class Database:
                 logging.info('Creating Btree index.')
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
                 self.tables['meta_indexes']._insert([table_name, index_name])
-                # crate the actual index
-                self._construct_index(table_name, index_name)
+                # create the actual index
+                self._construct_index(table_name, index_name, index_type) #ADDED INDEX_TYPE
+                self.save_database()
+            # if statement for index type hash
+            if index_type=='hash':
+                logging.info('Creating Hash index.')
+                # insert a record with the name of the index and the table on which it's created to the meta_indexes table
+                self.tables['meta_indexes']._insert([table_name, index_name])
+                # create the actual index
+                #self._construct_index(table_name, index_name, index_type)
                 self.save_database()
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
-    def _construct_index(self, table_name, index_name):
-        '''
-        Construct a btree on a table and save.
+    def _construct_index(self, table_name, index_name, index_type): #ADDED INDEX_TYPE
+        if index_type=='btree':
+            '''
+            Construct a btree on a table and save.
 
-        Args:
-            table_name: string. Table name (must be part of database).
-            index_name: string. Name of the created index.
-        '''
-        bt = Btree(3) # 3 is arbitrary
+            Args:
+                table_name: string. Table name (must be part of database).
+                index_name: string. Name of the created index.
+            '''
+            bt = Btree(3) # 3 is arbitrary
 
-        # for each record in the primary key of the table, insert its value and index to the btree
-        for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
-            bt.insert(key, idx)
-        # save the btree
-        self._save_index(index_name, bt)
+            # for each record in the primary key of the table, insert its value and index to the btree
+            for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
+                bt.insert(key, idx)
+            # save the btree
+            self._save_index(index_name, bt)
+        
+        if index_type=='hash':
+            '''
+            Construch a hash index on a table and save.
+
+            Args:
+                table_name: string. Table name (must be part of database).
+                index_name: string. Name of the created index.
+            '''
+            #h = Hash() 
+
+            # for each record in the primary key of the table, insert its value and index to the hash 
+            #for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
+            #    h.insert(key, idx)
+            # save the hash
+            #self._save_index(index_name, h)
+        
 
 
     def _has_index(self, table_name):
