@@ -140,6 +140,7 @@ class Database:
 
         # self._update()
         self.save_database()
+        print(f'table {table_name} dropped')
 
 
     def import_table(self, table_name, filename, column_types=None, primary_key=None):

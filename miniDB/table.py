@@ -59,7 +59,9 @@ class Table:
 
             # if primary key is set, keep its index as an attribute
             if primary_key is not None:
-                self.pk_idx = self.column_names.index(primary_key)
+                self.pk_idx = []
+                for i in range(len(primary_key)):
+                    self.pk_idx.append(self.column_names.index(primary_key[i]))
             else:
                 self.pk_idx = None
 
@@ -377,7 +379,8 @@ class Table:
         headers = [f'{col} ({tp.__name__})' for col, tp in zip(self.column_names, self.column_types)]
         if self.pk_idx is not None:
             # table has a primary key, add PK next to the appropriate column
-            headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
+            for i in range(len(self.pk_idx)):
+                headers[self.pk_idx[i]] = headers[self.pk_idx[i]]+' #PK#'
         # detect the rows that are no tfull of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]
