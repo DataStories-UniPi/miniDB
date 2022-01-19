@@ -54,11 +54,11 @@ The file [documentation.pdf](documentation.pdf) contains a detailed description 
 
 To create a database called _"smdb"_ containing the smallRelations tables and get an interactive shell, run
 ```
-DB=smdb SQL=sql_files/smallRelationsInsertFile.sql python3.9 mdb.py
+DB=smdb SQL=sql_files/smallRelationsInsertFile.sql python3.10 mdb.py
 ```
 You can then access the database that is saved. You can either open an interactive interpreter with the following command:
 ```
-DB=smdb python3.9 mdb.py
+DB=smdb python3.10 mdb.py
 ```
 or run a specific sql file with multiple commands using the following syntax:
 ```
