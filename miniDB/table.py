@@ -407,6 +407,17 @@ class Table:
             raise ValueError(f'Condition is not valid (cant find column name)')
         coltype = self.column_types[self.column_names.index(left)]
 
+        # Check operator and column type
+        if(op == "between"):
+            val = right.split("and")
+            return left, op, [coltype(val[0]),coltype(val[1])]
+        elif(op == 'in'):
+            if(str(right)[0] != '(' or str(right)[-1] != ')'): raise ValueError # Values must be contained in ()
+            val = str(right).removeprefix('(').removesuffix(')').split(',') # remove () and split it 
+            # check type for every item
+            for i in range(0,len(val)):
+                val[i] = coltype(val[i])
+            return left, op, val
         return left, op, coltype(right)
 
 
