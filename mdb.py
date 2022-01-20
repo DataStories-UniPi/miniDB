@@ -6,6 +6,7 @@ import readline
 import traceback
 import shutil
 
+
 sys.path.append('miniDB')
 
 from database import Database
@@ -129,6 +130,33 @@ def create_query_plan(query, keywords, action):
                 dic['group by'] = dic['group by'].removesuffix(' order')
             dic['from'] = dic['from'].removesuffix(' group')
     
+    if action=='create tempview':
+        dic = evaluate_from_clause(dic)
+        if " on" in dic['create tempview']:
+            dic['create tempview'] = dic['create tempview'].removesuffix(' on')
+        else:
+            sys.exit("ON is required in create view")
+        if dic['order by'] is not None:
+            dic['from'] = dic['from'].removesuffix(' order')
+            if dic['where'] is not None:
+                dic['where'] = dic['where'].removesuffix(' order')
+            if 'desc' in dic['order by']:
+                dic['desc'] = True
+            else:
+                dic['desc'] = False
+            dic['order by'] = dic['order by'].removesuffix(' asc').removesuffix(' desc')
+            
+        else:
+            dic['desc'] = None
+        
+        if dic['group by'] is not None:
+            if dic['where'] is not None:
+                dic['where'] = dic['where'].removesuffix(' group')
+
+            if dic['order by'] is not None:
+                dic['group by'] = dic['group by'].removesuffix(' order')
+            dic['from'] = dic['from'].removesuffix(' group')
+    
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
@@ -191,6 +219,7 @@ def interpret(query):
                      'drop table': ['drop table'],
                      'create view': ['create view','select', 'from', 'where','group by' ,'order by', 'top'],
                      'drop view': ['drop view'],
+                     'create tempview': ['create tempview','select', 'from', 'where','group by' ,'order by', 'top'],
                      'cast': ['cast', 'from', 'to'],
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
@@ -245,8 +274,17 @@ def interpret_meta(command):
         [print(fold.removesuffix('_db')) for fold in os.listdir('dbdata')]
     
     def list_tables(db_name):
+        '''
         [print(pklf.removesuffix('.pkl')) for pklf in os.listdir(f'dbdata/{db_name}_db') if pklf.endswith('.pkl')\
+            and not pklf.startswith('meta')] '''
+
+        mylist=[pklf.removesuffix('.pkl') for pklf in os.listdir(f'dbdata/{db_name}_db') if pklf.endswith('.pkl')\
             and not pklf.startswith('meta')]
+        for i in mylist:
+            if i not in Database.tempviews:
+                print(i)
+        
+        
 
     def change_db(db_name):
         global db
@@ -291,6 +329,7 @@ if __name__ == "__main__":
                 if line[-1]!=';':
                     line+=';'
             except (KeyboardInterrupt, EOFError):
+                Database.exit_handler(db)
                 print('\nbye!')
                 break
             try:

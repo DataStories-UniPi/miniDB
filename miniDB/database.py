@@ -9,6 +9,7 @@ from misc import split_condition
 import logging
 import warnings
 import readline
+
 from tabulate import tabulate
 
 
@@ -17,11 +18,12 @@ from tabulate import tabulate
 # Clear command cache (journal)
 readline.clear_history()
 
+
 class Database:
     '''
     Main Database class, containing tables.
     '''
-
+    tempviews =[]
     def __init__(self, name, load=True):
         self.tables = {}
         self._name = name
@@ -52,7 +54,6 @@ class Database:
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
         self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
         self.save_database()
-
     def save_database(self):
         '''
         Save database as a pkl file. This method saves the database object, including all tables and attributes.
@@ -155,8 +156,28 @@ class Database:
     def drop_view(self,table_name):
         self.drop_table(table_name)
         print(f'Deleted view "{table_name}".')
+    
+    def create_tempview(self, name, columns, table_name, condition,group_by=None, order_by=None, top_k=True,desc=None):
+        #Display select(execute query)
+        self.select(columns, table_name, condition,group_by, order_by, top_k,return_object=False)
+        #create view(execute query, then save the outcome as table object)
+        x=self.select(columns, table_name, condition,group_by, order_by, top_k,return_object=True)
+        #add temporary table object to database
+        self.tempviews.append(name)
+        self.tables.update({name: x})
+        self._update()
+        self.save_database()
+        
+        print(f'Created temp view "{name}".')
 
 
+    def exit_handler(self):
+        if self.tempviews is not None:
+            for i in self.tempviews:
+                self.drop_table(i)
+    
+
+    
     def import_table(self, table_name, filename, column_types=None, primary_key=None):
         '''
         Creates table from CSV file.
