@@ -280,7 +280,6 @@ class Table:
                 dict_lengths = {x:0 for x in unique_values }
                 for x,y in dict.items():
                     for q in y:
-                        print(q)
                         if q[self.column_names.index(column)] is not None:
                             dict_lengths[x] += 1
                 for x,y in dict_lengths.items():
