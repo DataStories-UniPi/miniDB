@@ -457,7 +457,7 @@ class Table:
         return dict
 
 
-    def _select_where(self, return_columns, condition=None,group_by=None, order_by=None, desc=True, top_k=None):
+    def _select_where(self, return_columns, condition=None,group_by=None,having=None ,order_by=None, desc=True, top_k=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -550,6 +550,9 @@ class Table:
             else:
                 
                 dict=self.aggregate_with_group_by(aggregate_functions,rows,group_by) 
+                
+                    
+                        
 
         else:
             # top k rows
@@ -563,7 +566,32 @@ class Table:
             dict['column_types'] = [self.column_types[i] for i in return_cols]
 
         
+
         s_table = Table(load=dict) 
+
+        if having and group_by:
+            having=having.replace(" ","")
+            having_cond=having.partition('(')
+            aggr_func=having_cond[0]
+            having_cond=having_cond[2]
+            having_cond=having_cond.replace(")","")
+            
+            
+            column_name, operator, value = self._parse_condition(having_cond)
+
+            col=aggr_func+"("+column_name+")"
+            #print(aggr_func,column_name,operator,value)
+            #print(col)
+
+
+            column = s_table.column_by_name(col)
+            #print(column)
+            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            #print(rows)
+            
+            s_table.data = [s_table.data[i] for i in rows]
+
+
         if order_by:
             s_table.order_by(order_by, desc)
         if group_by and not found:
@@ -575,7 +603,7 @@ class Table:
         return s_table
 
 
-    def _select_where_with_btree(self, return_columns, bt, condition,group_by=None, order_by=None, desc=True, top_k=None):
+    def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, desc=True, top_k=None):
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
@@ -616,8 +644,7 @@ class Table:
         s_table = Table(load=dict) 
         if order_by:
             s_table.order_by(order_by, desc)
-        if group_by:
-            s_table.group_by(group_by)
+        
 
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
 

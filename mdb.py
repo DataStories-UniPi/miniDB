@@ -85,7 +85,8 @@ def create_query_plan(query, keywords, action):
         if dic['group by'] is not None:
             if dic['where'] is not None:
                 dic['where'] = dic['where'].removesuffix(' group')
-
+            if dic['having'] is not None:
+                dic['having'] = dic['having'].removesuffix(' order')
             if dic['order by'] is not None:
                 dic['group by'] = dic['group by'].removesuffix(' order')
             dic['from'] = dic['from'].removesuffix(' group')
@@ -125,7 +126,8 @@ def create_query_plan(query, keywords, action):
         if dic['group by'] is not None:
             if dic['where'] is not None:
                 dic['where'] = dic['where'].removesuffix(' group')
-
+            if dic['having'] is not None:
+                dic['having'] = dic['having'].removesuffix(' order')
             if dic['order by'] is not None:
                 dic['group by'] = dic['group by'].removesuffix(' order')
             dic['from'] = dic['from'].removesuffix(' group')
@@ -152,7 +154,8 @@ def create_query_plan(query, keywords, action):
         if dic['group by'] is not None:
             if dic['where'] is not None:
                 dic['where'] = dic['where'].removesuffix(' group')
-
+            if dic['having'] is not None:
+                dic['having'] = dic['having'].removesuffix(' order')
             if dic['order by'] is not None:
                 dic['group by'] = dic['group by'].removesuffix(' order')
             dic['from'] = dic['from'].removesuffix(' group')
@@ -217,21 +220,21 @@ def interpret(query):
     '''
     kw_per_action = {'create table': ['create table'],
                      'drop table': ['drop table'],
-                     'create view': ['create view','select', 'from', 'where','group by' ,'order by', 'top'],
+                     'create view': ['create view','select', 'from', 'where','group by','having' ,'order by', 'top'],
                      'drop view': ['drop view'],
-                     'create tempview': ['create tempview','select', 'from', 'where','group by' ,'order by', 'top'],
+                     'create tempview': ['create tempview','select', 'from', 'where','group by' ,'having','order by', 'top'],
                      'cast': ['cast', 'from', 'to'],
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
-                     'select': ['select', 'from', 'where','group by' ,'order by', 'top'],
+                     'select': ['select', 'from', 'where','group by' ,'having','order by', 'top'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
                      'create index': ['create index', 'on', 'using'],
                      'drop index': ['drop index']
-                     }
+                    }
 
     if query[-1]!=';':
         query+=';'
