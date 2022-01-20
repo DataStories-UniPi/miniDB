@@ -154,7 +154,7 @@ def interpret(query):
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
-                     'select': ['select', 'from', 'where', 'order by', 'top'],
+                     'select': ['select', 'distinct', 'from', 'where', 'order by', 'top'], # added distinct action
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],

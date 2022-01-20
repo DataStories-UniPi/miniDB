@@ -22,6 +22,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
+
     def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
 
         if load is not None:
@@ -68,6 +69,7 @@ class Table:
 
     # if any of the name, columns_names and column types are none. return an empty table object
 
+    # this function takes the data of a whole column of table "self"
     def column_by_name(self, column_name):
         return [row[self.column_names.index(column_name)] for row in self.data]
 
@@ -196,8 +198,8 @@ class Table:
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
 
-
-    def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None):
+    # added distinct=None parameter
+    def _select_where(self, return_columns, condition=None, distinct=None, order_by=None, desc=True, top_k=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -208,6 +210,8 @@ class Table:
                 'value[<,<=,==,>=,>]column'.
                 
                 Operatores supported: (<,<=,==,>=,>)
+            
+            distinct: A list of columns of the table.
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (False by default).
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
@@ -217,6 +221,8 @@ class Table:
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
         else:
+
+            #column names is a list with the names of columns of the table
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
         # if condition is None, return all rows
@@ -224,7 +230,7 @@ class Table:
         if condition is not None:
             column_name, operator, value = self._parse_condition(condition)
             column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)] # create a list with the indexes of the rows to be returned
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -242,9 +248,16 @@ class Table:
         if order_by:
             s_table.order_by(order_by, desc)
 
+        if distinct is not None:
+            s_table.distinct(distinct)
+
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
 
         return s_table
+
+    def distinct(self, column_name):
+        print("You are in a good road!")
+
 
 
     def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, desc=True, top_k=None):

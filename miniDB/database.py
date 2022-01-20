@@ -313,7 +313,7 @@ class Database:
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
 
-    def select(self, columns, table_name, condition, order_by=None, top_k=True,\
+    def select(self, columns, table_name, condition, distinct=None, order_by=None, top_k=True,\
                desc=None, save_as=None, return_object=True):
         '''
         Selects and outputs a table's data where condtion is met.
@@ -326,6 +326,8 @@ class Database:
                 'value[<,<=,==,>=,>]column'.
                 
                 Operatores supported: (<,<=,==,>=,>)
+            
+            distinct: A list of columns of the table.
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (True by default).
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
@@ -335,7 +337,7 @@ class Database:
         # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
-            return table_name._select_where(columns, condition, order_by, desc, top_k)
+            return table_name._select_where(columns, condition, distinct, order_by, desc, top_k)
 
         if condition is not None:
             condition_column = split_condition(condition)[0]
@@ -351,7 +353,7 @@ class Database:
             bt = self._load_idx(index_name)
             table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k)
         else:
-            table = self.tables[table_name]._select_where(columns, condition, order_by, desc, top_k)
+            table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, top_k)
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as
