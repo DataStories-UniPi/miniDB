@@ -379,8 +379,11 @@ class Table:
         headers = [f'{col} ({tp.__name__})' for col, tp in zip(self.column_names, self.column_types)]
         if self.pk_idx is not None:
             # table has a primary key, add PK next to the appropriate column
-            for i in range(len(self.pk_idx)):
-                headers[self.pk_idx[i]] = headers[self.pk_idx[i]]+' #PK#'
+            if type(self.pk_idx) == list:
+                for i in range(len(self.pk_idx)):
+                    headers[self.pk_idx[i]] = headers[self.pk_idx[i]] + ' #PK#'
+            else:
+                headers[self.pk_idx] = headers[self.pk_idx] + ' #PK#'
         # detect the rows that are no tfull of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]
