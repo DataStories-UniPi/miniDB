@@ -334,6 +334,10 @@ class Database:
             save_as: string. The name that will be used to save the resulting table into the database (no save if None).
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
         '''
+
+        if 'distinct' in columns:
+            columns = columns.replace('distinct ','')
+
         # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
