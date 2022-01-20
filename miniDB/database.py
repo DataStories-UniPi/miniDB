@@ -142,11 +142,11 @@ class Database:
         # self._update()
         self.save_database()
 
-    def create_view(self, name, columns, table_name, condition,group_by=None, order_by=None, top_k=True,desc=None):
+    def create_view(self, name, columns, table_name, condition,group_by=None,having=None , order_by=None, top_k=True,desc=None):
         #Display select(execute query)
-        self.select(columns, table_name, condition,group_by, order_by, top_k,return_object=False)
+        self.select(columns, table_name, condition,group_by,having, order_by, top_k,return_object=False)
         #create view(execute query, then save the outcome as table object)
-        x=self.select(columns, table_name, condition,group_by, order_by, top_k,return_object=True)
+        x=self.select(columns, table_name, condition,group_by,having, order_by, top_k,return_object=True)
         #add table object to database
         self.tables.update({name: x})
         self._update()
@@ -157,11 +157,11 @@ class Database:
         self.drop_table(table_name)
         print(f'Deleted view "{table_name}".')
     
-    def create_tempview(self, name, columns, table_name, condition,group_by=None, order_by=None, top_k=True,desc=None):
+    def create_tempview(self, name, columns, table_name, condition,group_by=None,having=None, order_by=None, top_k=True,desc=None):
         #Display select(execute query)
-        self.select(columns, table_name, condition,group_by, order_by, top_k,return_object=False)
+        self.select(columns, table_name, condition,group_by,having ,order_by, top_k,return_object=False)
         #create view(execute query, then save the outcome as table object)
-        x=self.select(columns, table_name, condition,group_by, order_by, top_k,return_object=True)
+        x=self.select(columns, table_name, condition,group_by,having, order_by, top_k,return_object=True)
         #add temporary table object to database
         self.tempviews.append(name)
         self.tables.update({name: x})
@@ -349,7 +349,7 @@ class Database:
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
 
-    def select(self, columns, table_name, condition,group_by=None, order_by=None, top_k=True,\
+    def select(self, columns, table_name, condition,group_by=None, having=None ,order_by=None, top_k=True,\
                desc=None, save_as=None, return_object=True):
         '''
         Selects and outputs a table's data where condtion is met.
@@ -371,7 +371,7 @@ class Database:
         # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
-            return table_name._select_where(columns, condition,group_by, order_by, desc, top_k)
+            return table_name._select_where(columns, condition,group_by, having ,order_by, desc, top_k)
 
         if condition is not None:
             condition_column = split_condition(condition)[0]
@@ -385,9 +385,9 @@ class Database:
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition,group_by, order_by, desc, top_k)
+            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k)
         else:
-            table = self.tables[table_name]._select_where(columns, condition,group_by, order_by, desc, top_k)
+            table = self.tables[table_name]._select_where(columns, condition,group_by,having, order_by, desc, top_k)
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as
