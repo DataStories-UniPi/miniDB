@@ -31,6 +31,7 @@ class Database:
         if load:
             try:
                 self.load_database()
+                # If you set the log level to INFO, it will include INFO, WARNING, ERROR, and CRITICAL messages.
                 logging.info(f'Loaded "{name}".')
                 return
             except:
@@ -76,6 +77,8 @@ class Database:
             path: string. Directory (path) of the database on the system.
         '''
         path = f'dbdata/{self._name}_db'
+        #os.listdir() method in python is used to get the list of all files and directories in the specified directory. 
+        #If we don’t specify any directory, then list of files and directories in the current working directory will be returned.
         for file in os.listdir(path):
 
             if file[-3:]!='pkl': # if used to load only pkl files
