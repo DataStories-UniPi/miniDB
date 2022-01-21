@@ -208,7 +208,11 @@ def interpret(query):
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
 <<<<<<< HEAD
+<<<<<<< HEAD
                      'select': ['select', 'from', 'where', 'order by', 'group by','having', 'top'],
+=======
+                     'select': ['select', 'from', 'where', 'order by', 'group by', 'having', 'top'],
+>>>>>>> a845cbd2fa6e26d77fe241f040c613beb60304dd
 =======
                      'select': ['select', 'from', 'where', 'order by', 'group by', 'having', 'top'],
 >>>>>>> a845cbd2fa6e26d77fe241f040c613beb60304dd
