@@ -243,7 +243,7 @@ class Table:
             s_table.order_by(order_by, desc)
             
         if group_by:
-            s_table.group_by(group_by, desc) #Check this again!
+            s_table.group_by(group_by, desc, having) #Check this again!
 
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
 
@@ -293,7 +293,7 @@ class Table:
             s_table.order_by(order_by, desc)
             
         if group_by:
-            s_table.group_by(group_by, desc) #Check this again!
+            s_table.group_by(group_by, desc, having) #Check this again!
 
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
 
@@ -313,7 +313,7 @@ class Table:
         self.data = [self.data[i] for i in idx]
         # self._update()
         
-    def group_by(self, column_name, desc=True):
+    def group_by(self, column_name, desc=True, having=None):
         '''
         Order table based on column.
 
@@ -321,7 +321,23 @@ class Table:
             column_name: string. Name of column.
             desc: boolean. If True, order_by will return results in descending order (False by default).
         '''
+        
         column = self.column_by_name(column_name)
+        '''df=pd.DataFrame(column, column_name)
+        minvalues=df.sort_values(by=column_name,ascending=False)
+        print(minvalues)'''
+
+
+        temp = column
+        #print(temp)
+        if having is not None:
+            if having=="min":
+                t=len(temp)
+                for i in temp:
+                    column=min(temp)
+                    temp.remove(min(temp))
+                    print (column)
+
         idx = sorted(range(len(column)), key=lambda k: column[k], reverse=desc)
         # print(idx)
         self.data = [self.data[i] for i in idx]
