@@ -11,18 +11,17 @@ from database import Database
 from table import Table
 # art font is "big"
 art = '''
-             _         _  _____   ____  
-            (_)       (_)|  __ \ |  _ \     
+             _         _  _____   ____
+            (_)       (_)|  __ \ |  _ \
   _ __ ___   _  _ __   _ | |  | || |_) |
- | '_ ` _ \ | || '_ \ | || |  | ||  _ < 
+ | '_ ` _ \ | || '_ \ | || |  | ||  _ <
  | | | | | || || | | || || |__| || |_) |
- |_| |_| |_||_||_| |_||_||_____/ |____/   2021 - v3.2                               
-'''   
-
-
+ |_| |_| |_||_||_| |_||_||_____/ |____/   2021 - v3.2
+'''
 def search_between(s, first, last):
     '''
-    Search in 's' for the substring that is between 'first' and 'last'
+    Search in 's' for the substring that is between 'first'
+    and 'last'
     '''
     try:
         start = s.index( first ) + len( first )
@@ -65,7 +64,7 @@ def create_query_plan(query, keywords, action):
 
     if action=='select':
         dic = evaluate_from_clause(dic)
-        
+
         if dic['order by'] is not None:
             dic['from'] = dic['from'].removesuffix(' order')
             if 'desc' in dic['order by']:
@@ -73,7 +72,7 @@ def create_query_plan(query, keywords, action):
             else:
                 dic['desc'] = False
             dic['order by'] = dic['order by'].removesuffix(' asc').removesuffix(' desc')
-            
+
         else:
             dic['desc'] = None
 
@@ -89,16 +88,20 @@ def create_query_plan(query, keywords, action):
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
-    
-    if action=='import': 
+
+    if action=='import':
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
     if action=='insert into':
         if dic['values'][0] == '(' and dic['values'][-1] == ')':
-            dic['values'] = dic['values'][1:-1]
+                dic['values'] = dic['values'][1:-1]
+                #Calling interpret to precalculate the given "Select" dictionary as value
+                if dic['values'].strip(' ').startswith('select'):
+                    dic['values']=interpret(dic['values'].strip(' '))
+
         else:
             raise ValueError('Your parens are not right m8')
-    
+
     if action=='unlock table':
         if dic['force'] is not None:
             dic['force'] = True
@@ -141,7 +144,7 @@ def evaluate_from_clause(dic):
             join_dic['right'] = interpret(join_dic['right'][1:-1].strip())
 
         dic['from'] = join_dic
-        
+
     return dic
 
 def interpret(query):
@@ -165,7 +168,7 @@ def interpret(query):
 
     if query[-1]!=';':
         query+=';'
-    
+
     query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip()
 
     for kw in kw_per_action.keys():
@@ -181,7 +184,7 @@ def execute_dic(dic):
     for key in dic.keys():
         if isinstance(dic[key],dict):
             dic[key] = execute_dic(dic[key])
-    
+
     action = list(dic.keys())[0].replace(' ','_')
     return getattr(db, action)(*dic.values())
 
@@ -202,7 +205,7 @@ def interpret_meta(command):
 
     def list_databases(db_name):
         [print(fold.removesuffix('_db')) for fold in os.listdir('dbdata')]
-    
+
     def list_tables(db_name):
         [print(pklf.removesuffix('.pkl')) for pklf in os.listdir(f'dbdata/{db_name}_db') if pklf.endswith('.pkl')\
             and not pklf.startswith('meta')]
@@ -210,7 +213,7 @@ def interpret_meta(command):
     def change_db(db_name):
         global db
         db = Database(db_name, load=True)
-    
+
     def remove_db(db_name):
         shutil.rmtree(f'dbdata/{db_name}_db')
 
