@@ -269,7 +269,6 @@ class Database:
         elif isinstance(ObjData, Table):
             #Checks cause of the way that insert_into function works 
             if len(ObjData.columns) == len(self.tables[table_name].columns):
-                #TODO CHECK IF CELLS HAVE SAME DATA TYPE
                 #Recursively call the insert_into function for each element/row of the returned table
                 [self.insert_into(table_name,','.join(map(str,tmp_data))) for tmp_data in ObjData.data]
             else:
