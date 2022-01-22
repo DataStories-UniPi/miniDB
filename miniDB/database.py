@@ -331,20 +331,19 @@ class Database:
             
             desc: boolean. If True, order_by will return results in descending order (True by default).
             
-            distinct: True if we should show no duplicates. The distinct value is applied only for the first column in the query that is next to the keyword DISTINCT. 
-                      If columns to be returned is "*", then distinct can not be applied.
-                      False: if we can show duplicates. False is the defult value.
+            distinct: If True, distinct will return results with non duplicate values. The distinct value is applied only to the first column in the query that is next to the keyword DISTINCT. 
+                      If columns to be returned equals to "*", then distinct will not be applied.
+                      If False, distinct will return results with duplicate values. False is the default value.
             
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
             save_as: string. The name that will be used to save the resulting table into the database (no save if None).
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
         '''
 
-        # if the word distinct is detected in the query,
-        # then remove it and set the distinct flag to True.
-        # That means that only no duplicate values must be 
-        # appeared in the column next to word DISTINCT in
-        # the query.
+        '''
+        if the word distinct is detected in the query, then remove it and set the distinct flag to True.
+        That means that only non duplicate values can be shown in the column next to the word DISTINCT in the query.
+        '''
         if 'distinct' in columns:
             columns = columns.replace('distinct ','')
             distinct = True
