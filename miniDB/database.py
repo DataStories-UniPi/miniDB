@@ -97,7 +97,7 @@ class Database:
         self._update_meta_insert_stack()
 
 
-    def create_table(self, name, column_names, column_types, primary_key=None, load=None):
+    def create_table(self, name, column_names, column_types,column_extras, primary_key=None, load=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
 
@@ -109,7 +109,7 @@ class Database:
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
         # print('here -> ', column_names.split(','))
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)})
+        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), column_extras=column_extras.split(','), primary_key=primary_key, load=load)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
@@ -267,9 +267,8 @@ class Database:
             self._update()
             self.save_database()
         elif isinstance(ObjData, Table):
-            #Checks cause of the way that insert_into function works 
+            #Checks cause of the way that insert_into function works
             if len(ObjData.columns) == len(self.tables[table_name].columns):
-                #TODO CHECK IF CELLS HAVE SAME DATA TYPE
                 #Recursively call the insert_into function for each element/row of the returned table
                 [self.insert_into(table_name,','.join(map(str,tmp_data))) for tmp_data in ObjData.data]
             else:
