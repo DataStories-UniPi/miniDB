@@ -593,46 +593,52 @@ class Database:
         self.tables['meta_insert_stack']._update_rows(new_stack, 'indexes', f'table_name={table_name}')
 
     # indexes
-    def create_index(self, index_name, table_name, column_names, index_type='btree'):
+    def create_index(self, index_name, table_name, selected_column_names, index_type='btree'):
         '''
         Creates an index on a specified table with a given name.
         Important: The columns that the index will store must be specified (even the primary key columns).
 
         Args:
-            column_names: list of strings. Name of the columns the index will store.
+            selected_column_names: list of strings. Name of the columns the index will store.
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
         '''
-        if column_names is None:
+        if selected_column_names is None:
             raise Exception('Cannot create index. Columns have not been specified.')
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
             # currently only btree is supported. This can be changed by adding another if.
             if index_type == 'btree':
                 logging.info('Creating Btree index.')
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
-                self.tables['meta_indexes']._insert([table_name, index_name, column_names])
+                self.tables['meta_indexes']._insert([table_name, index_name, selected_column_names])
                 # create the actual index
-                self._construct_index(table_name, index_name, column_names)
+                self._construct_index(table_name, index_name, selected_column_names)
                 self.save_database()
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
-    def _construct_index(self, table_name, index_name, column_names):
+    def _construct_index(self, table_name, index_name, selected_column_names):
         '''
         Construct a btree on a table and save.
 
         Args:
-            column_names: list of strings. Name of the columns the index will store.
+            selected_column_names: list of strings. Name of the columns the index will store.
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
         '''
         bt = Btree(3)  # 3 is arbitrary
 
+        # put the data of the selected columns in a list named column_data
+        column_data = []
+        for name in range(selected_column_names):
+            column_data.append(self.tables[table_name].column_by_name(name))
         # for each record in the selected columns of the table, insert their values and index to the btree, after joining the column values
-        for idx, key in enumerate(self.tables[table_name].column_by_name(','.join(self.tables[table_name].column_names))):
+        for idx, key in enumerate(','.join(column_data)):
             bt.insert(key, idx)
         # save the btree
         self._save_index(index_name, bt)
+
+    def _delete_index(self, index_name):
 
     def _has_index(self, table_name):
         '''
