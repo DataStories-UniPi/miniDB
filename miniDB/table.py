@@ -198,7 +198,7 @@ class Table:
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
 
-    # added distinct=None parameter
+    # added distinct=False parameter
     def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, top_k=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
@@ -211,9 +211,9 @@ class Table:
                 
                 Operatores supported: (<,<=,==,>=,>)
             
-            distinct: True if we should show no duplicates. The distinct value is applied only for the first column in the query that is next to the keyword DISTINCT. 
-                      If columns to be returned is "*", then distinct can not be applied.
-                      False: if we can show duplicates. False is the defult value.
+            distinct: If True, distinct will return results with non duplicate values. The distinct value is applied only to the first column in the query that is next to the keyword DISTINCT. 
+                      If columns to be returned equals to "*", then distinct will not be applied.
+                      If False, distinct will return results with duplicate values. False is the default value.
 
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (False by default).
@@ -238,44 +238,41 @@ class Table:
         else:
             rows = [i for i in range(len(self.data))]
         
-        # here follows the code for DISTINCT
+        # SELECT DISTINCT code
         if distinct:
         
-            # if distinct is applied in the whole table
-            # show a message to the user
+            # if distinct is applied to the whole table show a message to the user
             if return_columns == "*":
-                print("You can no use DISTINCT the rows of the whole table!")
+                print("You cannot use DISTINCT for the rows of the table!")
                 return
                 
             else:
-                # here distinct is applied for the first column that 
-                # is required from the query. For example, if the query is:
-                # SELECT DISTINCT dept_name,budget FROM department;, then DISTINCT keyword
-                # will be applied only for the first column: dept_name. So, in the result.
-                # the column 'dept_name' will have unique values.
+                '''
+                here distinct is applied to the first column that is required from the query.
+                For example, if the query is: SELECT DISTINCT dept_name,budget FROM department;
+                then DISTINCT keyword will only be applied to the first column: dept_name. 
+                So, the column 'dept_name' will contain only unique values.
+                '''
 
-                # take all the data of the first column in the query
+                # take all the data from the first column in the query and store it into distinct_column
                 distinct_column = self.column_by_name(return_columns.split(',')[0])
                 
-                # clean the distinct_column list in order
-                # to have only the data corresponding to the 
-                # rows to be returned (according to list 'rows')
+                # clear the distinct_column list in order to only have the data corresponding to the rows be returned (according to list 'rows')
                 for i in distinct_column:
                     if distinct_column.index(i) not in rows:
                         distinct_column.pop(i)
                 
-                # clean the rows list, so as not to be duplicates
-                # in the first column of the uery
+                # clear the rows list, so that the first column of the query contains no duplicates
                 double = [] 
                 j=0
                 for i in distinct_column:
                     if i in double:
-                        rows[j] = "" # here is a duplicate    
+                        rows[j] = "" # here is a duplicate value 
                     else:
                         double.append(i)
                     j+=1
                 
-                # clean all the spaces from the rows list
+                # clear all the spaces from the rows list
                 for i in rows:
                     if i=="":
                         rows.pop(rows.index(i))
