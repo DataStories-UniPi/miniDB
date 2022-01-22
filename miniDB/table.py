@@ -13,6 +13,7 @@ class Table:
         - a table name (string)
         - column names (list of strings)
         - column types (list of functions like str/int etc)
+        - column attributes(not_null, unique)
         - primary (name of the primary key column)
 
     OR
@@ -22,7 +23,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+    def __init__(self, name=None, column_names=None, column_types=None, column_attributes=None, primary_key=None, load=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -34,7 +35,7 @@ class Table:
                 self._load_from_file(load)
 
         # if name, columns_names and column types are not none
-        elif (name is not None) and (column_names is not None) and (column_types is not None):
+        elif (name is not None) and (column_names is not None) and (column_types is not None) and (column_attributes is not None):
 
             self._name = name
 
@@ -42,7 +43,7 @@ class Table:
                 raise ValueError('Need same number of column names and types.')
 
             self.column_names = column_names
-
+            self.column_attributes = column_attributes #column attributes are either not_null, unique or default which is neither of both.
             self.columns = []
 
             for col in self.column_names:
@@ -55,6 +56,7 @@ class Table:
                     raise Exception(f'"{col}" attribute already exists in "{self.__class__.__name__} "class.')
 
             self.column_types = [eval(ct) if not isinstance(ct, type) else ct for ct in column_types]
+        
             self.data = [] # data is a list of lists, a list of rows that is.
 
             # if primary key is set, keep its index as an attribute

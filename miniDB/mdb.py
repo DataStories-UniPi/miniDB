@@ -1,5 +1,4 @@
 import os
-import re
 from pprint import pprint
 import sys
 import readline
