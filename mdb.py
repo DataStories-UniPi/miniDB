@@ -11,13 +11,14 @@ from database import Database
 from table import Table
 # art font is "big"
 art = '''
-             _         _  _____   ____
-            (_)       (_)|  __ \ |  _ \
+             _         _  _____   ____  
+            (_)       (_)|  __ \ |  _ \     
   _ __ ___   _  _ __   _ | |  | || |_) |
- | '_ ` _ \ | || '_ \ | || |  | ||  _ <
+ | '_ ` _ \ | || '_ \ | || |  | ||  _ < 
  | | | | | || || | | || || |__| || |_) |
- |_| |_| |_||_||_| |_||_||_____/ |____/   2021 - v3.2
-'''
+ |_| |_| |_||_||_| |_||_||_____/ |____/   2021 - v3.2                               
+'''   
+
 def search_between(s, first, last):
     '''
     Search in 's' for the substring that is between 'first'
