@@ -313,6 +313,7 @@ class Database:
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
 
+    # added the distinct=False parameter
     def select(self, columns, table_name, condition, distinct=False, order_by=None, top_k=True,\
                desc=None, save_as=None, return_object=True):
         '''
@@ -331,7 +332,7 @@ class Database:
             
             desc: boolean. If True, order_by will return results in descending order (True by default).
             
-            distinct: If True, distinct will return results with non duplicate values. The distinct value is applied only to the first column in the query that is next to the keyword DISTINCT. 
+            distinct: If True, distinct will return results with non duplicate values. The distinct value is applied to the COMBINATION of the columns that are present in the query. 
                       If columns to be returned equals to "*", then distinct will not be applied.
                       If False, distinct will return results with duplicate values. False is the default value.
             

@@ -211,7 +211,7 @@ class Table:
                 
                 Operatores supported: (<,<=,==,>=,>)
             
-            distinct: If True, distinct will return results with non duplicate values. The distinct value is applied only to the first column in the query that is next to the keyword DISTINCT. 
+            distinct: If True, distinct will return results with non duplicate values. The distinct value is applied to the COMBINATION of the columns that are present in the query. 
                       If columns to be returned equals to "*", then distinct will not be applied.
                       If False, distinct will return results with duplicate values. False is the default value.
 
@@ -243,41 +243,42 @@ class Table:
         
             # if distinct is applied to the whole table show a message to the user
             if return_columns == "*":
-                print("You cannot use DISTINCT for the rows of the table!")
+                print("You cannot use DISTINCT keyword for all the rows of the table!")
                 return
                 
             else:
                 '''
-                here distinct is applied to the first column that is required from the query.
+                here distinct is applied to the combination of the columns that are required from the query.
                 For example, if the query is: SELECT DISTINCT dept_name,budget FROM department;
-                then DISTINCT keyword will only be applied to the first column: dept_name. 
-                So, the column 'dept_name' will contain only unique values.
+                then DISTINCT keyword will only applied to the combination of the columns: dept_name,budget 
+                So, each row with the columns 'dept_name' and 'budget' will be unique.
                 '''
 
-                # take all the data from the first column in the query and store it into distinct_column
-                distinct_column = self.column_by_name(return_columns.split(',')[0])
+                # save all the rows of data of columns that are present in the query
+                data = [self.column_by_name(return_columns.split(',')[i]) for i in range(len(return_columns.split(',')))]
                 
-                # clear the distinct_column list in order to only have the data corresponding to the rows be returned (according to list 'rows')
-                for i in distinct_column:
-                    if distinct_column.index(i) not in rows:
-                        distinct_column.pop(i)
+                # clear the data list in order to only have the data corresponding to the rows to be returned (according to list 'rows')
+                for i in data[0]:
+                    if data[0].index(i) not in rows:
+                        for j in range(len(data)):
+                            data[j].pop(i)
                 
-                # clear the rows list, so that the first column of the query contains no duplicates
+                # clear the rows list, so that the combination of the columns present to the query contain no duplicates
                 double = [] 
                 j=0
-                for i in distinct_column:
-                    if i in double:
-                        rows[j] = "" # here is a duplicate value 
+                for i in range(len(data[0])):
+                    # the list z contains all the data of every column that belong to the same row
+                    z = [data[j][i] for j in range(len(data))]
+                    if z in double:
+                        rows[j] = '' # here is a duplicate value 
                     else:
-                        double.append(i)
+                        double.append(z)
                     j+=1
                 
                 # clear all the spaces from the rows list
-                for i in rows:
-                    if i=="":
-                        rows.pop(rows.index(i))
+                k = [m for m in rows if m!='']
+                rows = k
                 
-
         # top k rows
         # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
