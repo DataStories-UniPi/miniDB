@@ -199,7 +199,7 @@ class Table:
         return indexes_to_del
 
     # added distinct=None parameter
-    def _select_where(self, return_columns, condition=None, distinct=None, order_by=None, desc=True, top_k=None):
+    def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, top_k=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -211,7 +211,10 @@ class Table:
                 
                 Operatores supported: (<,<=,==,>=,>)
             
-            distinct: A list of columns of the table.
+            distinct: True if we should show no duplicates. The distinct value is applied only for the first column in the query that is next to the keyword DISTINCT. 
+                      If columns to be returned is "*", then distinct can not be applied.
+                      False: if we can show duplicates. False is the defult value.
+
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (False by default).
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
@@ -231,34 +234,70 @@ class Table:
             column_name, operator, value = self._parse_condition(condition)
             column = self.column_by_name(column_name)
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)] # create a list with the indexes of the rows to be returned
+            
         else:
             rows = [i for i in range(len(self.data))]
+        
+        # here follows the code for DISTINCT
+        if distinct:
+        
+            # if distinct is applied in the whole table
+            # show a message to the user
+            if return_columns == "*":
+                print("You can no use DISTINCT the rows of the whole table!")
+                return
+                
+            else:
+                # here distinct is applied for the first column that 
+                # is required from the query. For example, if the query is:
+                # SELECT DISTINCT dept_name,budget FROM department;, then DISTINCT keyword
+                # will be applied only for the first column: dept_name. So, in the result.
+                # the column 'dept_name' will have unique values.
+
+                # take all the data of the first column in the query
+                distinct_column = self.column_by_name(return_columns.split(',')[0])
+                
+                # clean the distinct_column list in order
+                # to have only the data corresponding to the 
+                # rows to be returned (according to list 'rows')
+                for i in distinct_column:
+                    if distinct_column.index(i) not in rows:
+                        distinct_column.pop(i)
+                
+                # clean the rows list, so as not to be duplicates
+                # in the first column of the uery
+                double = [] 
+                j=0
+                for i in distinct_column:
+                    if i in double:
+                        rows[j] = "" # here is a duplicate    
+                    else:
+                        double.append(i)
+                    j+=1
+                
+                # clean all the spaces from the rows list
+                for i in rows:
+                    if i=="":
+                        rows.pop(rows.index(i))
+                
 
         # top k rows
         # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
-
+        
         # we need to set the new column names/types and no of columns, since we might
         # only return some columns
         dict['column_names'] = [self.column_names[i] for i in return_cols]
         dict['column_types']   = [self.column_types[i] for i in return_cols]
-
+        
         s_table = Table(load=dict) 
         if order_by:
             s_table.order_by(order_by, desc)
 
-        if distinct is not None:
-            s_table.distinct(distinct)
-
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
 
         return s_table
-
-    def distinct(self, column_name):
-        print("You are in a good road!")
-
-
 
     def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, desc=True, top_k=None):
 

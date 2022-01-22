@@ -313,7 +313,7 @@ class Database:
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
 
-    def select(self, columns, table_name, condition, distinct=None, order_by=None, top_k=True,\
+    def select(self, columns, table_name, condition, distinct=False, order_by=None, top_k=True,\
                desc=None, save_as=None, return_object=True):
         '''
         Selects and outputs a table's data where condtion is met.
@@ -327,16 +327,27 @@ class Database:
                 
                 Operatores supported: (<,<=,==,>=,>)
             
-            distinct: A list of columns of the table.
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
+            
             desc: boolean. If True, order_by will return results in descending order (True by default).
+            
+            distinct: True if we should show no duplicates. The distinct value is applied only for the first column in the query that is next to the keyword DISTINCT. 
+                      If columns to be returned is "*", then distinct can not be applied.
+                      False: if we can show duplicates. False is the defult value.
+            
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
             save_as: string. The name that will be used to save the resulting table into the database (no save if None).
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
         '''
 
+        # if the word distinct is detected in the query,
+        # then remove it and set the distinct flag to True.
+        # That means that only no duplicate values must be 
+        # appeared in the column next to word DISTINCT in
+        # the query.
         if 'distinct' in columns:
             columns = columns.replace('distinct ','')
+            distinct = True
 
         # print(table_name)
         self.load_database()
