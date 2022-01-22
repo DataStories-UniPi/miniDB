@@ -57,8 +57,6 @@ def create_query_plan(query, keywords, action):
         elif i!=len(ql)-1 and f'{ql[i]} {ql[i+1]}' in keywords and not in_paren(ql, i):
             kw_in_query.append(f'{ql[i]} {ql[i+1]}')
             kw_positions.append(i+1)
-    print(kw_in_query)
-    print(kw_positions)
 
 
     for i in range(len(kw_in_query)-1):
