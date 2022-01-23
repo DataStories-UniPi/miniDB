@@ -120,7 +120,7 @@ class Table:
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
             # if value is to be appended to a Not Null Column, check that the value is not null
-            if len(self.column_extras) > i and self.column_extras[i] == "not null" and row[i] == "null":
+            if len(self.column_extras) > i and self.column_extras[i] == "not null" and (row[i] == "null" or row[i] == "") :
                 print(f'## ERROR -> Column {self.column_names[i]} not accepting null values!')
                 raise ValueError(f'## ERROR -> Column {self.column_names[i]} not accepting null values!')
             # if value is to be appended to a Unique Column, check that it doesnt already exist on the specific column data (no duplicate entries)
@@ -146,7 +146,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,=,>=,>]value' or
                 'value[<,<=,=,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,=,>=,>)
         '''
         # parse the condition
@@ -178,7 +178,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
         '''
         column_name, operator, value = self._parse_condition(condition)
@@ -215,7 +215,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (False by default).
@@ -247,7 +247,7 @@ class Table:
         dict['column_names'] = [self.column_names[i] for i in return_cols]
         dict['column_types']   = [self.column_types[i] for i in return_cols]
 
-        s_table = Table(load=dict) 
+        s_table = Table(load=dict)
         if order_by:
             s_table.order_by(order_by, desc)
 
@@ -294,7 +294,7 @@ class Table:
         dict['column_names'] = [self.column_names[i] for i in return_cols]
         dict['column_types']   = [self.column_types[i] for i in return_cols]
 
-        s_table = Table(load=dict) 
+        s_table = Table(load=dict)
         if order_by:
             s_table.order_by(order_by, desc)
 
@@ -325,7 +325,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
         '''
         # get columns and operator
@@ -388,6 +388,9 @@ class Table:
         if self.pk_idx is not None:
             # table has a primary key, add PK next to the appropriate column
             headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
+        for i in range (len(self.column_extras)):
+            if self.column_extras[i] != "none":
+                headers[i] = headers[i] + f' #{self.column_extras[i].upper()}#'
         # detect the rows that are no tfull of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]
@@ -403,7 +406,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
             join: boolean. Whether to join or not (False by default).
         '''
