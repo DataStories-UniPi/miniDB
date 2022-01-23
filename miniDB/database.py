@@ -11,9 +11,6 @@ import warnings
 import readline
 from tabulate import tabulate
 
-
-# sys.setrecursionlimit(100)
-
 # Clear command cache (journal)
 readline.clear_history()
 
@@ -314,7 +311,7 @@ class Database:
         self.save_database()
 
     def select(self, columns, table_name, condition, order_by=None, top_k=True,\
-               desc=None, save_as=None, return_object=True):
+               desc=None, select_aggregate_dic={}, where_aggregate_dic={}, save_as=None, return_object=True):
         '''
         Selects and outputs a table's data where condtion is met.
 
@@ -332,10 +329,9 @@ class Database:
             save_as: string. The name that will be used to save the resulting table into the database (no save if None).
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
         '''
-        # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
-            return table_name._select_where(columns, condition, order_by, desc, top_k)
+            return table_name._select_where(columns, condition, order_by, desc, top_k, select_aggregate_dic, where_aggregate_dic)
 
         if condition is not None:
             condition_column = split_condition(condition)[0]
@@ -349,9 +345,9 @@ class Database:
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k)
+            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k, select_aggregate_dic, where_aggregate_dic)
         else:
-            table = self.tables[table_name]._select_where(columns, condition, order_by, desc, top_k)
+            table = self.tables[table_name]._select_where(columns, condition, order_by, desc, top_k, select_aggregate_dic, where_aggregate_dic)
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as

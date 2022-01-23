@@ -76,6 +76,10 @@ def create_query_plan(query, keywords, action):
             
         else:
             dic['desc'] = None
+        
+        # add prefix for aggregate functions
+        add_aggregate_prefix(dic)
+        print(dic)
 
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
@@ -178,8 +182,9 @@ def execute_dic(dic):
     '''
     Execute the given dictionary
     '''
+    dics_to_ignore = ['select_aggregate_flag', 'where_aggregate_flag']
     for key in dic.keys():
-        if isinstance(dic[key],dict):
+        if isinstance(dic[key],dict) and key not in dics_to_ignore:
             dic[key] = execute_dic(dic[key])
     
     action = list(dic.keys())[0].replace(' ','_')
@@ -223,6 +228,48 @@ def interpret_meta(command):
 
     commands_dict[action](db_name)
 
+def add_aggregate_prefix(dic):
+    """Cleans up the query string from anything related to aggregate functions and 
+    saves the aggregate flags for each column into two new dicts.
+    First dict (select_aggregate_flag) corresponds to the cols found in the select
+    string and second dict (where_aggregate_flag) to the cols
+    found in the where string.
+
+    Args:
+        dic (query dic)
+    """
+
+    # add prefix for aggregate functions
+    aggregate_functions = ['min', 'max', 'count', 'sum', 'avg']
+    actions_to_filter = ['select', 'where']
+
+    for action in actions_to_filter:
+        word_list = dic[action].split(' ')
+        new_dic_key = action + '_aggregate_flag'
+        dic[new_dic_key] = {}
+        newWorldList:list = word_list.copy()
+
+        for i, word in enumerate(word_list):
+            if word in aggregate_functions and word_list[i + 1] == '(':
+                col_name = word_list[i + 2]
+                dic[new_dic_key][col_name] = word
+
+                newWorldList.remove(word)
+                newWorldList.remove(word_list[i+1])
+                newWorldList.remove(word_list[i+3])
+
+                if (i > 0 and action=='select'):
+                    # remove column name
+                    newWorldList.remove(word_list[i+2])
+                    # remove comma
+                    if word_list[i-1] == ',':
+                        newWorldList.remove(word_list[i-1])
+                    else:
+                        newWorldList[newWorldList.index(word_list[i-1])] = newWorldList[newWorldList.index(word_list[i-1])][:-1]
+
+        
+        temp = ' '.join(newWorldList)
+        dic[action] = temp
 
 if __name__ == "__main__":
     fname = os.getenv('SQL')
