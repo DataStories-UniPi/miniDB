@@ -22,8 +22,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None,column_extras=None, primary_key=None, load=None):
-
+    def __init__(self, name=None, column_names=None, column_types=None, column_extras=None, primary_key=None, load=None):
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
             if isinstance(load, dict):
@@ -34,7 +33,7 @@ class Table:
                 self._load_from_file(load)
 
         # if name, columns_names and column types are not none
-        elif (name is not None) and (column_names is not None) and (column_types is not None):
+        elif (name is not None) and (column_names is not None) and (column_types is not None) and (column_extras is not None):
 
             self._name = name
 
@@ -117,9 +116,18 @@ class Table:
             # except:
             #     raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
 
-            # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
+            # if value is to be appended to the primary_key column, check that it doesnt already exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
+            # if value is to be appended to a Not Null Column, check that the value is not null
+            if len(self.column_extras) > i and self.column_extras[i] == "not null" and row[i] == "null":
+                print(f'## ERROR -> Column {self.column_names[i]} not accepting null values!')
+                raise ValueError(f'## ERROR -> Column {self.column_names[i]} not accepting null values!')
+            # if value is to be appended to a Unique Column, check that it doesnt already exist on the specific column data (no duplicate entries)
+            if len(self.column_extras) > i and self.column_extras[i] == "unique" and row[i] in self.column_by_name(self.column_names[i]):
+                print(f'## ERROR -> Value {row[i]} already exists in the specific column')
+                raise ValueError(f'## ERROR -> Value {row[i]} already exists in the specific column')
+
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
@@ -342,7 +350,8 @@ class Table:
         join_table_name = ''
         join_table_colnames = left_names+right_names
         join_table_coltypes = self.column_types+table_right.column_types
-        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
+        join_table_extras = self.column_extras+table_right.column_extras
+        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes, column_extras= join_table_extras)
 
         # count the number of operations (<,> etc)
         no_of_ops = 0

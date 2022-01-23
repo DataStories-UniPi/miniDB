@@ -84,8 +84,9 @@ def create_query_plan(query, keywords, action):
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
-        dic['column_extra'] = ','.join([val[2] if len(val)>=3 else 'none' for val in arglist])
-        print(dic['column_extra'])
+        # Extra data to handle types like Not Null,Unique for now and for the other 4 constraints in the feature (FOREIGN CHECK, EXCLUSION
+        dic['column_extra'] = ','.join([" ".join(val[2::]) if len(val)>=3 else 'none' for val in arglist])
+
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]

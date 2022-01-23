@@ -47,10 +47,10 @@ class Database:
             pass
 
         # create all the meta tables
-        self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
-        self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
-        self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
-        self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
+        self.create_table('meta_length', 'table_name,no_of_rows', 'str,int', '')
+        self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str', '')
+        self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list', '')
+        self.create_table('meta_indexes', 'table_name,index_name', 'str,str', '')
         self.save_database()
 
     def save_database(self):
@@ -109,6 +109,7 @@ class Database:
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
         # print('here -> ', column_names.split(','))
+        print('here -> ', column_extras.split(','))
         self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), column_extras=column_extras.split(','), primary_key=primary_key, load=load)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
