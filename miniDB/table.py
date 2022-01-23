@@ -244,7 +244,6 @@ class Table:
             # if distinct is applied to the whole table show a message to the user
             if return_columns == "*":
                 print("You cannot use DISTINCT keyword for all the rows of the table!")
-                return
                 
             else:
                 '''
