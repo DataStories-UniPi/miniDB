@@ -593,7 +593,7 @@ class Database:
         self.tables['meta_insert_stack']._update_rows(new_stack, 'indexes', f'table_name={table_name}')
 
     # indexes
-    def create_index(self, index_name, table_name, selected_column_names, index_type='btree'):
+    def create_index(self, index_name, table_name, index_type='btree', selected_column_names=None):
         '''
         Creates an index on a specified table with a given name.
         Important: The columns that the index will store must be specified (even the primary key columns).
@@ -638,7 +638,7 @@ class Database:
         # save the btree
         self._save_index(index_name, bt)
 
-    def _delete_index(self, index_name):
+    #def _delete_index(self, index_name):
 
     def _has_index(self, table_name):
         '''

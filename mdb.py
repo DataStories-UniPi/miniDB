@@ -118,6 +118,10 @@ def create_query_plan(query, keywords, action):
         else:
             dic['force'] = False
 
+    if action=='create index':
+        dic['column name']=dic['on'][dic['on'].index('(')+1:-1].strip().split(',')
+        dic['on']=dic['on'][0:dic['on'].index('(')]
+
     return dic
 
 
