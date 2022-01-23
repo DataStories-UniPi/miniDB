@@ -50,7 +50,7 @@ class Database:
         self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
-        self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
+        self.create_table('meta_indexes', 'table_name,index_name,selected_columns_names', 'str,str,str')
         self.save_database()
 
     def save_database(self):
@@ -593,61 +593,94 @@ class Database:
         self.tables['meta_insert_stack']._update_rows(new_stack, 'indexes', f'table_name={table_name}')
 
     # indexes
-    def create_index(self, index_name, table_name, index_type='btree', selected_column_names=None):
+    def create_index(self, index_name, table_name, index_type='btree', selected_columns_names=None):
         '''
         Creates an index on a specified table with a given name.
         Important: The columns that the index will store must be specified (even the primary key columns).
 
         Args:
-            selected_column_names: list of strings. Name of the columns the index will store.
+            selected_columns_names: list of strings. Name of the columns the index will store.
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
         '''
-        if selected_column_names is None:
+        if selected_columns_names is None:
             raise Exception('Cannot create index. Columns have not been specified.')
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
             # currently only btree is supported. This can be changed by adding another if.
             if index_type == 'btree':
                 logging.info('Creating Btree index.')
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
-                self.tables['meta_indexes']._insert([table_name, index_name, selected_column_names])
+                self.tables['meta_indexes']._insert([table_name, index_name, selected_columns_names])
                 # create the actual index
-                self._construct_index(table_name, index_name, selected_column_names)
+                self._construct_index(table_name, index_name, selected_columns_names)
                 self.save_database()
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
-    def _construct_index(self, table_name, index_name, selected_column_names):
+    def _construct_index(self, table_name, index_name, selected_columns_names):
         '''
         Construct a btree on a table and save.
 
         Args:
-            selected_column_names: list of strings. Name of the columns the index will store.
+            selected_columns_names: list of strings. Name of the columns the index will store.
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
         '''
-        bt = Btree(3)  # 3 is arbitrary
+        bt = Btree(index_name, 3)  # 3 is arbitrary
 
-        # put the data of the selected columns in a list named column_data
-        column_data = []
-        for name in range(selected_column_names):
-            column_data.append(self.tables[table_name].column_by_name(name))
+        # put the data of the selected columns in a table named column_data
+        columns_data = []
+        for name in range(selected_columns_names):
+           columns_data.append(self.tables[table_name].column_by_name(name))
         # for each record in the selected columns of the table, insert their values and index to the btree, after joining the column values
-        for idx, key in enumerate(','.join(column_data)):
+        for idx, key in enumerate(list(zip(*columns_data))):
             bt.insert(key, idx)
         # save the btree
         self._save_index(index_name, bt)
 
     # TODO def _delete_index(self, index_name):
 
-    def _has_index(self, table_name):
+    def _has_index(self, table_name, columns_names=None):
         '''
-        Check whether the specified table's primary key column is indexed.
+        Check whether the specified columns of the specified table are indexed
+        or if column_names is None, whether there are any indexes for the specified table.
 
         Args:
             table_name: string. Table name (must be part of database).
+            columns_names: list of strings. The columns where the existence of an index is searched for.
         '''
-        return table_name in self.tables['meta_indexes'].column_by_name('table_name')
+
+        # case 1: there are no indexes for the specified table
+        if table_name not in self.tables['meta_indexes'].column_by_name('table_name'):
+            raise Exception('There are no indexes for the table ', table_name)
+
+        # case 2: there are indexes for the specified table and no columns specified --> method returns the names of all indexes for the specified table as well as the columns that are indexed
+        elif table_name in self.tables['meta_indexes'].column_by_name('table_name') and columns_names is None:
+            # rows: the indexes of all rows in table meta_indexes where table_name exists
+            rows = [index for index, element in enumerate(list(zip(*self.tables['meta_indexes']))) if table_name in element]
+            index_name_list = []
+            index_columns_list = []
+            for i in rows:
+                index_name_list.append(self.tables['meta_indexes'].column_by_name('index_name')[rows[i]])
+                index_columns_list.append(self.tables['meta_indexes'].column_by_name('specified_columns_names')[rows[i]])
+            index_data = list(zip(index_name_list, index_columns_list))
+            return index_data
+
+        # case 3: there are indexes for the specified table and the columns that are specified are indexed --> method returns the name of the index for these columns
+        elif table_name in self.tables['meta_indexes'].column_by_name('table_name') and columns_names in self.tables['meta_indexes'].column_by_name('selected_columns_names'):
+            rows = [index for index, element in enumerate(list(self.tables['meta_indexes'])) if table_name and columns_names in element]
+            index_name = self.tables['meta_indexes'].column_by_name('index_name')[rows[0]]
+            return index_name
+
+        #TODO: if there is an index for three columns but parameter columns_names contains the first or the first two columns,
+        # then we should say that the index for these column(s) exists.
+        # Example:
+        # There is an index for columns (name, age, gender), but parameter columns_names=(name) or columns_names=(name,age).
+        # Then, we should say that there is an index for the column (name) or for the columns (name,age)
+
+        # case 4: there are indexes for the specified table and the columns that are specified are not indexed
+        elif table_name in self.tables['meta_indexes'].column_by_name('table_name') and columns_names not in self.tables['meta_indexes'].column_by_name('selected_columns_names'):
+            raise Exception('There is no index for the specified columns of the table ', table_name)
 
     def _save_index(self, index_name, index):
         '''
