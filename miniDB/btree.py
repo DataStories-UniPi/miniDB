@@ -23,18 +23,23 @@ class Node:
         If it is a leaf (we have found the appropriate node), nothing is returned.
 
         Args:
-            value: float. The value being searched for.
+            value: string. The value being searched for.
             return_ops: boolean. Set to True if you want to use the number of operations (for benchmarking).
         '''
         ops = 0 # number of operations (<>= etc). Used for benchmarking
         if self.is_leaf: #
             return
 
+        # ignore the comma of string value
+        value1 = value.replace(',', '')
+
         # for each value in the node, if the user supplied value is smaller, return the btrees value index
         # else (no value in the node is larger) return the last ptr
         for index, existing_val in enumerate(self.values):
             ops+=1
-            if value<existing_val:
+            # ignore the comma of string existing_val
+            existing_val1 = existing_val.replace(',', '')
+            if value1<existing_val1:
                 if return_ops:
                     return self.ptrs[index], ops
                 else:
@@ -52,7 +57,7 @@ class Node:
         User can input two ptrs to insert to a non leaf node.
 
         Args:
-            value: float. The value we are inserting to the node.
+            value: string. The value we are inserting to the node.
             ptr: float. The ptr of the inserted value (e.g. its index).
             ptr1: float. The 2nd ptr (e.g. in case the user wants to insert into a nonleaf node).
         '''
@@ -60,8 +65,12 @@ class Node:
         # if a second ptr is provided, insert it right next to the 1st ptr
         # else (no value in the node is larger) append value and ptr/s to the back of the list.
 
+        # ignore the comma of string value
+        value1 = value.replace(',', '')
         for index, existing_val in enumerate(self.values):
-            if value<existing_val:
+            # ignore the comma of string existing_val
+            existing_val1 = existing_val.replace(',', '')
+            if value1<existing_val1:
 
                 self.values.insert(index, value)
                 self.ptrs.insert(index+1, ptr)
@@ -102,7 +111,7 @@ class Btree:
         User can input two ptrs to insert to a non leaf node.
 
         Args:
-            value: float. The input value.
+            value: string. The input value.
             ptr: float. The ptr of the inserted value (e.g. its index).
         '''
         # if the tree is empty, add the first node and set the root index to 0 (the only node's index)
@@ -123,7 +132,7 @@ class Btree:
         Returns the index of the node that the given value exists or should exist in.
 
         Args:
-            value: float. The value being searched for.
+            value: string. The value being searched for.
             return_ops: boolean. Set to True if you want to use the number of operations (for benchmarking).
         '''
         ops=0 # number of operations (<>= etc). Used for benchmarking
@@ -285,7 +294,7 @@ class Btree:
 
         Args:
             operator: string. The provided evaluation operator.
-            value: float. The value being searched for.
+            value: string. The value being searched for.
         '''
         results = []
         # find the index of the node that the element should exist in
@@ -345,3 +354,6 @@ class Btree:
         # print the number of operations (usefull for benchamrking)
         # print(f'With BTree -> {ops} comparison operations')
         return results
+
+    def __del__(self):
+
