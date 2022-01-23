@@ -313,8 +313,8 @@ class Database:
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
 
-    def select(self, columns, table_name, condition, order_by=None, top_k=True,\
-               desc=None, save_as=None, return_object=True):
+    def select(self, columns, table_name, condition, group_by=None, order_by=None, top_k=True,\
+               desc=None, save_as=None, return_object=True, count=False, max=False, min=False, sum=False, avg=False):
         '''
         Selects and outputs a table's data where condtion is met.
 
@@ -332,10 +332,33 @@ class Database:
             save_as: string. The name that will be used to save the resulting table into the database (no save if None).
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
         '''
+        
+        #if any of count,max,min,sum,avg is used then we remove it from return columns so when can easily handle these columns
+        if 'count' in columns:
+            columns = columns.replace('count ', '')
+            count = True
+
+        if 'max' in columns:
+            columns = columns.replace('max ', '')
+            max = True
+
+        if 'min' in columns:
+            columns = columns.replace('min ', '')
+            min = True
+
+        if 'sum' in columns:
+            columns = columns.replace('sum ', '')
+            sum = True
+
+        if 'avg' in columns:
+            columns = columns.replace('avg ', '')
+            avg = True
+        
         # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
-            return table_name._select_where(columns, condition, order_by, desc, top_k)
+            return table_name._select_where(columns, condition,group_by, order_by, desc, top_k,
+                                            count, max, min, sum, avg)
 
         if condition is not None:
             if "in" in condition.split() or "between" in condition.split() or "like" in condition.split():
@@ -352,9 +375,9 @@ class Database:
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k)
+            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k,count, max, min, sum, avg)
         else:
-            table = self.tables[table_name]._select_where(columns, condition, order_by, desc, top_k)
+            table = self.tables[table_name]._select_where(columns, condition, group_by, order_by, desc, top_k, count, max, min, sum, avg)
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as
