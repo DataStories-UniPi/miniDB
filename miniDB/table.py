@@ -1,9 +1,13 @@
 from __future__ import annotations
+from functools import reduce
 from tabulate import tabulate
 import pickle
 import os
 import re
 from misc import get_op, split_condition
+from collections import Counter
+import pandas as pd
+import collections, numpy
 
 
 class Table:
@@ -198,7 +202,8 @@ class Table:
         return indexes_to_del
 
 
-    def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None):
+    def _select_where(self, return_columns, condition=None,group_by=None, order_by=None, desc=True, top_k=None,
+                      count=False, max=False,min=False,sum=False,avg=False):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -210,6 +215,16 @@ class Table:
                 
                 Operatores supported: (<,<=,==,>=,>)
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
+            group_by: string. A column name that signals that the resulting columns should be grouped according to the column after group by
+            using the following 5 aggregate functions (no grouping if None).
+            count: counts the occurrences of count column according to the group by column
+            in: returns the rows that satisfy the given "where" clause using "in" (value1,value2)
+            between: returns the rows that satisfy the given "where" clause using "between" value1 and value2
+            like: returns the rows that satisfy the given "where" clause using "like" followed by a regex
+            max: finds every max value of max column according to the group by column
+            min: finds every min value of min column according to the group by column
+            sum: calculates every sum value of sum column according to the group by column
+            avg: calculates every avg value of avg column according to the group by column
             desc: boolean. If True, order_by will return results in descending order (False by default).
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
