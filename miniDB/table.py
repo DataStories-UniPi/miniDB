@@ -239,44 +239,42 @@ class Table:
             rows = [i for i in range(len(self.data))]
         
         # SELECT DISTINCT code
-        if distinct:
+        if distinct and return_columns!='*':
         
-            # if distinct is applied to the whole table show a message to the user
-            if return_columns == "*":
-                print("You cannot use DISTINCT keyword for all the rows of the table!")
-                
-            else:
-                '''
-                here distinct is applied to the combination of the columns that are required from the query.
-                For example, if the query is: SELECT DISTINCT dept_name,budget FROM department;
-                then DISTINCT keyword will only applied to the combination of the columns: dept_name,budget 
-                So, each row with the columns 'dept_name' and 'budget' will be unique.
-                '''
+            '''
+            here distinct is applied to the combination of the columns that are required from the query.
+            For example, if the query is: SELECT DISTINCT dept_name,budget FROM department;
+            then DISTINCT keyword will only applied to the combination of the columns: dept_name,budget 
+            So, each row with the columns 'dept_name' and 'budget' will be unique.
+            '''
 
-                # save all the rows of data of columns that are present in the query
-                data = [self.column_by_name(return_columns.split(',')[i]) for i in range(len(return_columns.split(',')))]
-                
-                # clear the data list in order to only have the data corresponding to the rows to be returned (according to list 'rows')
-                for i in data[0]:
-                    if data[0].index(i) not in rows:
-                        for j in range(len(data)):
-                            data[j].pop(i)
-                
-                # clear the rows list, so that the combination of the columns present to the query contain no duplicates
-                double = [] 
-                j=0
-                for i in range(len(data[0])):
-                    # the list z contains all the data of every column that belong to the same row
-                    z = [data[j][i] for j in range(len(data))]
-                    if z in double:
-                        rows[j] = '' # here is a duplicate value 
-                    else:
-                        double.append(z)
-                    j+=1
-                
-                # clear all the spaces from the rows list
-                k = [m for m in rows if m!='']
-                rows = k
+            # save all the rows of data of columns that are present in the query
+            data = [self.column_by_name(return_columns.split(',')[i]) for i in range(len(return_columns.split(',')))]
+            
+            # replace with "" the data of the list 'data', which do not correspond to the indexes of list rows
+            for j in range(len(data)):
+                for i in range(len(data[j])):
+                    if i not in rows:
+                        data[j][i]=''
+            
+            # remove the empty strings ("") from the data list
+            data = [[data[i][j] for j in range(len(data[0])) if data[i][j]!=""] for i in range(len(data))]
+            
+            # clear the rows list, so that the combination of the columns present to the query contain no duplicates
+            double = [] 
+            j=0
+            for i in range(len(data[0])):
+                # the list z contains all the data of every column that belong to the same row
+                z = [data[j][i] for j in range(len(data))]
+                if z in double:
+                    rows[j] = '' # here is a duplicate value 
+                else:
+                    double.append(z)
+                j+=1
+            
+            # clear all the spaces from the rows list
+            k = [m for m in rows if m!='']
+            rows = k
                 
         # top k rows
         # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
