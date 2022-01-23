@@ -355,5 +355,5 @@ class Btree:
         # print(f'With BTree -> {ops} comparison operations')
         return results
 
-    #def __del__(self):
+    # TODO def __del__(self):
 

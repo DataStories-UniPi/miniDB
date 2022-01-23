@@ -638,7 +638,7 @@ class Database:
         # save the btree
         self._save_index(index_name, bt)
 
-    #def _delete_index(self, index_name):
+    # TODO def _delete_index(self, index_name):
 
     def _has_index(self, table_name):
         '''

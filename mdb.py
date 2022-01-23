@@ -98,7 +98,9 @@ def create_query_plan(query, keywords, action):
             dic['column_names'] = ','.join([val[0] for val in arglist])
             dic['column_types'] = ','.join([val[1] for val in arglist])
             if 'primary key' in args:
-                arglist = args[args.index('primary key')+len('primary key'):-1].replace('(','').replace(')','').strip().split(',')
+                arglist = args[args.index('primary key')+len('primary key'):-1].replace('(','').replace(')','').split(',')
+                for x in range(len(arglist)):
+                    arglist[x] = arglist[x].strip()
                 dic['primary key'] = arglist
             else:
                 dic['primary key'] = None
@@ -119,7 +121,9 @@ def create_query_plan(query, keywords, action):
             dic['force'] = False
 
     if action=='create index':
-        dic['column name']=dic['on'][dic['on'].index('(')+1:-1].strip().split(',')
+        dic['column name']=dic['on'][dic['on'].index('(')+1:-1].split(',')
+        for x in range(len(dic['column name'])) :
+            dic['column name'][x] = dic['column name'][x].strip()
         dic['on']=dic['on'][0:dic['on'].index('(')]
 
     return dic
