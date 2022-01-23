@@ -228,13 +228,16 @@ class Table:
                 split_con = condition.split() #condition in where clause is split in order to check the given values in "in" operator and remove the left and right parenthesis from it
                 split_con.remove("(")
                 split_con.remove(")")
-                in_op_val = split_con[2].split(",")#split all given values inside the parenthesis with comma delimeter used
-                column_name = split_con[0]
-                column = self.column_by_name(column_name)
-                rows=[] #list to keep the indexes of table rows that satisfy the given values in "in" operator
-                for i, j in enumerate(column):
-                    if str(j) in in_op_val:
-                        rows.append(i)#if the value in "in" operator is found in column values then add its index in the list
+                check_space = split_con[2].split(",")
+
+                if "" in check_space:#check if space exists after comma
+                    in_op_val = [check_space[0]]
+                    in_op_val.append(split_con[3])
+                else:
+                    if len(split_con)>3:#if space exists before comma then the length of split_con is bigger than 3
+                        split_con = [x.strip(' ') for x in split_con]#remove spaces
+                        split_con[2: 5] = [reduce(lambda i, j: i + j, split_con[2: 5])]#merge 1st value, "comma" and second value in one element
+                    in_op_val = split_con[2].split(",")  # split all given values inside the parenthesis with comma delimeter used
 
             #Between operator in where clause
             elif "between" in condition.split():
