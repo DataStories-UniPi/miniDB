@@ -65,11 +65,11 @@ def create_query_plan(query, keywords, action):
 
     if action=='select':
         dic = evaluate_from_clause(dic)
-        
+
         if dic['order by'] is not None:
             dic['from'] = dic['from'].removesuffix(' order')
             if dic['where'] is not None:
-                dic['where'] = dic['where'].removesuffix(' order')#remove "order by" so it won't be concatenated with from operator
+                dic['where'] = dic['where'].removesuffix(' order')#remove "order by" so it won't be concatenated with where operator
             if 'desc' in dic['order by']:
                 dic['desc'] = True
             else:
@@ -78,7 +78,8 @@ def create_query_plan(query, keywords, action):
             
         else:
             dic['desc'] = None
-        if  dic['group by'] is not None:
+
+        if dic['group by'] is not None:
             dic['from'] = dic['from'].removesuffix(' group') #remove "group by" so it won't be concatenated with from operator
             if dic['where'] is not None:
                 dic['where'] = dic['where'].removesuffix(' group')#remove "group by" so it won't be concatenated with where operator
@@ -160,7 +161,7 @@ def interpret(query):
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
-                     'select': ['select', 'from', 'where','group by', 'order by', 'top'],# added group by in dictionary that will be used in our logic
+                     'select': ['select', 'from', 'where','group by', 'order by', 'top'], # kati Added group by in dictionary that will be used in our logic
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
