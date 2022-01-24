@@ -219,6 +219,8 @@ class Table:
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
+        all_columns = [i for i in range(len(self.column_names))]
+
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
@@ -231,19 +233,27 @@ class Table:
         # top k rows
         # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
-        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+        dict = {(key):([[self.data[i][j] for j in all_columns] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
 
         # we need to set the new column names/types and no of columns, since we might
         # only return some columns
-        dict['column_names'] = [self.column_names[i] for i in return_cols]
-        dict['column_types']   = [self.column_types[i] for i in return_cols]
+        #dict['column_names'] = [self.column_names[i] for i in all_columns]
+        #dict['column_types'] = [self.column_types[i] for i in all_columns]
 
-        s_table = Table(load=dict) 
+
+        s_table = Table(load=dict)
+
         if order_by:
             s_table.order_by(order_by, desc)
 
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
 
+        new_dict = {(key):([[s_table.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in s_table.__dict__.items()}
+
+        new_dict['column_names'] = [self.column_names[i] for i in return_cols]
+        new_dict['column_types'] = [self.column_types[i] for i in return_cols]
+
+        s_table = Table(load=new_dict)
         return s_table
 
 
