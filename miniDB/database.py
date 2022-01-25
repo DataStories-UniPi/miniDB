@@ -10,7 +10,7 @@ import logging
 import warnings
 import readline
 from tabulate import tabulate
-
+import copy
 
 # sys.setrecursionlimit(100)
 
@@ -25,7 +25,7 @@ class Database:
     def __init__(self, name, load=True):
         self.tables = {}
         self._name = name
-
+        self.save_state = None
         self.savedir = f'dbdata/{name}_db'
 
         if load:
@@ -330,7 +330,8 @@ class Database:
             desc: boolean. If True, order_by will return results in descending order (True by default).
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
             save_as: string. The name that will be used to save the resulting table into the database (no save if None).
-            return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
+            return_object:DB=smdb python3.9 mdb.py
+ boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
         '''
         # print(table_name)
         self.load_database()
@@ -672,3 +673,11 @@ class Database:
         index = pickle.load(f)
         f.close()
         return index
+    save_state = None
+    def start_transaction(self,action):
+        if self.save_state==None:
+            self.save_state= copy.deepcopy(self)
+            print(self.save_state)
+            print(self)
+        else:
+            raise ValueError("Transaction already started")

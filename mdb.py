@@ -18,7 +18,7 @@ art = '''
  | | | | | || || | | || || |__| || |_) |
  |_| |_| |_||_||_| |_||_||_____/ |____/   2021 - v3.2                               
 '''   
-
+save_state= None
 
 def search_between(s, first, last):
     '''
@@ -105,6 +105,8 @@ def create_query_plan(query, keywords, action):
         else:
             dic['force'] = False
 
+
+
     return dic
 
 
@@ -160,7 +162,10 @@ def interpret(query):
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
                      'create index': ['create index', 'on', 'using'],
-                     'drop index': ['drop index']
+                     'drop index': ['drop index'],
+                     'start transaction': ['start transaction'],
+                     'commit':['commit'],
+                     'rollback':['rollback']
                      }
 
     if query[-1]!=';':
