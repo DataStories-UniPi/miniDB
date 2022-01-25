@@ -1,4 +1,5 @@
 from __future__ import annotations
+from hashlib import new
 from tabulate import tabulate
 import pickle
 import os
@@ -244,7 +245,10 @@ class Table:
         s_table = Table(load=dict)
 
         if order_by:
-            s_table.order_by(order_by, desc)
+
+            order_cols = order_by.split(',')
+            print(order_cols)
+            s_table.order_by(order_cols, desc)
 
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
 
@@ -303,18 +307,58 @@ class Table:
 
         return s_table
 
-    def order_by(self, column_name, desc=True):
+    def order_by(self, column_names, desc=True):
         '''
         Order table based on column.
 
         Args:
-            column_name: string. Name of column.
+            column_names: list of strings. Names of columns.
             desc: boolean. If True, order_by will return results in descending order (False by default).
         '''
-        column = self.column_by_name(column_name)
-        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=desc)
+        #column = self.column_by_name(column_name)
+        #idx = sorted(range(len(column)), key=lambda k: column[k], reverse=desc)
+
+
+
+
+        newlist=[]
+
+        for i in range(len(self.data)):
+            temp = []
+            for col in column_names:
+                j = list(self.column_names).index(col)
+                temp.append(self.data[i][j])
+            newlist.append(temp)
+
+        for i in range(len(newlist)):
+            newlist[i].append(i)
+
+        print(newlist)
+        newlist.sort()
+
+        if(desc):
+            newlist.reverse()
+        print(newlist)
+
+        mylist=[]
+        for i in newlist:
+            mylist.append(i[-1])
+
+        print(mylist)
+
+        #idx=[]
+
+        # for col in column_names:
+        #     column = self.column_by_name(col)
+        #     idx = sorted(range(len(column)), key=lambda k: column[k], reverse=desc)
+        #     self.data = [self.data[i] for i in idx]
+
+        self.data = [self.data[i] for i in mylist]
+
+
+
         # print(idx)
-        self.data = [self.data[i] for i in idx]
+            #self.data = [self.data[i] for i in idx]
         # self._update()
 
 

@@ -65,7 +65,7 @@ def create_query_plan(query, keywords, action):
 
     if action=='select':
         dic = evaluate_from_clause(dic)
-        
+        #print(dic)
         if dic['order by'] is not None:
             dic['from'] = dic['from'].removesuffix(' order')
             if 'desc' in dic['order by']:
