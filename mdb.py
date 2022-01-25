@@ -94,7 +94,7 @@ def create_query_plan(query, keywords, action):
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
-    
+
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
@@ -103,7 +103,7 @@ def create_query_plan(query, keywords, action):
             dic['values'] = dic['values'][1:-1]
         else:
             raise ValueError('Your parens are not right m8')
-    
+
     if action=='unlock table':
         if dic['force'] is not None:
             dic['force'] = True
