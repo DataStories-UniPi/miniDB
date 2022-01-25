@@ -241,12 +241,14 @@ class Table:
         # create Table object
         s_table = Table(load=dict)
 
-
+        # if the query has 'order by' without 'distinct'
+        # order by is applied on the table with all the columns
         if order_by and not(distinct):
             order_cols = order_by.split(',')
             s_table.order_by(order_cols, desc)
 
-        
+        # this check is done to prevent a mistake : new_dict raises exception when the meta_insert_stack is called
+        # TODO check why this happens
         if(s_table._name.startswith("meta_insert_stack")):
             return s_table
 
@@ -263,6 +265,11 @@ class Table:
 
         if(distinct == True):
             s_table.distinct()
+
+            # if the query has 'order by' AND 'distinct', the 'order by' action is called AFTER the 
+            # 'distinct' function and the table has only the rows that will be displayed
+            
+            # NOTE : for SELECT DISTINCT, ORDER BY expressions must appear in select list
             if order_by:
                 order_cols = order_by.split(',')
                 s_table.order_by(order_cols, desc)
@@ -370,12 +377,8 @@ class Table:
 
     def distinct(self):
         '''
-        Args:
-        order_by:
-        return_columns:
-
-        The function first checks if the table has been sorted with ALL visible columns.
-        If not, the table is first sorted.
+        The function first sorts the entire table by calling the 'order_by' function and giving it
+        all the columns. Desc or asc doesnt matter
 
         Then do a simple loop to remove duplicates (since it is sorted, duplicates will be together)
         '''

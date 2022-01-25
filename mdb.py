@@ -67,6 +67,8 @@ def create_query_plan(query, keywords, action):
         dic = evaluate_from_clause(dic)
         #print(dic)
 
+        # if distinct was given, the column names where given to the 'distinct' key
+        # so they need to be copied to the 'select' key and the 'distinct' key becomes boolean
         if(dic['distinct'] is not None):
             dic['select'] = dic['distinct']
             dic['distinct'] = True
