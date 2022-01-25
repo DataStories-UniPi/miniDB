@@ -207,19 +207,7 @@ def interpret(query):
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-                     'select': ['select', 'from', 'where', 'order by', 'group by','having', 'top'],
-=======
                      'select': ['select', 'from', 'where', 'order by', 'group by', 'having', 'top'],
->>>>>>> a845cbd2fa6e26d77fe241f040c613beb60304dd
-=======
-                     'select': ['select', 'from', 'where', 'order by', 'group by', 'having', 'top'],
->>>>>>> a845cbd2fa6e26d77fe241f040c613beb60304dd
-=======
-                     'select': ['select', 'from', 'where', 'order by', 'group by', 'having', 'top'],
->>>>>>> a845cbd2fa6e26d77fe241f040c613beb60304dd
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
@@ -233,7 +221,7 @@ def interpret(query):
         query+=';'
     
     #It adds spaces between the words of our command -useful for later-
-    query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip()
+    query = query.replace("(", " ").replace(")", " ").replace(";", " ;").strip()
 
     #It checks if the first word of our command (e.g. select) fits with a word from the table kw_per_action
     for kw in kw_per_action.keys():

@@ -3,7 +3,7 @@ from tabulate import tabulate
 import pickle
 import os
 from misc import get_op, split_condition
-
+import pandas as pd
 
 class Table:
     '''
@@ -212,6 +212,10 @@ class Table:
             desc: boolean. If True, order_by will return results in descending order (False by default).
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
+        
+        mode = return_columns[0:3]
+        return_columns=return_columns.replace('min ', '')
+        return_columns=return_columns.replace('max ', '')
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
@@ -238,15 +242,21 @@ class Table:
         dict['column_names'] = [self.column_names[i] for i in return_cols]
         dict['column_types']   = [self.column_types[i] for i in return_cols]
 
-        s_table = Table(load=dict) 
+        s_table = Table(load=dict)
+        if mode=="min":
+            s_table.min(return_columns)
+            
+        if mode=="max":
+            s_table.max(return_columns)
+                    
         if order_by:
             s_table.order_by(order_by, desc)
             
         if group_by:
-            s_table.group_by(group_by, desc, having) #Check this again!
-
+            s_table.group_by(group_by, desc) #Check this again!
+        
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
-
+        
         return s_table
 
 
@@ -290,15 +300,15 @@ class Table:
 
         s_table = Table(load=dict) 
         if order_by:
-            s_table.order_by(order_by, desc)
+            s_table.order_by(return_columns, desc)
             
         if group_by:
             s_table.group_by(group_by, desc, having) #Check this again!
 
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
-
+        
         return s_table
-
+    
     def order_by(self, column_name, desc=True):
         '''
         Order table based on column.
@@ -341,8 +351,62 @@ class Table:
         idx = sorted(range(len(column)), key=lambda k: column[k], reverse=desc)
         # print(idx)
         self.data = [self.data[i] for i in idx]
+        print(self.data)
         # self._update()
+        
+    def min(self, column_name):
+        '''
+        Order table based on column.
 
+        Args:
+            column_name: string. Name of column.
+            desc: boolean. If True, order_by will return results in descending order (False by default).
+        '''
+        column = self.column_by_name(column_name)
+        #print(column)
+        
+        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=False)
+        #print(idx)
+        
+        self.data = [min(self.data)]
+        #print(self.data)
+        # self._update()
+        
+    def max(self, column_name):
+        '''
+        Order table based on column.
+
+        Args:
+            column_name: string. Name of column.
+            desc: boolean. If True, order_by will return results in descending order (False by default).
+        '''
+        column = self.column_by_name(column_name)
+        #print(column)
+        
+        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=True)
+        #print(idx)
+        
+        self.data = [max(self.data)]
+        #print(self.data)
+        # self._update()
+        
+    def avg(self, column_name):
+        '''
+        Order table based on column.
+
+        Args:
+            column_name: string. Name of column.
+            desc: boolean. If True, order_by will return results in descending order (False by default).
+        '''
+        column = self.column_by_name(column_name)
+        #print(column)
+        
+        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=True)
+        #print(idx)
+        
+        self.data = [max(self.data)]
+        print(self.data)
+        # self._update()
 
     def _inner_join(self, table_right: Table, condition):
         '''
