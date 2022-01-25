@@ -221,7 +221,7 @@ def interpret(query):
         query+=';'
     
     #It adds spaces between the words of our command -useful for later-
-    query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip()
+    query = query.replace("(", " ").replace(")", " ").replace(";", " ;").strip()
 
     #It checks if the first word of our command (e.g. select) fits with a word from the table kw_per_action
     for kw in kw_per_action.keys():
