@@ -312,53 +312,47 @@ class Table:
         Order table based on column.
 
         Args:
-            column_names: list of strings. Names of columns.
+            column_names: list of strings. Names of columns in the order given by the user.
             desc: boolean. If True, order_by will return results in descending order (False by default).
+        
+        This function does the following steps:
+        -> first, copy all the data of the columns specified by the arguement 'column_names'
+        -> the order of the columns may not necesseraly be the same as in the table
+        -> The data is copied to the list 'copied_data'
+        -> At the end each row of 'copied_data' we add an integer that is the index of the row
+        (this makes the procedure easier and safer)
+        -> Then call the function 'sort()' for the list
+        -> This function will sort the list even if it is multidimentional
+        -> Now we simply have to loop throught the data of the sorted array and use the
+        last element of each row (that we added earlier) to get the index and rearrange the
+        table
         '''
-        #column = self.column_by_name(column_name)
-        #idx = sorted(range(len(column)), key=lambda k: column[k], reverse=desc)
 
-
-
-
-        newlist=[]
+        copied_data=[]
 
         for i in range(len(self.data)):
             temp = []
             for col in column_names:
                 j = list(self.column_names).index(col)
                 temp.append(self.data[i][j])
-            newlist.append(temp)
+            copied_data.append(temp)
 
-        for i in range(len(newlist)):
-            newlist[i].append(i)
+        for i in range(len(copied_data)):
+            copied_data[i].append(i)
 
-        print(newlist)
-        newlist.sort()
+        # print(copied_data)
+        copied_data.sort()
 
+        # sort() function returns the list in asc order by default
+        # if we want asc, we need to reverse
         if(desc):
-            newlist.reverse()
-        print(newlist)
+            copied_data.reverse()
+        
+        # print(copied_data)
 
-        mylist=[]
-        for i in newlist:
-            mylist.append(i[-1])
+        # rearrange the table
+        self.data = [self.data[i[-1]] for i in copied_data]
 
-        print(mylist)
-
-        #idx=[]
-
-        # for col in column_names:
-        #     column = self.column_by_name(col)
-        #     idx = sorted(range(len(column)), key=lambda k: column[k], reverse=desc)
-        #     self.data = [self.data[i] for i in idx]
-
-        self.data = [self.data[i] for i in mylist]
-
-
-
-        # print(idx)
-            #self.data = [self.data[i] for i in idx]
         # self._update()
 
 
