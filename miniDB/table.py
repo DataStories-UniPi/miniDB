@@ -82,12 +82,6 @@ class Table:
             self.column_types = [eval(ct) if not isinstance(ct, type) else ct for ct in column_types]
             self.data = [] # data is a list of lists, a list of rows that is.
 
-            # if there are not null columns, keep their indexes
-            if not_null_columns is not None:
-                self.not_null_columns_idx = [self.column_names.index(col) for col in not_null_columns]
-            else:
-                self.not_null_columns_idx = []
-
             self.not_null_columns = not_null_columns if not_null_columns is not None else []
 
             # if primary key is set, keep its index as an attribute
