@@ -313,7 +313,7 @@ class Database:
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
 
-    def select(self, columns, table_name, condition, order_by=None, top_k=True,\
+    def select(self, columns, distinct, table_name, condition, order_by=None, top_k=True,\
                desc=None, save_as=None, return_object=True):
         '''
         Selects and outputs a table's data where condtion is met.
@@ -321,6 +321,7 @@ class Database:
         Args:
             table_name: string. Name of table (must be part of database).
             columns: list. The columns that will be part of the output table (use '*' to select all available columns)
+            distinct: boolean - if it is 'True' it indicates that the query is "select distinct"
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
@@ -332,10 +333,12 @@ class Database:
             save_as: string. The name that will be used to save the resulting table into the database (no save if None).
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
         '''
+
+        #print(distinct)
         # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
-            return table_name._select_where(columns, condition, order_by, desc, top_k)
+            return table_name._select_where(columns, condition, order_by, desc, top_k, distinct)
 
         if condition is not None:
             condition_column = split_condition(condition)[0]
@@ -351,7 +354,7 @@ class Database:
             bt = self._load_idx(index_name)
             table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k)
         else:
-            table = self.tables[table_name]._select_where(columns, condition, order_by, desc, top_k)
+            table = self.tables[table_name]._select_where(columns, condition, order_by, desc, top_k, distinct)
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as

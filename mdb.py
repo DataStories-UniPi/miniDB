@@ -66,6 +66,13 @@ def create_query_plan(query, keywords, action):
     if action=='select':
         dic = evaluate_from_clause(dic)
         #print(dic)
+
+        if(dic['distinct'] is not None):
+            dic['select'] = dic['distinct']
+            dic['distinct'] = True
+        elif(dic['distinct'] is None):
+            dic['distinct'] = False
+
         if dic['order by'] is not None:
             dic['from'] = dic['from'].removesuffix(' order')
             if 'desc' in dic['order by']:
@@ -154,7 +161,7 @@ def interpret(query):
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
-                     'select': ['select', 'from', 'where', 'order by', 'top'],
+                     'select': ['select','distinct', 'from', 'where', 'order by', 'top'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],

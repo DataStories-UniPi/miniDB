@@ -198,7 +198,7 @@ class Table:
         return indexes_to_del
 
 
-    def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None):
+    def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None, distinct=False):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -209,9 +209,10 @@ class Table:
                 'value[<,<=,==,>=,>]column'.
                 
                 Operatores supported: (<,<=,==,>=,>)
-            order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
+            order_by: list. The columns that signal that the resulting table should be ordered based on them (no order if None).
             desc: boolean. If True, order_by will return results in descending order (False by default).
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
+            distinct: boolean. If it is 'True' it indicates that the query is "select distinct" and a new function is called to remove duplicate rows
         '''
 
         # if * return all columns, else find the column indexes for the columns specified
@@ -231,33 +232,44 @@ class Table:
         else:
             rows = [i for i in range(len(self.data))]
 
-        # top k rows
-        # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
-        # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
+
+        # copy the old dict, but only the rows of data
+        # with index in rows/columns (the indexes that we want returned)
+        # but keep ALL columns
         dict = {(key):([[self.data[i][j] for j in all_columns] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+
+        # create Table object
+        s_table = Table(load=dict)
+
+
+        if order_by and not(distinct):
+            order_cols = order_by.split(',')
+            s_table.order_by(order_cols, desc)
+
+        
+        if(s_table._name.startswith("meta_insert_stack")):
+            return s_table
+
+        # create new dict from the s_table object that has only th
+        new_dict = {(key):([[s_table.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in s_table.__dict__.items()}
 
         # we need to set the new column names/types and no of columns, since we might
         # only return some columns
-        #dict['column_names'] = [self.column_names[i] for i in all_columns]
-        #dict['column_types'] = [self.column_types[i] for i in all_columns]
-
-
-        s_table = Table(load=dict)
-
-        if order_by:
-
-            order_cols = order_by.split(',')
-            print(order_cols)
-            s_table.order_by(order_cols, desc)
-
-        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
-
-        new_dict = {(key):([[s_table.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in s_table.__dict__.items()}
-
         new_dict['column_names'] = [self.column_names[i] for i in return_cols]
         new_dict['column_types'] = [self.column_types[i] for i in return_cols]
 
+        # create the new table object to be returned
         s_table = Table(load=new_dict)
+
+        if(distinct == True):
+            s_table.distinct()
+            if order_by:
+                order_cols = order_by.split(',')
+                s_table.order_by(order_cols, desc)
+
+        # if needed, keep only top k rows
+        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
+
         return s_table
 
 
@@ -344,7 +356,7 @@ class Table:
         copied_data.sort()
 
         # sort() function returns the list in asc order by default
-        # if we want asc, we need to reverse
+        # if we want desc, we need to reverse
         if(desc):
             copied_data.reverse()
         
@@ -354,6 +366,31 @@ class Table:
         self.data = [self.data[i[-1]] for i in copied_data]
 
         # self._update()
+
+
+    def distinct(self):
+        '''
+        Args:
+        order_by:
+        return_columns:
+
+        The function first checks if the table has been sorted with ALL visible columns.
+        If not, the table is first sorted.
+
+        Then do a simple loop to remove duplicates (since it is sorted, duplicates will be together)
+        '''
+
+        
+        self.order_by(self.column_names)
+
+        prev = self.data[0]
+
+        for elem in list(self.data[1:]):
+            if (elem == prev):
+                self.data.remove(elem)
+            else:
+                prev = elem
+
 
 
     def _inner_join(self, table_right: Table, condition):
