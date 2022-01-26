@@ -47,7 +47,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None, not_null_columns=None):
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None, not_null_columns=None, unique_columns=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -83,6 +83,7 @@ class Table:
             self.data = [] # data is a list of lists, a list of rows that is.
 
             self.not_null_columns = not_null_columns if not_null_columns is not None else []
+            self.unique_columns = unique_columns if unique_columns is not None else []
 
             # if primary key is set, keep its index as an attribute
             if primary_key is not None:
@@ -137,9 +138,13 @@ class Table:
             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
 
         for i in range(len(row)):
-            # first check if the value can be null and if it is
+            # if the column has the not null constraint, check if the value is not null
             if self.column_names[i] in self.not_null_columns and row[i] == '':
                 raise ValueError(f'ERROR -> Cannot insert NULL value in column "{self.column_names[i]}"')
+
+            # if the column has the unique constraint, check if the value is unique
+            if self.column_names[i] in self.unique_columns and str(row[i]) in [str(val) for val in self.column_by_name(self.column_names[i])]:
+                raise ValueError(f'ERROR -> Cannot insert duplicate value in column "{self.column_names[i]}"')
 
             # for each value, cast and replace it in row.
             # try:
