@@ -252,7 +252,8 @@ class Table:
         if(s_table._name.startswith("meta_insert_stack")):
             return s_table
 
-        # create new dict from the s_table object that has only th
+        # create new dict from the s_table object that has only the columns that will be displayed
+        # (only the columns in SELECT)
         new_dict = {(key):([[s_table.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in s_table.__dict__.items()}
 
         # we need to set the new column names/types and no of columns, since we might
@@ -345,6 +346,15 @@ class Table:
         -> Now we simply have to loop throught the data of the sorted array and use the
         last element of each row (that we added earlier) to get the index and rearrange the
         table
+
+
+        NOTE : unlike postgres where the query can have '...order by name asc, dept_name desc'
+        this order by doesnt take an individual arg (asc/desc) for each column but only one
+        e.g. : '...order by name, dept_name asc/desc' and the 'asc/desc' is checked whether the
+        output of the 'sort()' function of python will be revesed or not
+
+        TODO : have a proper sorting alg (instead of sort()) that supports mutliple columns and
+        the option asc/desc for each column
         '''
 
         copied_data=[]
@@ -377,12 +387,20 @@ class Table:
 
     def distinct(self):
         '''
-        The function first sorts the entire table by calling the 'order_by' function and giving it
+        Remove duplicate rows in the table
+
+        This function does the following steps:
+        ->The function first checks if the PK is in the columns. If so, it immediatly stops,
+        since the rows are guaranted to be distinct if the PK column is present
+
+        ->If the PK is not in the columns, the function sorts the entire table by calling the 'order_by' function and giving it
         all the columns. Desc or asc doesnt matter
 
-        Then do a simple loop to remove duplicates (since it is sorted, duplicates will be together)
+        ->Then it does a simple loop to remove duplicates (since it is sorted, duplicates will be together)
         '''
-
+        if(self.pk in self.column_names):
+            #print("no action required")
+            return
         
         self.order_by(self.column_names)
 
