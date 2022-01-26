@@ -28,6 +28,7 @@ class Table:
     def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None, references=None):
 
         if load is not None:
+
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
             if isinstance(load, dict):
                 self.__dict__.update(load)
@@ -38,7 +39,7 @@ class Table:
 
         # if name, columns_names and column types are not none
         elif (name is not None) and (column_names is not None) and (column_types is not None):
-
+            
             self._name = name
 
             if len(column_names)!=len(column_types):
@@ -68,6 +69,18 @@ class Table:
 
             self.pk = primary_key
             # self._update()
+
+            #
+            # trying things with referenced
+            #
+            if references is not None:
+                self.references = references
+                referenced_things = []
+                for ref in references:
+                    referenced_things.append(ref)
+            else:
+                self.references = None
+
 
     # if any of the name, columns_names and column types are none. return an empty table object
 

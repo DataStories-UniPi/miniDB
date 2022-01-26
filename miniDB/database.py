@@ -98,8 +98,9 @@ class Database:
 
     #
     # added references=None at the end of the function's parameters
+    # removed load=None,
     #
-    def create_table(self, name, column_names, column_types, primary_key=None, load=None, references=None):
+    def create_table(self, name, column_names, column_types, primary_key=None, references=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
 
@@ -109,12 +110,15 @@ class Database:
             column_types: list. Types of columns.
             primary_key: string. The primary key (if it exists).
             load: boolean. Defines table object parameters as the name of the table and the column names.
+            references: Defines the foreign key of this table, and shows the primary key of another table
         '''
         # print('here -> ', column_names.split(','))
         #
         # added references=references at the end
+        # removed load=load,
         #
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load, references=references)})
+        print("Database.references = ", references)
+        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, references=references)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
