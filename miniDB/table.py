@@ -142,6 +142,10 @@ class Table:
             if self.column_names[i] in self.not_null_columns and row[i] == '':
                 raise ValueError(f'ERROR -> Cannot insert NULL value in column "{self.column_names[i]}"')
 
+            # if the column has the unique constraint, check if the value is unique
+            if self.column_names[i] in self.unique_columns and str(row[i]) in [str(val) for val in self.column_by_name(self.column_names[i])]:
+                raise ValueError(f'ERROR -> Cannot insert duplicate value in column "{self.column_names[i]}"')
+
             # for each value, cast and replace it in row.
             # try:
             row[i] = self.column_types[i](row[i])
