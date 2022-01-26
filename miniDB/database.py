@@ -378,7 +378,31 @@ class Database:
                 return table
             else:
                 return table.show()
+            
+    #Added create_trigger function
+    def create_trigger(self,trigger_name=None,table_name=None,action=None):
+        
+        '''
+        Creates a trigger which corresponds to a specific table of the database.
 
+        Args:
+            trigger_name: string. The name of the trigger.
+            table_name: string. The table to whom trigger corresponds to.
+            action: list. The actions (INSERT,UPDATE,DELETE) in which the trigger will be fired.
+        '''
+        self.load_database()
+        print("You are inside the trigger function!") 
+
+    def drop_trigger(self,trigger_name=None):
+        
+        '''
+        Deletes a trigger.
+
+        Args:
+            trigger_name: string. The name of the trigger to be deleted.
+        '''
+        self.load_database()
+        print("Trigger: "+trigger_name+" has been deleted!")
 
     def show_table(self, table_name, no_of_rows=None):
         '''

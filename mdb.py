@@ -147,6 +147,7 @@ def evaluate_from_clause(dic):
 def interpret(query):
     '''
     Interpret the query.
+    Added create trigger and drop trigger keywords
     '''
     kw_per_action = {'create table': ['create table'],
                      'drop table': ['drop table'],
@@ -154,6 +155,8 @@ def interpret(query):
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
+                     'create trigger': ['create trigger','on','after'],
+                     'drop trigger': ['drop trigger'],
                      'select': ['select', 'from', 'where', 'order by', 'top'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
