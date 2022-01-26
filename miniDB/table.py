@@ -138,7 +138,7 @@ class Table:
             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
 
         for i in range(len(row)):
-            # first check if the value can be null and if it is
+            # if the column has the not null constraint, check if the value is not null
             if self.column_names[i] in self.not_null_columns and row[i] == '':
                 raise ValueError(f'ERROR -> Cannot insert NULL value in column "{self.column_names[i]}"')
 
