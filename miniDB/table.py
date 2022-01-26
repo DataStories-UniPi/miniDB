@@ -47,7 +47,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None, not_null_columns=None):
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None, not_null_columns=None, unique_columns=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -83,6 +83,7 @@ class Table:
             self.data = [] # data is a list of lists, a list of rows that is.
 
             self.not_null_columns = not_null_columns if not_null_columns is not None else []
+            self.unique_columns = unique_columns if unique_columns is not None else []
 
             # if primary key is set, keep its index as an attribute
             if primary_key is not None:

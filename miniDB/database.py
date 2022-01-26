@@ -98,7 +98,7 @@ class Database:
         self._update_meta_insert_stack()
 
 
-    def create_table(self, name, column_names, column_types, not_null_columns=None, primary_key=None, load=None):
+    def create_table(self, name, column_names, column_types, not_null_columns=None, unique_columns=None, primary_key=None, load=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
 
@@ -107,11 +107,12 @@ class Database:
             column_names: list. Names of columns.
             column_types: list. Types of columns.
             not_null_columns: list. Names of columns that cannot be null.
+            unique_columns: list. Names of columns whose values are unique.
             primary_key: string. The primary key (if it exists).
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
         # print('here -> ', column_names.split(','))
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load, not_null_columns=not_null_columns.split(',') if not_null_columns is not None else None)})
+        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load, not_null_columns=not_null_columns.split(',') if not_null_columns is not None else None, unique_columns=unique_columns.split(',') if unique_columns is not None else None)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
