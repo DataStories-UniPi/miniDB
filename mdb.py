@@ -85,6 +85,27 @@ def create_query_plan(query, keywords, action):
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+        dic['column_constraints'] = ""
+        # If there are any column constraints, it adds them here
+        for i in range(len(arglist)):
+
+            # If there are 3 fields in the create table it appends the dic accordingly
+            # e.g. id int not_null
+            if len(arglist[i]) == 3:
+                if i == 0:
+                    dic['column_constraints'] += (arglist[i][2])
+                else:
+                    dic['column_constraints'] += ','
+                    dic['column_constraints'] += (arglist[i][2])
+
+            # Else if there are 2 fields e.g. id int, it adds the None value to the dic
+            else:
+                if i == 0:
+                    dic['column_constraints'] += 'None'
+                else:
+                    dic['column_constraints'] += ','
+                    dic['column_constraints'] += 'None'
+
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary') - 2]
@@ -183,7 +204,6 @@ def execute_dic(dic):
     for key in dic.keys():
         if isinstance(dic[key], dict):
             dic[key] = execute_dic(dic[key])
-
     action = list(dic.keys())[0].replace(' ', '_')
     return getattr(db, action)(*dic.values())
 
