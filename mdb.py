@@ -86,6 +86,7 @@ def create_query_plan(query, keywords, action):
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+#insert here
         if 'foreign key' in args:
            # print(args)
             fkeyres = [i.start() for i in re.finditer('foreign key',args )]
@@ -135,6 +136,10 @@ def create_query_plan(query, keywords, action):
             myreferences= args[myreferenceskeyindex:]
             print (myreferences)
             '''
+
+
+
+      
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]
@@ -147,27 +152,22 @@ def create_query_plan(query, keywords, action):
     if action=='insert into':
         if dic['values'] is not None:
             if dic['values'][0] == '(' and dic['values'][-1] == ')':
-                dic['values'] = dic['values'][1:-1]            
+                dic['values'] = dic['values'][1:-1]    
+                '''        
         elif dic['select'] is not None:
             dic['select']='select '+dic['select']
             k=interpret(dic['select'])            
             result=execute_dic(k)
             non_none_rows = [row for row in result.data if any(row)] 
             print(len(non_none_rows))
-            for i_row in non_none_rows: 
-              #  print(i_row)         
-                #my_lst_str = ','.join(map(str, non_none_rows[0]))            
+            for i_row in non_none_rows:               
                 my_lst_str = ','.join(map(str, i_row))            
-                query='insert into ' + dic['insert into'] + ' values ('+ my_lst_str +')' 
-                #del k['select']
-                #del dic['select']            
-               # print('metaaaaaa')
-               # print(query)              
+                query='insert into ' + dic['insert into'] + ' values ('+ my_lst_str +')'               
                 k=interpret(query)            
-                if 'select' in k: del k['select']            
-               # print(k)    
+                if 'select' in k: del k['select']                          
                 result=execute_dic(k)
             if 'select' in dic: del dic['select']                                  
+            '''
         else:
             raise ValueError('Your parens are not right m8')
     
@@ -225,8 +225,8 @@ def interpret(query):
                      'cast': ['cast', 'from', 'to'],
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
-                     #'insert into': ['insert into', 'values'],
-                     'insert into': ['insert into', 'values','select'],
+                     'insert into': ['insert into', 'values'],
+                     #'insert into': ['insert into', 'values','select'],
                      'select': ['select', 'from', 'where', 'order by', 'top'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
