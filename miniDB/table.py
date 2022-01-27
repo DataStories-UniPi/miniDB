@@ -422,3 +422,12 @@ class Table:
         f.close()
 
         self.__dict__.update(tmp_dict)
+
+    # Needs to be implemented.
+    '''
+    def _create_trigger(self, condition):
+    '''
+    
+        
+        
+

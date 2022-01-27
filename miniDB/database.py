@@ -1,4 +1,5 @@
 from __future__ import annotations
+from msilib import init_database
 import pickle
 from table import Table
 from time import sleep, localtime, strftime
@@ -516,6 +517,25 @@ class Database:
         print('journal:', out)
         #return out
 
+
+    # Needs to be implemented.
+    '''
+    def create_trigger(self, table_name, keyword):
+
+        self.load_database()
+        lock_ownership = self.lock_table(table_name, mode='x')
+
+
+        if keyword == "AFTER"
+
+
+
+        if lock_ownership:
+            self.unlock_table(table_name)
+        self._update()
+        self.save_database()
+    '''
+    
 
     #### META ####
 
