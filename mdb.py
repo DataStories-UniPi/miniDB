@@ -88,19 +88,20 @@ def create_query_plan(query, keywords, action):
         dic['column_types'] = ','.join([val[1] for val in arglist])
 #insert here
         if 'foreign key' in args:
-           # print(args)
+            print(args)
             fkeyres = [i.start() for i in re.finditer('foreign key',args )]
-            frefres = [i.start() for i in re.finditer('references',args )]            
-            
+            frefres = [i.start() for i in re.finditer('references',args )]                        
             if len(fkeyres)==len(frefres):
                 full = args[fkeyres[0]:]                    
                 l=[val.strip().split(' ') for val in full.split(',')]
-                dic['foreign keys'] = [[val[2] for val in l]]
-                dic['foreign table'] = [[val[4] for val in l]]
-                dic['foreign table key'] = [[val[6] for val in l]]
+                dic['foreign keys'] = [val[2] for val in l]
+                dic['foreign table'] = [val[4] for val in l]
+                dic['foreign table key'] = [val[6] for val in l]
                 print(dic['foreign keys'])
                 print(dic['foreign table'])
                 print(dic['foreign table key'])
+                a=dic['foreign keys'][0]
+                print(a)
                 '''
                 k=[]
                 for i in range(len(fkeyres)):
