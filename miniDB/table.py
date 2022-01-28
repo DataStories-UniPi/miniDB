@@ -138,7 +138,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,=,>=,>]value' or
                 'value[<,<=,=,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,=,>=,>)
         '''
         # parse the condition
@@ -170,7 +170,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
         '''
         column_name, operator, value = self._parse_condition(condition)
@@ -207,7 +207,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
             order_by: list. The columns that signal that the resulting table should be ordered based on them (no order if None).
             desc: boolean. If True, order_by will return results in descending order (False by default).
@@ -267,9 +267,9 @@ class Table:
         if(distinct == True):
             s_table.distinct()
 
-            # if the query has 'order by' AND 'distinct', the 'order by' action is called AFTER the 
+            # if the query has 'order by' AND 'distinct', the 'order by' action is called AFTER the
             # 'distinct' function and the table has only the rows that will be displayed
-            
+
             # NOTE : for SELECT DISTINCT, ORDER BY expressions must appear in select list
             if order_by:
                 order_cols = order_by.split(',')
@@ -319,7 +319,7 @@ class Table:
         dict['column_names'] = [self.column_names[i] for i in return_cols]
         dict['column_types']   = [self.column_types[i] for i in return_cols]
 
-        s_table = Table(load=dict) 
+        s_table = Table(load=dict)
         if order_by:
             s_table.order_by(order_by, desc)
 
@@ -334,7 +334,7 @@ class Table:
         Args:
             column_names: list of strings. Names of columns in the order given by the user.
             desc: boolean. If True, order_by will return results in descending order (False by default).
-        
+
         This function does the following steps:
         -> first, copy all the data of the columns specified by the arguement 'column_names'
         -> the order of the columns may not necesseraly be the same as in the table
@@ -376,13 +376,52 @@ class Table:
         # if we want desc, we need to reverse
         if(desc):
             copied_data.reverse()
-        
+
         # print(copied_data)
 
         # rearrange the table
         self.data = [self.data[i[-1]] for i in copied_data]
 
         # self._update()
+
+
+    def group_by_having():
+        #TO DO
+
+
+    def min():
+        #TO DO
+
+
+    def max():
+        #TO DO
+
+
+    def avg():
+        #TO DO
+
+
+    def count(self, groups, column):
+        '''
+        '''
+        self.order_by(self.column_names)
+
+        ret = [0] * len(groups)
+        interval = 0
+
+        prev = self.data[0]
+
+        for elem in list(self.data[1:]):
+            if(elem[:-1] == prev[:-1] and elem[-1] != prev[-1]):
+                ret[interval]++
+            else:
+                interval++
+            prev = elem
+        
+
+
+    def sum():
+        #TO DO
 
 
     def distinct(self):
@@ -401,7 +440,7 @@ class Table:
         if(self.pk in self.column_names):
             #print("no action required")
             return
-        
+
         self.order_by(self.column_names)
 
         prev = self.data[0]
@@ -422,7 +461,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
         '''
         # get columns and operator
@@ -499,7 +538,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
             join: boolean. Whether to join or not (False by default).
         '''
