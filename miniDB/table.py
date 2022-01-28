@@ -232,18 +232,6 @@ class Table:
         else:
             rows = [i for i in range(len(self.data))]
 
-        if having_condition is not None:
-            column_name, operator, value = self._parse_condition(having_condition)
-            coltype = self.column_types[self.column_names.index(column_name)]
-            column = self.column_by_name(column_name)
-
-            # pass cols that need to be passed in an aggregate func based on the aggregate_dic
-            if coltype is int and column_name in having_aggregate_dic.keys():
-                x = self.apply_aggregate_func(column, having_aggregate_dic[column])
-
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
-
-
         if group_by is not None and len(select_aggregate_dic.keys()) != (len(return_cols) - 1):
             message = 'invalid columns to return. All columns except the group by column must be a product of an aggregate function'
 
@@ -291,12 +279,21 @@ class Table:
                 for index, item in enumerate(row):
                     if (index in select_aggregate_dic.keys()):
                         row[index] = self.apply_aggregate_func(item, select_aggregate_dic[index])
+
+            new_rows = list(newDict.values())
+
+            if group_by is not None and having_condition is not None:
+                column_name, operator, value = self._parse_condition(having_condition)
+                column_index = dic['column_names'].index(col_name)
+
+                new_rows = [row for row in new_rows if get_op(operator, row[column_index], value)]
+
             # add the aggregate funcs to the col names
             for col_index in select_aggregate_dic.keys():
                 dic['column_names'][col_index] = select_aggregate_dic[col_index] + '_of_' +\
                     dic['column_names'][col_index]
-            
-            dic['data'] = list(newDict.values())
+            # update the dictionary
+            dic['data'] = new_rows
  
 
         s_table = Table(load=dic) 
