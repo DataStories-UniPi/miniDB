@@ -44,10 +44,10 @@ def create_query_plan(query, keywords, action):
 
     This can and will be used recursively
     '''
+   
+    dic = {val: None for val in keywords if val!=';'} # still have not used ones like 
 
-    dic = {val: None for val in keywords if val!=';'}
-
-    ql = [val for val in query.split(' ') if val !='']
+    ql = [val for val in query.split(' ') if val !=''] # Actual QUERY list. NO DIC
 
     kw_in_query = []
     kw_positions = []
@@ -63,11 +63,10 @@ def create_query_plan(query, keywords, action):
 
 
     for i in range(len(kw_in_query)-1):
-        dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
 
+        dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
     if action=='select':
         dic = evaluate_from_clause(dic)
-        
         if dic['order by'] is not None:
             dic['from'] = dic['from'].removesuffix(' order')
             if 'desc' in dic['order by']:
@@ -96,20 +95,27 @@ def create_query_plan(query, keywords, action):
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
     if action=='insert into':
-        if dic['values'][0] == '(' and dic['values'][-1] == ')':
-            dic['values'] = dic['values'][1:-1]
+        if dic['values'] == None and dic['select'] != None: # Check if instead of values a select query was given
+            # Move select query to dic['values'] as another dictionary.
+            # execute_dic method also executes any included dictionary. In this case a table object will take the place of the select dictionary.
+            dic['values'] = {'select':dic['select'],'from':dic['from'],'where':dic['where']}
+            # evalate from clause so the user can use joins
+            dic['values'] = evaluate_from_clause(dic['values'])
+        elif dic['values'][0] == '(' and dic['values'][-1] == ')' and dic['select'] == None:
+            dic['values'] = dic['values'][1:-1] # removes parens
         else:
             raise ValueError('Your parens are not right m8')
+        # remove directory entries that aren't used
+        dic.pop('select')
+        dic.pop('from')
+        dic.pop('where')
     
     if action=='unlock table':
         if dic['force'] is not None:
             dic['force'] = True
         else:
             dic['force'] = False
-
     return dic
-
-
 
 def evaluate_from_clause(dic):
     '''
@@ -155,7 +161,7 @@ def interpret(query):
                      'cast': ['cast', 'from', 'to'],
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
-                     'insert into': ['insert into', 'values'],
+                     'insert into': ['insert into', 'values','select', 'from', 'where'], # Added select/from/where keywords
                      'select': ['select', 'from', 'where', 'order by', 'top'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
@@ -167,7 +173,6 @@ def interpret(query):
 
     if query[-1]!=';':
         query+=';'
-    
     query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip()
 
     for kw in kw_per_action.keys():
@@ -183,9 +188,8 @@ def execute_dic(dic):
     for key in dic.keys():
         if isinstance(dic[key],dict):
             dic[key] = execute_dic(dic[key])
-    
-    action = list(dic.keys())[0].replace(' ','_')
-    return getattr(db, action)(*dic.values())
+    action = list(dic.keys())[0].replace(' ','_') #action to be performed(insert/select/...)
+    return getattr(db, action)(*dic.values()) #getattr gets the function with the name of the action from the Database class and executes it by passing all values of dic as the parameters.
 
 def interpret_meta(command):
     """

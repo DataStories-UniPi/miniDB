@@ -97,18 +97,43 @@ class Table:
         self.column_types[column_idx] = cast_type
         # self._update()
 
+    def _insert_Multiple(self,rows,insert_stack=[]):
+        '''
+        Insert multiple rows to table.
+
+        Args:
+            rows: list. A list containing lists of values to be inserted (will be casted to a predefined type automatically).
+            insert_stack: list. The insert stack (empty by default).
+        '''
+        
+        for row in rows: # don't really need for. if rows[0] would be enough
+            if len(row)!=len(self.column_names):
+                raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
+    
+        for row in rows:
+            if None in row: continue # Ignore None rows(from previously deleted row)
+            for i in range(len(row)):
+                row[i] = self.column_types[i](row[i])
+
+                if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
+                    raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
+            if insert_stack != []:
+                self.data[insert_stack[-1]] = row
+                insert_stack.pop() # get insert stack ready for next insertion
+            else:
+                self.data.append(row)
 
     def _insert(self, row, insert_stack=[]):
         '''
         Insert row to table.
 
         Args:
-            row: list. A list of values to be inserted (will be casted to a predifined type automatically).
+            row: list. A list of values to be inserted (will be casted to a predefined type automatically).
             insert_stack: list. The insert stack (empty by default).
         '''
         if len(row)!=len(self.column_names):
             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
-
+    
         for i in range(len(row)):
             # for each value, cast and replace it in row.
             # try:
@@ -218,7 +243,7 @@ class Table:
             return_cols = [i for i in range(len(self.column_names))]
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
-
+        
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
@@ -227,7 +252,6 @@ class Table:
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
-
         # top k rows
         # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)

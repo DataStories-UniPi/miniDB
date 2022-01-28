@@ -238,21 +238,28 @@ class Database:
 
     def insert_into(self, table_name, row_str):
         '''
-        Inserts data to given table.
+        Inserts data to given table.sel
 
         Args:
             table_name: string. Name of table (must be part of database).
-            row: list. A list of values to be inserted (will be casted to a predifined type automatically).
+            row: list. A list of values to be inserted (will be casted to a predefined type automatically).
             lock_load_save: boolean. If False, user needs to load, lock and save the states of the database (CAUTION). Useful for bulk-loading.
         '''
-        row = row_str.strip().split(',')
         self.load_database()
+
         # fetch the insert_stack. For more info on the insert_stack
         # check the insert_stack meta table
+
         lock_ownership = self.lock_table(table_name, mode='x')
         insert_stack = self._get_insert_stack_for_table(table_name)
         try:
-            self.tables[table_name]._insert(row, insert_stack)
+            # Table as value support
+            if isinstance(row_str,Table):
+                rows = row_str.data # Get table rows
+                self.tables[table_name]._insert_Multiple(rows, insert_stack)
+            else:
+                row = row_str.strip().split(',') # list of values ['dony',20] for people1 table
+                self.tables[table_name]._insert(row, insert_stack)
         except Exception as e:
             logging.info(e)
             logging.info('ABORTED')
@@ -270,7 +277,7 @@ class Database:
 
         Args:
             table_name: string. Name of table (must be part of database).
-            set_value: string. New value of the predifined column name.
+            set_value: string. New value of the predefined column name.
             set_column: string. The column to be altered.
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
@@ -443,7 +450,6 @@ class Database:
 
         with open(f'{self.savedir}/meta_locks.pkl', 'rb') as f:
             self.tables.update({'meta_locks': pickle.load(f)})
-
         try:
             pid = self.tables['meta_locks']._select_where('pid',f'table_name={table_name}').data[0][0]
             if pid!=os.getpid():
