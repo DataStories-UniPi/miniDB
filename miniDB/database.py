@@ -394,8 +394,8 @@ class Database:
         self._update()
         self.save_database()
 
-    def evaluate_join_method(self, left_table):
-        if(left_table.pk == None):
+    def evaluate_join_method(self, left_table, right_table):
+        if(left_table.pk == None and right_table.pk == None):
             return False
         else:
             return True
@@ -425,7 +425,7 @@ class Database:
 
         if mode=='inner':
             
-            if self.evaluate_join_method(left_table):
+            if self.evaluate_join_method(left_table, right_table):
                 # call inlj() here
                 pass
             else:
