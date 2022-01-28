@@ -232,15 +232,6 @@ class Table:
         else:
             rows = [i for i in range(len(self.data))]
 
-        if group_by is not None and len(select_aggregate_dic.keys()) != (len(return_cols) - 1):
-            message = 'invalid columns to return. All columns except the group by column must be a product of an aggregate function'
-
-            raise ValueError(message)
-
-        for row in select_aggregate_dic.keys():
-            if row == group_by:
-                raise ValueError('invalid group by column')
-
         # top k rows
         # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
@@ -258,11 +249,32 @@ class Table:
 
         select_aggregate_dic = dict(zip(col_indexes, list(select_aggregate_dic.values())))
 
-        if (list(self.__dict__.values())[0] != 'meta_locks'):
-            newDict = {}
+        if group_by is not None and len(select_aggregate_dic.keys()) != (len(return_cols) - 1):
+            message = 'invalid columns to return. All columns except the group by column must be a product of an aggregate function'
+            raise ValueError(message)
 
-            group_by_index = dic['column_names'].index(group_by)
+        for row in select_aggregate_dic.keys():
+            if row == group_by:
+                raise ValueError('invalid group by column')
+
+        if (group_by is None and len(select_aggregate_dic) == len(return_cols)):
+            col_lists = []
+
+            for row_index, row in enumerate(dic['data']):
+                for index, item in enumerate(row):
+                    if (row_index == 0):
+                        col_lists.append([item])
+                    else:
+                        col_lists[index].append(item)
+
+            for index, col in enumerate(col_lists):
+                col_lists[index] = self.apply_aggregate_func(col, select_aggregate_dic[index])      
+            dic['data'] = [col_lists]
+        elif (group_by is not None):
+            newDict = []
+ 
             for row in dic['data']:
+                group_by_index = dic['column_names'].index(group_by)
                 group = row[group_by_index]
 
                 if (group not in newDict.keys()):
@@ -495,16 +507,17 @@ class Table:
         return max(column)
 
     def avg(self, column):
+        if (not isinstance(column[0], Number)):
+            raise ValueError(f' aggregate function type error (column\'s type is not numeric)')
         return sum(column) / len(column)
 
     def count(self, column):
-        return len(self.column_by_name(column))
+        return len(column)
 
     def sum(self, column):
+        if (not isinstance(column[0], Number)):
+            raise ValueError(f' aggregate function type error (column\'s type is not numeric)')  
         return sum(column)
 
-    def apply_aggregate_func(self, listOfNumbers, aggregate_func_name):
-        if (not isinstance(listOfNumbers[0], Number)):
-            raise ValueError(f' aggregate function type error (column\'s type is not numeric)')  
-
+    def apply_aggregate_func(self, listOfNumbers, aggregate_func_name): 
         return getattr(self, aggregate_func_name)(listOfNumbers)
