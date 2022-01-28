@@ -394,6 +394,12 @@ class Database:
         self._update()
         self.save_database()
 
+    def evaluate_join_method(self, left_table):
+        if(left_table.pk == None):
+            return False
+        else:
+            return True
+
     def join(self, mode, left_table, right_table, condition, save_as=None, return_object=True):
         '''
         Join two tables that are part of the database where condition is met.
@@ -418,6 +424,7 @@ class Database:
 
 
         if mode=='inner':
+            print(self.evaluate_join_method(left_table))
             res = left_table._inner_join(right_table, condition)
         else:
             raise NotImplementedError
@@ -430,10 +437,6 @@ class Database:
                 return res
             else:
                 res.show()
-
-    def evaluate_join_method(self):
-        pass
-
 
     def lock_table(self, table_name, mode='x'):
         '''
