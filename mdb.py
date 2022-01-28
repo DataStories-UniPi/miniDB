@@ -65,7 +65,7 @@ def create_query_plan(query, keywords, action):
 
     if action=='select':
         dic = evaluate_from_clause(dic)
-        
+   
         if dic['order by'] is not None:
             dic['from'] = dic['from'].removesuffix(' order')
             if 'desc' in dic['order by']:
@@ -76,10 +76,23 @@ def create_query_plan(query, keywords, action):
             
         else:
             dic['desc'] = None
+
+        if dic['group by'] is not None:
+            dic['from'] = dic['from'].removesuffix(' group')
+            if 'desc' in dic['group by']:
+                dic['desc'] = True
+            else:
+                dic['desc'] = False
+            dic['group by'] = dic['group by'].removesuffix(' asc').removesuffix(' desc')
+            
+        else:
+            dic['desc'] = None
+
+        if dic['group by'] is not None:
+            dic['group by'] = dic['group by'].removesuffix(' order')
         
         # add prefix for aggregate functions
         add_aggregate_prefix(dic)
-        print(dic)
 
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
@@ -158,7 +171,7 @@ def interpret(query):
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
-                     'select': ['select', 'from', 'where', 'order by', 'top'],
+                     'select': ['select', 'from', 'where', 'group by', 'having', 'order by', 'top'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
@@ -182,7 +195,7 @@ def execute_dic(dic):
     '''
     Execute the given dictionary
     '''
-    dics_to_ignore = ['select_aggregate_flag', 'where_aggregate_flag']
+    dics_to_ignore = ['select_aggregate_flag', 'having_aggregate_flag']
     for key in dic.keys():
         if isinstance(dic[key],dict) and key not in dics_to_ignore:
             dic[key] = execute_dic(dic[key])
@@ -232,7 +245,7 @@ def add_aggregate_prefix(dic):
     """Cleans up the query string from anything related to aggregate functions and 
     saves the aggregate flags for each column into two new dicts.
     First dict (select_aggregate_flag) corresponds to the cols found in the select
-    string and second dict (where_aggregate_flag) to the cols
+    string and second dict (having_aggregate_flag) to the cols
     found in the where string.
 
     Args:
@@ -241,12 +254,16 @@ def add_aggregate_prefix(dic):
 
     # add prefix for aggregate functions
     aggregate_functions = ['min', 'max', 'count', 'sum', 'avg']
-    actions_to_filter = ['select', 'where']
+    actions_to_filter = ['select', 'having']
 
     for action in actions_to_filter:
-        word_list = dic[action].split(' ')
         new_dic_key = action + '_aggregate_flag'
         dic[new_dic_key] = {}
+
+        if dic[action] is None:
+            continue
+
+        word_list = dic[action].split(' ')
         newWorldList:list = word_list.copy()
 
         for i, word in enumerate(word_list):
@@ -257,15 +274,6 @@ def add_aggregate_prefix(dic):
                 newWorldList.remove(word)
                 newWorldList.remove(word_list[i+1])
                 newWorldList.remove(word_list[i+3])
-
-                if (i > 0 and action=='select'):
-                    # remove column name
-                    newWorldList.remove(word_list[i+2])
-                    # remove comma
-                    if word_list[i-1] == ',':
-                        newWorldList.remove(word_list[i-1])
-                    else:
-                        newWorldList[newWorldList.index(word_list[i-1])] = newWorldList[newWorldList.index(word_list[i-1])][:-1]
 
         
         temp = ' '.join(newWorldList)

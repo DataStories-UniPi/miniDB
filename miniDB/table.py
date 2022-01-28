@@ -1,5 +1,7 @@
 from __future__ import annotations
+from email import message
 from numbers import Number
+from re import I
 from tabulate import tabulate
 import pickle
 import os
@@ -71,7 +73,6 @@ class Table:
 
     def column_by_name(self, column_name):
         return [row[self.column_names.index(column_name)] for row in self.data]
-
 
     def _update(self):
         '''
@@ -198,7 +199,9 @@ class Table:
         return indexes_to_del
 
 
-    def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None, select_aggregate_dic={}, where_aggregate_dic={}):
+    def _select_where(self, return_columns, where_condition=None, group_by=None,
+        having_condition=None, order_by=None, desc=True, top_k=None, select_aggregate_dic={},
+        having_aggregate_dic={}):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -219,29 +222,84 @@ class Table:
             return_cols = [i for i in range(len(self.column_names))]
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
-        
-        print(return_cols)
 
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
-        if condition is not None:
-            column_name, operator, value = self._parse_condition(condition, aggregate_dic=where_aggregate_dic)
+        if where_condition is not None:
+            column_name, operator, value = self._parse_condition(where_condition)
             column = self.column_by_name(column_name)
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
 
+        if having_condition is not None:
+            column_name, operator, value = self._parse_condition(having_condition)
+            coltype = self.column_types[self.column_names.index(column_name)]
+            column = self.column_by_name(column_name)
+
+            # pass cols that need to be passed in an aggregate func based on the aggregate_dic
+            if coltype is int and column_name in having_aggregate_dic.keys():
+                x = self.apply_aggregate_func(column, having_aggregate_dic[column])
+
+            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+
+        if group_by is not None and len(select_aggregate_dic.keys()) != (len(return_cols) - 1):
+            message = 'invalid columns to return. All columns except the group by column must be a product of an aggregate function'
+
+            raise ValueError(message)
+
+        for row in select_aggregate_dic.keys():
+            if row == group_by:
+                raise ValueError('invalid group by column')
+
         # top k rows
         # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
-        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
-
+        dic = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
         # we need to set the new column names/types and no of columns, since we might
         # only return some columns
-        dict['column_names'] = [self.column_names[i] for i in return_cols]
-        dict['column_types'] = [self.column_types[i] for i in return_cols]
+        dic['column_names'] = [self.column_names[i] for i in return_cols]
+        dic['column_types'] = [self.column_types[i] for i in return_cols]
 
-        s_table = Table(load=dict) 
+        # convert the select_aggregate_dic from {col_name: aggregate_func} to
+        # {col_index: aggregate_func}
+        col_indexes = []
+        for col_name in select_aggregate_dic.keys():
+            col_indexes.append(dic['column_names'].index(col_name))
+
+        select_aggregate_dic = dict(zip(col_indexes, list(select_aggregate_dic.values())))
+
+        if (list(self.__dict__.values())[0] != 'meta_locks'):
+            newDict = {}
+
+            group_by_index = dic['column_names'].index(group_by)
+            for row in dic['data']:
+                group = row[group_by_index]
+
+                if (group not in newDict.keys()):
+                    for index, item in enumerate(row):
+                        if (index in select_aggregate_dic.keys()):
+                            row[index] = [item]
+                    newDict[group] = row
+                else:
+                    for index, item in enumerate(row):
+                        if (index in select_aggregate_dic.keys()):
+                            newDict[group][index].append(row[index])
+            
+            for row in newDict.values():
+                for index, item in enumerate(row):
+                    if (index in select_aggregate_dic.keys()):
+                        row[index] = self.apply_aggregate_func(item, select_aggregate_dic[index])
+            # add the aggregate funcs to the col names
+            for col_index in select_aggregate_dic.keys():
+                dic['column_names'][col_index] = select_aggregate_dic[col_index] + '_of_' +\
+                    dic['column_names'][col_index]
+            
+            dic['data'] = list(newDict.values())
+ 
+
+        s_table = Table(load=dic) 
         if order_by:
             s_table.order_by(order_by, desc)
 
@@ -250,7 +308,9 @@ class Table:
         return s_table
 
 
-    def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, desc=True, top_k=None, select_aggregate_dic={}, where_aggregate_dic={}):
+    def _select_where_with_btree(self, return_columns, bt, where_condition=None, group_by=None,
+        having_condition=None, order_by=None, desc=True, top_k=None, select_aggregate_dic={},
+        having_aggregate_dic={}):
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
@@ -259,7 +319,7 @@ class Table:
             return_cols = [self.column_names.index(colname) for colname in return_columns]
 
 
-        column_name, operator, value = self._parse_condition(condition, aggregate_dic=where_aggregate_dic)
+        column_name, operator, value = self._parse_condition(where_condition)
 
         # if the column in condition is not a primary key, abort the select
         if column_name != self.column_names[self.pk_idx]:
@@ -309,6 +369,11 @@ class Table:
         # print(idx)
         self.data = [self.data[i] for i in idx]
         # self._update()
+
+    def group_by(self, column_name, desc=True):
+        column = self.column_by_name(column_name)
+        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=desc)
+        self.data = [self.data[i] for i in idx]
 
 
     def _inner_join(self, table_right: Table, condition):
@@ -388,7 +453,7 @@ class Table:
         print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
 
 
-    def _parse_condition(self, condition, join=False, aggregate_dic={}):
+    def _parse_condition(self, condition, join=False):
         '''
         Parse the single string condition and return the value of the column and the operator.
 
@@ -410,11 +475,6 @@ class Table:
             raise ValueError(f'Condition is not valid (cant find column name)')  
         coltype = self.column_types[self.column_names.index(left)]
 
-        # pass cols that need to be passed in an aggregate func
-        # based on the aggregate_dic
-        if coltype is int and right in aggregate_dic.keys():
-            right = self.apply_aggregate_func(right, aggregate_dic[right])
-
         return left, op, coltype(right)
 
 
@@ -431,9 +491,6 @@ class Table:
 
         self.__dict__.update(tmp_dict)
 
-    def group_by(self, column_name):
-        pass
-
     def min(self, column):
         return min(column)
 
@@ -449,9 +506,8 @@ class Table:
     def sum(self, column):
         return sum(column)
 
-    def apply_aggregate_func(self, column_name, aggregate_func_name):
-        column = self.column_by_name(column_name)
-        if (not isinstance(column[0], Number)):
+    def apply_aggregate_func(self, listOfNumbers, aggregate_func_name):
+        if (not isinstance(listOfNumbers[0], Number)):
             raise ValueError(f' aggregate function type error (column\'s type is not numeric)')  
 
-        return getattr(self, aggregate_func_name)(column)
+        return getattr(self, aggregate_func_name)(listOfNumbers)
