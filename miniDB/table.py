@@ -2,30 +2,9 @@ from __future__ import annotations
 from tabulate import tabulate
 import pickle
 import os
+import math
+from btree import Btree
 from misc import get_op, split_condition
-
-
-"""
-
-ISSUES: 
-
-    Using cprofile, we reached the conclusion that _uddate should be removed. Its very slow. This and constant file i/o is a problem.
-
-    These problems are partially solved by a server based protocol.
-
-    Handling columns should be discussed. Generating column when a function is called is an option. (use property decorator)
-
-    Removing columns all together is another option. 
-
-    Server should be implemented ASAP. No need to be great, needs to work tho.
-
-    All queries should be run from file or REPL (psql like). Only way to interact with mdb should be the server. strip()
-
-TODO:
-
-    Simple REPL
-
-"""
 
 
 class Table:
@@ -45,6 +24,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
+
     def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
 
         if load is not None:
@@ -61,7 +41,7 @@ class Table:
 
             self._name = name
 
-            if len(column_names)!=len(column_types):
+            if len(column_names) != len(column_types):
                 raise ValueError('Need same number of column names and types.')
 
             self.column_names = column_names
@@ -78,7 +58,7 @@ class Table:
                     raise Exception(f'"{col}" attribute already exists in "{self.__class__.__name__} "class.')
 
             self.column_types = [eval(ct) if not isinstance(ct, type) else ct for ct in column_types]
-            self.data = [] # data is a list of lists, a list of rows that is.
+            self.data = []  # data is a list of lists, a list of rows that is.
 
             # if primary key is set, keep its index as an attribute
             if primary_key is not None:
@@ -93,7 +73,6 @@ class Table:
 
     def column_by_name(self, column_name):
         return [row[self.column_names.index(column_name)] for row in self.data]
-
 
     def _update(self):
         '''
@@ -120,7 +99,6 @@ class Table:
         self.column_types[column_idx] = cast_type
         # self._update()
 
-
     def _insert(self, row, insert_stack=[]):
         '''
         Insert row to table.
@@ -129,7 +107,7 @@ class Table:
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             insert_stack: list. The insert stack (empty by default).
         '''
-        if len(row)!=len(self.column_names):
+        if len(row) != len(self.column_names):
             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
 
         for i in range(len(row)):
@@ -140,13 +118,13 @@ class Table:
             #     raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
 
             # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
-            if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
+            if i == self.pk_idx and row[i] in self.column_by_name(self.pk):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
             self.data[insert_stack[-1]] = row
-        else: # else append to the end
+        else:  # else append to the end
             self.data.append(row)
         # self._update()
 
@@ -178,8 +156,7 @@ class Table:
                 self.data[row_ind][set_column_idx] = set_value
 
         # self._update()
-                # print(f"Updated {len(indexes_to_del)} rows")
-
+        # print(f"Updated {len(indexes_to_del)} rows")
 
     def _delete_where(self, condition):
         '''
@@ -219,7 +196,6 @@ class Table:
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
 
-
     def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
@@ -254,21 +230,21 @@ class Table:
         # top k rows
         # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
-        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+        dict = {(key): ([[self.data[i][j] for j in return_cols] for i in rows] if key == "data" else value) for
+                key, value in self.__dict__.items()}
 
         # we need to set the new column names/types and no of columns, since we might
         # only return some columns
         dict['column_names'] = [self.column_names[i] for i in return_cols]
-        dict['column_types']   = [self.column_types[i] for i in return_cols]
+        dict['column_types'] = [self.column_types[i] for i in return_cols]
 
-        s_table = Table(load=dict) 
+        s_table = Table(load=dict)
         if order_by:
             s_table.order_by(order_by, desc)
 
-        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
+        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k, str) else s_table.data
 
         return s_table
-
 
     def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, desc=True, top_k=None):
 
@@ -277,7 +253,6 @@ class Table:
             return_cols = [i for i in range(len(self.column_names))]
         else:
             return_cols = [self.column_names.index(colname) for colname in return_columns]
-
 
         column_name, operator, value = self._parse_condition(condition)
 
@@ -293,7 +268,7 @@ class Table:
         rows1 = []
         opsseq = 0
         for ind, x in enumerate(column):
-            opsseq+=1
+            opsseq += 1
             if get_op(operator, x, value):
                 rows1.append(ind)
 
@@ -303,16 +278,17 @@ class Table:
         # same as simple select from now on
         rows = rows[:top_k]
         # TODO: this needs to be dumbed down
-        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+        dict = {(key): ([[self.data[i][j] for j in return_cols] for i in rows] if key == "data" else value) for
+                key, value in self.__dict__.items()}
 
         dict['column_names'] = [self.column_names[i] for i in return_cols]
-        dict['column_types']   = [self.column_types[i] for i in return_cols]
+        dict['column_types'] = [self.column_types[i] for i in return_cols]
 
-        s_table = Table(load=dict) 
+        s_table = Table(load=dict)
         if order_by:
             s_table.order_by(order_by, desc)
 
-        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
+        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k, str) else s_table.data
 
         return s_table
 
@@ -329,7 +305,6 @@ class Table:
         # print(idx)
         self.data = [self.data[i] for i in idx]
         # self._update()
-
 
     def _inner_join(self, table_right: Table, condition):
         '''
@@ -348,23 +323,26 @@ class Table:
         try:
             column_index_left = self.column_names.index(column_name_left)
         except:
-            raise Exception(f'Column "{column_name_left}" dont exist in left table. Valid columns: {self.column_names}.')
+            raise Exception(
+                f'Column "{column_name_left}" dont exist in left table. Valid columns: {self.column_names}.')
 
         try:
             column_index_right = table_right.column_names.index(column_name_right)
         except:
-            raise Exception(f'Column "{column_name_right}" dont exist in right table. Valid columns: {table_right.column_names}.')
+            raise Exception(
+                f'Column "{column_name_right}" dont exist in right table. Valid columns: {table_right.column_names}.')
 
         # get the column names of both tables with the table name in front
         # ex. for left -> name becomes left_table_name_name etc
-        left_names = [f'{self._name}.{colname}' if self._name!='' else colname for colname in self.column_names]
-        right_names = [f'{table_right._name}.{colname}' if table_right._name!='' else colname for colname in table_right.column_names]
+        left_names = [f'{self._name}.{colname}' if self._name != '' else colname for colname in self.column_names]
+        right_names = [f'{table_right._name}.{colname}' if table_right._name != '' else colname for colname in
+                       table_right.column_names]
 
         # define the new tables name, its column names and types
         join_table_name = ''
-        join_table_colnames = left_names+right_names
-        join_table_coltypes = self.column_types+table_right.column_types
-        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
+        join_table_colnames = left_names + right_names
+        join_table_coltypes = self.column_types + table_right.column_types
+        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types=join_table_coltypes)
 
         # count the number of operations (<,> etc)
         no_of_ops = 0
@@ -374,12 +352,11 @@ class Table:
             left_value = row_left[column_index_left]
             for row_right in table_right.data:
                 right_value = row_right[column_index_right]
-                no_of_ops+=1
-                if get_op(operator, left_value, right_value): #EQ_OP
-                    join_table._insert(row_left+row_right)
+                no_of_ops += 1
+                if get_op(operator, left_value, right_value):  # EQ_OP
+                    join_table._insert(row_left + row_right)
 
         return join_table
-
 
     def show(self, no_of_rows=None, is_locked=False):
         '''
@@ -400,13 +377,12 @@ class Table:
         headers = [f'{col} ({tp.__name__})' for col, tp in zip(self.column_names, self.column_types)]
         if self.pk_idx is not None:
             # table has a primary key, add PK next to the appropriate column
-            headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
+            headers[self.pk_idx] = headers[self.pk_idx] + ' #PK#'
         # detect the rows that are no tfull of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]
         # print using tabulate
-        print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
-
+        print(tabulate(non_none_rows[:no_of_rows], headers=headers) + '\n')
 
     def _parse_condition(self, condition, join=False):
         '''
@@ -432,7 +408,6 @@ class Table:
 
         return left, op, coltype(right)
 
-
     def _load_from_file(self, filename):
         '''
         Load table from a pkl file (not used currently).
@@ -445,3 +420,90 @@ class Table:
         f.close()
 
         self.__dict__.update(tmp_dict)
+
+    def _inl_join(self, right_table: Table, condition):
+        '''
+        Join table (left) with a table on the right where a condition is met using index nested loop join.
+        Args:
+            the condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]btree_ptr_index' or
+                'btree_ptr_index[<,<=,==,>=,>]column'.
+
+                Operators supported: (<,<=,==,>=,>)
+
+                 queries to run:
+                 select * from department inlj join instructor on dept_name=dept_name   failed message
+                 select * from instructor inlj join department on dept_name=dept_name
+                 select * from instructor inlj join course on dept_name=dept_name
+                 select * from prereq inlj join course on course_id=course_id   pk on the second table
+                 select * from prereq inlj join course on course_id>course_id  could be inlj if =
+
+                 get columns and operator
+        '''
+        column_name_left, operator, column_name_right = self._parse_condition(condition, join=True)
+        # Inner nested loop join requires the join to be equi-join or natural join and the embedded table
+        # must be supported by an index
+        if operator != "=":
+            print("can't join tables using inlj, attempting inner join instead.")
+            join_table = self._inner_join(right_table, condition)  # inner join parameters
+            return join_table
+        # Checking if the table can be indexed
+        if right_table.pk is None:
+            if self.pk is None:
+                # If no indexes, simply run inner join
+                print("Missing indexes for tables,inlj cant run, trying inner join instead.")
+                join_table = self._inner_join(right_table, condition)  # inner join parameters
+            else:
+                # If left can be indexed, but right can't, switch places, for a more otpimal way to join
+                # the result is the same, and there is no need to run inlj where the inner table is not indexed
+                join_table = right_table._inl_join(self, condition)  # inner join parameters
+            return join_table
+        # Finding the height of the Btree
+        record_count = right_table.column_by_name(right_table.pk)  #
+        height = round(math.log(len(record_count)))
+        # Create Btree index
+        btree_index = Btree(height)
+        # inserting the value of each primary key's record and the index to the appropriate node
+        for btree_ptr_index, record_value in enumerate(right_table.column_by_name(right_table.pk)):
+            btree_index.insert(record_value, btree_ptr_index)
+        # try to see if there are any indexes for pending columns to join using inlj, if not error
+        # and show the available ones
+        try:
+            left_column_index = self.column_names.index(column_name_left)
+        except:
+            raise Exception(
+                f'Index for column "{column_name_left}" doesnt exist in left table. Valid columns: {self.column_names}.')
+        try:
+            right_column_index = right_table.column_names.index(column_name_right)
+        except:
+            raise Exception(
+                f'Index for column "{column_name_right}" doesnt exist in right table. Valid columns: {right_table.column_names}.')
+
+        # get the column names so that they later match the condition
+        # the left column name becomes left_table_name_name
+        left_names = [f'{self._name}.{colname}'
+                      if self._name != ''  # if the table has a name
+                      else
+                      colname for colname in self.column_names  # or it searches for a name in the columns
+                      ]
+        # likewise
+        right_names = [f'{right_table._name}.{colname}' if right_table._name != '' else colname for colname in
+                       right_table.column_names]
+
+        # creating a new temporary table with its values and types
+        join_table_name = ''
+        join_table_colnames = left_names + right_names
+        join_table_coltypes = self.column_types + right_table.column_types
+        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types=join_table_coltypes)
+
+        # INLJ with a cost of blocks in the left_table + left_record records * the records in the right's table index
+        for outer_record in self.data:  # going through the first table(with the fewer records)
+            left_record = outer_record[left_column_index]
+            matching_index = btree_index.find(operator, left_record)  # condition
+            if len(matching_index) > 0:  # if there are records in the index that satisfy the condition
+                for match_id in matching_index:  # however many are the records in the nested table
+                    join_table._insert(outer_record + right_table.data[match_id])  # putting the results in a table
+
+        return join_table
+
+

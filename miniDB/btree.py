@@ -6,7 +6,7 @@ class Node:
     '''
     Node abstraction. Represents a single bucket
     '''
-    def __init__(self, b, values=[], ptrs=[],\
+    def __init__(self, b, values=[], ptrs=[],
                  left_sibling=None, right_sibling=None, parent=None, is_leaf=False):
         self.b = b # branching factor
         self.values = values # Values (the data from the pk column)

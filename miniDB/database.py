@@ -10,7 +10,7 @@ import logging
 import warnings
 import readline
 from tabulate import tabulate
-
+import numpy as np
 
 # sys.setrecursionlimit(100)
 
@@ -421,6 +421,10 @@ class Database:
 
         if mode=='inner':
             res = left_table._inner_join(right_table, condition)
+        elif mode== 'inlj':
+            res = left_table._inl_join(right_table, condition)
+        elif mode == 'smj':
+            pass
         else:
             raise NotImplementedError
 

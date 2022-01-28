@@ -96,21 +96,21 @@ def create_query_plan(query, keywords, action):
             dic['values'] = dic['values'][1:-1]
         else:
             raise ValueError('Your parens are not right m8')
-        
+
     return dic
 
 def evaluate_from_clause(dic):
     '''
     Evaluate the part of the query (argument or subquery) that is supplied as the 'from' argument
     '''
-    join_types = ['inner', 'left', 'right', 'full']
+    join_types = ['inner', 'left', 'right', 'full','inlj']
     from_split = dic['from'].split(' ')
     if from_split[0] == '(' and from_split[-1] == ')':
         subquery = ' '.join(from_split[1:-1])
         dic['from'] = interpret(subquery)
 
-    join_idx = [i for i,word in enumerate(from_split) if word=='join' and not in_paren(from_split,i)]
-    on_idx = [i for i,word in enumerate(from_split) if word=='on' and not in_paren(from_split,i)]
+    join_idx = [i for i, word in enumerate(from_split) if word=='join' and not in_paren(from_split,i)]
+    on_idx = [i for i, word in enumerate(from_split) if word=='on' and not in_paren(from_split,i)]
     if join_idx:
         join_idx = join_idx[0]
         on_idx = on_idx[0]
@@ -138,6 +138,7 @@ def interpret(query):
     '''
     Interpret the query.
     '''
+
     kw_per_action = {'create table': ['create table'],
                      'drop table': ['drop table'],
                      'cast': ['cast', 'from', 'to'],
