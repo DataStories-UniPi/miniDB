@@ -431,7 +431,7 @@ class Database:
             else:
                 res.show()
 
-    def evaluate_join_method():
+    def evaluate_join_method(self):
         pass
 
 
