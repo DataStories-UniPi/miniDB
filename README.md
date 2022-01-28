@@ -31,7 +31,7 @@ Then, to activate/deactivate the environement, run:
 conda activate/deactivate mdb
 ```
 
-If you have other python versions already installed, using Anaconda is adviced since it allows you to manage multiple python versions easily. 
+If you have other python versions already installed, using Anaconda is adviced since it allows you to manage multiple python versions easily.
 
 These commands will install the following dependencies:
 * `tabulate` (for text formatting)
@@ -67,3 +67,5 @@ DB=smdb SQL=YOUR_FILE python3.9 mdb.py
 
 ## The people
 George S. Theodoropoulos, Yannis Kontoulis, Yannis Theodoridis; Data Science Lab., University of Piraeus.
+
+2nd push kostikas jannakis
