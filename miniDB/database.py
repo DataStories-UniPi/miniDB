@@ -1,4 +1,5 @@
 from __future__ import annotations
+#from msilib.schema import Condition
 import pickle
 from table import Table
 from time import sleep, localtime, strftime
@@ -98,19 +99,21 @@ class Database:
         self._update_meta_insert_stack()
 
 
-    def create_table(self, name, column_names, column_types, primary_key=None, load=None):
+    def create_table(self, name, column_names, column_types, not_nulls, uniques, primary_key=None, load=None):
         '''
-        This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
+        This method creates a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
 
         Args:
             name: string. Name of table.
             column_names: list. Names of columns.
             column_types: list. Types of columns.
+            not_nulls: list. Names of not null values columns
+            uniques: List.Names of unique values columns
             primary_key: string. The primary key (if it exists).
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
         # print('here -> ', column_names.split(','))
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)})
+        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), not_nulls=not_nulls, uniques=uniques, primary_key=primary_key, load=load)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
@@ -237,7 +240,11 @@ class Database:
         self._update()
         self.save_database()
 
-    def insert_into(self, table_name, row_str):
+    def insert_into(self, table_name, row_str,select_kw,from_kw,where_kw):
+        # +3 arguments select kai from
+        # select_kw = oti exei to select brosta (p.x *)
+        # from_kw = apo poio pinaka kano select
+        # where_kw = to condition tou where  
         '''
         Inserts data to given table.
 
@@ -246,23 +253,41 @@ class Database:
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             lock_load_save: boolean. If False, user needs to load, lock and save the states of the database (CAUTION). Useful for bulk-loading.
         '''
-        row = row_str.strip().split(',')
-        self.load_database()
-        # fetch the insert_stack. For more info on the insert_stack
-        # check the insert_stack meta table
-        lock_ownership = self.lock_table(table_name, mode='x')
-        insert_stack = self._get_insert_stack_for_table(table_name)
-        try:
-            self.tables[table_name]._insert(row, insert_stack)
-        except Exception as e:
-            logging.info(e)
-            logging.info('ABORTED')
-        self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
+        #ama exo dialeksei insert into....select.....from
+        if select_kw is not None and from_kw is not None:
+          self.load_database()
+         # rows = apotelesma tou select     
+          rows = self.tables[from_kw]._select_where(select_kw,condition=where_kw,order_by=None,desc=True,top_k=None)
+          list_of_rows_to_be_inserted = rows._contents_to_list()
+          insert_stack = self._get_insert_stack_for_table(table_name)                                                                         
+          try:
+             self.tables[table_name]._insert_into_select(list_of_rows_to_be_inserted,insert_stack)
+          except Exception as e:
+             logging.info(e)
+             logging.info('ABORTED')
+          self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
+          self._update()
+          self.save_database()
+          self.unlock_table(table_name)
+        #ama exo pei apla insert into....values(....)
+        else:
+         row = row_str.strip().split(',')
+         self.load_database()
+         # fetch the insert_stack. For more info on the insert_stack
+         # check the insert_stack meta table
+         lock_ownership = self.lock_table(table_name, mode='x')
+         insert_stack = self._get_insert_stack_for_table(table_name)
+         try:
+             self.tables[table_name]._insert(row, insert_stack)
+         except Exception as e:
+             logging.info(e)
+             logging.info('ABORTED')
+         self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
 
-        if lock_ownership:
-            self.unlock_table(table_name)
-        self._update()
-        self.save_database()
+         if lock_ownership:
+             self.unlock_table(table_name)
+         self._update()
+         self.save_database()
 
 
     def update_table(self, table_name, set_args, condition):

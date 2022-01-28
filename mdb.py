@@ -3,8 +3,10 @@ import re
 from pprint import pprint
 import sys
 import readline
+from this import d
 import traceback
 import shutil
+from collections import defaultdict
 sys.path.append('miniDB')
 
 from database import Database
@@ -77,12 +79,29 @@ def create_query_plan(query, keywords, action):
             dic['desc'] = None
 
     if action=='create table':
-        args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
+        args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]  #args = everything inside the (....) of create_table
         dic['create table'] = dic['create table'].removesuffix(args).strip()
         arg_nopk = args.replace('primary key', '')[1:-1]
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+        #not_null
+        dic['not_nulls'] = []
+        for val in arglist:
+             for str in val:
+                 if str == 'null':
+                     dic['not_nulls'].append(val[0])
+        #unique
+        dic['uniques'] = []
+        for val in arglist:
+             for str in val:
+                 if str == "unique":
+                     dic['uniques'].append(val[0])
+        #xrhsima prints
+        #print("contents of arglist: ",arglist)
+        #print("Column_names_are: ",dic['column_names'])
+        #print("Column_types_are: ",dic['column_types'])
+        #print("Nulls are: ",dic['not_nulls'])
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]
@@ -93,8 +112,12 @@ def create_query_plan(query, keywords, action):
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
     if action=='insert into':
-        if dic['values'][0] == '(' and dic['values'][-1] == ')':
-            dic['values'] = dic['values'][1:-1]
+        #an bro to kw select na kano evaluate gia to from
+        if dic['select'] is not None:
+             dic = evaluate_from_clause(dic)
+        #allagh to if se elif kai to apo pano if #78
+        elif dic['values'][0] == '(' and dic['values'][-1] == ')':
+              dic['values'] = dic['values'][1:-1]
         else:
             raise ValueError('Your parens are not right m8')
     
@@ -103,7 +126,6 @@ def create_query_plan(query, keywords, action):
             dic['force'] = True
         else:
             dic['force'] = False
-
     return dic
 
 
@@ -152,7 +174,7 @@ def interpret(query):
                      'cast': ['cast', 'from', 'to'],
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
-                     'insert into': ['insert into', 'values'],
+                     'insert into': ['insert into', 'values','select','from','where'], #pithani allagh na prosthesa keyword to select,from #78 #error me ta 3 extra
                      'select': ['select', 'from', 'where', 'order by', 'top'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
@@ -167,7 +189,7 @@ def interpret(query):
     
     query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip()
 
-    for kw in kw_per_action.keys():
+    for kw in kw_per_action.keys():            #to .keys() axreiasto afou outosi allos sta keys tha looparei
         if query.startswith(kw):
             action = kw
 

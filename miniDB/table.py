@@ -1,9 +1,11 @@
 from __future__ import annotations
+from re import S
+from typing import List
+from xmlrpc.client import SYSTEM_ERROR
 from tabulate import tabulate
 import pickle
 import os
 from misc import get_op, split_condition
-
 
 """
 
@@ -29,6 +31,7 @@ TODO:
 
 
 class Table:
+    not_nulls = {}
     '''
     Table object represents a table inside a database
 
@@ -45,8 +48,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
-
+    def __init__(self, name=None, column_names=None, column_types=None, not_nulls=None, uniques=None ,primary_key=None, load=None):   
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
             if isinstance(load, dict):
@@ -55,19 +57,14 @@ class Table:
             # if load is str, load from a file
             elif isinstance(load, str):
                 self._load_from_file(load)
-
         # if name, columns_names and column types are not none
         elif (name is not None) and (column_names is not None) and (column_types is not None):
-
             self._name = name
-
             if len(column_names)!=len(column_types):
                 raise ValueError('Need same number of column names and types.')
-
+            
             self.column_names = column_names
-
             self.columns = []
-
             for col in self.column_names:
                 if col not in self.__dir__():
                     # this is used in order to be able to call a column using its name as an attribute.
@@ -75,27 +72,18 @@ class Table:
                     setattr(self, col, [])
                     self.columns.append([])
                 else:
-                    raise Exception(f'"{col}" attribute already exists in "{self.__class__.__name__} "class.')
-
+                    raise Exception(f'"{col}" attribute already exists in "{self.__class__.__name__} "class.')     
             self.column_types = [eval(ct) if not isinstance(ct, type) else ct for ct in column_types]
             self.data = [] # data is a list of lists, a list of rows that is.
-
             # if primary key is set, keep its index as an attribute
             if primary_key is not None:
                 self.pk_idx = self.column_names.index(primary_key)
             else:
                 self.pk_idx = None
-
-            self.pk = primary_key
-            # self._update()
-
-    # if any of the name, columns_names and column types are none. return an empty table object
-
-    def column_by_name(self, column_name):
-        return [row[self.column_names.index(column_name)] for row in self.data]
-
-
-    def _update(self):
+            #edo tha ginetai attribbute to not_nulls
+            self.not_nulls = not_nulls
+            #edo tha ginetai attribute to uniques
+            self.uniques = uniques          
         '''
         Update all the available columns with the appended rows.
         '''
@@ -131,14 +119,29 @@ class Table:
         '''
         if len(row)!=len(self.column_names):
             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
-
+        #gia to not null
+        counter = 0
+        for null in self.not_nulls:
+            counter = 0
+            for name in self.column_names:
+                if str(null) == str(name) and bool(str(row[counter]).strip()) == False:     
+                    print('The value in column '+str(name)+" can not be null")           
+                counter += 1
+        #gia to unique
+        counter_2 = 0
+        for unique_col in self.uniques:
+            counter_2 = 0
+            for col_name in self.column_names:
+                if unique_col == col_name and self._is_unique(counter_2,row[counter_2]) == False:
+                    print('The values in column'+str(col_name)+"must be unique")
+                counter_2 += 1
+        
         for i in range(len(row)):
             # for each value, cast and replace it in row.
             # try:
             row[i] = self.column_types[i](row[i])
             # except:
             #     raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
-
             # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
@@ -330,6 +333,8 @@ class Table:
         self.data = [self.data[i] for i in idx]
         # self._update()
 
+    def column_by_name(self, column_name):
+        return [row[self.column_names.index(column_name)] for row in self.data]
 
     def _inner_join(self, table_right: Table, condition):
         '''
@@ -445,3 +450,83 @@ class Table:
         f.close()
 
         self.__dict__.update(tmp_dict)
+
+    def _insert_into_select(self, rows, insert_stack=[]):
+        #thelo h insert na kanei tous elegxous ths gia kathe row (o rows sumbolizei ta data apo to select) kai meta na ta kanei insert san na ekteleitai polles fores h aplh insert        
+        '''
+        Insert rows to table.
+
+        Args:
+            rows: list. A list of lists containing the values of rows to be added. For example rows = [[value1,value2,value3],[value4,value5,value6]]
+            insert_stack: list. The insert stack (empty by default).
+        '''
+        if isinstance(rows[0],list):
+         for row in rows:
+            if len(row)!=len(self.column_names):
+             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
+            #gia to not_null
+            counter = 0
+            for null in self.not_nulls:
+              counter = 0
+              for name in self.column_names:
+                 if str(null) == str(name) and bool(str(row[counter]).strip()) == False:     
+                     print('The value in column '+str(name)+" can not be null")           
+                 counter += 1
+            for i in range(len(row)):
+                # for each value, cast and replace it in row.
+                # try:
+                row[i] = self.column_types[i](row[i])
+                # except:
+                #     raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
+
+                # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
+                if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
+                   raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
+         #Epeidh kano insert mia mia an kapoia grammh einai lathos tote endexetai kapoies apo tis prohgoumenes na exoun ginei insert
+         #ara prota elegxo an kapoia tha xtuphsei error kai meta kano insert/append sto stack
+         for row in rows:    # if insert_stack is not empty, append to its last index
+             if insert_stack != []:
+               self.data[insert_stack[-1]] = row
+             else: # else append to the end
+               self.data.append(row)
+                  # self._update()
+        #ama to select exei mono mia eggrafh kanto opos thn kanonikh insert
+        else:
+             if len(rows)!=len(self.column_names):
+               raise ValueError(f'ERROR -> Cannot insert {len(rows)} values. Only {len(self.column_names)} columns exist')
+              #gia to not_null
+             counter = 0
+             for null in self.not_nulls:
+               counter = 0
+               for name in self.column_names:
+                  if str(null) == str(name) and bool(str(rows[counter]).strip()) == False:     
+                      print('The value in column '+str(name)+" can not be null")           
+                  counter += 1
+             for i in range(len(rows)):
+               # for each value, cast and replace it in row.
+               # try:
+                rows[i] = self.column_types[i](rows[i])
+               # except:
+               # raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
+
+               # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
+             if i==self.pk_idx and rows[i] in self.column_by_name(self.pk):
+                raise ValueError(f'## ERROR -> Value {rows[i]} already exists in primary key column.')
+
+             # if insert_stack is not empty, append to its last index
+             if insert_stack != []:
+                self.data[insert_stack[-1]] = rows
+             else: # else append to the end
+                self.data.append(rows)
+            # self._update()
+    def _contents_to_list(self):
+        #metatrepei ta periexomena tou pinaka se lista 
+        List = [row for row in self.data if any(row)]
+        return List
+
+    def _is_unique(self,counter,value_to_be_inserted):
+        contens = self._contents_to_list()
+        for row in contens:
+            if row[counter] == value_to_be_inserted :
+                   return False
+        return True 
