@@ -3,7 +3,7 @@ from tabulate import tabulate
 import pickle
 import os
 from misc import get_op, split_condition
-import pandas as pd
+
 
 class Table:
     '''
@@ -213,10 +213,19 @@ class Table:
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
         
-        mode = return_columns[0:3]
+        mode = return_columns[0]
+
+        if mode=="c":
+            mode = return_columns[0:5]
+        else:
+            mode = return_columns[0:3]
+            
         return_columns=return_columns.replace('min ', '')
         return_columns=return_columns.replace('max ', '')
-
+        return_columns=return_columns.replace('count ', '')
+        return_columns=return_columns.replace('sum ', '')
+        return_columns=return_columns.replace('avg ', '')
+        
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
@@ -248,6 +257,15 @@ class Table:
             
         if mode=="max":
             s_table.max(return_columns)
+            
+        if mode=="count":
+            s_table.count(return_columns)
+            
+        if mode=="sum":
+            s_table.sum(return_columns)
+            
+        if mode=="avg":
+            s_table.avg(return_columns)    
                     
         if order_by:
             s_table.order_by(order_by, desc)
@@ -262,6 +280,18 @@ class Table:
 
     def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, group_by=None, having=None, desc=True, top_k=None):
 
+        mode = return_columns[0]
+
+        if mode=="c":
+            mode = return_columns[0:5]
+        else:
+            mode = return_columns[0:3]
+            
+        return_columns=return_columns.replace('min ', '')
+        return_columns=return_columns.replace('max ', '')
+        return_columns=return_columns.replace('count ', '')
+        return_columns=return_columns.replace('sum ', '')
+        return_columns=return_columns.replace('avg ', '')
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
@@ -299,6 +329,21 @@ class Table:
         dict['column_types']   = [self.column_types[i] for i in return_cols]
 
         s_table = Table(load=dict) 
+        if mode=="min":
+            s_table.min(return_columns)
+            
+        if mode=="max":
+            s_table.max(return_columns)
+            
+        if mode=="count":
+            s_table.count(return_columns)
+            
+        if mode=="sum":
+            s_table.sum(return_columns)
+            
+        if mode=="avg":
+            s_table.avg(return_columns)
+              
         if order_by:
             s_table.order_by(return_columns, desc)
             
@@ -390,7 +435,7 @@ class Table:
         #print(self.data)
         # self._update()
         
-    def avg(self, column_name):
+    def count(self, column_name):
         '''
         Order table based on column.
 
@@ -404,9 +449,58 @@ class Table:
         idx = sorted(range(len(column)), key=lambda k: column[k], reverse=True)
         #print(idx)
         
-        self.data = [max(self.data)]
+        count = str(len(idx))
+        
+        self.data = [str(len(idx))]
         print(self.data)
         # self._update()
+        
+    def sum(self, column_name):
+        '''
+        Order table based on column.
+
+        Args:
+            column_name: string. Name of column.
+            desc: boolean. If True, order_by will return results in descending order (False by default).
+        '''
+        column = self.column_by_name(column_name)
+        #print(column)
+        
+        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=True)
+        #print(idx)
+        
+        total = sum(column)
+        #print(total)
+        
+        self.data = [str(total)]
+        #print(self.data)
+        #self._update()
+        
+    def avg(self, column_name):
+        '''
+        Order table based on column.
+
+        Args:
+            column_name: string. Name of column.
+            desc: boolean. If True, order_by will return results in descending order (False by default).
+        '''
+        column = self.column_by_name(column_name)
+        print(column)
+        
+        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=True)
+        #print(idx)
+        
+        count = len(idx)
+        
+        total = sum(column)
+        #print(total)
+        
+        avg = total/count
+        
+        self.data = [str(avg)]
+        #print(self.data)
+        # self._update()
+
 
     def _inner_join(self, table_right: Table, condition):
         '''
