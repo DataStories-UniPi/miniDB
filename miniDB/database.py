@@ -424,8 +424,13 @@ class Database:
 
 
         if mode=='inner':
-            print(self.evaluate_join_method(left_table))
-            res = left_table._inner_join(right_table, condition)
+            
+            if self.evaluate_join_method(left_table):
+                # call inlj() here
+                pass
+            else:
+                res = left_table._inner_join(right_table, condition)
+
         else:
             raise NotImplementedError
 
