@@ -431,6 +431,10 @@ class Database:
             else:
                 res.show()
 
+    def evaluate_join_method():
+        pass
+
+
     def lock_table(self, table_name, mode='x'):
         '''
         Locks the specified table using the exclusive lock (X).
