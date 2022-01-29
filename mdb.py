@@ -100,6 +100,7 @@ def create_query_plan(query, keywords, action):
                 for j in i:
                     if j == 'references':
                         referenced_table = i[-1]
+                        referencing_column = i[0]
 
             #
             # Finding and isolating what comes after the word "references"
@@ -108,12 +109,18 @@ def create_query_plan(query, keywords, action):
             #   b) The name of the referenced column
             #
             referenced_things = referenced_table.split('.')
-            # referenced_things = ['a_table', 'a_column']
+            referenced_things.append(referencing_column)
+            # referenced_things = ['parent_table', 'parent_column', 'name_of_child_column']
 
-            x  = ','.join([val for val in referenced_things])
+
+            #
+            # In the dictionary i will also pass the name of the
+            # child column that i will call it referencing_column
+            #
+
             dic['references'] = ','.join([val for val in referenced_things])
             print(dic)
-            
+
         else:
             dic['references'] = None
 

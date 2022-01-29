@@ -51,6 +51,13 @@ class Database:
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
         self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
+        #
+        # Creating a new meta table that will contain all the relations about parent
+        # and child tables, when a column on a table references another column
+        # on another table.
+        #
+        self.create_table('meta_parent_child_tables', 'parent_table,parent_column,child_table,child_column', 'str,str,str,str')
+
         self.save_database()
 
     def save_database(self):
@@ -117,11 +124,16 @@ class Database:
         # added references=references at the end
         # removed load=load,
         #
-        print("Database.references = ", references)
+        #print("Database.references = ", references)
         self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, references=references)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
+
+        ref = str(references)
+        ref = ref.split(',')
+        if references is not None:
+            self._update_meta_parent_child_tables(ref[0], ref[1], name, ref[2])
         self._update()
         self.save_database()
         # (self.tables[name])
@@ -574,6 +586,37 @@ class Database:
                 continue
             if table._name not in self.tables['meta_insert_stack'].column_by_name('table_name'):
                 self.tables['meta_insert_stack']._insert([table._name, []])
+    def _update_meta_parent_child_tables(self,parent_table,parent_column,child_table,child_column):
+        '''
+        This function can only be called by the "create_table()" function when a new table is
+        being created and its job is to insert a new row to the meta_parent_child_tables table
+        that contains:
+            1) The name of the parent table (the one that is being referenced by the child table)
+            2) The name of the parent column (the one that is being referenced by the child column)
+            3) The name of the child table (the one that is referencing the parent table)
+            4) The name of the child column (the one that is referencing the parent column)
+        '''
+
+        print("Yeap...something is being referenced for sure!")
+
+        self.tables['meta_parent_child_tables']._insert([parent_table, parent_column, child_table, child_column])
+
+    def _check_meta_parent_child_tables(self):
+        '''
+        This specific function will be called every time in 4  occasions:
+            1) When i insert a new row in a child table
+            2) When i update a value in a child table
+            3) When i update a value in a parent table
+            4) When i delete a value in a parent table
+
+        The job of this function is to check in each of these 4 occasions if the
+        current query is inserting/updating/deleting a value in a child/parent table
+
+        I that is true, then another function will be called (the "" function)
+        that will take care of the referential constraints
+        '''
+        print("Checking the referential constraints \n Please wait..")
+
 
 
     def _add_to_insert_stack(self, table_name, indexes):
