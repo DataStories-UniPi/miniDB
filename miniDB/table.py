@@ -197,7 +197,7 @@ class Table:
         return indexes_to_del
 
 
-    def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None):
+    def _select_where(self, return_columns, condition=None, order_by=None, distinct=False, desc=True, top_k=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -238,7 +238,9 @@ class Table:
         dict['column_names'] = [self.column_names[i] for i in return_cols]
         dict['column_types']   = [self.column_types[i] for i in return_cols]
 
-        s_table = Table(load=dict) 
+        s_table = Table(load=dict)
+        if distinct:
+            s_table.distinct()
         if order_by:
             s_table.order_by(order_by, desc)
 
@@ -247,7 +249,7 @@ class Table:
         return s_table
 
 
-    def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, desc=True, top_k=None):
+    def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, distinct=False, desc=True, top_k=None):
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
@@ -422,3 +424,21 @@ class Table:
         f.close()
 
         self.__dict__.update(tmp_dict)
+
+    def distinct(self):
+        '''
+           Implementing sort deduplication for Single/Multiple columns. The data are stored in the self.data
+           in order to be used in next processes (like order by).
+        '''
+        non_none_rows = [row for row in self.data if any(row)]  # avoid rows full of None
+        non_none_rows.sort(key=lambda x: x[0])  # sort the non-empty data based on the first element
+        i = 0
+        while i < len(non_none_rows) - 1:
+            equalFields = 0
+            for j in range(len(non_none_rows[0])):  # distinct in multiple columns
+                if non_none_rows[i][j] == non_none_rows[i + 1][j]: equalFields += 1
+            if equalFields == len(non_none_rows[0]):  # equal to all their fields
+                non_none_rows.remove(non_none_rows[i + 1])  # remove the element from the list
+            else:
+                i += 1  # move to the next element
+        self.data = non_none_rows

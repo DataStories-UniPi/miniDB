@@ -65,7 +65,13 @@ def create_query_plan(query, keywords, action):
 
     if action=='select':
         dic = evaluate_from_clause(dic)
-        
+
+        if dic['select'].startswith('distinct'):
+            dic['distinct'] = True
+            dic['select'] = dic['select'].removeprefix('distinct ')
+        else:
+            dic['distinct'] = False
+
         if dic['order by'] is not None:
             dic['from'] = dic['from'].removesuffix(' order')
             dic['where'] = dic['where'].removesuffix(' order')
