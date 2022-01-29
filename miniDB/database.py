@@ -400,6 +400,25 @@ class Database:
         else:
             return True
 
+
+    def smj(self, left_table, right_table):
+        
+        # check if both tables are sorted
+        if not left_table.is_sorted():
+            left_table.e_merge_sort()
+
+        if not left_table.is_sorted():
+            right_table.e_merge_sort()
+
+        res = []
+        left_table_length = len(left_table.data)
+        right_table_length = len(right_table.data)
+
+        i = 0
+        j = 0
+        k = 0
+
+
     def join(self, mode, left_table, right_table, condition, save_as=None, return_object=True):
         '''
         Join two tables that are part of the database where condition is met.
@@ -426,7 +445,7 @@ class Database:
         if mode=='inner':
             
             if self.evaluate_join_method(left_table, right_table):
-                # call inlj() here
+                
                 pass
             else:
                 res = left_table._inner_join(right_table, condition)
