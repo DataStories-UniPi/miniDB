@@ -400,8 +400,9 @@ class Database:
         else:
             return True
             
-    def inlj(self, left_table, right_table): 
-        if (left_table.pk <> none):
+    def inlj(self, left_table, right_table):
+        
+        if (left_table.pk != none):
             # get columns and operator
             column_name_left, operator, column_name_right = self._parse_condition(condition, join=True)
             # try to find both columns, if you fail raise error
@@ -428,7 +429,7 @@ class Database:
 
             if(self._has_index(left_table)):
                 #inlj algorithm
-
+                pass
 
     def smj(self, left_table, right_table):
         
