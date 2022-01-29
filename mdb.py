@@ -101,14 +101,17 @@ def create_query_plan(query, keywords, action):
                 print(dic['foreign table'])
                 print(dic['foreign table key'])
                 for i in range(len(dic['foreign keys'])):
-                    myline = 'select '+dic['foreign table key'][0]+  ' from '+ dic['foreign table'][0]
+                    myline = 'select '+dic['foreign table key'][i]+  ' from '+ dic['foreign table'][i]
                     print(myline)
                     mydic = interpret(myline)
                     myresult = execute_dic(mydic)
                     if isinstance(myresult,Table):
                         print('all good')
                     else:
-                        raise ValueError('Your parens are not right m8')
+                        raise ValueError('The foreign key does not exist in the corresponding table')
+                #del dic['foreign keys']
+                #del dic['foreign table']
+                #del dic['foreign table key']
                 '''
                 k=[]
                 for i in range(len(fkeyres)):
@@ -160,8 +163,7 @@ def create_query_plan(query, keywords, action):
     if action=='insert into':
         if dic['values'] is not None:
             if dic['values'][0] == '(' and dic['values'][-1] == ')':
-                dic['values'] = dic['values'][1:-1]    
-                '''        
+                dic['values'] = dic['values'][1:-1]                            
         elif dic['select'] is not None:
             dic['select']='select '+dic['select']
             k=interpret(dic['select'])            
@@ -174,8 +176,7 @@ def create_query_plan(query, keywords, action):
                 k=interpret(query)            
                 if 'select' in k: del k['select']                          
                 result=execute_dic(k)
-            if 'select' in dic: del dic['select']                                  
-            '''
+            if 'select' in dic: del dic['select']                                              
         else:
             raise ValueError('Your parens are not right m8')
     
@@ -233,8 +234,8 @@ def interpret(query):
                      'cast': ['cast', 'from', 'to'],
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
-                     'insert into': ['insert into', 'values'],
-                     #'insert into': ['insert into', 'values','select'],
+                     #'insert into': ['insert into', 'values'],
+                     'insert into': ['insert into', 'values','select'],
                      'select': ['select', 'from', 'where', 'order by', 'top'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
