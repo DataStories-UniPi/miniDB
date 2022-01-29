@@ -87,6 +87,36 @@ class Database:
             self.tables.update({name: tmp_dict})
             # setattr(self, name, self.tables[name])
 
+    #### TRIGGERS ####
+    def create_trigger(self,trigger_name=None,table_name=None,action=None):
+        
+        '''
+        This function is used to initialise a new trigger which corresponds to a specific table of the database.
+
+        Args:
+            trigger_name: string. The name of the trigger.
+            table_name: string. The table to whom trigger corresponds to.
+            action: list. The actions (INSERT,UPDATE,DELETE) after which the trigger will be fired.
+        '''
+        self.load_database()
+
+        # create the new trigger by calling the method of table.py file
+        self._create_trigger(trigger_name,table_name,action) 
+
+    def drop_trigger(self,trigger_name=None,table_name=None):
+        
+        '''
+        This function is used to delete an existing trigger.
+
+        Args:
+            trigger_name: string. The name of the trigger to be deleted.
+            table_name: string. The name of the table that the trigger corresponds to.
+        '''
+        self.load_database()
+
+        # call the _drop_trigger function of table.py file
+        self._drop_trigger(trigger_name,table_name)
+
     #### IO ####
 
     def _update(self):
@@ -288,6 +318,7 @@ class Database:
         self._update()
         self.save_database()
 
+
     def delete_from(self, table_name, condition):
         '''
         Delete rows of table where condition is met.
@@ -378,31 +409,7 @@ class Database:
                 return table
             else:
                 return table.show()
-            
-    #Added create_trigger function
-    def create_trigger(self,trigger_name=None,table_name=None,action=None):
         
-        '''
-        Creates a trigger which corresponds to a specific table of the database.
-
-        Args:
-            trigger_name: string. The name of the trigger.
-            table_name: string. The table to whom trigger corresponds to.
-            action: list. The actions (INSERT,UPDATE,DELETE) in which the trigger will be fired.
-        '''
-        self.load_database()
-        print("You are inside the trigger function!") 
-
-    def drop_trigger(self,trigger_name=None):
-        
-        '''
-        Deletes a trigger.
-
-        Args:
-            trigger_name: string. The name of the trigger to be deleted.
-        '''
-        self.load_database()
-        print("Trigger: "+trigger_name+" has been deleted!")
 
     def show_table(self, table_name, no_of_rows=None):
         '''

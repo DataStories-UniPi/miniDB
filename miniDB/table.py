@@ -4,7 +4,6 @@ import pickle
 import os
 from misc import get_op, split_condition
 
-
 class Table:
     '''
     Table object represents a table inside a database
@@ -98,9 +97,35 @@ class Table:
         # change the type of the column
         self.column_types[column_idx] = cast_type
         # self._update()
+    
 
+    def _create_trigger(self,trigger_name=None,table_name=None,action=None):
+
+        '''
+        This function is used to create a trigger which corresponds to a specific table of the database.
+        The info of the new trigger is stored to the trigger_list list.
+
+        Args:
+            trigger_name: string. The name of the trigger.
+            table_name: string. The table to whom trigger corresponds to.
+            action: list. The actions (INSERT,UPDATE,DELETE) after which the trigger will be fired.
+        '''
+        
+        # add new element to the trigger_list
+        trigger_list.append(str(trigger_name)+"|"+str(table_name)+"|"+str(action))
+        
+    def _drop_trigger(self,trigger_name=None,table_name=None):
+        
+        '''
+        This function is used to delete an existing trigger from trigger_list[].
+
+        Args:
+            trigger_name: string. The name of the trigger to be deleted.
+            table_name: string. The name of the table that the trigger corresponds to.
+        '''
 
     def _insert(self, row, insert_stack=[]):
+        
         '''
         Insert row to table.
 
@@ -108,6 +133,7 @@ class Table:
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             insert_stack: list. The insert stack (empty by default).
         '''
+        
         if len(row)!=len(self.column_names):
             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
 
@@ -469,3 +495,5 @@ class Table:
         f.close()
 
         self.__dict__.update(tmp_dict)
+
+    trigger_list = [] # list, in which every info about triggers is stored
