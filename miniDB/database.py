@@ -91,31 +91,89 @@ class Database:
     def create_trigger(self,trigger_name=None,table_name=None,action=None):
         
         '''
-        This function is used to initialise a new trigger which corresponds to a specific table of the database.
+        This function is used to create a trigger which corresponds to a specific table of the database.
+        The info of the new trigger is stored to the trigger_list list, which is a global list of Table class.
 
         Args:
             trigger_name: string. The name of the trigger.
             table_name: string. The table to whom trigger corresponds to.
             action: list. The actions (INSERT,UPDATE,DELETE) after which the trigger will be fired.
         '''
+        
         self.load_database()
 
-        # create the new trigger by calling the method of table.py file
-        self._create_trigger(trigger_name,table_name,action) 
+        # check if action is INSERT or DELETE or UPDATE.
+        # If it's not, then return
+        if action!='insert' and action!='delete' and action!='update':
+            print('Action of trigger should be only INSERT or DELETE or UPDATE!')
+            return
 
-    def drop_trigger(self,trigger_name=None,table_name=None):
+        # add new element to the trigger_list. Each item of this list has the following format:
+        #'trigger name'|'table name'|'action of the trigger'
+        # CAUTION: Each trigger in the Database has a unique name.
+        # Also, it is not allowed for two triggers with the same action to be created for the same table.
+        if (bool(self.trigger_list)):
+
+            # if trigger_list is not empty, check the 
+            # conditions above, before creating a new trigger
+            if trigger_name not in self.names:
+                self.names.append(trigger_name)
+                
+                print("CAN NOT CREATE THE NEW TRIGGER")
+                print("A trigger with the same name already exists in the database!")
+
+                if table_name+'|'+action not in self.tables_actions:
+                    self.tables_actions.append(table_name+'|'+action)
+                    self.trigger_list.append(trigger_name+'|'+table_name+'|'+action)
+                else:
+                    print("CAN NOT CREATE THE NEW TRIGGER")
+                    print("A trigger with the same action already exists for the specific table of the database!")
+
+        else:
+            # if trigger_list is empty, then add the first item (trigger's info) in list
+            self.trigger_list.append(trigger_name+'|'+table_name+'|'+action)          
+            self.names.append(trigger_name)
+            self.tables_actions.append(table_name+'|'+action)
+        
+    def drop_trigger(self,trigger_name=None):
         
         '''
-        This function is used to delete an existing trigger.
-
+        This function is used to delete an existing trigger from trigger_list[].
+        trigger_list[] is a global list of the Database class. Allong with the deletion
+        of the item in trigger_list, there should also be removed and the items of names and
+        tables_actions lists.
+        
         Args:
             trigger_name: string. The name of the trigger to be deleted.
-            table_name: string. The name of the table that the trigger corresponds to.
         '''
+        
         self.load_database()
 
-        # call the _drop_trigger function of table.py file
-        self._drop_trigger(trigger_name,table_name)
+        #delete info of trigger from trigger_list,names and tables_actions lists
+        for i in self.trigger_list:
+            if i.split('|')[0] == trigger_name:
+                name = i.split('|')[0]
+                table_action = i.split('|')[1]+'|'+i.split('|')[2]
+                
+                self.trigger_list.pop(self.trigger_list.index(i))
+                self.names.pop(self.names.index(name))
+                self.tables_actions.pop(self.tables_actions.index(table_action))
+                return
+
+        # if trigger to be deleted does not exist
+        # print a message to user
+        print("Trigger "+trigger_name+" does not exist!")
+    
+    def trigger_function(self,word):
+
+        '''
+        This function is excecuted after each trigger of the database
+        is fired. The function shows a message to user.
+
+        word: string. Is one of the following words: delete,update or insert
+        '''
+        
+        print("Trigger was excecuted after "+word+" query")
 
     #### IO ####
 
@@ -320,6 +378,7 @@ class Database:
 
 
     def delete_from(self, table_name, condition):
+        
         '''
         Delete rows of table where condition is met.
 
@@ -335,6 +394,16 @@ class Database:
         
         lock_ownership = self.lock_table(table_name, mode='x')
         deleted = self.tables[table_name]._delete_where(condition)
+        
+        if bool(deleted): # check if deleted list is empty or not
+
+            # if deleted list is empty, then check if trigger after
+            # delete action for the specific table has been created
+            for i in self.trigger_list:
+                if i.split('|')[1]==table_name and i.split('|')[2]=='delete':
+                    self.trigger_function('delete')
+                    break
+
         if lock_ownership:
             self.unlock_table(table_name)
         self._update()
@@ -720,3 +789,30 @@ class Database:
         index = pickle.load(f)
         f.close()
         return index
+
+    ''' 
+    list, in which every info about triggers is stored. Each trigger has a unique name.
+    The info that are stored in this list is of the following format:
+    'trigger_name|trigger_table|action_of_trigger'
+    '''
+
+    trigger_list = []
+
+    '''
+    this list contains all the names of triggers that currently exist in the Database.
+    It is not allowed to exist in the database two triggers with the same name.
+    So, each item of names list should be unique.
+    '''
+    names = []
+
+    '''
+    this list contains the actions (delete,insert,update) of all triggers
+    and the table that each trigger belongs to. Each item of this list is 
+    with the following format:
+        'table_name|action'
+    
+    CAUTION: in the database it is not allowed for two triggers that have been 
+    created for the same table to have the same action (delete,insert,delete).
+    So, each item of the list table_actions should be unique.
+    '''
+    tables_actions = [] 
