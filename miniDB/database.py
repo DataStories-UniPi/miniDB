@@ -47,10 +47,10 @@ class Database:
             pass
 
         # create all the meta tables
-        self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
-        self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
-        self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
-        self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
+        self.create_table('meta_length', 'table_name,no_of_rows', 'str,int','')
+        self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str','')
+        self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list','')
+        self.create_table('meta_indexes', 'table_name,index_name', 'str,str','')
         self.save_database()
 
     def save_database(self):
@@ -97,7 +97,7 @@ class Database:
         self._update_meta_insert_stack()
 
 
-    def create_table(self, name, column_names, column_types, primary_key=None, load=None):
+    def create_table(self, name, column_names, column_types, column_extras, primary_key=None, load=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
 
@@ -108,10 +108,10 @@ class Database:
             primary_key: string. The primary key (if it exists).
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
-        # print('here -> ', column_names.split(','))
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)})
+        #print('here -> ', column_names.split(','))
+        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), column_extras=column_extras.split(','), primary_key=primary_key, load=load)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
-        # check that new dynamic var doesnt exist already
+        # check that new dynamic var doesn't exist already
         # self.no_of_tables += 1
         self._update()
         self.save_database()
@@ -246,7 +246,6 @@ class Database:
             lock_load_save: boolean. If False, user needs to load, lock and save the states of the database (CAUTION). Useful for bulk-loading.
         '''
         self.load_database()
-
         # fetch the insert_stack. For more info on the insert_stack
         # check the insert_stack meta table
 
@@ -261,6 +260,7 @@ class Database:
                 row = row_str.strip().split(',') # list of values ['dony',20] for people1 table
                 self.tables[table_name]._insert(row, insert_stack)
         except Exception as e:
+            print(e)
             logging.info(e)
             logging.info('ABORTED')
         self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
@@ -353,7 +353,7 @@ class Database:
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
-        if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
+        if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]: # meta_indexes is always empty. never saves an index
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
             table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k)

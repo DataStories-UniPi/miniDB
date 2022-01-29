@@ -1,7 +1,10 @@
 from __future__ import annotations
+from time import time
+from numpy import empty
 from tabulate import tabulate
 import pickle
 import os
+from btree import Btree
 from misc import get_op, split_condition
 
 
@@ -22,8 +25,8 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
-
+    def __init__(self, name=None, column_names=None, column_types=None, column_extras = None, primary_key=None, load=None):
+        
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
             if isinstance(load, dict):
@@ -64,6 +67,12 @@ class Table:
                 self.pk_idx = None
 
             self.pk = primary_key
+            
+            # Check extras given
+            for val in column_extras:
+                if not(val == 'unique' or val =='not null') and val != 'None' and val!= '':
+                    raise ValueError(f'## ERROR -> \'{val}\' is not a valid keyword!')
+            self.column_extras = column_extras
             # self._update()
 
     # if any of the name, columns_names and column types are none. return an empty table object
@@ -113,10 +122,24 @@ class Table:
         for row in rows:
             if None in row: continue # Ignore None rows(from previously deleted row)
             for i in range(len(row)):
-                row[i] = self.column_types[i](row[i])
+                if row[i] != 'null':
+                    row[i] = self.column_types[i](row[i])
 
                 if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
                     raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
+                if(len(self.column_extras) == len(row)):
+                    if self.column_extras[i] == 'not null' and row[i] == 'null':
+                        raise ValueError(f'## ERROR -> Value {row[i]} can not be NULL.')            
+                    # if self.column_extras[i] == 'unique' and row[i] in self.column_by_name(self.column_names[i]): # Search unique without a btree
+                    # raise ValueError(f'## ERROR -> Value {row[i]} already exists.')     
+                    if self.column_extras[i] == 'unique': # Search unique using btree
+                        if(len(self.column_by_name(self.column_names[i]))>0):
+                            bt = Btree(2)
+                            for idx, key in enumerate(self.column_by_name(self.column_names[i])):
+                                bt.insert(str(key),idx)
+                            if bt.find("=",row[i]) != []:
+                                raise ValueError(f'## ERROR -> Value {row[i]} already exists.')
+
             if insert_stack != []:
                 self.data[insert_stack[-1]] = row
                 insert_stack.pop() # get insert stack ready for next insertion
@@ -137,13 +160,26 @@ class Table:
         for i in range(len(row)):
             # for each value, cast and replace it in row.
             # try:
-            row[i] = self.column_types[i](row[i])
+            if row[i] != 'null': # ignore null value type check
+                row[i] = self.column_types[i](row[i])
             # except:
             #     raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
 
-            # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
+            # if value is to be appended to the primary_key column, check that it doesn't already exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
+            if(len(self.column_extras) == len(row)):
+                if self.column_extras[i] == 'not null' and row[i] == 'null':
+                    raise ValueError(f'## ERROR -> Value {row[i]} can not be NULL.')   
+                # if self.column_extras[i] == 'unique' and row[i] in self.column_by_name(self.column_names[i]): # Search unique without a btree
+                #     raise ValueError(f'## ERROR -> Value {row[i]} already exists.')     
+                if self.column_extras[i] == 'unique': # Search unique using btree
+                    if(len(self.column_by_name(self.column_names[i]))>0):
+                        bt = Btree(2)
+                        for idx, key in enumerate(self.column_by_name(self.column_names[i])):
+                            bt.insert(str(key),idx)
+                        if bt.find("=",row[i]) != []:
+                            raise ValueError(f'## ERROR -> Value {row[i]} already exists.')
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
@@ -363,9 +399,10 @@ class Table:
 
         # define the new tables name, its column names and types
         join_table_name = ''
+        join_table_colextras = self.column_extras + table_right.column_extras
         join_table_colnames = left_names+right_names
         join_table_coltypes = self.column_types+table_right.column_types
-        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
+        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes, column_extras=join_table_colextras)
 
         # count the number of operations (<,> etc)
         no_of_ops = 0
@@ -402,8 +439,16 @@ class Table:
         if self.pk_idx is not None:
             # table has a primary key, add PK next to the appropriate column
             headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
-        # detect the rows that are no tfull of nones (these rows have been deleted)
-        # if we dont skip these rows, the returning table has empty rows at the deleted positions
+
+        # Display if the column is NN (Not NUll) or U (Unique)
+        for i in range(0,len(self.column_extras)):
+            if self.column_extras[i] == 'unique':
+                headers[i] = headers[i] + ' #U#'
+            if self.column_extras[i] == 'not null':
+                headers[i] = headers[i] + ' #NN#'
+
+        # detect the rows that are not full of nones (these rows have been deleted)
+        # if we don't skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]
         # print using tabulate
         print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
@@ -442,6 +487,8 @@ class Table:
             for i in range(0,len(val)):
                 val[i] = coltype(val[i])
             return left, op, val
+        if right == 'null': # ignore null
+            return left, op, right
         return left, op, coltype(right)
 
 

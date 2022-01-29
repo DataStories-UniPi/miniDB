@@ -342,6 +342,6 @@ class Btree:
                 target_node = self.nodes[target_node.left_sibling]
                 results.extend(target_node.ptrs)
 
-        # print the number of operations (usefull for benchamrking)
+        # print the number of operations (usefull for benchmarking)
         # print(f'With BTree -> {ops} comparison operations')
         return results

@@ -82,12 +82,29 @@ def create_query_plan(query, keywords, action):
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
         arg_nopk = args.replace('primary key', '')[1:-1]
+     
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
+
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+        dic['column_extras'] = ','.join([" ".join(val[2:]) if len(val) > 2 else 'None' for val in arglist])
+
+        # more readable version
+        # ex = []
+        # for i in arglist:
+        #     if(len(i) > 2):
+        #         ex.append(' '.join(i[2:]))
+        #     else:
+        #         ex.append('None')
+        # dic['extras'] = ','.join(ex)
+        
         if 'primary key' in args:
-            arglist = args[1:-1].split(' ')
-            dic['primary key'] = arglist[arglist.index('primary')-2]
+            arglist = args[1:-1].strip().split(' ')
+
+            # Find primary key
+            for i in arglist[:arglist.index('primary')]:
+                if i in dic['column_names']:
+                    dic['primary key'] = i
         else:
             dic['primary key'] = None
     
