@@ -19,6 +19,7 @@ art = '''
  |_| |_| |_||_||_| |_||_||_____/ |____/   2021 - v3.2                               
 '''   
 
+constraints = ['not-null', 'unique']
 
 def search_between(s, first, last):
     '''
@@ -80,10 +81,13 @@ def create_query_plan(query, keywords, action):
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
-        arg_nopk = args.replace('primary key', '')[1:-1]    
+        arg_nopk = args.replace('primary key', '')[1:-1]
+        arg_nopk = args.replace('not null', 'not-null')[1:-1]    
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
+        constraints_list = [[element for element in list if element in constraints] for list in arglist]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+        dic['column_constraints'] = ','.join([str(elem) for elem in constraints_list])
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]
