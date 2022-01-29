@@ -120,7 +120,7 @@ def evaluate_from_clause(dic):
     '''
     Evaluate the part of the query (argument or subquery) that is supplied as the 'from' argument
     '''
-    join_types = ['inner', 'left', 'right', 'full','inlj']
+    join_types = ['inner', 'left', 'right', 'full','inlj','smj']
     from_split = dic['from'].split(' ')
     if from_split[0] == '(' and from_split[-1] == ')':
         subquery = ' '.join(from_split[1:-1])

@@ -490,7 +490,6 @@ class Database:
                             for _ in results:
                                 join_table._insert(row_left + right_table.data[_])
                 else:
-                    print('x')
                     for row_left in left_table.data:
                         left_value = row_left[column_index_left]
                         results = index.find(operator,left_value)
@@ -500,6 +499,51 @@ class Database:
                 
                 res = join_table
 
+        elif mode=='smj':
+            left_names = [f'{left_table._name}.{colname}' if left_table._name!='' else colname for colname in left_table.column_names]
+            right_names = [f'{right_table._name}.{colname}' if right_table._name!='' else colname for colname in right_table.column_names]
+            
+            # the rows are grouped by the value we want to sort by which is the key of the
+            # dictionary. The value of each key is a list with all the rows with the given value
+            dicR = {}
+            dicL = {}
+
+            column_name_left, operator, column_name_right = Table()._parse_condition(condition, join=True)
+
+            with open("miniDB/externalSortFolder/rightTableFile",'w+') as rt:
+                # Creating the grouping of the rows based on the column name we specified
+                values = set(map(lambda x:x[right_table.column_names.index(column_name_right)], right_table.data))
+                groupRows = [[row for row in right_table.data if row[right_table.column_names.index(column_name_right)]==x] for x in values]
+                
+                for g in groupRows:
+                    dicR[g[0][right_table.column_names.index(column_name_right)]] = g
+
+                for el in dicR:
+                    rt.write(str(el)+"\n")
+            
+            with open("miniDB/externalSortFolder/leftTableFile",'w+') as lt:
+                values = set(map(lambda x:x[left_table.column_names.index(column_name_left)], left_table.data))
+                groupRows = [[row for row in left_table.data if row[left_table.column_names.index(column_name_left)]==x] for x in values]
+                
+                for g in groupRows:
+                    dicL[g[0][left_table.column_names.index(column_name_left)]] = g
+
+                for el in dicL:
+                    lt.write(str(el)+"\n")
+            
+            try:
+                ems = Table.ExternalMergeSort()
+                ems.runExternalSort('rightTableFile')
+                # Initialization of all values
+                ems = Table.ExternalMergeSort()
+                ems.runExternalSort('leftTableFile')
+
+                os.remove('miniDB/externalSortFolder/rightTableFile')
+                os.remove('miniDB/externalSortFolder/leftTableFile')
+            except:
+                print('Something went wrong with the sorting of the Tables for the SMJ.')
+
+                
         else:
             raise NotImplementedError
 
