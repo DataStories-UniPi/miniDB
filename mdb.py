@@ -100,7 +100,7 @@ def create_query_plan(query, keywords, action):
                 print(dic['foreign keys'])
                 print(dic['foreign table'])
                 print(dic['foreign table key'])
-                for i in len(dic['foreign keys']):
+                for i in range(len(dic['foreign keys'])):
                     myline = 'select '+dic['foreign table key'][0]+  ' from '+ dic['foreign table'][0]
                     print(myline)
                     mydic = interpret(myline)
