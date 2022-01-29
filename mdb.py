@@ -100,12 +100,15 @@ def create_query_plan(query, keywords, action):
                 print(dic['foreign keys'])
                 print(dic['foreign table'])
                 print(dic['foreign table key'])
-                myline = 'select '+dic['foreign table key'][0]+  ' from '+ dic['foreign table'][0]
-                print(myline)
-                mydic = interpret(myline)
-                myresult = execute_dic(mydic)
-                if isinstance(myresult,Table):
-                    print('all good')
+                for i in len(dic['foreign keys']):
+                    myline = 'select '+dic['foreign table key'][0]+  ' from '+ dic['foreign table'][0]
+                    print(myline)
+                    mydic = interpret(myline)
+                    myresult = execute_dic(mydic)
+                    if isinstance(myresult,Table):
+                        print('all good')
+                    else:
+                        raise ValueError('Your parens are not right m8')
                 '''
                 k=[]
                 for i in range(len(fkeyres)):
