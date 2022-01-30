@@ -22,7 +22,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, column_constraints=None, load=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -56,6 +56,8 @@ class Table:
 
             self.column_types = [eval(ct) if not isinstance(ct, type) else ct for ct in column_types]
             self.data = [] # data is a list of lists, a list of rows that is.
+
+            self.column_constraints = column_constraints
 
             # if primary key is set, keep its index as an attribute
             if primary_key is not None:
@@ -119,6 +121,9 @@ class Table:
             # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
+
+        #Constraints implementation
+        print(self.column_constraints)
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
