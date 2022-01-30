@@ -84,10 +84,10 @@ def create_query_plan(query, keywords, action):
         arg_nopk = args.replace('primary key', '')[1:-1]
         arg_nopk = args.replace('not null', 'not_null')[1:-1]    
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
-        constraints_list = ['-'.join(val[2:len(val)]) for val in arglist]
+        constraints_list = [[element for element in list if element in constraints] for list in arglist]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
-        dic['column_constraints'] = ','.join([val for val in constraints_list])
+        dic['column_constraints'] = constraints_list
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]
