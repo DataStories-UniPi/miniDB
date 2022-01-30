@@ -440,7 +440,8 @@ class Database:
         if not left_table.is_sorted():
             right_table.e_merge_sort()
 
-        res = []
+        res:Table
+
         left_table_length = len(left_table.data)
         right_table_length = len(right_table.data)
 
@@ -448,6 +449,20 @@ class Database:
         j = 0
         k = 0
 
+        while (i < left_table_length and j < right_table_length):
+            if (left_table.data[i][i] < right_table.data[j][j]):
+                i += 1
+                
+
+            elif (left_table.data[i][i] > right_table.data[j][j]):
+                j += 1
+
+            else:
+                rows = []
+                rows.append(left_table.data[i][i])
+                rows.append(right_table.data[j][j])
+                
+                res._insert(rows)
 
     def join(self, mode, left_table, right_table, condition, save_as=None, return_object=True):
         '''
@@ -475,9 +490,11 @@ class Database:
         if mode=='inner':
             
             if self.evaluate_join_method(left_table, right_table):
-                
+
                 pass
             else:
+                data = left_table.data
+                print(data[0][0])
                 res = left_table._inner_join(right_table, condition)
 
         else:
