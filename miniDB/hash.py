@@ -60,10 +60,6 @@ class HashTable:
         ''' Allows table[key] instead of table.lookup(key) '''
         return self.lookup(key)
 
-    def __delitem__(self, key: T) -> None:
-        ''' Allows del table[key] instead of table.delete(key) '''
-        self.delete(key)
-
     @property
     def load_factor(self) -> float:
         ''' Calculate table's load factor. 
