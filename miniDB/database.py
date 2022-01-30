@@ -4,6 +4,7 @@ from table import Table
 from time import sleep, localtime, strftime
 import os,sys
 from btree import Btree
+from hash import HashTable
 import shutil
 from misc import split_condition
 import logging
@@ -596,7 +597,7 @@ class Database:
 
 
     # indexes
-    def create_index(self, index_name, table_name, index_type='btree'):
+    def create_index(self, index_name, table_name, index_type):
         '''
         Creates an index on a specified table with a given name.
         Important: An index can only be created on a primary key (the user does not specify the column).
@@ -622,7 +623,7 @@ class Database:
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
                 self.tables['meta_indexes']._insert([table_name, index_name])
                 # create the actual index
-                #self._construct_index(table_name, index_name, index_type)
+                self._construct_index(table_name, index_name, index_type)
                 self.save_database()
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
@@ -652,13 +653,13 @@ class Database:
                 table_name: string. Table name (must be part of database).
                 index_name: string. Name of the created index.
             '''
-            #h = Hash() 
+            h = HashTable() 
 
             # for each record in the primary key of the table, insert its value and index to the hash 
-            #for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
-            #    h.insert(key, idx)
+            for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
+                h.update(key,idx)
             # save the hash
-            #self._save_index(index_name, h)
+            self._save_index(index_name, h)
         
 
 
