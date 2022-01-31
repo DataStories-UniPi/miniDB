@@ -402,7 +402,7 @@ class Database:
             
     def inlj(self, left_table, right_table):
         
-        if (left_table.pk != none):
+        if (left_table.pk != None):
             # get columns and operator
             column_name_left, operator, column_name_right = self._parse_condition(condition, join=True)
             # try to find both columns, if you fail raise error
@@ -427,8 +427,12 @@ class Database:
             join_table_coltypes = self.column_types+table_right.column_types
             join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
 
-            if(self._has_index(left_table)):
-                #inlj algorithm
+            if(self._has_index(left_table)): #if it does not have an index:
+                #create index
+                self.create_index(left_table + 'Indx' ,left_table)
+                pass
+
+            #inlj algorithm
                 pass
 
     def smj(self, left_table, right_table):
