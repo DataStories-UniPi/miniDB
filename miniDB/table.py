@@ -408,7 +408,8 @@ class Table:
         if left not in self.column_names:
             raise ValueError(f'Condition is not valid (cant find column name)')
         coltype = self.column_types[self.column_names.index(left)]
-
+        if op in ['$not_between$','$between$']:  # bypass the coltype because it cannot be cast yet
+            return left, op, right
         return left, op, coltype(right)
 
 
