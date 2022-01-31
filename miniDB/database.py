@@ -228,7 +228,7 @@ class Database:
             cast_type: type. Cast type (do not encapsulate in quotes).
         '''
         self.load_database()
-        
+
         lock_ownership = self.lock_table(table_name, mode='x')
         self.tables[table_name]._cast_column(column_name, eval(cast_type))
         if lock_ownership:
@@ -275,12 +275,12 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
         '''
         set_column, set_value = set_args.replace(' ','').split('=')
         self.load_database()
-        
+
         lock_ownership = self.lock_table(table_name, mode='x')
         self.tables[table_name]._update_rows(set_value, set_column, condition)
         if lock_ownership:
@@ -297,11 +297,11 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
         '''
         self.load_database()
-        
+
         lock_ownership = self.lock_table(table_name, mode='x')
         deleted = self.tables[table_name]._delete_where(condition)
         if lock_ownership:
@@ -324,7 +324,7 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (True by default).
@@ -342,7 +342,7 @@ class Database:
         else:
             condition_column = ''
 
-        
+
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
@@ -371,7 +371,7 @@ class Database:
             table_name: string. Name of table (must be part of database).
         '''
         self.load_database()
-        
+
         self.tables[table_name].show(no_of_rows, self.is_locked(table_name))
 
 
@@ -386,7 +386,7 @@ class Database:
         '''
 
         self.load_database()
-        
+
         lock_ownership = self.lock_table(table_name, mode='x')
         self.tables[table_name]._sort(column_name, asc=asc)
         if lock_ownership:
@@ -404,7 +404,7 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
         save_as: string. The output filename that will be used to save the resulting table in the database (won't save if None).
         return_object: boolean. If True, the result will be a table object (useful for internal usage - the result will be printed by default).
@@ -413,12 +413,41 @@ class Database:
         if self.is_locked(left_table) or self.is_locked(right_table):
             return
 
-        left_table = left_table if isinstance(left_table, Table) else self.tables[left_table] 
-        right_table = right_table if isinstance(right_table, Table) else self.tables[right_table] 
+        left_table = left_table if isinstance(left_table, Table) else self.tables[left_table]
+        right_table = right_table if isinstance(right_table, Table) else self.tables[right_table]
 
 
         if mode=='inner':
-            res = left_table._inner_join(right_table, condition)
+            # get columns and operator
+            column_name_left, operator, column_name_right = left_table._parse_condition(condition, join=True)
+            #Index Nested-Loops Join and Sort-Merge Join can only be applied to equi-join/natural join
+            if (operator != "="):
+                print("Neither Index Nested-Loop Join nor Sort-Merge Join can be run, running Block-Nested-Loop Join join instead.")
+                res = left_table._inner_join(right_table, condition)
+            else:
+                #Checking which table can be indexed
+                #If one of the columns of the condition isn't indexed, Sort-Merge Join can't be used
+                if right_table.pk is None or column_name_right != right_table.pk:
+                    if left_table.pk is None or column_name_left != left_table.pk:
+                        #If no table can be indexed, run inner join instead
+                        print("Inlj can't be run since none of the tables can be indexed, running inner join instead.")
+                        res = left_table._inner_join(right_table, condition)
+                    else:
+                        print("Results where fetched using Inlj method")
+                        #Switch the condition from right to left
+                        condition = column_name_right+operator+column_name_left
+                        #If left table is indexed, but right isn't, switch places and use Index Nested-Loops Join
+                        res = right_table._inlj_inner_join(left_table, condition)
+                else:
+                    if left_table.pk is None or column_name_left != left_table.pk:
+                        #If only right table is indexed, we may use Index Nested-Loops Join
+                        print("Results where fetched using Inlj method")
+                        res = left_table._inlj_inner_join(right_table, condition)
+                    else:
+                        #If both columns of the condition are the primary key, therefore indexed to those columns,
+                        #we may use Sort-Merge Join
+                        print("Results where fetched using Smj method")
+                        res = left_table._smj_inner_join(right_table, condition)
         else:
             raise NotImplementedError
 
