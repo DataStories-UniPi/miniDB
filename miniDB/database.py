@@ -236,26 +236,35 @@ class Database:
         self._update()
         self.save_database()
 
-    def insert_into(self, table_name, row_str):
+    def insert_into(self, table_name, row_str, batch_data:Table=None):
         '''
         Inserts data to given table.
 
         Args:
+            batch_data: In case of an INSERT INTO table SELECT statement -> batch data will be inserted
             table_name: string. Name of table (must be part of database).
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             lock_load_save: boolean. If False, user needs to load, lock and save the states of the database (CAUTION). Useful for bulk-loading.
         '''
-        row = row_str.strip().split(',')
         self.load_database()
         # fetch the insert_stack. For more info on the insert_stack
         # check the insert_stack meta table
         lock_ownership = self.lock_table(table_name, mode='x')
         insert_stack = self._get_insert_stack_for_table(table_name)
-        try:
-            self.tables[table_name]._insert(row, insert_stack)
-        except Exception as e:
-            logging.info(e)
-            logging.info('ABORTED')
+        if not batch_data:
+            row = row_str.strip().split(',')
+            try:
+                self.tables[table_name]._insert(row, insert_stack)
+            except Exception as e:
+                logging.info(e)
+                logging.info('ABORTED')
+        else:
+            for i in batch_data.data:
+                try:
+                    self.tables[table_name]._insert(i, insert_stack)
+                except Exception as e:
+                    logging.info(e)
+                    logging.info('ABORTED')
         self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
 
         if lock_ownership:
