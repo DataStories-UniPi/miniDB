@@ -433,7 +433,11 @@ class Database:
                 pass
 
             #inlj algorithm
-                pass
+            for row in left_table.data:
+                value = row[column_index_left]
+                #to do use find
+           
+            return join_table
 
     def smj(self, left_table, right_table):
         
