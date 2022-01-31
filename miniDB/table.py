@@ -117,17 +117,11 @@ class Table:
             row[i] = self.column_types[i](row[i])
 
             if self.column_constraints is not None:
-                # If the column's constraint is 'not_null' 
-                if self.column_constraints[i][i] == 'not_null':
-                    value = row[i]
-                    if not value or value == "''":
-                        print("You can't add a null value inside the not_null column", self.column_names[i])
+                for constraints in self.column_constraints[i]:
+                    if "not_null" in constraints and not row[i]:
+                        print("You can't add a null value inside the not_null column")
                         raise ValueError("Adding a null value into a not_null column ")
-
-                # If there isn't any constraint, move on
-                if self.column_constraints[i][i] == 'None':
-                    continue
-
+            
             # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
             if i == self.pk_idx and row[i] in self.column_by_name(self.pk):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
