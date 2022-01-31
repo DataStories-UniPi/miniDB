@@ -67,7 +67,7 @@ class Table:
 
             self.pk = primary_key
             # self._update()
-
+  
     # if any of the name, columns_names and column types are none. return an empty table object
 
     def column_by_name(self, column_name):
@@ -108,27 +108,34 @@ class Table:
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             insert_stack: list. The insert stack (empty by default).
         '''
-        if len(row)!=len(self.column_names):
+        if len(row) != len(self.column_names):
             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
 
         for i in range(len(row)):
-            # for each value, cast and replace it in row.
+            # for each value, cast and replace it in row unless it's an int.
             # try:
             row[i] = self.column_types[i](row[i])
-            # except:
-            #     raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
+
+            if self.column_constraints is not None:
+                # If the column's constraint is 'not_null' 
+                if self.column_constraints[i][i] == 'not_null':
+                    value = row[i]
+                    if not value or value == "''":
+                        print("You can't add a null value inside the not_null column", self.column_names[i])
+                        raise ValueError("Adding a null value into a not_null column ")
+
+                # If there isn't any constraint, move on
+                if self.column_constraints[i][i] == 'None':
+                    continue
 
             # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
-            if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
+            if i == self.pk_idx and row[i] in self.column_by_name(self.pk):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
-
-        #Constraints implementation
-        print(self.column_constraints)
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
             self.data[insert_stack[-1]] = row
-        else: # else append to the end
+        else:  # else append to the end
             self.data.append(row)
         # self._update()
 
