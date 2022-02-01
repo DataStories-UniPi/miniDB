@@ -472,6 +472,8 @@ class Table:
             desc: boolean. If True, order_by will return results in descending order (False by default).
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
+
+        #we define a dictionary with all the aggregate functions with the specific column names
         aggregate_functions = {
                 'max': None,
                 'min': None,
@@ -479,33 +481,33 @@ class Table:
                 'avg': None,
                 'sum': None,
                 }
-        found = False #if at least one aggregate function was found
+        found = False #if we find at least one aggregate function will turn true
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
-            if not group_by:
+            if not group_by: #if there is not group by return all coumns
                 return_cols = [i for i in range(len(self.column_names))]
-            else:
+
+            else: #if there is group by with * in query system exits because there is syntax error
                 sys.exit("\n you have to select the column you use for group by")
-            #print(return_cols)
-            #print(self.return_cols)
+                
         else:
             
-            splitted_columns=return_columns.split(",")
-            splitted_columns= [x.replace(' ','') for x in splitted_columns]
+            splitted_columns=return_columns.split(",") #a list with all the columns we need
+            splitted_columns= [x.replace(' ','') for x in splitted_columns] # we remove all white spaces from the list elements
             
-            if group_by is not None and group_by not in splitted_columns:
+            #if the column which will be used for group by doesnt exist into the list with all the columns system exits.
+            if group_by is not None and group_by not in splitted_columns: 
                 sys.exit("\n you have to select the column you use for group by") 
-            #print(splitted_columns)
             
-            
-            
+
+            #we keep only the columns removing aggregate functions and parenthesis from the splitted column list
+            #and saving the aggregate functions where detected in the dictionary
             for i in splitted_columns:
                 for key, value in aggregate_functions.items():
                     in_parenthesis = search_between(i,key+"(",")")
                     if in_parenthesis is not None:
-                        found = True #found at least one aggreagate function
-                        #print("true")
+                        found = True
                         splitted_columns[splitted_columns.index(i)] = in_parenthesis
                         if(value is None):
                             aggregate_functions[key]= [in_parenthesis]
@@ -514,8 +516,9 @@ class Table:
                         
                     
             #print(splitted_columns)
-            
             #print(aggregate_functions)
+
+            #we keep only the indexes of the columns
             if not group_by:
                 return_cols = [self.column_names.index(col.strip()) for col in splitted_columns]
             else:
@@ -524,13 +527,7 @@ class Table:
                     return_cols = [self.column_names.index(group_by)]
                 else:
                     return_cols = [self.column_names.index(col.strip()) for col in splitted_columns]
-            
-            #return_cols = [self.column_names.index(col.strip()) for col in splitted_columns]
-            
-            #print(splitted_columns)
-            #print(self.column_names[return_cols[0]])
-            #print(self.column_by_name("tot_cred"))
-        #print(return_cols)   
+              
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
@@ -544,22 +541,17 @@ class Table:
             
         
         if(found):
+            #we call the appropriate function according to group by and aggreagate funtions
             if not group_by:
                 dict = self.aggregate_without_group(aggregate_functions,rows)
                 #print(dict)
             else:
-                
                 dict=self.aggregate_with_group_by(aggregate_functions,rows,group_by) 
-                
-                    
-                        
-
         else:
             # top k rows
             # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
             # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
             dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
-            #print(dict)
             # we need to set the new column names/types and no of columns, since we might
             # only return some columns
             dict['column_names'] = [ self.column_names[i] for i in return_cols]
@@ -572,8 +564,8 @@ class Table:
         if having and group_by:
             having=having.replace(" ","")
             having_cond=having.partition('(')
-            aggr_func=having_cond[0]
-            having_cond=having_cond[2]
+            aggr_func=having_cond[0] #we keep the aggregate function in having
+            having_cond=having_cond[2] # we keep the having condition without aggregate function
             having_cond=having_cond.replace(")","")
             
             
@@ -583,10 +575,9 @@ class Table:
             #print(aggr_func,column_name,operator,value)
             #print(col)
 
-
-            column = s_table.column_by_name(col)
+            column = s_table.column_by_name(col) #we take all the data of the specific col
             #print(column)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)] #taking the rows that are meeting the having condition
             #print(rows)
             
             s_table.data = [s_table.data[i] for i in rows]
@@ -596,7 +587,7 @@ class Table:
             s_table.order_by(order_by, desc)
         if group_by and not found:
             #print(s_table.column_names)
-            s_table.group_by(group_by)
+            s_table.group_by(group_by) #we call the funtion of group by
 
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
         
@@ -667,8 +658,8 @@ class Table:
 
     def group_by(self,column_name):
         column = self.column_by_name(column_name)
+        
         #remove duplicate elements 
-        #print(column)
         elements= []
         positions=[]
         for idx, val in enumerate(column):
