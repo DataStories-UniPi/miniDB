@@ -688,3 +688,8 @@ class Database:
             self.tables = self.save_state.tables
             self.save_database()
             self.save_state=None
+	 def commit(self,action):
+        if self.save_state==None:
+            raise ValueError("Transaction not started, nothng to rollback to")
+        else:
+            self.save_state= None
