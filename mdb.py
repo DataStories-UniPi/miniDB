@@ -83,6 +83,7 @@ def create_query_plan(query, keywords, action):
             dic['desc'] = None
         
         if dic['group by'] is not None:
+            # if we detect a group by in the query we remove the suffix from where it is needed
             if dic['where'] is not None:
                 dic['where'] = dic['where'].removesuffix(' group')
             if dic['having'] is not None:
@@ -104,12 +105,15 @@ def create_query_plan(query, keywords, action):
         else:
             dic['primary key'] = None
     
+    
     if action=='create view':
         dic = evaluate_from_clause(dic)
         if " on" in dic['create view']:
             dic['create view'] = dic['create view'].removesuffix(' on')
         else:
+            
             sys.exit("ON is required in create view")
+
         if dic['order by'] is not None:
             dic['from'] = dic['from'].removesuffix(' order')
             if dic['where'] is not None:
@@ -132,12 +136,14 @@ def create_query_plan(query, keywords, action):
                 dic['group by'] = dic['group by'].removesuffix(' order')
             dic['from'] = dic['from'].removesuffix(' group')
     
+    
     if action=='create tempview':
         dic = evaluate_from_clause(dic)
         if " on" in dic['create tempview']:
             dic['create tempview'] = dic['create tempview'].removesuffix(' on')
         else:
             sys.exit("ON is required in create view")
+
         if dic['order by'] is not None:
             dic['from'] = dic['from'].removesuffix(' order')
             if dic['where'] is not None:
@@ -218,6 +224,8 @@ def interpret(query):
     '''
     Interpret the query.
     '''
+
+    # we added the group by,view and temp view in keywords' dictionary
     kw_per_action = {'create table': ['create table'],
                      'drop table': ['drop table'],
                      'create view': ['create view','select', 'from', 'where','group by','having' ,'order by', 'top'],
@@ -283,6 +291,8 @@ def interpret_meta(command):
 
         mylist=[pklf.removesuffix('.pkl') for pklf in os.listdir(f'dbdata/{db_name}_db') if pklf.endswith('.pkl')\
             and not pklf.startswith('meta')]
+        
+        
         for i in mylist:
             if i not in Database.tempviews:
                 print(i)
@@ -332,7 +342,7 @@ if __name__ == "__main__":
                 if line[-1]!=';':
                     line+=';'
             except (KeyboardInterrupt, EOFError):
-                Database.exit_handler(db)
+                Database.exit_handler(db) 
                 print('\nbye!')
                 break
             try:
