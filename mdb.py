@@ -11,13 +11,13 @@ from database import Database
 from table import Table
 # art font is "big"
 art = '''
-             _         _  _____   ____  
-            (_)       (_)|  __ \ |  _ \     
+             _         _  _____   ____
+            (_)       (_)|  __ \ |  _ \
   _ __ ___   _  _ __   _ | |  | || |_) |
- | '_ ` _ \ | || '_ \ | || |  | ||  _ < 
+ | '_ ` _ \ | || '_ \ | || |  | ||  _ <
  | | | | | || || | | || || |__| || |_) |
- |_| |_| |_||_||_| |_||_||_____/ |____/   2021 - v3.2                               
-'''   
+ |_| |_| |_||_||_| |_||_||_____/ |____/   2021 - v3.2
+'''
 
 
 def search_between(s, first, last):
@@ -65,7 +65,7 @@ def create_query_plan(query, keywords, action):
 
     if action=='select':
         dic = evaluate_from_clause(dic)
-        
+
         if dic['order by'] is not None:
             dic['from'] = dic['from'].removesuffix(' order')
             if 'desc' in dic['order by']:
@@ -73,15 +73,15 @@ def create_query_plan(query, keywords, action):
             else:
                 dic['desc'] = False
             dic['order by'] = dic['order by'].removesuffix(' asc').removesuffix(' desc')
-            
+
         else:
             dic['desc'] = None
 
     # Needs to be implemented.
-    '''
     if action == 'create trigger':
-    '''
-    
+            dic = evaluate_trigger(dic)
+            return dic
+
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
@@ -94,8 +94,8 @@ def create_query_plan(query, keywords, action):
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
-    
-    if action=='import': 
+
+    if action=='import':
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
     if action=='insert into':
@@ -103,7 +103,7 @@ def create_query_plan(query, keywords, action):
             dic['values'] = dic['values'][1:-1]
         else:
             raise ValueError('Your parens are not right m8')
-    
+
     if action=='unlock table':
         if dic['force'] is not None:
             dic['force'] = True
@@ -115,22 +115,22 @@ def create_query_plan(query, keywords, action):
 # Needs to be implemented
 
 def evaluate_trigger(dic):
-    '''
-    Evaluate the part of the query that is supplied as the ('before' or 'after' or 'instead') arguement.
-    '''
-    x_types = ['insert on', 'delete on', 'update on']
-    before_split = dic['before']
-    after_split = dic['after']
-    instead_split = dic['instead']
+'''
+Evaluate the part of the query that is supplied as the ('before' or 'after' or 'instead') arguement.
+'''
+#x_types = ['insert on', 'delete on', 'update on']
+if 'before' in dic.values():
+before_split = dic['before']
+dic['before'] = interpret(before_split)
+elif 'after' in dic.values():
+after_split = dic['after']
+dic['after'] = interpret(after_split)
+elif 'instead' in dic.values():
+instead_split = dic['instead']
+dic['instead'] = interpret(instead_split)
+return dic
 
-    if before_split:
-        dic['before'] = interpret(before_split)
-    elif after_split:
-        dic['after'] = interpret(after_split)
-    elif instead_split:
-        dic['instead'] = interpret(instead_split)
 
-    
 
 def evaluate_from_clause(dic):
     '''
@@ -164,7 +164,7 @@ def evaluate_from_clause(dic):
             join_dic['right'] = interpret(join_dic['right'][1:-1].strip())
 
         dic['from'] = join_dic
-        
+
     return dic
 
 def interpret(query):
@@ -189,7 +189,7 @@ def interpret(query):
 
     if query[-1]!=';':
         query+=';'
-    
+
     query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip()
 
     for kw in kw_per_action.keys():
@@ -205,7 +205,7 @@ def execute_dic(dic):
     for key in dic.keys():
         if isinstance(dic[key],dict):
             dic[key] = execute_dic(dic[key])
-    
+
     action = list(dic.keys())[0].replace(' ','_')
     return getattr(db, action)(*dic.values())
 
@@ -226,7 +226,7 @@ def interpret_meta(command):
 
     def list_databases(db_name):
         [print(fold.removesuffix('_db')) for fold in os.listdir('dbdata')]
-    
+
     def list_tables(db_name):
         [print(pklf.removesuffix('.pkl')) for pklf in os.listdir(f'dbdata/{db_name}_db') if pklf.endswith('.pkl')\
             and not pklf.startswith('meta')]
@@ -234,7 +234,7 @@ def interpret_meta(command):
     def change_db(db_name):
         global db
         db = Database(db_name, load=True)
-    
+
     def remove_db(db_name):
         shutil.rmtree(f'dbdata/{db_name}_db')
 
