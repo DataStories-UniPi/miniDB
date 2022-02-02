@@ -427,11 +427,13 @@ class Database:
             join_table_coltypes = self.column_types+table_right.column_types
             join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
 
-            if(self._has_index(left_table)): #if it does not have an index:
+            if(self._has_index(right_table)): #if it does not have an index:
                 #create index
-                self.create_index(left_table + 'Indx' ,left_table)
+                self.create_index(right_table + 'Indx' ,right_table)
                 pass
 
+           idx = self._load_idx(right_table + 'Indx')
+           
             #inlj algorithm
             for row in left_table.data:
                 value = row[column_index_left]
