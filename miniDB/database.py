@@ -23,7 +23,7 @@ class Database:
     '''
     Main Database class, containing tables.
     '''
-    tempviews =[]
+    tempviews =[] #List that contains all temporary [TEMP] views until system exits
     def __init__(self, name, load=True):
         self.tables = {}
         self._name = name
@@ -141,28 +141,82 @@ class Database:
 
         # self._update()
         self.save_database()
-
+    
     def create_view(self, name, columns, table_name, condition,group_by=None,having=None , order_by=None, top_k=True,desc=None):
-        #Display select(execute query)
+        '''
+        This method create a new table as a view. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
+
+        Args:
+            name: string. Name of view.
+            columns: list. Names of columns.
+            table_name: string.  Table name that we apply query on 
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+                Operatores supported: (<,<=,==,>=,>)
+            group_by:string.A column name that signals that the data of the table should be grouped by the given column (no group if None).
+            having: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+                where value is an aggregate fucntion with a given column.
+                Operatores supported: (<,<=,==,>=,>)
+                Having is only supported with group by clause.
+            order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
+            desc: boolean. If True, order_by will return results in descending order (False by default).
+            top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
+        '''
+        #Display select(execute query,)
         self.select(columns, table_name, condition,group_by,having, order_by, top_k,return_object=False)
+
         #create view(execute query, then save the outcome as table object)
         x=self.select(columns, table_name, condition,group_by,having, order_by, top_k,return_object=True)
-        #add table object to database
+
+        #add table object(x) to database
         self.tables.update({name: x})
         self._update()
         self.save_database()
         print(f'Created view "{name}".')
 
     def drop_view(self,table_name):
+        '''
+            Drop view(table object) from current database.
+
+            Args:
+            table_name(view): string. Name of view.
+        '''
+        #We call drop_table(view_name)
         self.drop_table(table_name)
         print(f'Deleted view "{table_name}".')
     
+    
     def create_tempview(self, name, columns, table_name, condition,group_by=None,having=None, order_by=None, top_k=True,desc=None):
+        '''
+        This method create a temporary table as a view. This table is saved temporary until system terminates and can be accessed via db_object.tables['table_name'] or db_object.table_name
+
+        Args:
+            name: string. Name of temp view.
+            columns: list. Names of columns.
+            table_name: string.  Table name that we apply query on 
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+                Operatores supported: (<,<=,==,>=,>)
+            group_by:string.A column name that signals that the data of the table should be grouped by the given column (no group if None).
+            having: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+                where value is an aggregate fucntion with a given column.
+                Operatores supported: (<,<=,==,>=,>)
+                Having is only supported with group by clause.
+            order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
+            desc: boolean. If True, order_by will return results in descending order (False by default).
+            top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
+        '''
         #Display select(execute query)
         self.select(columns, table_name, condition,group_by,having ,order_by, top_k,return_object=False)
         #create view(execute query, then save the outcome as table object)
         x=self.select(columns, table_name, condition,group_by,having, order_by, top_k,return_object=True)
-        #add temporary table object to database
+        #add temporary table object(x) to database
         self.tempviews.append(name)
         self.tables.update({name: x})
         self._update()
@@ -172,7 +226,10 @@ class Database:
 
 
     def exit_handler(self):
-        if self.tempviews is not None:
+        '''
+        This function executes when system terminates
+        '''
+        if self.tempviews is not None: # if list that contains tempviews is not empty drop temporary views
             for i in self.tempviews:
                 self.drop_table(i)
     

@@ -105,13 +105,13 @@ def create_query_plan(query, keywords, action):
         else:
             dic['primary key'] = None
     
-    
+    #default create view
     if action=='create view':
         dic = evaluate_from_clause(dic)
         if " on" in dic['create view']:
             dic['create view'] = dic['create view'].removesuffix(' on')
         else:
-            
+            #if there is no keyword "on" in the provided query systems exits with appropriate message
             sys.exit("ON is required in create view")
 
         if dic['order by'] is not None:
@@ -136,7 +136,7 @@ def create_query_plan(query, keywords, action):
                 dic['group by'] = dic['group by'].removesuffix(' order')
             dic['from'] = dic['from'].removesuffix(' group')
     
-    
+    #temporary create view
     if action=='create tempview':
         dic = evaluate_from_clause(dic)
         if " on" in dic['create tempview']:
@@ -292,7 +292,7 @@ def interpret_meta(command):
         mylist=[pklf.removesuffix('.pkl') for pklf in os.listdir(f'dbdata/{db_name}_db') if pklf.endswith('.pkl')\
             and not pklf.startswith('meta')]
         
-        
+        #print all tables except of tempviews
         for i in mylist:
             if i not in Database.tempviews:
                 print(i)
@@ -342,7 +342,7 @@ if __name__ == "__main__":
                 if line[-1]!=';':
                     line+=';'
             except (KeyboardInterrupt, EOFError):
-                Database.exit_handler(db) 
+                Database.exit_handler(db) #we call the exit handler in order to delete all the temp views which have been created.
                 print('\nbye!')
                 break
             try:
