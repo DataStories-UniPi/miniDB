@@ -51,6 +51,9 @@ class Database:
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
         self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
+
+        # create a table that contains info about triggers of the current database
+        self.create_table('triggers','trigger_name,trigger_table,action','str,str,str','trigger_name')
         self.save_database()
 
     def save_database(self):
@@ -92,12 +95,12 @@ class Database:
         
         '''
         This function is used to create a trigger which corresponds to a specific table of the database.
-        The info of the new trigger is stored to the trigger_list list, which is a global list of Table class.
-
+        The info of the new trigger is stored to the 'triggers' table of the Database
+        
         Args:
             trigger_name: string. The name of the trigger.
             table_name: string. The table to whom trigger corresponds to.
-            action: list. The actions (INSERT,UPDATE,DELETE) after which the trigger will be fired.
+            action: string. The action (INSERT,UPDATE,DELETE) after which the trigger will be fired.
         '''
         
         self.load_database()
@@ -108,40 +111,16 @@ class Database:
             print('Action of trigger should be only INSERT or DELETE or UPDATE!')
             return
 
-        # add new element to the trigger_list. Each item of this list has the following format:
-        #'trigger name'|'table name'|'action of the trigger'
-        # CAUTION: Each trigger in the Database has a unique name.
-        # Also, it is not allowed for two triggers with the same action to be created for the same table.
-        if (bool(self.trigger_list)):
-
-            # if trigger_list is not empty, check the 
-            # conditions above, before creating a new trigger
-            if trigger_name not in self.names:
-                self.names.append(trigger_name)
-                
-                print("CAN NOT CREATE THE NEW TRIGGER")
-                print("A trigger with the same name already exists in the database!")
-
-                if table_name+'|'+action not in self.tables_actions:
-                    self.tables_actions.append(table_name+'|'+action)
-                    self.trigger_list.append(trigger_name+'|'+table_name+'|'+action)
-                else:
-                    print("CAN NOT CREATE THE NEW TRIGGER")
-                    print("A trigger with the same action already exists for the specific table of the database!")
-
-        else:
-            # if trigger_list is empty, then add the first item (trigger's info) in list
-            self.trigger_list.append(trigger_name+'|'+table_name+'|'+action)          
-            self.names.append(trigger_name)
-            self.tables_actions.append(table_name+'|'+action)
+        # add a new row to 'triggers' table
+        self.insert_into('triggers',trigger_name+','+table_name+','+action,True)
+        
+        # print a message of success!
+        print('New trigger has been inserted to the Database!')
         
     def drop_trigger(self,trigger_name=None):
         
         '''
-        This function is used to delete an existing trigger from trigger_list[].
-        trigger_list[] is a global list of the Database class. Allong with the deletion
-        of the item in trigger_list, there should also be removed and the items of names and
-        tables_actions lists.
+        This function is used to delete an existing trigger from 'triggers' table
         
         Args:
             trigger_name: string. The name of the trigger to be deleted.
@@ -149,20 +128,12 @@ class Database:
         
         self.load_database()
 
-        #delete info of trigger from trigger_list,names and tables_actions lists
-        for i in self.trigger_list:
-            if i.split('|')[0] == trigger_name:
-                name = i.split('|')[0]
-                table_action = i.split('|')[1]+'|'+i.split('|')[2]
-                
-                self.trigger_list.pop(self.trigger_list.index(i))
-                self.names.pop(self.names.index(name))
-                self.tables_actions.pop(self.tables_actions.index(table_action))
-                return
+        # remove a row from 'triggers' table
+        self.delete_from('triggers','trigger_name='+trigger_name,True)
 
-        # if trigger to be deleted does not exist
-        # print a message to user
-        print("Trigger "+trigger_name+" does not exist!")
+        # print a message of success
+        print('Trigger '+trigger_name+' has been deleted!')
+
     
     def trigger_function(self,word):
 
@@ -214,6 +185,12 @@ class Database:
         Args:
             table_name: string. Name of table.
         '''
+
+        # 'triggers' table can not be removed from the current Database
+        if table_name=='triggers':
+            print('You can not drop this table!')
+            return
+
         self.load_database()
         self.lock_table(table_name)
 
@@ -324,7 +301,7 @@ class Database:
         self._update()
         self.save_database()
 
-    def insert_into(self, table_name, row_str):
+    def insert_into(self, table_name, row_str,flag=False):
         '''
         Inserts data to given table.
 
@@ -332,27 +309,37 @@ class Database:
             table_name: string. Name of table (must be part of database).
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             lock_load_save: boolean. If False, user needs to load, lock and save the states of the database (CAUTION). Useful for bulk-loading.
+            flag: Boolean. If false, then a insert query can not happen in 'triggers' table
+                           If true,  then a insert query can happen in 'triggers' table 
         '''
-        row = row_str.strip().split(',')
-        self.load_database()
-        # fetch the insert_stack. For more info on the insert_stack
-        # check the insert_stack meta table
-        lock_ownership = self.lock_table(table_name, mode='x')
-        insert_stack = self._get_insert_stack_for_table(table_name)
-        try:
-            self.tables[table_name]._insert(row, insert_stack)
-        except Exception as e:
-            logging.info(e)
-            logging.info('ABORTED')
-        self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
+        
+        # check if a row can be inserted to table
+        # Note: 'triggers' table can not be modified from a simple insert query
+        if (table_name=='triggers' and flag) or table_name!='triggers':
+        
+            row = row_str.strip().split(',')
+            self.load_database()
+            # fetch the insert_stack. For more info on the insert_stack
+            # check the insert_stack meta table
+            lock_ownership = self.lock_table(table_name, mode='x')
+            insert_stack = self._get_insert_stack_for_table(table_name)
+            try:
+                self.tables[table_name]._insert(row, insert_stack)
+            except Exception as e:
+                logging.info(e)
+                logging.info('ABORTED')
+            self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
 
-        if lock_ownership:
-            self.unlock_table(table_name)
-        self._update()
-        self.save_database()
+            if lock_ownership:
+                self.unlock_table(table_name)
+            self._update()
+            self.save_database()
+            return
+
+        print('This table can not be modified!')
 
 
-    def update_table(self, table_name, set_args, condition):
+    def update_table(self, table_name, set_args, condition,flag=False):
         '''
         Update the value of a column where a condition is met.
 
@@ -365,19 +352,30 @@ class Database:
                 'value[<,<=,==,>=,>]column'.
                 
                 Operatores supported: (<,<=,==,>=,>)
+            
+            flag: Boolean. If false, then a insert query can not happen in 'triggers' table
+                           If true,  then a insert query can happen in 'triggers' table
         '''
-        set_column, set_value = set_args.replace(' ','').split('=')
-        self.load_database()
         
-        lock_ownership = self.lock_table(table_name, mode='x')
-        self.tables[table_name]._update_rows(set_value, set_column, condition)
-        if lock_ownership:
-            self.unlock_table(table_name)
-        self._update()
-        self.save_database()
+        # check if a row can be updated in the table
+        # Note: 'triggers' table can not be modified from a simple update query
+        if (table_name=='triggers' and flag) or table_name!='triggers':
+
+            set_column, set_value = set_args.replace(' ','').split('=')
+            self.load_database()
+            
+            lock_ownership = self.lock_table(table_name, mode='x')
+            self.tables[table_name]._update_rows(set_value, set_column, condition)
+            if lock_ownership:
+                self.unlock_table(table_name)
+            self._update()
+            self.save_database()
+            return
+        
+        print('This table can not be modified!')
 
 
-    def delete_from(self, table_name, condition):
+    def delete_from(self, table_name, condition,flag=False):
         
         '''
         Delete rows of table where condition is met.
@@ -389,29 +387,31 @@ class Database:
                 'value[<,<=,==,>=,>]column'.
                 
                 Operatores supported: (<,<=,==,>=,>)
+            
+            flag: Boolean. If false, then a insert query can not happen in 'triggers' table
+                           If true,  then a insert query can happen in 'triggers' table
         '''
-        self.load_database()
         
-        lock_ownership = self.lock_table(table_name, mode='x')
-        deleted = self.tables[table_name]._delete_where(condition)
+        # check if a row can be deleted from table
+        # Note: 'triggers' table can not be modified from a simple delete query
+        if (table_name=='triggers' and flag) or table_name!='triggers':
+
+            self.load_database()
+            
+            lock_ownership = self.lock_table(table_name, mode='x')
+            deleted = self.tables[table_name]._delete_where(condition)
+
+            if lock_ownership:
+                self.unlock_table(table_name)
+            self._update()
+            self.save_database()
+            # we need the save above to avoid loading the old database that still contains the deleted elements
+            if table_name[:4]!='meta':
+                self._add_to_insert_stack(table_name, deleted)
+            self.save_database()
+            return
         
-        if bool(deleted): # check if deleted list is empty or not
-
-            # if deleted list is empty, then check if trigger after
-            # delete action for the specific table has been created
-            for i in self.trigger_list:
-                if i.split('|')[1]==table_name and i.split('|')[2]=='delete':
-                    self.trigger_function('delete')
-                    break
-
-        if lock_ownership:
-            self.unlock_table(table_name)
-        self._update()
-        self.save_database()
-        # we need the save above to avoid loading the old database that still contains the deleted elements
-        if table_name[:4]!='meta':
-            self._add_to_insert_stack(table_name, deleted)
-        self.save_database()
+        print('This table cannot be modified!')
 
     # added the distinct=False parameter
     def select(self, columns, table_name, condition, distinct=False, order_by=None, top_k=True,\
@@ -789,30 +789,3 @@ class Database:
         index = pickle.load(f)
         f.close()
         return index
-
-    ''' 
-    list, in which every info about triggers is stored. Each trigger has a unique name.
-    The info that are stored in this list is of the following format:
-    'trigger_name|trigger_table|action_of_trigger'
-    '''
-
-    trigger_list = []
-
-    '''
-    this list contains all the names of triggers that currently exist in the Database.
-    It is not allowed to exist in the database two triggers with the same name.
-    So, each item of names list should be unique.
-    '''
-    names = []
-
-    '''
-    this list contains the actions (delete,insert,update) of all triggers
-    and the table that each trigger belongs to. Each item of this list is 
-    with the following format:
-        'table_name|action'
-    
-    CAUTION: in the database it is not allowed for two triggers that have been 
-    created for the same table to have the same action (delete,insert,delete).
-    So, each item of the list table_actions should be unique.
-    '''
-    tables_actions = [] 
