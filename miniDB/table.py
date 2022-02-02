@@ -1,8 +1,10 @@
 from __future__ import annotations
+from turtle import pd
 from tabulate import tabulate
 import pickle
 import os
 from misc import get_op, split_condition
+import pandas as pd
 
 
 class Table:
@@ -212,14 +214,14 @@ class Table:
             desc: boolean. If True, order_by will return results in descending order (False by default).
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
-        
         mode = return_columns[0]
 
         if mode=="c":
             mode = return_columns[0:5]
         else:
             mode = return_columns[0:3]
-            
+        
+        
         return_columns=return_columns.replace('min ', '')
         return_columns=return_columns.replace('max ', '')
         return_columns=return_columns.replace('count ', '')
@@ -231,7 +233,7 @@ class Table:
             return_cols = [i for i in range(len(self.column_names))]
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
-
+            
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
@@ -249,107 +251,30 @@ class Table:
         # we need to set the new column names/types and no of columns, since we might
         # only return some columns
         dict['column_names'] = [self.column_names[i] for i in return_cols]
-        dict['column_types']   = [self.column_types[i] for i in return_cols]
+        dict['column_types'] = [self.column_types[i] for i in return_cols]
 
         s_table = Table(load=dict)
         if mode=="min":
-            s_table.min(return_columns)
+            s_table.min(dict['column_names'], group_by)
             
         if mode=="max":
-            s_table.max(return_columns)
+            s_table.max(dict['column_names'], group_by)
             
         if mode=="count":
-            s_table.count(return_columns)
+            s_table.count(dict['column_names'], group_by)
             
         if mode=="sum":
-            s_table.sum(return_columns)
+            s_table.sum(dict['column_names'], group_by)
             
         if mode=="avg":
-            s_table.avg(return_columns)    
+            s_table.avg(dict['column_names'], group_by)    
                     
         if order_by:
             s_table.order_by(order_by, desc)
             
         if group_by:
-            s_table.group_by(group_by, desc) #Check this again!
+            s_table.group_by(group_by, having) #Check this again!
         
-        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
-        
-        return s_table
-
-
-    def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, group_by=None, having=None, desc=True, top_k=None):
-
-        mode = return_columns[0]
-
-        if mode=="c":
-            mode = return_columns[0:5]
-        else:
-            mode = return_columns[0:3]
-            
-        return_columns=return_columns.replace('min ', '')
-        return_columns=return_columns.replace('max ', '')
-        return_columns=return_columns.replace('count ', '')
-        return_columns=return_columns.replace('sum ', '')
-        return_columns=return_columns.replace('avg ', '')
-        # if * return all columns, else find the column indexes for the columns specified
-        if return_columns == '*':
-            return_cols = [i for i in range(len(self.column_names))]
-        else:
-            return_cols = [self.column_names.index(colname) for colname in return_columns]
-
-
-        column_name, operator, value = self._parse_condition(condition)
-
-        # if the column in condition is not a primary key, abort the select
-        if column_name != self.column_names[self.pk_idx]:
-            print('Column is not PK. Aborting')
-
-        # here we run the same select twice, sequentially and using the btree.
-        # we then check the results match and compare performance (number of operation)
-        column = self.column_by_name(column_name)
-
-        # sequential
-        rows1 = []
-        opsseq = 0
-        for ind, x in enumerate(column):
-            opsseq+=1
-            if get_op(operator, x, value):
-                rows1.append(ind)
-
-        # btree find
-        rows = bt.find(operator, value)
-
-        # same as simple select from now on
-        rows = rows[:top_k]
-        # TODO: this needs to be dumbed down
-        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
-
-        dict['column_names'] = [self.column_names[i] for i in return_cols]
-        dict['column_types']   = [self.column_types[i] for i in return_cols]
-
-        s_table = Table(load=dict) 
-        if mode=="min":
-            s_table.min(return_columns)
-            
-        if mode=="max":
-            s_table.max(return_columns)
-            
-        if mode=="count":
-            s_table.count(return_columns)
-            
-        if mode=="sum":
-            s_table.sum(return_columns)
-            
-        if mode=="avg":
-            s_table.avg(return_columns)
-              
-        if order_by:
-            s_table.order_by(return_columns, desc)
-            
-        if group_by:
-            s_table.group_by(group_by, desc, having) #Check this again!
-
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
         
         return s_table
@@ -368,138 +293,136 @@ class Table:
         self.data = [self.data[i] for i in idx]
         # self._update()
         
-    def group_by(self, column_name, desc=True, having=None):
-        '''
-        Order table based on column.
+    def min(self, column_name, group_by):
+        
+        if group_by:
+            a = self.data
+            df = pd.DataFrame(a,
+                columns = column_name)
+            print(column_name[1])
+            result = df.groupby(group_by)[column_name[0]].min().reset_index()
+            vals = result.values
+            self.data = vals.tolist()
+            
+        else:
+            column = self.column_by_name(column_name[0])
+            #print(column)
+        
+            idx = sorted(range(len(column)), key=lambda k: column[k], reverse=False)
+            #print(idx)
+        
+            self.data = [min(self.data)]
+            #print(self.data)
+            # self._update()
+        
+    def max(self, column_name, group_by):
 
-        Args:
-            column_name: string. Name of column.
-            desc: boolean. If True, order_by will return results in descending order (False by default).
-        '''
+        if group_by:
+            a = self.data
+            df = pd.DataFrame(a,
+                columns = column_name)
+            print(column_name)
+            result = df.groupby(group_by)[column_name[0]].max().reset_index()
+            vals = result.values
+            self.data = vals.tolist()
+        else:
+            column = self.column_by_name(column_name[0])
+            #print(column)
         
-        column = self.column_by_name(column_name)
-        '''df=pd.DataFrame(column, column_name)
-        minvalues=df.sort_values(by=column_name,ascending=False)
-        print(minvalues)'''
+            idx = sorted(range(len(column)), key=lambda k: column[k], reverse=True)
+            #print(idx)
+        
+            self.data = [max(self.data)]
+            #print(self.data)
+            # self._update()
+        
+    def count(self, column_name, group_by):
 
+        if group_by:
 
-        temp = column
-        #print(temp)
-        if having is not None:
-            if having=="min":
-                t=len(temp)
-                for i in temp:
-                    column=min(temp)
-                    temp.remove(min(temp))
-                    print (column)
+            a = self.data
+            df = pd.DataFrame(a,
+                columns = column_name)
+            print(column_name)
+            result = df.groupby(group_by)[column_name[0]].count().reset_index()
+            vals = result.values
+            self.data = vals.tolist()
+        else:
+            column = self.column_by_name(column_name)
+            #print(column)
+        
+            idx = sorted(range(len(column)), key=lambda k: column[k], reverse=True)
+            #print(idx)
+        
+            count = str(len(idx))
+        
+            self.data = [str(len(idx))]
+            print(self.data)
+            # self._update()
+        
+    def sum(self, column_name, group_by):
 
-        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=desc)
-        # print(idx)
-        self.data = [self.data[i] for i in idx]
-        print(self.data)
-        # self._update()
+        if group_by:
+            data = self.data
+            sum_dict = {}
+            final = []
         
-    def min(self, column_name):
-        '''
-        Order table based on column.
+            for d in data:
+                sum_dict[d[1]] = sum_dict.get(d[1], 0) + d[0]
+            for d in data:
+                d.append(sum_dict[d[1]])
+                final.append(d)
+                
+            for row in final:
+                del row[0]  # 0 for column 1, 1 for column 2, etc.
+                
+            self.data = final
+            #print(self.data)
+            #self._update()
+        else:
+            column = self.column_by_name(column_name)
+            #print(column)
+        
+            idx = sorted(range(len(column)), key=lambda k: column[k], reverse=True)
+            #print(idx)
+        
+            total = sum(column)
+            #print(total)
+        
+            self.data = [str(total)]
+            #print(self.data)
+            #self._update()
+        
+    def avg(self, column_name, group_by):
 
-        Args:
-            column_name: string. Name of column.
-            desc: boolean. If True, order_by will return results in descending order (False by default).
-        '''
-        column = self.column_by_name(column_name)
-        #print(column)
+        if group_by:
+    
+            a = self.data
+            df = pd.DataFrame(a,
+                columns = column_name)
+            print(column_name)
+            result = df.groupby(group_by)[column_name[0]].mean().reset_index()
+            vals = result.values
+            column_name[1]="avg("+(column_name[0])+")"
+            column_name[0]="dept_name"
+            self.data = vals.tolist()
+        else:
+            column = self.column_by_name(column_name)
+            print(column)
         
-        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=False)
-        #print(idx)
+            idx = sorted(range(len(column)), key=lambda k: column[k], reverse=True)
+            #print(idx)
         
-        self.data = [min(self.data)]
-        #print(self.data)
-        # self._update()
+            count = len(idx)
         
-    def max(self, column_name):
-        '''
-        Order table based on column.
-
-        Args:
-            column_name: string. Name of column.
-            desc: boolean. If True, order_by will return results in descending order (False by default).
-        '''
-        column = self.column_by_name(column_name)
-        #print(column)
+            total = sum(column)
+            #print(total)
         
-        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=True)
-        #print(idx)
+            avg = total/count
         
-        self.data = [max(self.data)]
-        #print(self.data)
-        # self._update()
-        
-    def count(self, column_name):
-        '''
-        Order table based on column.
-
-        Args:
-            column_name: string. Name of column.
-            desc: boolean. If True, order_by will return results in descending order (False by default).
-        '''
-        column = self.column_by_name(column_name)
-        #print(column)
-        
-        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=True)
-        #print(idx)
-        
-        count = str(len(idx))
-        
-        self.data = [str(len(idx))]
-        print(self.data)
-        # self._update()
-        
-    def sum(self, column_name):
-        '''
-        Order table based on column.
-
-        Args:
-            column_name: string. Name of column.
-            desc: boolean. If True, order_by will return results in descending order (False by default).
-        '''
-        column = self.column_by_name(column_name)
-        #print(column)
-        
-        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=True)
-        #print(idx)
-        
-        total = sum(column)
-        #print(total)
-        
-        self.data = [str(total)]
-        #print(self.data)
-        #self._update()
-        
-    def avg(self, column_name):
-        '''
-        Order table based on column.
-
-        Args:
-            column_name: string. Name of column.
-            desc: boolean. If True, order_by will return results in descending order (False by default).
-        '''
-        column = self.column_by_name(column_name)
-        print(column)
-        
-        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=True)
-        #print(idx)
-        
-        count = len(idx)
-        
-        total = sum(column)
-        #print(total)
-        
-        avg = total/count
-        
-        self.data = [str(avg)]
-        #print(self.data)
-        # self._update()
+            self.data = [str(avg)]
+            #print(self.data)
+            # self._update()
 
 
     def _inner_join(self, table_right: Table, condition):
