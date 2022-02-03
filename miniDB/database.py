@@ -236,32 +236,64 @@ class Database:
         self._update()
         self.save_database()
 
-    def insert_into(self, table_name, row_str):
+    def insert_into(self, table_name, row_str, selected_table, selected_items, frm):
         '''
         Inserts data to given table.
 
         Args:
             table_name: string. Name of table (must be part of database).
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
+            selected_table : table to select data (can be empty if we don't use insert select)
+            selected_items : items to select table's data (can be empty if we don't use insert select)
             lock_load_save: boolean. If False, user needs to load, lock and save the states of the database (CAUTION). Useful for bulk-loading.
         '''
-        row = row_str.strip().split(',')
-        self.load_database()
-        # fetch the insert_stack. For more info on the insert_stack
-        # check the insert_stack meta table
-        lock_ownership = self.lock_table(table_name, mode='x')
-        insert_stack = self._get_insert_stack_for_table(table_name)
-        try:
-            self.tables[table_name]._insert(row, insert_stack)
-        except Exception as e:
-            logging.info(e)
-            logging.info('ABORTED')
-        self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
 
-        if lock_ownership:
-            self.unlock_table(table_name)
-        self._update()
-        self.save_database()
+        # Insert into Table select
+        # if row_str is None and selected_table, selected_items have values do
+        if row_str is None and selected_table is not None and selected_items is not None:
+            # call select to load data as select query
+            table = self.select(selected_table, selected_items, frm)
+            # show data
+            table.show()
+            self.load_database()
+            # Continue normally like basic insertion
+            lock_ownership = self.lock_table(table_name, mode='x')
+            insert_stack = self._get_insert_stack_for_table(table_name)
+            # for each row in selected data insert into table
+            for row in table.data:
+                try:
+                    self.tables[table_name]._insert(row, insert_stack)
+                except Exception as e:
+                    logging.info(e)
+                    logging.info('ABORTED')
+                self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
+
+            if lock_ownership:
+                self.unlock_table(table_name)
+
+            self._update()
+            self.save_database()
+
+        # Basic insert
+        else:
+            row = row_str.strip().split(',')
+            self.load_database()
+            # fetch the insert_stack. For more info on the insert_stack
+            # check the insert_stack meta table
+            lock_ownership = self.lock_table(table_name, mode='x')
+            insert_stack = self._get_insert_stack_for_table(table_name)
+            try:
+                self.tables[table_name]._insert(row, insert_stack)
+            except Exception as e:
+                logging.info(e)
+                logging.info('ABORTED')
+            self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
+
+            if lock_ownership:
+                self.unlock_table(table_name)
+
+            self._update()
+            self.save_database()
 
 
     def update_table(self, table_name, set_args, condition):
