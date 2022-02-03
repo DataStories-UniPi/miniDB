@@ -335,7 +335,7 @@ class Database:
         # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
-            return table_name._select_where(columns, condition, order_by, desc, top_k)
+            return table_name._select_where(columns, condition, group_by, having_condition, order_by, desc, top_k)
 
         if condition is not None:
             condition_column = split_condition(condition)[0]
