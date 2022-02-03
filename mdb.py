@@ -253,7 +253,7 @@ if __name__ == "__main__":
                 print('\nbye!')
                 break
             try:
-                if line.endswith('exit;'):
+                if line == 'exit;':
                     print('\nbye!')
                     break
                 if line.startswith('.'):
