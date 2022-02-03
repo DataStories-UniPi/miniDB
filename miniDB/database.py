@@ -114,9 +114,6 @@ class Database:
         # add a new row to 'triggers' table
         self.insert_into('triggers',trigger_name+','+table_name+','+action,True)
         
-        # print a message of success!
-        print('New trigger has been inserted to the Database!')
-        
     def drop_trigger(self,trigger_name=None):
         
         '''
@@ -131,10 +128,7 @@ class Database:
         # remove a row from 'triggers' table
         self.delete_from('triggers','trigger_name='+trigger_name,True)
 
-        # print a message of success
-        print('Trigger '+trigger_name+' has been deleted!')
 
-    
     def trigger_function(self,word):
 
         '''
@@ -167,6 +161,11 @@ class Database:
             primary_key: string. The primary key (if it exists).
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
+        # user can not create a table with the name 'triggers'
+        if name=='triggers':
+            print('You can not create a table with this name!')
+            return
+        
         # print('here -> ', column_names.split(','))
         self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
@@ -316,7 +315,12 @@ class Database:
         # check if a row can be inserted to table
         # Note: 'triggers' table can not be modified from a simple insert query
         if (table_name=='triggers' and flag) or table_name!='triggers':
-        
+            
+            # check if insert query changes the table. 
+            # True: if the table is changed
+            # False: otherwise
+            trigger_flag = True 
+
             row = row_str.strip().split(',')
             self.load_database()
             # fetch the insert_stack. For more info on the insert_stack
@@ -326,6 +330,7 @@ class Database:
             try:
                 self.tables[table_name]._insert(row, insert_stack)
             except Exception as e:
+                trigger_flag = False
                 logging.info(e)
                 logging.info('ABORTED')
             self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
@@ -334,6 +339,11 @@ class Database:
                 self.unlock_table(table_name)
             self._update()
             self.save_database()
+
+            if trigger_flag:
+                # execute trigger if exists
+                print('Trigger has been fired!')
+            
             return
 
         print('This table can not be modified!')
@@ -365,7 +375,12 @@ class Database:
             self.load_database()
             
             lock_ownership = self.lock_table(table_name, mode='x')
-            self.tables[table_name]._update_rows(set_value, set_column, condition)
+            l = self.tables[table_name]._update_rows(set_value, set_column, condition)
+            
+            if l:
+                # execute trigger
+                print(l)
+                
             if lock_ownership:
                 self.unlock_table(table_name)
             self._update()
@@ -400,7 +415,7 @@ class Database:
             
             lock_ownership = self.lock_table(table_name, mode='x')
             deleted = self.tables[table_name]._delete_where(condition)
-
+            
             if lock_ownership:
                 self.unlock_table(table_name)
             self._update()
@@ -409,6 +424,12 @@ class Database:
             if table_name[:4]!='meta':
                 self._add_to_insert_stack(table_name, deleted)
             self.save_database()
+
+            if bool(deleted): # check if 'deleted' list is not empty
+                # execute triggers
+                print('triggers will be executed')
+                
+
             return
         
         print('This table cannot be modified!')
