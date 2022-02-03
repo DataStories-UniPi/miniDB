@@ -3,6 +3,7 @@ from tabulate import tabulate
 import pickle
 import os
 from misc import get_op, split_condition
+import pandas as pd
 
 
 class Table:
@@ -253,19 +254,19 @@ class Table:
 
         s_table = Table(load=dict)
         if mode=="min":
-            s_table.min(return_columns)
+            s_table.min(dict['column_names'], group_by)
             
         if mode=="max":
-            s_table.max(return_columns)
+            s_table.max(dict['column_names'], group_by)
             
         if mode=="count":
-            s_table.count(return_columns)
+            s_table.count(dict['column_names'], group_by)
             
         if mode=="sum":
-            s_table.sum(return_columns)
+            s_table.sum(dict['column_names'], group_by)
             
         if mode=="avg":
-            s_table.avg(return_columns)    
+            s_table.avg(dict['column_names'], group_by)    
                     
         if order_by:
             s_table.order_by(order_by, desc)
@@ -399,7 +400,7 @@ class Table:
         print(self.data)
         # self._update()
         
-    def min(self, column_name):
+    def min(self, column_name, group_by):
         '''
         Order table based on column.
 
@@ -407,17 +408,27 @@ class Table:
             column_name: string. Name of column.
             desc: boolean. If True, order_by will return results in descending order (False by default).
         '''
-        column = self.column_by_name(column_name)
-        #print(column)
+        if group_by:
+            a = self.data
+            df = pd.DataFrame(a,
+                columns = column_name)
+            print(column_name[1])
+            result = df.groupby(group_by)[column_name[0]].min().reset_index()
+            vals = result.values
+            self.data = vals.tolist()
+            
+        else:
+            column = self.column_by_name(column_name[0])
+            #print(column)
         
-        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=False)
-        #print(idx)
+            idx = sorted(range(len(column)), key=lambda k: column[k], reverse=False)
+            #print(idx)
         
-        self.data = [min(self.data)]
-        #print(self.data)
-        # self._update()
+            self.data = [min(self.data)]
+            #print(self.data)
+            # self._update()
         
-    def max(self, column_name):
+    def max(self, column_name, group_by):
         '''
         Order table based on column.
 
@@ -425,17 +436,26 @@ class Table:
             column_name: string. Name of column.
             desc: boolean. If True, order_by will return results in descending order (False by default).
         '''
-        column = self.column_by_name(column_name)
-        #print(column)
+        if group_by:
+            a = self.data
+            df = pd.DataFrame(a,
+                columns = column_name)
+            print(column_name)
+            result = df.groupby(group_by)[column_name[0]].max().reset_index()
+            vals = result.values
+            self.data = vals.tolist()
+        else:
+            column = self.column_by_name(column_name[0])
+            #print(column)
         
-        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=True)
-        #print(idx)
+            idx = sorted(range(len(column)), key=lambda k: column[k], reverse=True)
+            #print(idx)
         
-        self.data = [max(self.data)]
-        #print(self.data)
-        # self._update()
+            self.data = [max(self.data)]
+            #print(self.data)
+            # self._update()
         
-    def count(self, column_name):
+    def count(self, column_name,group_by):
         '''
         Order table based on column.
 
@@ -443,19 +463,29 @@ class Table:
             column_name: string. Name of column.
             desc: boolean. If True, order_by will return results in descending order (False by default).
         '''
-        column = self.column_by_name(column_name)
-        #print(column)
+        if group_by:
+    
+            a = self.data
+            df = pd.DataFrame(a,
+                columns = column_name)
+            print(column_name)
+            result = df.groupby(group_by)[column_name[0]].count().reset_index()
+            vals = result.values
+            self.data = vals.tolist()
+        else:
+            column = self.column_by_name(column_name)
+            #print(column)
         
-        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=True)
-        #print(idx)
+            idx = sorted(range(len(column)), key=lambda k: column[k], reverse=True)
+            #print(idx)
         
-        count = str(len(idx))
+            count = str(len(idx))
         
-        self.data = [str(len(idx))]
-        print(self.data)
-        # self._update()
+            self.data = [str(len(idx))]
+            print(self.data)
+            # self._update()
         
-    def sum(self, column_name):
+    def sum(self, column_name, group_by):
         '''
         Order table based on column.
 
@@ -463,20 +493,38 @@ class Table:
             column_name: string. Name of column.
             desc: boolean. If True, order_by will return results in descending order (False by default).
         '''
-        column = self.column_by_name(column_name)
-        #print(column)
+        if group_by:
+            data = self.data
+            sum_dict = {}
+            final = []
         
-        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=True)
-        #print(idx)
+            for d in data:
+                sum_dict[d[1]] = sum_dict.get(d[1], 0) + d[0]
+            for d in data:
+                d.append(sum_dict[d[1]])
+                final.append(d)
+                
+            for row in final:
+                del row[0]  # 0 for column 1, 1 for column 2, etc.
+                
+            self.data = final
+            #print(self.data)
+            #self._update()
+        else:
+            column = self.column_by_name(column_name)
+            #print(column)
         
-        total = sum(column)
-        #print(total)
+            idx = sorted(range(len(column)), key=lambda k: column[k], reverse=True)
+            #print(idx)
         
-        self.data = [str(total)]
-        #print(self.data)
-        #self._update()
+            total = sum(column)
+            #print(total)
         
-    def avg(self, column_name):
+            self.data = [str(total)]
+            #print(self.data)
+            #self._update()
+        
+    def avg(self, column_name, group_by):
         '''
         Order table based on column.
 
@@ -484,22 +532,35 @@ class Table:
             column_name: string. Name of column.
             desc: boolean. If True, order_by will return results in descending order (False by default).
         '''
-        column = self.column_by_name(column_name)
-        print(column)
+        if group_by:
         
-        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=True)
-        #print(idx)
+            a = self.data
+            df = pd.DataFrame(a,
+                columns = column_name)
+            print(column_name)
+            result = df.groupby(group_by)[column_name[0]].mean().reset_index()
+            vals = result.values
+            column_name[1]="avg("+(column_name[0])+")"
+            column_name[0]="dept_name"
+            self.data = vals.tolist()
+        else:
+            column = self.column_by_name(column_name)
+            print(column)
         
-        count = len(idx)
+            idx = sorted(range(len(column)), key=lambda k: column[k], reverse=True)
+            #print(idx)
         
-        total = sum(column)
-        #print(total)
+            count = len(idx)
         
-        avg = total/count
+            total = sum(column)
+            #print(total)
         
-        self.data = [str(avg)]
-        #print(self.data)
-        # self._update()
+            avg = total/count
+        
+            self.data = [str(avg)]
+            #print(self.data)
+            # self._update()
+        
 
 
     def _inner_join(self, table_right: Table, condition):
