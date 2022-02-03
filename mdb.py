@@ -253,7 +253,8 @@ if __name__ == "__main__":
                 print('\nbye!')
                 break
             try:
-                if line=='exit':
+                if line.endswith('exit;'):
+                    print('\nbye!')
                     break
                 if line.startswith('.'):
                     interpret_meta(line)
