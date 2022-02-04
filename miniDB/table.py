@@ -138,7 +138,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
         '''
         # parse the condition
@@ -169,7 +169,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
         '''
         column_name, operator, value = self._parse_condition(condition)
@@ -205,7 +205,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (False by default).
@@ -314,7 +314,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
         '''
         # get columns and operator
@@ -392,7 +392,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
             join: boolean. Whether to join or not (False by default).
         '''
@@ -421,7 +421,7 @@ class Table:
 
         self.__dict__.update(tmp_dict)
 
-    def _inl_join(self, right_table: Table, condition):
+    def _inlj_join(self, right_table: Table, condition):
         '''
         Join table (left) with a table on the right where a condition is met using index nested loop join.
         Args:
@@ -507,3 +507,57 @@ class Table:
         return join_table
 
 
+
+
+    def _smj_join(self, table_right: Table, condition):
+        '''
+        Join table (left) with a supplied table (right) where condition is met, using the 2-way External Merge-Sort
+
+        Args:
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+
+                Operatores supported: (<,<=,==,>=,>)
+                queries to run:
+                select * from student inner join advisor on id=s_id
+
+        '''
+
+        # get columns and operator
+        column_name_left, operator, column_name_right = self._parse_condition(condition, join=True)
+
+        # get the column names so that they later match the condition
+        # the left column name becomes left_table_name_name
+        left_names = [f'{self._name}.{colname}'
+                     if self._name!='' # if the table has a name
+                     else
+                     colname for colname in self.column_names # or it searches for a name in the columns
+                     ]
+
+        #likewise
+        right_names = [f'{table_right._name}.{colname}' if table_right._name!='' else colname for colname in table_right.column_names]
+
+        # define the new tables name, its column names and types
+        join_table_name = ''
+        join_table_colnames = left_names+right_names
+        join_table_coltypes = self.column_types+table_right.column_types
+        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
+        #Smj
+        self.order_by(column_name_left,False) #sort the left table(self) by pk
+        table_right.order_by(column_name_right,False) #sorting the right table by pk
+        left_datalen = len(self.data) #the resulting records will be as many as the records in the left table,so we have to
+        right_datalen = len(table_right.data) #find how many will be
+        l_count, r_count = 0, 0 #starting from the begginning
+        while l_count < left_datalen and r_count < right_datalen: #and for the length of the records
+            if(self.column_by_name(column_name_left)[l_count] == table_right.column_by_name(column_name_right)[r_count]): # we check if the
+                # records match in the column of the pk(left and right),in the current record of the counting counter
+                join_table._insert(self.data[l_count]+table_right.data[r_count]) #then we put the result in the joined table(which takes space)
+                l_count+=1 # in the current possition of the counter so that the records print in order
+                r_count+=1 #then we increase both counter
+            elif(self.data[l_count] < table_right.data[r_count]): #if one counter has surpased the other(cause maybe there were double records on the
+                l_count+=1                 #column that we check)we bring the other counter right back up
+            else:
+                r_count+=1
+
+        return join_table #and we return the table for printing

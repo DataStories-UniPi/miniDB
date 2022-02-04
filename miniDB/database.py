@@ -279,7 +279,7 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
         '''
         set_column, set_value = set_args.replace(' ','').split('=')
@@ -301,7 +301,7 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
         '''
         self.load_database()
@@ -328,7 +328,7 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (True by default).
@@ -406,27 +406,60 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
         save_as: string. The output filename that will be used to save the resulting table in the database (won't save if None).
         return_object: boolean. If True, the result will be a table object (useful for internal usage - the result will be printed by default).
         '''
         self.load_database()
-        left_table = left_table if isinstance(left_table, Table) else self.tables[left_table] 
-        right_table = right_table if isinstance(right_table, Table) else self.tables[right_table] 
+        left_table = left_table if isinstance(left_table, Table) else self.tables[left_table]
+        right_table = right_table if isinstance(right_table, Table) else self.tables[right_table]
 
         if self.is_locked(left_table) or self.is_locked(right_table):
             warnings.warn(f'Table(s) are currently locked.')
             return
 
         if mode=='inner':
-            res = left_table._inner_join(right_table, condition)
-        elif mode== 'inlj':
-            res = left_table._inl_join(right_table, condition)
-        elif mode == 'smj':
-            pass
+            # get columns and operator
+            column_name_left, operator, column_name_right = left_table._parse_condition(condition, join=True)
+            #Both Index Nested-Loops Join and Sort-Merge Join can be run on equi-join/natural join
+            if (operator != "="):
+                print("Can't run inlj or smj , running inner join")
+                res = left_table._inner_join(right_table, condition)
+            else:
+                #Checking if the tables can be indexed
+                #Smj can be used iff both of the columns of the condition are indexed(have a pk)
+
+                if right_table.pk is None or column_name_right != right_table.pk:
+                    if left_table.pk is None or column_name_left != left_table.pk:
+                        #If the tables can't be indexed, run inner join
+                        print("can't join tables using inlj, attempting inner join instead.")
+                        res = left_table._inner_join(right_table, condition)
+                    else:
+                        print("Results were successful using Inlj")
+                        #Swap the tables's conditions
+                        condition = column_name_right+operator+column_name_left
+                        #If the left table has an index, but right hasn't, swap and use Inlj
+                        res = right_table._inlj_join(left_table, condition)
+                else:
+                    if left_table.pk is None or column_name_left != left_table.pk:
+                        #If only right table has an index, use inlj
+                        print("Results were successful using Inlj ")
+                        res = left_table._inlj_join(right_table, condition)
+                    else:
+                        #If the on condition is refered to both of the columns pk's,use the Smj
+
+                        print("Results were successful using Smj ")
+                        res = left_table._smj_join(right_table, condition)
         else:
             raise NotImplementedError
+
+
+        '''if mode=='inlj':
+                res = left_table._inlj_join(right_table, condition)
+            if mode =='smj':
+                res = left_table._smj_join(right_table, condition)
+        '''
 
         print('TNAMe', res._name)
         if save_as is not None:
