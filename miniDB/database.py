@@ -444,7 +444,7 @@ class Database:
 
             return join_table
 
-    def smj(self, left_table, right_table, condition = '=='):
+    def smj(self, left_table, right_table, condition):
         
         # get columns and operator
         column_name_left, operator, column_name_right = left_table._parse_condition(condition, join=True)
