@@ -207,6 +207,35 @@ class Table:
                 raise Exception("All columns in select clause must appear in group by clause")
 
 
+    def count(self, col_idx, condition):        #returns the sql count(column) function result as int
+
+        count_rows = 0
+
+        if condition is not None:
+            condition_column_name, operator, value = self._parse_condition(condition)   #name of the where column, operator and value
+            condition_column_values = self.column_by_name(condition_column_name)        #list with all the condition's column values
+            
+            '''
+            We check one by one the condition values in the condition column. if they satisfy the condition and
+            the corresponding column value in the counted column is not null we add one to the counter
+            
+            '''
+            for idx, val in enumerate(condition_column_values): 
+                 if get_op(operator, val, value) and self.data[idx][col_idx] != 'null':
+                    count_rows+=1
+        else:
+            '''
+            We check one by one the values of the counted column and if they are not null, we count them
+            
+            '''
+            counted_column_values = self.column_by_name(self.column_names[col_idx]) #list with the counted column's values
+            for val in counted_column_values:
+                if(val=='null'):
+                    continue
+                count_rows +=1
+
+        return count_rows
+
 
     #returns a tuple of the index column and the aggregate function of the given aggregate
     def aggr_idx(self, aggregate):
@@ -216,29 +245,38 @@ class Table:
         '''
         Substitute for select. This function gets run when the user uses one or multiple aggregate functions in select (e.g. select count(id), max(salary)).
         '''
-
-        if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
-        else:
-            rows = [i for i in range(len(self.data))]
-
+        result_row = []     #the values of the row we are going to show
+        result_names = []   #the names of the rows we are going to show
         for aggregate_function in aggregates:
-            if aggregate_function[1] == 'count':
-                dict = {
-                    '_name'         : self._name,
-                    'column_names'  : [f'count({self.column_names[aggregate_function[0]]})'],
-                    'column_types'  : [], 
-                    'columns'       : [],
-                    'data'          : [],
-                    'pk'            : '',
-                    'pk_idx'        : 0,
-                }
+            if aggregate_function[1] == 'count':    #we call count function if we have to count a column
+                count = self.count(aggregate_function[0], condition)
+                result_row.append(count)
+                result_names.append(f'count_{self.column_names[aggregate_function[0]]}')
+        
         
 
+        '''dict = {
+        '_name'         : self._name,
+        'column_names'  : [f'count({self.column_names[aggregate_function[0]]})'],
+        'column_types'  : [], 
+        'columns'       : [],
+        'data'          : [],
+        'pk'            : '',
+        'pk_idx'        : 0,
+    }'''
+        #Set the new attribute dictionary. We change the data attribute, the column names and the types
+        dict = {(key):([result_row] if key=="data" else value) for key,value in self.__dict__.items()} #data has only the result row
+        dict['column_names'] = result_names
+        dict['column_types'] = [int for i in result_row]    #all the aggregate functions return int
 
-        return
+        s_table = Table(load = dict)
+
+        '''if order_by:
+            s_table.order_by(order_by, desc)
+
+        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data'''
+
+        return s_table
 
     def _select_where(self, return_columns, condition=None, group_by_columns=None, having_condition=None, order_by=None, desc=True, top_k=None):
         '''
