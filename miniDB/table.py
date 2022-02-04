@@ -198,7 +198,7 @@ class Table:
         return indexes_to_del
 
 
-    def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None, distinct=False):
+    def _select_where(self, return_columns, condition=None, order_by=None, top_k=None, distinct=False):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -210,7 +210,6 @@ class Table:
 
                 Operatores supported: (<,<=,==,>=,>)
             order_by: list. The columns that signal that the resulting table should be ordered based on them (no order if None).
-            desc: boolean. If True, order_by will return results in descending order (False by default).
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
             distinct: boolean. If it is 'True' it indicates that the query is "select distinct" and a new function is called to remove duplicate rows
         '''
@@ -245,7 +244,7 @@ class Table:
         # order by is applied on the table with all the columns
         if order_by and not(distinct):
             order_cols = order_by.split(',')
-            s_table.order_by(order_cols, desc)
+            s_table.order_by(order_cols)
 
         # this check is done to prevent a mistake : new_dict raises exception when the meta_insert_stack is called
         # TODO check why this happens
@@ -273,7 +272,7 @@ class Table:
             # NOTE : for SELECT DISTINCT, ORDER BY expressions must appear in select list
             if order_by:
                 order_cols = order_by.split(',')
-                s_table.order_by(order_cols, desc)
+                s_table.order_by(order_cols)
 
         # if needed, keep only top k rows
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
@@ -327,78 +326,182 @@ class Table:
 
         return s_table
 
-    def order_by(self, column_names, desc=True):
+    def order_by(self, column_names):
         '''
         Order table based on column.
 
         Args:
             column_names: list of strings. Names of columns in the order given by the user.
-            desc: boolean. If True, order_by will return results in descending order (False by default).
+            Also the user can give the keyword ASC|DESC after the name of each table
 
-        This function does the following steps:
-        -> first, copy all the data of the columns specified by the arguement 'column_names'
-        -> the order of the columns may not necesseraly be the same as in the table
-        -> The data is copied to the list 'copied_data'
-        -> At the end each row of 'copied_data' we add an integer that is the index of the row
-        (this makes the procedure easier and safer)
-        -> Then call the function 'sort()' for the list
-        -> This function will sort the list even if it is multidimentional
-        -> Now we simply have to loop throught the data of the sorted array and use the
-        last element of each row (that we added earlier) to get the index and rearrange the
-        table
+        This function works just like SQL's ORDER BY
 
+        e.g.:
 
-        NOTE : unlike postgres where the query can have '...order by name asc, dept_name desc'
-        this order by doesnt take an individual arg (asc/desc) for each column but only one
-        e.g. : '...order by name, dept_name asc/desc' and the 'asc/desc' is checked whether the
-        output of the 'sort()' function of python will be revesed or not
+        ORDER BY column1 ASC|DESC , column2 ASC|DESC
 
-        TODO : have a proper sorting alg (instead of sort()) that supports mutliple columns and
-        the option asc/desc for each column
+        so you can have a query like this:
+
+        ORDER BY Country ASC, CustomerName DESC
+
+        This means that the returning table is sorted first with the 'Country' with Ascending order
+        and if there are rows with the same 'Country', they are sorted according to 'CustomerName'
+        with descending order. The same is done if there are more than 2 columns in the 'ORDER BY'.
+
         '''
 
-        copied_data=[]
+        target_cols = []        # will append here the indexes of the columns that will be sorted
+                                # in the order given in ORDER BY
 
-        for i in range(len(self.data)):
-            temp = []
-            for col in column_names:
-                j = list(self.column_names).index(col)
-                temp.append(self.data[i][j])
-            copied_data.append(temp)
+        target_cols_order = []  # will append True or False for each column to indicate ASC or DESC
+                                # default is False
 
-        for i in range(len(copied_data)):
-            copied_data[i].append(i)
+    
+        for col in column_names:
+            
+            input_col = (col.strip()).split(" ")
+            if(len(input_col)>2): # can only have 2 keywords : columnName ASC|DESC
+                raise Exception("Syntax error")
 
-        # print(copied_data)
-        copied_data.sort()
+            # add table index
+            target_cols.append(list(self.column_names).index(input_col[0]))
 
-        # sort() function returns the list in asc order by default
-        # if we want desc, we need to reverse
-        if(desc):
-            copied_data.reverse()
+            # add the boolean
+            if(len(input_col)==2):
+                if(input_col[1]=='desc'):
+                    target_cols_order.append(True)
+                elif(input_col[1]=='asc'):
+                    target_cols_order.append(False)
+            
+            # the query didnt have ASC|DESC, default is False
+            else:
+                target_cols_order.append(False)
 
-        # print(copied_data)
+        # function will sort the given self.data
+        self.hyper_sort(self.data,target_cols,0,len(self.data),target_cols_order)
 
-        # rearrange the table
-        self.data = [self.data[i[-1]] for i in copied_data]
+        # return
 
-        # self._update()
+
+    def hyper_sort(self,input_list,columns,indexStart,indexEnd,reverses):
+        '''
+        Arguements:
+
+        -> inpur_list: the list that will be sorted
+        -> columns: a list with the indexes of the columns that will be sorted.
+        The indexes are given in the order the columns will be sorted (meaning 
+        in the order they are given in the 'ORDER BY')
+        Columns can begiven in any desired order.
+        -> indexStart: int - the index of an element of the inpur_list (see Procedure)
+        -> indexEnd: int - the index of an element of the inpur_list (see Procedure)
+        -> reverses list of booleans - contains the desired orders in which each column 
+        given in 'columns' will be sorted. True = desc and False = asc
+
+        Returns:
+        input_list with elements between the indexes 'indexStart' 'indexEnd' sorted
+
+
+        Procedure:
+
+        This function first makes a list (input_list_copy) with elements
+        of 'input_list' from index 'indexStart' till 'indexEnd' (indexEnd is
+        also included, thats why we write 'indexEnd+1').
+
+        This 'sublist' is sorted according to the first column given in the 'columns' list,
+        with asc/desc boolean also from the first element of the 'reverses' list.
+
+        After sorting, the function checks the 'sublist' with a for loop if
+        there are duplicates in the first column given in the 'columns'.
+
+        Since the table has been sorted, duplicates will be neighbouring. This means that
+        in order to find the duplicate elements we do the following:
+
+        -> store the first element ('prev') of the desired column (first column given in the 'columns')
+        -> initialize the variable 'initial' with 0 - this variable holds the position in which
+        the examined element is first spotted (the examined element is initialy the first
+        so thats why it is 0)
+        -> start a loop
+        -> if the stored element is equal to the current element of the loop,
+        check if the current element is the last. If NO, continue.
+        If YES, call recursively function 'hyper_sort' to sort according
+        to the next column. This is done by passing in the
+        arguements columns[1:] and reverses[1:], in order for the function to
+        sort on the next column.
+        -> if the stored element is NOT equal to the current element of the loop,
+        do a recursive call of 'hyper_sort' with indexStart = first and indexEnd = i-1
+        and columns[1:], reverses[1:] as before. Then reset 'prev' and 'init' in order
+        to have the i-element(current)
+
+        To sum up,
+
+        A sublist is created from indexStart (initial value == 0) till indexEnd (initial value == len(input_list)) and is sorted.
+        Then it is checked for duplicates. For each 'block' of duplicates do a recursive
+        call to sort it according to the next column
+
+        '''
+
+
+        if(indexStart == indexEnd):
+            return input_list
+
+        input_list_copy = sorted(input_list[indexStart:indexEnd+1],key=lambda x: (x[columns[0]]),reverse=reverses[0])
+
+        #print(input_list_copy)
+
+        prev = input_list_copy[0][columns[0]]
+        initial = 0
+
+        for i in range(len(input_list_copy)):
+            
+            if input_list_copy[i][columns[0]] == prev:
+
+                if(i== len(input_list_copy)-1):
+                    #print(f" found {prev} from {initial} till {i}")
+
+                    # The duplicates are [initial,i]
+
+                    if(len(columns)>1):
+                        input_list_copy = self.hyper_sort(input_list_copy,columns[1:],initial,i,reverses[1:])
+
+            else:
+                #print(f" found {prev} from {initial} till {i-1}")
+
+                # The duplicates are [initial,i-1]
+
+                if(len(columns)>1):
+                    input_list_copy = self.hyper_sort(input_list_copy,columns[1:],initial,i-1,reverses[1:])
+
+                prev = input_list_copy[i][columns[0]]
+                initial = i
+
+
+        input_list[indexStart:indexEnd+1] = input_list_copy
+
+
+        return input_list
+
+
+
 
 
     def group_by_having():
         #TO DO
+        return
 
 
     def min():
         #TO DO
+        return
 
 
     def max():
         #TO DO
+        return
 
 
     def avg():
         #TO DO
+        return
 
 
     def count(groups, column):
@@ -417,9 +520,9 @@ class Table:
         for elem in list(self.data[1:]):
             if(elem[:-1] == prev[:-1] and elem[-1] != prev[-1]):
                 ret[0] = elem[:-1]
-                ret[1][interval]++
+                ret[1][interval]+=1
             else:
-                interval++
+                interval+=1
             prev = elem
         return ret
 
@@ -431,6 +534,8 @@ class Table:
 
     def sum():
         #TO DO
+        return
+
 
 
     def distinct(self):

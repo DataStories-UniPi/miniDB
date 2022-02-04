@@ -77,14 +77,14 @@ def create_query_plan(query, keywords, action):
 
         if dic['order by'] is not None:
             dic['from'] = dic['from'].removesuffix(' order')
-            if 'desc' in dic['order by']:
-                dic['desc'] = True
-            else:
-                dic['desc'] = False
-            dic['order by'] = dic['order by'].removesuffix(' asc').removesuffix(' desc')
+        #     if 'desc' in dic['order by']:
+        #         dic['desc'] = True
+        #     else:
+        #         dic['desc'] = False
+        #     dic['order by'] = dic['order by'].removesuffix(' asc').removesuffix(' desc')
             
-        else:
-            dic['desc'] = None
+        # else:
+        #     dic['desc'] = None
 
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
