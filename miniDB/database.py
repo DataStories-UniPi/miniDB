@@ -674,22 +674,31 @@ class Database:
         f.close()
         return index
     save_state = None
+
     def start_transaction(self,action):
+
         if self.save_state==None:
             self.save_state= copy.deepcopy(self)
             print(self.save_state)
             print(self)
+
         else:
             raise ValueError("Transaction already started")
+
     def rollback(self,action):
+
         if self.save_state==None:
-            raise ValueError("Transaction not started, nothng to rollback to")
+            raise ValueError("Transaction not started, nothing to rollback to")
+
         else:
             self.tables = self.save_state.tables
             self.save_database()
             self.save_state=None
-	 def commit(self,action):
+
+    def commit(self,action):
+
         if self.save_state==None:
-            raise ValueError("Transaction not started, nothng to rollback to")
+            raise ValueError("Transaction not started, nothing to rollback to")
+
         else:
-            self.save_state= None
+            self.save_state=None
