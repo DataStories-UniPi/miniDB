@@ -62,6 +62,18 @@ class Table:
                 self.pk_idx = self.column_names.index(primary_key)
             else:
                 self.pk_idx = None
+            #if not null colums are set , keep their indexes as attribute
+            if column_extras is not None:
+                self.not_null_columns_idx = [self.column_extras.index(col) for col in column_extras if col == "not null"]
+            else:
+                self.not_null_columns_idx = []
+
+            #if unique colums are set , keep their indexes as attribute
+            if column_extras is not None:
+                self.unique_columns_idx = [self.column_extras.index(col) for col in column_extras if col == "unique"]
+            else:
+                self.unique_columns_idx = []
+
 
             self.pk = primary_key
             # self._update()
@@ -120,11 +132,11 @@ class Table:
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
             # if value is to be appended to a Not Null Column, check that the value is not null
-            if len(self.column_extras) > i and self.column_extras[i] == "not null" and (row[i] == "null" or row[i] == "") :
+            if i in self.not_null_columns_idx and (row[i] == "null" or row[i] == "") :
                 print(f'## ERROR -> Column {self.column_names[i]} not accepting null values!')
                 raise ValueError(f'## ERROR -> Column {self.column_names[i]} not accepting null values!')
             # if value is to be appended to a Unique Column, check that it doesnt already exist on the specific column data (no duplicate entries)
-            if len(self.column_extras) > i and self.column_extras[i] == "unique" and row[i] in self.column_by_name(self.column_names[i]):
+            if i in self.unique_columns_idx and row[i] in self.column_by_name(self.column_names[i]):
                 print(f'## ERROR -> Value {row[i]} already exists in the specific column')
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in the specific column')
 
