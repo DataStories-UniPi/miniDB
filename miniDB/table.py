@@ -228,7 +228,12 @@ class Table:
             if aggregate_function[1] == 'count':
                 dict = {
                     '_name'         : self._name,
-                    'column_names'  : [f'count({self.column_names[aggregate_function[0]]})']
+                    'column_names'  : [f'count({self.column_names[aggregate_function[0]]})'],
+                    'column_types'  : [], 
+                    'columns'       : [],
+                    'data'          : [],
+                    'pk'            : '',
+                    'pk_idx'        : 0,
                 }
         
 
