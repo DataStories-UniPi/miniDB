@@ -208,6 +208,32 @@ class Table:
 
 
 
+    #returns a tuple of the index column and the aggregate function of the given aggregate
+    def aggr_idx(self, aggregate):
+        return (self.column_names.index(aggregate.split('(')[1][:-1].strip()), aggregate.split('(')[0].strip())
+
+    def select_aggr(self, aggregates, condition=None):
+        '''
+        Substitute for select. This function gets run when the user uses one or multiple aggregate functions in select (e.g. select count(id), max(salary)).
+        '''
+
+        if condition is not None:
+            column_name, operator, value = self._parse_condition(condition)
+            column = self.column_by_name(column_name)
+            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+        else:
+            rows = [i for i in range(len(self.data))]
+
+        for aggregate_function in aggregates:
+            if aggregate_function[1] == 'count':
+                dict = {
+                    '_name'         : self._name,
+                    'column_names'  : [f'count({self.column_names[aggregate_function[0]]})']
+                }
+        
+
+
+        return
 
     def _select_where(self, return_columns, condition=None, group_by_columns=None, having_condition=None, order_by=None, desc=True, top_k=None):
         '''
@@ -239,7 +265,7 @@ class Table:
 
             #then we have to check if we have only aggregate functions in order to select the aggregate values
             if isinstance(return_cols[0], tuple): #if the first element is aggregate all the elements are aggregate 
-                return self.select_aggr(return_cols)
+                return self.select_aggr(return_cols, condition)
 
         else:
             return self.group_by_having(return_columns, condition, group_by_columns, having_condition, order_by, desc, top_k)
@@ -260,7 +286,7 @@ class Table:
         # we need to set the new column names/types and no of columns, since we might
         # only return some columns
         dict['column_names'] = [self.column_names[i] for i in return_cols]
-        dict['column_types']   = [self.column_types[i] for i in return_cols]
+        dict['column_types'] = [self.column_types[i] for i in return_cols]
 
         s_table = Table(load=dict) 
         if order_by:
@@ -409,12 +435,6 @@ class Table:
         print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
 
 
-    #returns a tuple of the index column and the aggregate function of the given aggregate
-    def aggr_idx(self, aggregate):
-        return (self.column_names.index(aggregate.split('(')[1][:-1].strip()), aggregate.split('(')[0].strip())
-
-    def select_aggr(aggregates):
-        return
 
     def _parse_condition(self, condition, join=False):
         '''
