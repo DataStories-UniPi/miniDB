@@ -356,9 +356,9 @@ class Table:
         target_cols_order = []  # will append True or False for each column to indicate ASC or DESC
                                 # default is False
 
-    
+
         for col in column_names:
-            
+
             input_col = (col.strip()).split(" ")
             if(len(input_col)>2): # can only have 2 keywords : columnName ASC|DESC
                 raise Exception("Syntax error")
@@ -372,7 +372,7 @@ class Table:
                     target_cols_order.append(True)
                 elif(input_col[1]=='asc'):
                     target_cols_order.append(False)
-            
+
             # the query didnt have ASC|DESC, default is False
             else:
                 target_cols_order.append(False)
@@ -389,12 +389,12 @@ class Table:
 
         -> inpur_list: the list that will be sorted
         -> columns: a list with the indexes of the columns that will be sorted.
-        The indexes are given in the order the columns will be sorted (meaning 
+        The indexes are given in the order the columns will be sorted (meaning
         in the order they are given in the 'ORDER BY')
         Columns can begiven in any desired order.
         -> indexStart: int - the index of an element of the inpur_list (see Procedure)
         -> indexEnd: int - the index of an element of the inpur_list (see Procedure)
-        -> reverses list of booleans - contains the desired orders in which each column 
+        -> reverses list of booleans - contains the desired orders in which each column
         given in 'columns' will be sorted. True = desc and False = asc
 
         Returns:
@@ -452,7 +452,7 @@ class Table:
         initial = 0
 
         for i in range(len(input_list_copy)):
-            
+
             if input_list_copy[i][columns[0]] == prev:
 
                 if(i== len(input_list_copy)-1):
@@ -481,60 +481,140 @@ class Table:
         return input_list
 
 
-
-
-
     def group_by_having():
         #TO DO
         return
-
 
     def min():
         #TO DO
         return
 
-
     def max():
         #TO DO
         return
-
 
     def avg():
         #TO DO
         return
 
-
-    def count(groups, column):
+    def count(groups, column, distinct=False):
         '''
         With group by
         '''
-        self.column_names.index(column)
-
+        index = self.column_names.index(column)
         self.order_by(self.column_names)
 
-        ret = [[None] * len(groups), [0] * len(groups)]
+        ret = [[None] * len(groups), [1] * len(groups)]
         interval = 0
 
-        prev = self.data[0]
+        if(distinct):
 
-        for elem in list(self.data[1:]):
-            if(elem[:-1] == prev[:-1] and elem[-1] != prev[-1]):
-                ret[0] = elem[:-1]
-                ret[1][interval]+=1
-            else:
-                interval+=1
-            prev = elem
+            prev = self.data[0]
+
+            for elem in list(self.data[1:]):
+                if(ret[interval][0] is None):
+                    ret[interval][0] = prev[:-1]
+                if(elem[:-1] == prev[:-1] and elem[-1] != prev[-1]):
+                    ret[interval][1] += 1
+                else:
+                    interval += 1
+                prev = elem
+        else:
+
+            prev = self.data[0]
+
+            for elem in list(self.data[1:]):
+                if(ret[interval][0] is None):
+                    ret[interval][0] = prev[:-1]
+                if(elem[:-1] == prev[:-1]):
+                    ret[interval][1] += 1
+                else:
+                    interval += 1
+                prev = elem
+
         return ret
 
-    def count(column):
+    def count(column, distinct=False):
         '''
         Without group by
         '''
-        self.column_names.index(column)
+        index = self.column_names.index(column)
+        ret = 1
 
-    def sum():
-        #TO DO
-        return
+        if(distinct):
+            self.order_by(self.column_names)
+            prev = self.data[0]
+            for elem in list(self.data[1:]):
+                if(elem[index] != prev[index]):
+                    ret += 1
+                prev = elem
+        else:
+            for elem in list(self.data[1:]):
+                ret += 1
+
+        return ret
+
+    def sum(groups, column, distinct=False):
+        '''
+        With group by
+        '''
+        index = self.column_names.index(column)
+        self.order_by(self.column_names)
+
+        ret = [[None] * len(groups), [None] * len(groups)]
+        interval = 0
+
+        if(distinct):
+
+            prev = self.data[0]
+
+            for elem in list(self.data[1:]):
+                if(ret[interval][1] is None):
+                    ret[interval][1] = prev[-1]
+                if(ret[interval][0] is None):
+                    ret[interval][0] = prev[:-1]
+                if(elem[:-1] == prev[:-1] and elem[-1] != prev[-1]):
+                    ret[interval][1] += elem[-1]
+                else:
+                    interval += 1
+                prev = elem
+        else:
+
+            prev = self.data[0]
+
+            for elem in list(self.data[1:]):
+                if(ret[interval][1] is None):
+                    ret[interval][1] = prev[-1]
+                if(ret[interval][0] is None):
+                    ret[interval][0] = prev[:-1]
+                if(elem[:-1] == prev[:-1]):
+                    ret[interval][1] += elem[-1]
+                else:
+                    interval += 1
+                prev = elem
+
+        return ret
+
+    def sum(column, distinct=False):
+        '''
+        Without group by
+        '''
+        index = self.column_names.index(column)
+        ret = self.data[0][index]
+
+        if(distinct):
+            self.order_by(self.column_names)
+            prev = self.data[0]
+            for elem in list(self.data[1:]):
+                if(elem[index] != prev[index]):
+                    ret += elem[index]
+                prev = elem
+        else:
+            for elem in list(self.data[1:]):
+                ret += elem[index]
+
+        return ret
+
 
 
 
