@@ -52,6 +52,7 @@ class Database:
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
         self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
+        self.create_table('meta_views', 'table_name,view_name', 'str,str')
         self.save_database()
 
     def save_database(self):
@@ -517,6 +518,59 @@ class Database:
         print('journal:', out)
         #return out
 
+    def create_view(self, view_name, table_name, view_type):
+        '''
+        Creates a view of a specified table with a given name.
+
+        Args:
+            table_name: string. Table name (must be part of database).
+            view_name: string. Name of the created view.
+            view_type: string. Type of view (temporary / materialised).
+        '''
+        if view_name not in self.tables['meta_views'].column_by_name('view_name'):
+            if view_type == 'temp':
+                # currently only btree is supported. This can be changed by adding another if.
+                    logging.info('Creating temp view.')
+                    # insert a record with the name of the view and the table on which it's created to the meta_views table
+                    self.tables['meta_views']._insert([table_name, view_name])
+                    # create the actual index
+                    self._construct_index(table_name, view_name)
+                    self.save_database()
+        else:
+            raise Exception('Cannot create index. Another index with the same name already exists.')
+
+
+    def _has_view(self, view_name):
+        return view_name in self.tables['meta_views'].column_by_name('table_name')
+
+    def _save_view(self, view_name, view):
+        '''
+        Save the view object.
+
+        Args:
+            view_name: string. Name of the created view.
+            view: obj. The actual view object.
+        '''
+        try:
+            os.mkdir(f'{self.savedir}/views')
+        except:
+            pass
+
+        with open(f'{self.savedir}/views/meta_{view_name}_view.pkl', 'wb') as f:
+            pickle.dump(view, f)
+
+    def _load_view(self, view_name):
+        '''
+        Load and return the specified view.
+
+        Args:
+            view_name: string. Name of created view.
+        '''
+        f = open(f'{self.savedir}/views/meta_{view_name}_view.pkl', 'rb')
+        view = pickle.load(f)
+        f.close()
+        return view
+
 
     # Needs to be implemented.
     '''
@@ -633,7 +687,7 @@ class Database:
                 logging.info('Creating Btree index.')
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
                 self.tables['meta_indexes']._insert([table_name, index_name])
-                # crate the actual index
+                # create the actual index
                 self._construct_index(table_name, index_name)
                 self.save_database()
         else:
