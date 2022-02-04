@@ -239,7 +239,7 @@ class Table:
 
             #then we have to check if we have only aggregate functions in order to select the aggregate values
             if isinstance(return_cols[0], tuple): #if the first element is aggregate all the elements are aggregate 
-                pass
+                return self.select_aggr(return_cols)
 
         else:
             return self.group_by_having(return_columns, condition, group_by_columns, having_condition, order_by, desc, top_k)
@@ -412,6 +412,9 @@ class Table:
     #returns a tuple of the index column and the aggregate function of the given aggregate
     def aggr_idx(self, aggregate):
         return (self.column_names.index(aggregate.split('(')[1][:-1].strip()), aggregate.split('(')[0].strip())
+
+    def select_aggr(aggregates):
+        return
 
     def _parse_condition(self, condition, join=False):
         '''
