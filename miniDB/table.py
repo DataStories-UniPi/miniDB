@@ -151,12 +151,13 @@ class Table:
 
         # set_columns_indx = [self.column_names.index(set_column_name) for set_column_name in set_column_names]
         
-        changed = False
+        changed = False # before the update, the table is not changed
+        
         # for each value in column, if condition, replace it with set_value
         for row_ind, column_value in enumerate(column):
             if get_op(operator, column_value, value):
                 self.data[row_ind][set_column_idx] = set_value
-                changed = True
+                changed = True # the table has been modified by the 'update' query
         
         return changed
         
@@ -191,7 +192,6 @@ class Table:
         # we pop from highest to lowest index in order to avoid removing the wrong item
         # since we dont delete, we dont have to to pop in that order, but since delete is used
         # to delete from meta tables too, we still implement it.
-
         for index in sorted(indexes_to_del, reverse=True):
             if self._name[:4] != 'meta':
                 # if the table is not a metatable, replace the row with a row of nones
