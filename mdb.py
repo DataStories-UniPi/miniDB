@@ -111,11 +111,6 @@ def create_query_plan(query, keywords, action):
         if dic['group by'] is not None:
             #.removesuffix removes ' order' if exists
             dic['from'] = dic['from'].removesuffix(' group')
-            dic['desc'] = False
-            dic['group by'] = dic['group by'].removesuffix(' desc')
-            
-        else:
-            dic['desc'] = None
 
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
