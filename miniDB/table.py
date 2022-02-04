@@ -225,10 +225,17 @@ class Table:
         '''
 
         # if * return all columns, else find the column indexes for the columns specified
-        if return_columns == '*':
+        if return_columns == '*':   #in case we have to select all columns, we dont have to check for group by keyword(not applicable in this case)
             return_cols = [i for i in range(len(self.column_names))]
-        elif group_by_columns is None:
-            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+        elif group_by_columns is None:  #in this case we only have some columns/aggregate functions to select, but not a group by keyword
+            #we have to check if we have only aggregate functions or columns. Both cannot be selected without group by
+            aggr_keys=['min','max','avg','count','sum'] #list of aggregate keywords
+            for k in aggr_keys:
+                if any(c.strip().startswith(k) for c in return_columns.split(',')) and any(c.strip() in self.column_names for c in return_columns.split(',')):
+                    raise Exception("Group by clause is missing") #if column and aggregate can be found both, raise exception
+            #at this point we have only aggregates or columns.
+            return_cols = [(self.column_names.index(col.strip()) if col.strip() in self.column_names else self.aggr_idx(col.strip())) for col in return_columns.split(',')]
+
         else:
             return self.group_by_having(return_columns, condition, group_by_columns, having_condition, order_by, desc, top_k)
         # if condition is None, return all rows
@@ -396,6 +403,10 @@ class Table:
         # print using tabulate
         print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
 
+
+    #returns the index column of the given aggregate
+    def aggr_idx(self, aggregate):
+        return self.column_names.index(aggregate.split('(')[1][:-1].strip())
 
     def _parse_condition(self, condition, join=False):
         '''
