@@ -54,6 +54,7 @@ class Database:
 
         # create a table that contains info about triggers of the current database
         self.create_table('triggers','trigger_name,trigger_table,action','str,str,str','trigger_name')
+        
         self.save_database()
 
     def save_database(self):
@@ -104,9 +105,11 @@ class Database:
         '''
         
         self.load_database()
-
-        # check if action is INSERT or DELETE or UPDATE.
-        # If it's not, then return
+        
+        '''
+        check if action is INSERT, DELETE or UPDATE.
+        If it's not, then return
+        '''
         if action!='insert' and action!='delete' and action!='update':
             print('Action of trigger should be only INSERT or DELETE or UPDATE!')
             return
@@ -135,7 +138,11 @@ class Database:
     def check_for_triggers(self,trigger_table,action):
 
         '''
-        This function scans the 'triggers' table from rows with specific values.
+        This function scans the 'triggers' table from rows with specific values. This is because,
+        in this project, every trigger executes the same function. In a database, there can exist
+        many triggers on a specific table (ex. instructor) that are fired after a specific event
+        (ex. update). So, in this method, it is counted how many times a trigger with the same action
+        on the same table exists in the 'triggers' table
 
         Args:
             trigger_table: string. The name of the table that trigger corresponds to.
@@ -356,9 +363,13 @@ class Database:
             try:
                 self.tables[table_name]._insert(row, insert_stack)
             except Exception as e:
-                trigger_flag = False
+                
+                # insert query has not been successfuly completed. So if trigger after insert exists, it will not be fired!
+                trigger_flag = False 
+                
                 logging.info(e)
                 logging.info('ABORTED')
+            
             self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
 
             if lock_ownership:
@@ -461,15 +472,15 @@ class Database:
             if table_name[:4]!='meta':
                 self._add_to_insert_stack(table_name, deleted)
             self.save_database()
-
-            if bool(deleted): # check if 'deleted' list is not empty
+            
+            # if 'deleted' list is not empty, then scan for triggers
+            if bool(deleted): 
                 # execute triggers
                 n = self.check_for_triggers(table_name,'delete')
                 
                 # execute trigger's function
                 for i in range(n):
                     self.trigger_function('delete')
-
 
             return
         
