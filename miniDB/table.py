@@ -401,24 +401,33 @@ class Table:
         #TO DO
 
 
-    def count(self, groups, column):
+    def count(groups, column):
         '''
+        With group by
         '''
+        self.column_names.index(column)
+
         self.order_by(self.column_names)
 
-        ret = [0] * len(groups)
+        ret = [[None] * len(groups), [0] * len(groups)]
         interval = 0
 
         prev = self.data[0]
 
         for elem in list(self.data[1:]):
             if(elem[:-1] == prev[:-1] and elem[-1] != prev[-1]):
-                ret[interval]++
+                ret[0] = elem[:-1]
+                ret[1][interval]++
             else:
                 interval++
             prev = elem
-        
+        return ret
 
+    def count(column):
+        '''
+        Without group by
+        '''
+        self.column_names.index(column)
 
     def sum():
         #TO DO
