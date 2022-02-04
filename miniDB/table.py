@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Tuple
 from tabulate import tabulate
 import pickle
 import os
@@ -232,9 +233,13 @@ class Table:
             aggr_keys=['min','max','avg','count','sum'] #list of aggregate keywords
             for k in aggr_keys:
                 if any(c.strip().startswith(k) for c in return_columns.split(',')) and any(c.strip() in self.column_names for c in return_columns.split(',')):
-                    raise Exception("Group by clause is missing") #if column and aggregate can be found both, raise exception
+                    raise Exception("Group by clause is missing") #if both column and aggregate can be found, raise exception
             #at this point we have only aggregates or columns.
             return_cols = [(self.column_names.index(col.strip()) if col.strip() in self.column_names else self.aggr_idx(col.strip())) for col in return_columns.split(',')]
+
+            #then we have to check if we have only aggregate functions in order to select the aggregate values
+            if isinstance(return_cols[0], tuple): #if the first element is aggregate all the elements are aggregate 
+                pass
 
         else:
             return self.group_by_having(return_columns, condition, group_by_columns, having_condition, order_by, desc, top_k)
@@ -404,9 +409,9 @@ class Table:
         print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
 
 
-    #returns the index column of the given aggregate
+    #returns a tuple of the index column and the aggregate function of the given aggregate
     def aggr_idx(self, aggregate):
-        return self.column_names.index(aggregate.split('(')[1][:-1].strip())
+        return (self.column_names.index(aggregate.split('(')[1][:-1].strip()), aggregate.split('(')[0].strip())
 
     def _parse_condition(self, condition, join=False):
         '''
