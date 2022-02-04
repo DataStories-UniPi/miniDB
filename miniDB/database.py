@@ -159,7 +159,7 @@ class Database:
                 colnames = line.strip('\n')
                 if column_types is None:
                     column_types = ",".join(['str' for _ in colnames.split(',')])
-                self.create_table(name=table_name, column_names=colnames, column_types=column_types, primary_key=primary_key)
+                self.create_table(name=table_name, column_names=colnames, column_types=column_types,column_extras='', primary_key=primary_key)
                 lock_ownership = self.lock_table(table_name, mode='x')
                 first_line = False
                 continue

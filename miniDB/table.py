@@ -64,13 +64,13 @@ class Table:
                 self.pk_idx = None
             #if not null colums are set , keep their indexes as attribute
             if column_extras is not None:
-                self.not_null_columns_idx = [self.column_extras.index(col) for col in column_extras if col == "not null"]
+                self.not_null_columns_idx = [index for index in range(len(column_extras)) if column_extras[index] == "not null"]
             else:
                 self.not_null_columns_idx = []
 
             #if unique colums are set , keep their indexes as attribute
             if column_extras is not None:
-                self.unique_columns_idx = [self.column_extras.index(col) for col in column_extras if col == "unique"]
+                self.unique_columns_idx = [index for index in range(len(column_extras)) if column_extras[index] == "unique"]
             else:
                 self.unique_columns_idx = []
 
@@ -127,9 +127,9 @@ class Table:
             row[i] = self.column_types[i](row[i])
             # except:
             #     raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
-
             # if value is to be appended to the primary_key column, check that it doesnt already exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
+                print(f'## ERROR -> Value {row[i]} already exists in primary key column.')
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
             # if value is to be appended to a Not Null Column, check that the value is not null
             if i in self.not_null_columns_idx and (row[i] == "null" or row[i] == "") :
