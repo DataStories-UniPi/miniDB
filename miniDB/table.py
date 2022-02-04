@@ -150,13 +150,15 @@ class Table:
         set_column_idx = self.column_names.index(set_column)
 
         # set_columns_indx = [self.column_names.index(set_column_name) for set_column_name in set_column_names]
-        l = False
+        
+        changed = False
         # for each value in column, if condition, replace it with set_value
         for row_ind, column_value in enumerate(column):
             if get_op(operator, column_value, value):
                 self.data[row_ind][set_column_idx] = set_value
-                l = True
-        return l
+                changed = True
+        
+        return changed
         
 
         # self._update()

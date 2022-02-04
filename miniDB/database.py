@@ -110,10 +110,14 @@ class Database:
         if action!='insert' and action!='delete' and action!='update':
             print('Action of trigger should be only INSERT or DELETE or UPDATE!')
             return
-
-        # add a new row to 'triggers' table
-        self.insert_into('triggers',trigger_name+','+table_name+','+action,True)
         
+        # check if trigger to be created is on an existing table of the DB
+        if table_name in self.tables.keys():
+            # add a new row to 'triggers' table
+            self.insert_into('triggers',trigger_name+','+table_name+','+action,True)
+        else:
+            print('You can not create a trigger on a table that does not exist in the Database!')
+
     def drop_trigger(self,trigger_name=None):
         
         '''
@@ -128,7 +132,33 @@ class Database:
         # remove a row from 'triggers' table
         self.delete_from('triggers','trigger_name='+trigger_name,True)
 
+    def check_for_triggers(self,trigger_table,action):
 
+        '''
+        This function scans the 'triggers' table from rows with specific values.
+
+        Args:
+            trigger_table: string. The name of the table that trigger corresponds to.
+            action: string. The action of the trigger.
+        '''
+        
+        '''
+        take the data of the second and third column of 
+        'triggers' table and store them in the lists below
+        '''
+        list_tables = self.tables['triggers'].column_by_name('trigger_table')
+        list_actions = self.tables['triggers'].column_by_name('action')
+        
+        counter = 0 
+
+        # check if trigger exists with specific values (trigger_table and action)
+        for x in range(len(list_tables)):
+            if list_tables[x]==trigger_table and list_actions[x]==action: 
+                counter+=1 # if exist, then increase counter by 1
+        
+        return counter # return the number of times that a specific trigger exists
+
+    
     def trigger_function(self,word):
 
         '''
@@ -161,10 +191,6 @@ class Database:
             primary_key: string. The primary key (if it exists).
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
-        # user can not create a table with the name 'triggers'
-        if name=='triggers':
-            print('You can not create a table with this name!')
-            return
         
         # print('here -> ', column_names.split(','))
         self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)})
@@ -342,7 +368,11 @@ class Database:
 
             if trigger_flag:
                 # execute trigger if exists
-                print('Trigger has been fired!')
+                n = self.check_for_triggers(table_name,'insert')
+
+                # execute trigger's function
+                for i in range(n):
+                    self.trigger_function('insert')
             
             return
 
@@ -375,11 +405,18 @@ class Database:
             self.load_database()
             
             lock_ownership = self.lock_table(table_name, mode='x')
-            l = self.tables[table_name]._update_rows(set_value, set_column, condition)
+            changed = self.tables[table_name]._update_rows(set_value, set_column, condition)
             
-            if l:
+            # if the query changed the table then check for triggers
+            if changed:
+                
                 # execute trigger
-                print(l)
+                # stores the number of times that a specific trigger is being discovered
+                n = self.check_for_triggers(table_name,'update')
+
+                # execute trigger's function
+                for i in range(n):
+                    self.trigger_function('update')
                 
             if lock_ownership:
                 self.unlock_table(table_name)
@@ -427,8 +464,12 @@ class Database:
 
             if bool(deleted): # check if 'deleted' list is not empty
                 # execute triggers
-                print('triggers will be executed')
+                n = self.check_for_triggers(table_name,'delete')
                 
+                # execute trigger's function
+                for i in range(n):
+                    self.trigger_function('delete')
+
 
             return
         
@@ -461,11 +502,12 @@ class Database:
             save_as: string. The name that will be used to save the resulting table into the database (no save if None).
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
         '''
-
+        
         '''
         if the word distinct is detected in the query, then remove it and set the distinct flag to True.
         That means that only non duplicate values can be shown in the column next to the word DISTINCT in the query.
         '''
+        
         if 'distinct' in columns:
             columns = columns.replace('distinct ','')
             distinct = True
