@@ -230,7 +230,7 @@ class Database:
             cast_type: type. Cast type (do not encapsulate in quotes).
         '''
         self.load_database()
-        
+
         lock_ownership = self.lock_table(table_name, mode='x')
         self.tables[table_name]._cast_column(column_name, eval(cast_type))
         if lock_ownership:
@@ -277,12 +277,12 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
         '''
         set_column, set_value = set_args.replace(' ','').split('=')
         self.load_database()
-        
+
         lock_ownership = self.lock_table(table_name, mode='x')
         self.tables[table_name]._update_rows(set_value, set_column, condition)
         if lock_ownership:
@@ -299,11 +299,11 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
         '''
         self.load_database()
-        
+
         lock_ownership = self.lock_table(table_name, mode='x')
         deleted = self.tables[table_name]._delete_where(condition)
         if lock_ownership:
@@ -326,7 +326,7 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (True by default).
@@ -344,7 +344,7 @@ class Database:
         else:
             condition_column = ''
 
-        
+
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
@@ -373,7 +373,7 @@ class Database:
             table_name: string. Name of table (must be part of database).
         '''
         self.load_database()
-        
+
         self.tables[table_name].show(no_of_rows, self.is_locked(table_name))
 
 
@@ -388,7 +388,7 @@ class Database:
         '''
 
         self.load_database()
-        
+
         lock_ownership = self.lock_table(table_name, mode='x')
         self.tables[table_name]._sort(column_name, asc=asc)
         if lock_ownership:
@@ -406,7 +406,7 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
         save_as: string. The output filename that will be used to save the resulting table in the database (won't save if None).
         return_object: boolean. If True, the result will be a table object (useful for internal usage - the result will be printed by default).
@@ -415,8 +415,8 @@ class Database:
         if self.is_locked(left_table) or self.is_locked(right_table):
             return
 
-        left_table = left_table if isinstance(left_table, Table) else self.tables[left_table] 
-        right_table = right_table if isinstance(right_table, Table) else self.tables[right_table] 
+        left_table = left_table if isinstance(left_table, Table) else self.tables[left_table]
+        right_table = right_table if isinstance(right_table, Table) else self.tables[right_table]
 
 
         if mode=='inner':
@@ -537,8 +537,17 @@ class Database:
                     self._construct_index(table_name, view_name)
                     self.save_database()
         else:
-            raise Exception('Cannot create index. Another index with the same name already exists.')
+            raise Exception('Cannot create view. Another index with the same name already exists.')
 
+    def _construct_view(self, table_name, view_name):
+        '''
+        Construct a btree on a table and save.
+
+        Args:
+            table_name: string. Table name (must be part of database).
+            view_name: string. Name of the created view.
+        '''
+        # Still need to implement it.
 
     def _has_view(self, view_name):
         return view_name in self.tables['meta_views'].column_by_name('table_name')
@@ -580,7 +589,7 @@ class Database:
         lock_ownership = self.lock_table(table_name, mode='x')
 
 
-        
+
 
 
 
@@ -589,7 +598,7 @@ class Database:
         self._update()
         self.save_database()
     '''
-    
+
 
     #### META ####
 
