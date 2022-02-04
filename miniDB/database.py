@@ -447,27 +447,27 @@ class Database:
     def smj(self, left_table, right_table):
         
         # get columns and operator
-        column_name_left, operator, column_name_right = self._parse_condition(condition, join=True)
+        column_name_left, operator, column_name_right = left_table._parse_condition(condition, join=True)
         # try to find both columns, if you fail raise error
         try:
-            column_index_left = self.column_names.index(column_name_left)
+            column_index_left = left_table.column_names.index(column_name_left)
         except:
-            raise Exception(f'Column "{column_name_left}" dont exist in left table. Valid columns: {self.column_names}.')
+            raise Exception(f'Column "{column_name_left}" dont exist in left table. Valid columns: {left_table.column_names}.')
 
         try:
-            column_index_right = table_right.column_names.index(column_name_right)
+            column_index_right = right_table.column_names.index(column_name_right)
         except:
-            raise Exception(f'Column "{column_name_right}" dont exist in right table. Valid columns: {table_right.column_names}.')
+            raise Exception(f'Column "{column_name_right}" dont exist in right table. Valid columns: {right_table.column_names}.')
 
         # get the column names of both tables with the table name in front
         # ex. for left -> name becomes left_table_name_name etc
-        left_names = [f'{self._name}.{colname}' if self._name!='' else colname for colname in self.column_names]
-        right_names = [f'{table_right._name}.{colname}' if table_right._name!='' else colname for colname in table_right.column_names]
+        left_names = [f'{left_table._name}.{colname}' if left_table._name!='' else colname for colname in left_table.column_names]
+        right_names = [f'{right_table._name}.{colname}' if right_table._name!='' else colname for colname in right_table.column_names]
 
         # define the new tables name, its column names and types
         join_table_name = ''
         join_table_colnames = left_names+right_names
-        join_table_coltypes = self.column_types+table_right.column_types
+        join_table_coltypes = self.column_types+right_table.column_types
         join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
 
         # check if both tables are sorted
@@ -477,27 +477,25 @@ class Database:
         if not left_table.is_sorted():
             right_table.e_merge_sort()
 
-        res:Table
-
         left_table_length = len(left_table.data)
         right_table_length = len(right_table.data)
 
         i = 0
         j = 0
-        k = 0
+        first_occurrence = 0
 
         while (i < left_table_length and j < right_table_length):
-            if (left_table.data[i][i] < right_table.data[j][j]):
+            if (left_table.data[i][column_index_left] < right_table.data[j][column_index_right]):
                 i += 1
                 
 
-            elif (left_table.data[i][i] > right_table.data[j][j]):
+            elif (left_table.data[i][column_index_left] > right_table.data[j][column_index_right]):
                 j += 1
 
             else:
                 rows = []
-                rows.append(left_table.data[i][i])
-                rows.append(right_table.data[j][j])
+                rows.append(left_table.data[i][column_index_left])
+                rows.append(right_table.data[j][column_index_right])
                 
                 res._insert(rows)
 
@@ -529,9 +527,7 @@ class Database:
 
             #     pass
             # else:
-                data = left_table.data
-                column_name_left, operator, column_name_right = left_table._parse_condition(condition, join=True)
-                print(left_table.column_names.index(column_name_left))
+            
                 res = left_table._inner_join(right_table, condition)
 
         else:
