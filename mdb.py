@@ -77,10 +77,7 @@ def create_query_plan(query, keywords, action):
         else:
             dic['desc'] = None
 
-    # Needs to be implemented.
-    if action == 'create trigger':
-            dic = evaluate_trigger(dic)
-            return dic
+
 
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
@@ -115,20 +112,20 @@ def create_query_plan(query, keywords, action):
 # Needs to be implemented
 
 def evaluate_trigger(dic):
-'''
-Evaluate the part of the query that is supplied as the ('before' or 'after' or 'instead') arguement.
-'''
-#x_types = ['insert on', 'delete on', 'update on']
-if 'before' in dic.values():
-before_split = dic['before']
-dic['before'] = interpret(before_split)
-elif 'after' in dic.values():
-after_split = dic['after']
-dic['after'] = interpret(after_split)
-elif 'instead' in dic.values():
-instead_split = dic['instead']
-dic['instead'] = interpret(instead_split)
-return dic
+    '''
+    Evaluate the part of the query that is supplied as the ('before' or 'after' or 'instead') arguement.
+    '''
+    #x_types = ['insert on', 'delete on', 'update on']
+    if 'before' in dic.values():
+        before_split = dic['before']
+        dic['before'] = interpret(before_split)
+    elif 'after' in dic.values():
+        after_split = dic['after']
+        dic['after'] = interpret(after_split)
+    elif 'instead' in dic.values():
+        instead_split = dic['instead']
+        dic['instead'] = interpret(instead_split)
+    return dic
 
 
 
@@ -183,7 +180,9 @@ def interpret(query):
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
                      'create index': ['create index', 'on', 'using'],
-                     'drop index': ['drop index'],
+                     'drop index' : ['drop index'],
+                     'create view' : ['create view', 'on'],
+                     'drop view' : ['drop view'],
                      'create trigger' : ['create trigger', 'before', 'after', 'instead', 'insert on', 'delete on', 'update on', 'execute procedure']
                      }
 

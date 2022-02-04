@@ -526,7 +526,7 @@ class Database:
         lock_ownership = self.lock_table(table_name, mode='x')
 
 
-        if keyword == "AFTER"
+        
 
 
 
