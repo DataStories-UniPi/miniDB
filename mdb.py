@@ -5,6 +5,7 @@ import sys
 import readline
 import traceback
 import shutil
+from collections import Counter
 sys.path.append('miniDB')
 
 from database import Database
@@ -46,8 +47,10 @@ def create_query_plan(query, keywords, action):
     '''
 
     dic = {val: None for val in keywords if val!=';'}
+    
 
     ql = [val for val in query.split(' ') if val !='']
+
 
     kw_in_query = []
     kw_positions = []
@@ -56,18 +59,27 @@ def create_query_plan(query, keywords, action):
             kw_in_query.append(ql[i])
             kw_positions.append(i)
         elif i!=len(ql)-1 and f'{ql[i]} {ql[i+1]}' in keywords and not in_paren(ql, i):
+
             kw_in_query.append(f'{ql[i]} {ql[i+1]}')
             kw_positions.append(i+1)
+   
 
 
     for i in range(len(kw_in_query)-1):
-        dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
+
+
+        dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1] ])
+
+        
+
+    
 
     if action=='select':
         dic = evaluate_from_clause(dic)
         
+
+        
         if dic['order by'] is not None:
-            dic['from'] = dic['from'].removesuffix(' order')
             if 'desc' in dic['order by']:
                 dic['desc'] = True
             else:
@@ -154,7 +166,7 @@ def interpret(query):
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
-                     'select': ['select', 'from', 'where', 'order by', 'top'],
+                     'select': ['select', 'from', 'where', 'group_by','having','order by', 'top'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
@@ -166,12 +178,17 @@ def interpret(query):
     if query[-1]!=';':
         query+=';'
     
-    query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip()
+    query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").replace("group by","group_by").strip()
+
+    
+    
+    
 
     for kw in kw_per_action.keys():
         if query.startswith(kw):
             action = kw
-
+    
+    
     return create_query_plan(query, kw_per_action[action]+[';'], action)
 
 def execute_dic(dic):
@@ -179,10 +196,14 @@ def execute_dic(dic):
     Execute the given dictionary
     '''
     for key in dic.keys():
+
         if isinstance(dic[key],dict):
+
             dic[key] = execute_dic(dic[key])
     
     action = list(dic.keys())[0].replace(' ','_')
+
+
     return getattr(db, action)(*dic.values())
 
 def interpret_meta(command):
@@ -244,6 +265,9 @@ if __name__ == "__main__":
 
         print(art)
         session = PromptSession(history=FileHistory('.inp_history'))
+        
+       
+        
         while 1:
             try:
                 line = session.prompt(f'({db._name})> ', auto_suggest=AutoSuggestFromHistory()).lower()
@@ -253,7 +277,12 @@ if __name__ == "__main__":
                 print('\nbye!')
                 break
             try:
-                if line=='exit':
+            	
+            	 
+            	 
+                if line.startswith('exit'):
+                    
+                    
                     break
                 if line.startswith('.'):
                     interpret_meta(line)
@@ -267,3 +296,4 @@ if __name__ == "__main__":
                         result.show()
             except Exception:
                 print(traceback.format_exc())
+

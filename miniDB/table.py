@@ -2,7 +2,31 @@ from __future__ import annotations
 from tabulate import tabulate
 import pickle
 import os
+
 from misc import get_op, split_condition
+
+
+"""
+
+ISSUES: 
+
+    Using cprofile, we reached the conclusion that _uddate should be removed. Its very slow. This and constant file i/o is a problem.
+
+    These problems are partially solved by a server based protocol.
+
+    Handling columns should be discussed. Generating column when a function is called is an option. (use property decorator)
+
+    Removing columns all together is another option. 
+
+    Server should be implemented ASAP. No need to be great, needs to work tho.
+
+    All queries should be run from file or REPL (psql like). Only way to interact with mdb should be the server. strip()
+
+TODO:
+
+    Simple REPL
+
+"""
 
 
 class Table:
@@ -135,10 +159,10 @@ class Table:
             set_value: string. The provided set value.
             set_column: string. The column to be altered.
             condition: string. A condition using the following format:
-                'column[<,<=,=,>=,>]value' or
-                'value[<,<=,=,>=,>]column'.
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
                 
-                Operatores supported: (<,<=,=,>=,>)
+                Operatores supported: (<,<=,==,>=,>)
         '''
         # parse the condition
         column_name, operator, value = self._parse_condition(condition)
@@ -196,8 +220,230 @@ class Table:
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
 
+    def _group_by_method(self,group_by,all_rows,all_in,having):
 
-    def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None):
+
+
+        #Analyetai to orisma group_by kai apothikeyontai oi sthles toy sthn parakatw lista
+        group_columns=[self.column_names.index(j.strip()) for j in group_by.split(',')]
+
+        results=[]
+        dic={}
+        #Trexoume tis for gia kathe row toy pinaka kathws kai kathe sthlh apo to group by wste na apothikeytoun san key ta katallhla pedia me ta antistoixa rows
+        for i in all_rows:
+            record=[]
+            for j in group_columns:
+                record.append(self.data[i][j])
+            if tuple(record) in dic :
+                dic[tuple(record)].append(i)
+            else:
+                dic[tuple(record)]=[i]
+
+        if having:
+
+            dic=self.having(having,dic)
+
+        for value in dic.values():
+            temporary=[]
+            for a in all_in['sum']:
+                temporary.insert(a[0],sum([self.data[i][a[1]] for i in value]))
+            for b in all_in['avg']:
+                temporary.insert(b[0],sum([self.data[i][b[1]] for i in value])/len(value))
+            for c in all_in['count']:
+                temporary.insert(c[0],len(value))
+            for d in all_in['min']:
+                temporary.insert(d[0],min([self.data[i][d[1]] for i in value]))
+            for f in all_in['max']:
+                temporary.insert(f[0], max([self.data[i][f[1]] for i in value]))
+            for e in all_in['None']:
+                temporary.insert(e[0],self.data[value[0]][e[1]])
+            for z in all_in['*']:
+                ind=z[0]
+                for column in z[1]:
+                    temporary.insert(ind,self.data[value[0]][column])
+                    ind+=1
+
+
+            results.append(temporary)
+
+        return results
+
+
+
+
+    def having(self,having,dic):
+
+        #To orisma having analyetai sthn sthlh poy epithymoume na ginei to check,ton operator kathws kai thn timh pou ginetai h sygkrish
+        element=having.strip(" ")
+        column = self.column_names.index(element[element.find("(") + 2:element.find(")") - 1])
+        op=element[element.find(")")+2]
+        value=element[element.find(")")+3:]
+
+        #Ean h timh einia typou Integer tote metatrepetai se int
+        if value.isnumeric():
+            value=int(value)
+
+        keys_toremove=[]#xrhsimeyei gia na diagrapsoyme ta keys poy den ikanopoioun thn synthiki tou having
+        for key,val in dic.items():
+
+            #Se kathe epanalipsi epanw sto key kai to value tou dictionary, ean den ikanopoieitai h synthiki tou operator(se sxesh me tis times toy key kai to value poy ypologisame nwritera)
+
+            #tote to sygkekrimeno key prostithetai sthn lista keys_toremove wste na diagrafei sthn synexia apo to dictionary
+            if element.startswith("sum ("):
+                temp=sum([self.data[i][column] for i in val])
+
+                if not get_op(op, temp, value):
+                    keys_toremove.append(key)
+            elif element.startswith("count ("):
+                 temp=len(value)
+                 if not get_op(op, temp, value):
+                     keys_toremove.append(key)
+            elif element.startswith("avg ("):
+                temp = sum([self.data[i][column] for i in val])
+                temp=temp/len(val)
+                if not get_op(op, temp, value):
+                    keys_toremove.append(key)
+            elif element.startswith("max ("):
+                tempmax=max([self.data[i][column] for i in val])
+                if not get_op(op, tempmax, value):
+                    keys_toremove.append(key)
+            elif element.startswith("min ("):
+                tempmin=min([self.data[i][column] for i in val])
+                if not get_op(op, tempmin, value):
+                    keys_toremove.append(key)
+
+
+        for key in keys_toremove:
+            del dic[key]
+
+
+        return dic
+
+
+
+
+
+
+
+
+    def aggregate(self,all_in,all_rows,all_columns):
+        data=[]
+        minmax=[]
+
+        if all_in['min'] :
+            final=[]
+            for sub in all_in['min']:
+                temp=[self.data[i][sub[1]] for i in all_rows ]
+
+                final=temp[:]
+                data.insert(sub[0],min(temp))
+
+            if len(final)!=0:
+
+                index_the_row=final.index(min(final))
+                minmax.append([self.data[index_the_row][j] for j in all_columns])
+
+
+        if all_in['max'] :
+            final=[]
+            for sub in all_in['max']:
+                temp = [self.data[i][sub[1]] for i in all_rows]
+                final=temp[:]
+                data.insert(sub[0], max(temp))
+
+            if len(final)!=0:
+
+                 index_the_row = final.index(max(final))
+                 minmax.append([self.data[index_the_row][j] for j in all_columns])
+
+        if all_in['sum'] :
+
+                for sub in all_in['sum']:
+
+
+
+                    temp = [self.data[i][sub[1]] for i in all_rows]
+
+                    data.insert(sub[0], sum(temp))
+
+
+
+
+        if all_in['avg'] :
+            for sub in all_in['avg']:
+                temp = [self.data[i][sub[1]] for i in all_rows]
+                data.insert(sub[0], sum(temp)/len(all_rows))
+
+        if all_in['count'] :
+            for sub in all_in['count']:
+                data.insert(sub[0],len(all_rows))
+
+        if all_in['*'] :
+            for sub in all_in['*']:
+
+
+                if len(minmax)==0:
+
+                    temp=[self.data[0][j] for j in sub[1]]
+                    data.insert(sub[0],temp)
+                else:
+                    data.insert(sub[0],minmax[-1])
+
+        if all_in['None'] :
+            for sub in all_in['None']:
+
+                if len(minmax) == 0:
+                    data.insert(sub[0],self.data[0][sub[1]])
+                else:
+                    data.insert(sub[0],minmax[-1][sub[1]])
+
+
+        return [self.unpacking(data)]
+
+
+
+    #Xrhsimeyei  gia na eksagontai ta stoixeia apo kapoies listes (eswterika kapoias allhs listas)
+
+    def unpacking(self,array):
+
+        endlist=[]
+        for element in array:
+
+            if type(element) is list:
+                for el in element:
+                    endlist.append(el)
+            else:
+                endlist.append(element)
+
+        return endlist
+
+
+    def multiple_where_clause(self,condition):
+
+
+        #iterate through condition(list) and if we meet an AND condition we intersect lists before and after (AND condition) otherwise we combine them
+        #return the rows with values where condition is met for value removing the duplicates
+
+        column_name, operator, value = self._parse_condition(condition[0])
+        column = self.column_by_name(column_name)
+        row = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+        for i in range(1,len(condition)-1,2):
+            column_name, operator, value = self._parse_condition(condition[i+1])
+            column = self.column_by_name(column_name)
+            temprow = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            if condition[i].lower()=='and':
+                row=list(set(row) & set(temprow))
+            elif condition[i].lower()=='or':
+                row=row+temprow
+
+        row=sorted(list(set(row)))
+        return row
+
+
+
+
+
+    def _select_where(self, return_columns, condition=None, group_by=None,having=None,order_by=None, desc=True, top_k=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -213,30 +459,122 @@ class Table:
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
 
-        # if * return all columns, else find the column indexes for the columns specified
+        #Using dictionary for aggregate function
+
+
+
+        #We need all columns and rows for aggregate funcion
+
+
+
+        all_columns=[i for i in range(len(self.column_names))]
+
+        all_in_on = {'sum': [], 'count': [], 'avg': [], 'max': [], 'min': [], 'None': [], '*': []}
+        # Ean to return_collumns einai iso  me * tote epistrefontai oles oi sthles
+        #Diaforetika xrhsimopoioume to apo panw  dictionary all_in_on wste na mporoun na ikanopoihthoun kai aithmata ths morfhs p.x
+        #select *,*,capacity.. from classroom
+
+
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
+
+            column_names=[self.column_names[i] for i in return_cols]
+            all_in_on['*'].append((0, return_cols))
+
         else:
-            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+            return_cols=[]
+            column_names=[]#Xrhsimeyei oytws wste na ektypwnontai onomata opws to sum(..) poy den yparxoun sthn lista
+            index=0 #Exei ton rolo na eisagei tis sthles sto all_in_on opws emfanizontai sto query
+
+            for co in return_columns.split(','):
+                if co.lower().startswith('count ('):
+
+                    all_in_on['count'].append((index,self.column_names.index(co[7:-2].strip())))
+                    return_cols.append(self.column_names.index(co[7:-2].strip()))
+                    column_names.append(co.replace(" ",""))
+
+                elif co.lower().startswith('avg ('):
+                    all_in_on['avg'].append((index,self.column_names.index(co[5:-2].strip())))
+                    return_cols.append(self.column_names.index(co[5:-2].strip()))
+                    column_names.append(co.replace(" ", ""))
+                elif co.lower().startswith('min ('):
+                    all_in_on['min'].append((index, self.column_names.index(co[5:-2].strip())))
+                    return_cols.append(self.column_names.index(co[5:-2].strip()))
+                    column_names.append(co.replace(" ",""))
+                elif co.lower().startswith('max ('):
+                    all_in_on['max'].append((index,self.column_names.index(co[5:-2].strip())))
+                    return_cols.append(self.column_names.index(co[5:-2].strip()))
+                    column_names.append(co.replace(" ",""))
+                elif co.lower().startswith('sum ('):
+                    all_in_on['sum'].append((index, self.column_names.index(co[5:-2].strip())))
+                    return_cols.append(self.column_names.index(co[5:-2].strip()))
+                    column_names.append(co.replace(" ",""))
+                elif co.strip()=="*":
+
+                    temp_list=[i for i in range(len(self.column_names))]
+                    return_cols.extend(temp_list)
+                    column_names.append([self.column_names[i] for i in range(len(self.column_names))])
+
+                    all_in_on['*'].append((index, temp_list))
+                else:
+                    all_in_on['None'].append((index,self.column_names.index(co.strip())))
+                    return_cols.append(self.column_names.index(co.strip()))
+                    column_names.append(co.strip())
+
+                index+=1
+
+
+
+            # return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+
+
+
 
         # if condition is None, return all rows
-        # if not, return the rows with values where condition is met for value
-        if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+        # if not ,condition is splitted and stored in a list named cond and after call function multiple_where_clause
+        if condition:
+
+            cond=condition.split()
+            rows=self.multiple_where_clause(cond)
+
         else:
             rows = [i for i in range(len(self.data))]
+
+
+
+
 
         # top k rows
         # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
 
+
+
+
+        #Ean to orisma group by den einia keno kaleitai h synarthsh _group_by_method
+        if group_by :
+
+
+            dict['data']=self._group_by_method(group_by,rows,all_in_on,having)
+
+        #Diaforetika ean den exoume group by alla exoume kapoia aggregate function opws to count px tote kaleitai h aggregate
+        elif all_in_on['count'] or all_in_on['avg'] or all_in_on['sum'] or all_in_on['min'] or all_in_on['max']:
+            dict['data'] = self.aggregate(all_in_on, rows, all_columns)
+
+
+
+
         # we need to set the new column names/types and no of columns, since we might
-        # only return some columns
-        dict['column_names'] = [self.column_names[i] for i in return_cols]
+
+
+        column_names=self.unpacking(column_names)
+        dict['column_names'] = column_names
+        #[self.column_names[i] for i in return_cols]
+
+
         dict['column_types']   = [self.column_types[i] for i in return_cols]
+
 
         s_table = Table(load=dict) 
         if order_by:
@@ -381,6 +719,7 @@ class Table:
         # detect the rows that are no tfull of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]
+
         # print using tabulate
         print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
 
@@ -422,3 +761,4 @@ class Table:
         f.close()
 
         self.__dict__.update(tmp_dict)
+
