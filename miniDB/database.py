@@ -493,11 +493,20 @@ class Database:
                 j += 1
 
             else:
-                rows = []
-                rows.append(left_table.data[i][column_index_left])
-                rows.append(right_table.data[j][column_index_right])
+
+                join_table._insert(left_table.data[i] + right_table.data[j])
+
+                if(right_table[j - 1][column_index_right] != right_table[j][column_index_right]):
+                    first_occurrence = j
                 
-                res._insert(rows)
+                if(j + 1 > right_table_length):
+                    i += 1
+                    j = first_occurrence
+                else:
+                    j += 1
+        
+        return join_table
+
 
     def join(self, mode, left_table, right_table, condition, save_as=None, return_object=True):
         '''
@@ -527,7 +536,7 @@ class Database:
 
             #     pass
             # else:
-            
+
                 res = left_table._inner_join(right_table, condition)
 
         else:
