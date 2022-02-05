@@ -238,7 +238,7 @@ class Table:
             else:
 
                 for col in return_columns.split(','):
-                    
+
                     if(col.strip() in grouped.column_names):
                         return_cols.append(grouped.column_names.index(col.strip()))
                     elif(col.strip().startswith('max')):
@@ -260,7 +260,7 @@ class Table:
             else:
 
                 for col in return_columns.split(','):
-                    
+
                     if(col.strip() in grouped.column_names):
                         return_cols.append(grouped.column_names.index(col.strip()))
                     elif(col.strip().startswith('max')):
@@ -312,7 +312,7 @@ class Table:
 
                 grouped = self.group_by_having(group_by)
 
-                
+
 
 
                 s_table = max(original=self,grouped=grouped)
@@ -851,7 +851,7 @@ class Table:
 
 
 def min(original,grouped):
-    
+
     c_names = grouped.column_names
     c_names.append("min")
     c_types = grouped.column_types
@@ -900,7 +900,7 @@ def max(original,grouped,target_column):
 
 
     for i in range(len(original.data)):
-        
+
         if(prev != getTuple(original,grouped,i)):
 
             max.append(original.data[i][target])
@@ -934,43 +934,67 @@ def max(original,grouped,target_column):
 
 
 
-def sum(groups, column, distinct=False):
+def sum(original, grouped, target_column, distinct=False):
     '''
     With group by
     '''
-    index = self.column_names.index(column)
-    self.order_by(self.column_names)
 
-    ret = [[None] * len(groups), [None] * len(groups)]
+    target = original.column_names.index(target_column)
+    groups = [original.column_names.index(elem) for elem in grouped.column_names]
+
+    '''Sort the original table'''
+    orders = grouped.column_names.copy()
+    if(target_column not in grouped.column_names):
+        orders.append(target_column)
+    original.order_by(orders)
+
+
+    sums = [None] * len(grouped.data)
     interval = 0
 
     if(distinct):
 
-        prev = self.data[0]
+        prev = original.data[0]
 
-        for elem in list(self.data[1:]):
-            if(ret[interval][1] is None):
-                ret[interval][1] = prev[-1]
-            if(ret[interval][0] is None):
-                ret[interval][0] = prev[:-1]
-            if(elem[:-1] == prev[:-1] and elem[-1] != prev[-1]):
-                ret[interval][1] += elem[-1]
+        for elem in list(original.data[1:]):
+            if(sums[interval] is None):
+                sums[interval] = prev[-1]
+
+            tlist1 = [prev[groups[i]] for i in range(len(prev))]
+            tlist2 = [elem[groups[i]] for i in range(len(elem))]
+            if(tlist1 == tlist2 and elem[target] != prev[target]):
+                sums[interval] += elem[target]
             else:
                 interval += 1
             prev = elem
     else:
 
-        prev = self.data[0]
+        prev = original.data[0]
 
-        for elem in list(self.data[1:]):
-            if(ret[interval][1] is None):
-                ret[interval][1] = prev[-1]
-            if(ret[interval][0] is None):
-                ret[interval][0] = prev[:-1]
-            if(elem[:-1] == prev[:-1]):
-                ret[interval][1] += elem[-1]
+        for elem in list(original.data[1:]):
+            if(sums[interval] is None):
+                sums[interval] = prev[-1]
+
+            tlist1 = [prev[groups[i]] for i in range(len(prev))]
+            tlist2 = [elem[groups[i]] for i in range(len(elem))]
+            if(tlist1 == tlist2):
+                sums[interval] += elem[target]
             else:
                 interval += 1
             prev = elem
 
-    return ret
+    c_names = grouped.column_names
+    c_names.append("agg_sum")
+    c_types = grouped.column_types
+    c_types.append(type(5))
+    pk = grouped.column_names[0]
+    n_table = Table("temp", c_names, c_types, pk)
+    n_table.data = []
+
+    interval = 0
+    for d in grouped.data:
+        d.append(sums[interval])
+        n_table.data.append(d)
+        interval += 1
+
+    return n_table
