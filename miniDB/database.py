@@ -472,10 +472,12 @@ class Database:
 
         # check if both tables are sorted
         if not left_table.is_sorted():
-            left_table.e_merge_sort()
+            # left_table.e_merge_sort()
+            pass
 
         if not left_table.is_sorted():
-            right_table.e_merge_sort()
+            # right_table.e_merge_sort()
+            pass
 
         left_table_length = len(left_table.data)
         right_table_length = len(right_table.data)
@@ -537,7 +539,10 @@ class Database:
             #     pass
             # else:
 
-                res = left_table._inner_join(right_table, condition)
+                # added just for testing
+                res = self.smj(left_table, right_table, condition)
+
+                # res = left_table._inner_join(right_table, condition)
 
         else:
             raise NotImplementedError
