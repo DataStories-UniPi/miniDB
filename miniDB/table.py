@@ -198,7 +198,7 @@ class Table:
         return indexes_to_del
 
 
-    def _select_where(self, return_columns, condition=None, order_by=None, top_k=None, distinct=False):
+    def _select_where(self, return_columns, condition=None, group_by=None, having=None, order_by=None, top_k=None, distinct=False):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -213,6 +213,8 @@ class Table:
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
             distinct: boolean. If it is 'True' it indicates that the query is "select distinct" and a new function is called to remove duplicate rows
         '''
+
+
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
@@ -239,6 +241,9 @@ class Table:
 
         # create Table object
         s_table = Table(load=dict)
+
+        if group_by is not None:
+            return self.group_by_having(group_by)
 
         # if the query has 'order by' without 'distinct'
         # order by is applied on the table with all the columns
@@ -481,9 +486,22 @@ class Table:
         return input_list
 
 
-    def group_by_having():
-        #TO DO
-        return
+    def group_by_having(self,groups):
+        
+
+        # def _select_where(self, return_columns, condition=None,
+        #  group_by=None, having=None, order_by=None, top_k=None, distinct=False):
+
+
+        if(groups is None):
+            return
+
+        
+
+        s_table = self._select_where(groups, None,None,None,None,None,True)
+
+
+        return s_table
 
     def min():
         #TO DO

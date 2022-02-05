@@ -334,11 +334,11 @@ class Database:
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
         '''
 
-        #print(distinct)
+
         # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
-            return table_name._select_where(columns, condition, order_by, top_k, distinct)
+            return table_name._select_where(columns, condition, group_by, having, order_by, top_k, distinct)
 
         if condition is not None:
             condition_column = split_condition(condition)[0]
@@ -354,7 +354,7 @@ class Database:
             bt = self._load_idx(index_name)
             table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k)
         else:
-            table = self.tables[table_name]._select_where(columns, condition, order_by, top_k, distinct)
+            table = self.tables[table_name]._select_where(columns, condition, group_by, having, order_by, top_k, distinct)
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as
