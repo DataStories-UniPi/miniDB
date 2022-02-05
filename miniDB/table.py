@@ -261,8 +261,43 @@ class Table:
                     sum_of_rows += val
 
         return sum_of_rows
-        
 
+    def minimum(self, col_idx, condition=None):
+
+        #if there is a condition to check, we get the name of the WHERE column the operator (<, >, etc.) and the value provided.
+        if condition is not None:
+            condition_column_name, operator, value = self._parse_condition(condition)
+            condition_column_values                = self.column_by_name(condition_column_name)
+
+            #we enumerate every single column. If it satisfies the condition, and also not null, we can sum it.
+            minimum = 'null'
+            minimum = min([(idx, val) for idx, val in enumerate(condition_column_values) if get_op(operator, val, value) and self.data[idx][col_idx]])
+
+        else:
+            counted_column_values = self.column_by_name(self.column_names[col_idx])
+            minimum = 'null'
+            minimum = min([val for val in counted_column_values if val != 'null'])
+
+        return minimum
+    
+    def maximum(self, col_idx, condition=None):
+
+        #if there is a condition to check, we get the name of the WHERE column the operator (<, >, etc.) and the value provided.
+        if condition is not None:
+            condition_column_name, operator, value = self._parse_condition(condition)
+            condition_column_values                = self.column_by_name(condition_column_name)
+
+            #we enumerate every single column. If it satisfies the condition, and also not null, we can sum it.
+            maximum = 'null'
+            maximum = max([(idx, val) for idx, val in enumerate(condition_column_values) if get_op(operator, val, value) and self.data[idx][col_idx]])
+
+        else:
+            counted_column_values = self.column_by_name(self.column_names[col_idx])
+            maximum = 'null'
+            maximum = max([val for val in counted_column_values if val != 'null'])
+
+        return maximum
+            
 
     #returns a tuple of the index column and the aggregate function of the given aggregate
     def aggr_idx(self, aggregate):
@@ -284,7 +319,7 @@ class Table:
                 result_names.append(f'COUNT({self.column_names[aggregate_function[0]]})')
 
             #if the aggregate function the user called is sum
-            if aggregate_function[1] == 'sum':
+            elif aggregate_function[1] == 'sum':
 
                 #first we check if the column that the aggregate function was called is an int. SUM is only callable in ints.
                 if self.column_types[aggregate_function[0]] != int:
@@ -296,7 +331,30 @@ class Table:
                 result_row.append(sum)
                 result_names.append(f'SUM({self.column_names[aggregate_function[0]]})')
 
-        
+            elif aggregate_function[1] == 'avg':
+                
+                #average also needs to be done only on int values
+                if self.column_types[aggregate_function[0]] != int:
+                    print(f'ERROR: Column "{self.column_names[aggregate_function[0]]}" is a type of {str(self.column_types[aggregate_function[0]])}. AVG is only callable in {str(type(0))} types.')
+                    return None
+                
+                #average is the sum divided by the count. The point is that these things already exist as functions. so we use those two functions simultaneously.
+                avg = self.calculate_sum(aggregate_function[0], condition) / self.count(aggregate_function[0], condition)
+                result_row.append(avg)
+                result_names.append(f'AVG({self.column_names[aggregate_function[0]]})')
+            
+            elif aggregate_function[1] == 'min':
+
+                minimum = self.minimum(aggregate_function[0], condition)
+                result_row.append(minimum)
+                result_names.append(f'MIN({self.column_names[aggregate_function[0]]})')
+
+            elif aggregate_function[1] == 'max':
+
+                maximum = self.maximum(aggregate_function[0], condition)
+                result_row.append(maximum)
+                result_names.append(f'MAX({self.column_names[aggregate_function[0]]})')
+
         
 
         '''dict = {
@@ -307,7 +365,7 @@ class Table:
         'data'          : [],
         'pk'            : '',
         'pk_idx'        : 0,
-    }'''
+        }'''
         #Set the new attribute dictionary. We change the data attribute, the column names and the types
         dict = {(key):([result_row] if key=="data" else value) for key,value in self.__dict__.items()} #data has only the result row
         dict['column_names'] = result_names
