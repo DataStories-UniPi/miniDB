@@ -243,7 +243,18 @@ class Table:
         s_table = Table(load=dict)
 
         if group_by is not None:
-            return self.group_by_having(group_by)
+
+            grouped = self.group_by_having(group_by)
+            c_names = grouped.column_names
+            c_names.append("id")
+            c_types = grouped.column_types
+            c_types.append(type("id"))
+            pk = grouped.pk
+            n_table = Table("temp", c_names, c_types, pk)
+            n_table.data = [[1,1]]
+
+
+            return n_table
 
         # if the query has 'order by' without 'distinct'
         # order by is applied on the table with all the columns
@@ -487,21 +498,15 @@ class Table:
 
 
     def group_by_having(self,groups):
-        
 
         # def _select_where(self, return_columns, condition=None,
         #  group_by=None, having=None, order_by=None, top_k=None, distinct=False):
-
-
         if(groups is None):
             return
-
-        
-
         s_table = self._select_where(groups, None,None,None,None,None,True)
 
-
         return s_table
+
 
     def min():
         #TO DO
