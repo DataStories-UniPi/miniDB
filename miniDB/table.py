@@ -211,6 +211,7 @@ class Table:
 
         count_rows = 0
 
+        #if we have a condition to check 
         if condition is not None:
             condition_column_name, operator, value = self._parse_condition(condition)   #name of the where column, operator and value
             condition_column_values = self.column_by_name(condition_column_name)        #list with all the condition's column values
@@ -236,6 +237,9 @@ class Table:
 
         return count_rows
 
+    def calculate_sum(self, col_idx, condition):
+        pass
+
 
     #returns a tuple of the index column and the aggregate function of the given aggregate
     def aggr_idx(self, aggregate):
@@ -251,7 +255,20 @@ class Table:
             if aggregate_function[1] == 'count':    #we call count function if we have to count a column
                 count = self.count(aggregate_function[0], condition)
                 result_row.append(count)
-                result_names.append(f'count_{self.column_names[aggregate_function[0]]}')
+                result_names.append(f'COUNT({self.column_names[aggregate_function[0]]})')
+
+            #if the aggregate function the user called is sum
+            if aggregate_function[1] == 'sum':
+
+                #first we check if the column that the aggregate function was called is an int. SUM is only callable in ints.
+                if type(self.column_types[aggregate_function[0]]) != int:
+                    raise ValueError
+                
+                #if the value is int, then we can call calculate_sum, which is roughly the same as count()
+                sum = self.calculate_sum(aggregate_function[0], condition)
+                result_row.append(sum)
+                result_names.append(f'SUM({self.column_names[aggregate_function[0]]})')
+
         
         
 
