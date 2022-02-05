@@ -2,13 +2,19 @@ import os
 import re
 from pprint import pprint
 import sys
-import readline
+#Sta windows dn leitourgouse to readline + eixe error me to AttributeError: module 'collections' has no attribute 'Callable'
+#Opote egine install to pyreadline ki egine import ws eksis kai
+from pyreadline import Readline
 import traceback
 import shutil
+# Egine import to collections wste na  afairethei to error pou evgase me to parakatw import.
+import collections
+collections.Callable = collections.abc.Callable
 sys.path.append('miniDB')
 
 from database import Database
 from table import Table
+readline = Readline()
 # art font is "big"
 art = '''
              _         _  _____   ____  
