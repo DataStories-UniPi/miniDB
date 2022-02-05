@@ -241,15 +241,19 @@ class Table:
 
                     if(col.strip() in grouped.column_names):
                         return_cols.append(grouped.column_names.index(col.strip()))
-                    elif(col.strip().startswith('max')):
-
+                    elif(col.strip().startswith('min')):
 
                         target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
 
-
-                        grouped = max(original=self,grouped=grouped,target_column=target_column.strip())
+                        grouped = min(original=self,grouped=grouped,target_column=target_column.strip())
                         return_cols.append(len(return_cols))
 
+                    elif(col.strip().startswith('sum')):
+
+                        target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
+
+                        grouped = sum(original=self,grouped=grouped,target_column=target_column.strip())
+                        return_cols.append(len(return_cols))
                     else:
                         raise Exception("given select list not in GROUP BY")
 
@@ -263,8 +267,11 @@ class Table:
 
                     if(col.strip() in grouped.column_names):
                         return_cols.append(grouped.column_names.index(col.strip()))
-                    elif(col.strip().startswith('max')):
-                        return_cols.append(grouped.column_names.index('agg_max'))
+                    elif(col.strip().startswith('min')):
+                        return_cols.append(grouped.column_names.index('agg_min'))
+                    elif(col.strip().startswith('sum')):
+                        return_cols.append(grouped.column_names.index('agg_sum'))
+
 
                     else:
                         raise Exception("given select list not in GROUP BY")
@@ -850,23 +857,6 @@ class Table:
         self.__dict__.update(tmp_dict)
 
 
-def min(original,grouped):
-
-    c_names = grouped.column_names
-    c_names.append("min")
-    c_types = grouped.column_types
-    c_types.append(type(5))
-    pk = grouped.column_names[0]
-    n_table = Table("temp", c_names, c_types, pk)
-    n_table.data = []
-
-    for d in grouped.data:
-
-        d.append(0)
-        n_table.data.append(d)
-
-
-    return n_table
 
 def getTuple(original,grouped,index):
 
@@ -883,9 +873,9 @@ def max(original,grouped,target_column):
 
     orders = grouped.column_names.copy()
 
-    #if(target_column not in grouped.column_names):
+    if(target_column not in grouped.column_names):
 
-    orders.append(target_column)
+        orders.append(target_column)
 
     original.order_by(orders)
 
@@ -913,9 +903,6 @@ def max(original,grouped,target_column):
             print("found group",prev)
 
 
-    print(max)
-
-
     c_names = grouped.column_names
     c_names.append("agg_max")
     c_types = grouped.column_types
@@ -933,19 +920,87 @@ def max(original,grouped,target_column):
     return n_table
 
 
+def min(original,grouped,target_column):
 
-def sum(original, grouped, target_column, distinct=False):
+    target = original.column_names.index(target_column)
+
+    orders = grouped.column_names.copy()
+
+    if(target_column not in grouped.column_names):
+
+        orders.append(target_column)
+
+    original.order_by(orders)
+
+    prev = original.data[0]
+
+    prev = getTuple(original,grouped,0)
+
+
+    print(prev)
+    max = []
+    max.append(original.data[0][target])
+
+
+    for i in range(len(original.data)):
+
+        if(prev != getTuple(original,grouped,i)):
+
+            max.append(original.data[i][target])
+
+            prev = getTuple(original,grouped,i)
+
+
+        elif(prev == getTuple(original,grouped,i) and i == len(original.data)):
+            max.append(original.data[i][target])
+            print("found group",prev)
+
+
+    c_names = grouped.column_names
+    c_names.append("agg_min")
+    c_types = grouped.column_types
+    c_types.append(type(5))
+    pk = grouped.column_names[0]
+    n_table = Table("temp", c_names, c_types, pk)
+    n_table.data = []
+
+    for i in range(len(grouped.data)):
+
+        (grouped.data[i]).append(max[i])
+        n_table.data.append(grouped.data[i])
+
+
+    return n_table
+
+
+
+def sum(original, grouped, target_column):
     '''
     With group by
     '''
 
-    target = original.column_names.index(target_column)
+    print(target_column)
+
+    distinct = False
+
+    input_target = target_column.split(' ')
+
+    input_target_column = input_target[0]
+
+
+    if(input_target[0]=='distinct'):
+        distinct = True
+        input_target_column = input_target[1]
+
+    
+
+    target = original.column_names.index(input_target_column)
     groups = [original.column_names.index(elem) for elem in grouped.column_names]
 
     '''Sort the original table'''
     orders = grouped.column_names.copy()
-    if(target_column not in grouped.column_names):
-        orders.append(target_column)
+    if(input_target_column not in grouped.column_names):
+        orders.append(input_target_column)
     original.order_by(orders)
 
 
@@ -960,8 +1015,8 @@ def sum(original, grouped, target_column, distinct=False):
             if(sums[interval] is None):
                 sums[interval] = prev[-1]
 
-            tlist1 = [prev[groups[i]] for i in range(len(prev))]
-            tlist2 = [elem[groups[i]] for i in range(len(elem))]
+            tlist1 = [prev[groups[i]] for i in range(len(groups))]
+            tlist2 = [elem[groups[i]] for i in range(len(groups))]
             if(tlist1 == tlist2 and elem[target] != prev[target]):
                 sums[interval] += elem[target]
             else:
@@ -975,8 +1030,8 @@ def sum(original, grouped, target_column, distinct=False):
             if(sums[interval] is None):
                 sums[interval] = prev[-1]
 
-            tlist1 = [prev[groups[i]] for i in range(len(prev))]
-            tlist2 = [elem[groups[i]] for i in range(len(elem))]
+            tlist1 = [prev[groups[i]] for i in range(len(groups))]
+            tlist2 = [elem[groups[i]] for i in range(len(groups))]
             if(tlist1 == tlist2):
                 sums[interval] += elem[target]
             else:
