@@ -241,6 +241,10 @@ class Table:
                     
                     if(col.strip() in grouped.column_names):
                         return_cols.append(grouped.column_names.index(col.strip()))
+                    elif(col.strip().startswith('min')):
+                        grouped = max(original=self,grouped=grouped)
+                        return_cols.append(len(return_cols))
+
                     else:
                         raise Exception("given select list not in GROUP BY")
 
