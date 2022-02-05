@@ -269,11 +269,12 @@ class Table:
             condition_column_name, operator, value = self._parse_condition(condition)
             condition_column_values                = self.column_by_name(condition_column_name)
 
-            #we enumerate every single column. If it satisfies the condition, and also not null, we can sum it.
+            #here the enumeration gets done a little differently. We do all the same as above with the conditions, execpt we store all the data to a list and immideately taking the minimum element.
             minimum = 'null'
-            minimum = min([(idx, val) for idx, val in enumerate(condition_column_values) if get_op(operator, val, value) and self.data[idx][col_idx]])
+            minimum = min([(idx, val) for idx, val in enumerate(condition_column_values) if get_op(operator, val, value) and self.data[idx][col_idx] != 'null'])
 
         else:
+            #same here, except that we only count the non null values, since there is no condition to check.
             counted_column_values = self.column_by_name(self.column_names[col_idx])
             minimum = 'null'
             minimum = min([val for val in counted_column_values if val != 'null'])
@@ -282,14 +283,13 @@ class Table:
     
     def maximum(self, col_idx, condition=None):
 
-        #if there is a condition to check, we get the name of the WHERE column the operator (<, >, etc.) and the value provided.
+        #everything here is the same as minimum, except there is the max() statement.
         if condition is not None:
             condition_column_name, operator, value = self._parse_condition(condition)
             condition_column_values                = self.column_by_name(condition_column_name)
 
-            #we enumerate every single column. If it satisfies the condition, and also not null, we can sum it.
             maximum = 'null'
-            maximum = max([(idx, val) for idx, val in enumerate(condition_column_values) if get_op(operator, val, value) and self.data[idx][col_idx]])
+            maximum = max([(idx, val) for idx, val in enumerate(condition_column_values) if get_op(operator, val, value) and self.data[idx][col_idx] != 'null'])
 
         else:
             counted_column_values = self.column_by_name(self.column_names[col_idx])
@@ -343,8 +343,9 @@ class Table:
                 result_row.append(avg)
                 result_names.append(f'AVG({self.column_names[aggregate_function[0]]})')
             
+            #minimum and maximum functions don't have int constraints. So they're executed immediately.
             elif aggregate_function[1] == 'min':
-
+                
                 minimum = self.minimum(aggregate_function[0], condition)
                 result_row.append(minimum)
                 result_names.append(f'MIN({self.column_names[aggregate_function[0]]})')
