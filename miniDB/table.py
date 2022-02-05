@@ -274,8 +274,11 @@ class Table:
         '''
         result_row = []     #the values of the row we are going to show
         result_names = []   #the names of the rows we are going to show
+
         for aggregate_function in aggregates:
-            if aggregate_function[1] == 'count':    #we call count function if we have to count a column
+
+            #we call count function if we have to count a column
+            if aggregate_function[1] == 'count':    
                 count = self.count(aggregate_function[0], condition)
                 result_row.append(count)
                 result_names.append(f'COUNT({self.column_names[aggregate_function[0]]})')
@@ -284,8 +287,8 @@ class Table:
             if aggregate_function[1] == 'sum':
 
                 #first we check if the column that the aggregate function was called is an int. SUM is only callable in ints.
-                #print(self.column_types[aggregate_function[0]])
-                if issubclass(type(self.column_types[aggregate_function[0]]), int):
+                print(self.column_types[aggregate_function[0]] != type(0))
+                if type(self.column_types[aggregate_function[0]]) != type(0):
                     print("ERROR: There must be an integer provided in SUM functions")
                     return None
                 
