@@ -370,7 +370,14 @@ class Database:
             return table_name._select_where(columns, condition, order_by, desc, top_k)
 
         if condition is not None:
-            condition_column = split_condition(condition)[0]
+            if 'between' in condition: # if between exists in condition
+                condition_column = condition.split('between')[0]  # take column name (is left from between)
+            elif 'in' in condition: # if in exists in condition
+                condition_column = condition.split('in')[0]  # take column name (is left from in)
+            elif 'like' in condition: # if like exists in condition
+                condition_column = condition.split('like')[0]  # take column name (is left from like)
+            else:  # else continue as before...
+                condition_column = split_condition(condition)[0]
         else:
             condition_column = ''
 
