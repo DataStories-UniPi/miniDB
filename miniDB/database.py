@@ -245,6 +245,7 @@ class Database:
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             selected_table : table to select data (can be empty if we don't use insert select)
             selected_items : items to select table's data (can be empty if we don't use insert select)
+            frm : is the condition
             lock_load_save: boolean. If False, user needs to load, lock and save the states of the database (CAUTION). Useful for bulk-loading.
         '''
 
@@ -381,7 +382,7 @@ class Database:
         else:
             condition_column = ''
 
-        
+
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return

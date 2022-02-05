@@ -71,7 +71,6 @@ class Table:
     def column_by_name(self, column_name):
         return [row[self.column_names.index(column_name)] for row in self.data]
 
-
     def _update(self):
         '''
         Update all the available columns with the appended rows.
@@ -212,8 +211,8 @@ class Table:
             desc: boolean. If True, order_by will return results in descending order (False by default).
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
-        
-        
+
+
         # Select DISTINCT
         distinct = False
         # check if distinct is in return_columns (it means is after select)
@@ -232,19 +231,20 @@ class Table:
         else:
             # return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
-
             # if * return all columns, else find the column indexes for the columns specified
             if return_columns == '*':
-            	 return_cols = [i for i in range(len(self.column_names))]
+                return_cols = [i for i in range(len(self.column_names))]
             else:
-            	 return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+                return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+
 
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
+            tmp_condition = condition.split(" ")[1]
             rows = []
             # select between
-            if 'between' in condition:
+            if 'between' in tmp_condition:
                 column_name = condition.split('between')[0].strip()
                 values = condition.split('between')[1].split('and')
                 column = self.column_by_name(column_name)
@@ -256,7 +256,7 @@ class Table:
                 except:
                     pass
             # select in
-            elif 'in' in condition:
+            elif 'in' in tmp_condition:
                 column_name = condition.split('in')[0].strip()
                 values = condition.split('(')[1].split(')')[0].split(',')
                 column = self.column_by_name(column_name)
@@ -266,7 +266,7 @@ class Table:
                         rows.append(ind)
 
             # select like
-            elif 'like' in condition:
+            elif 'like' in tmp_condition:
                 column_name, value = condition.split('like')[0].strip(), condition.split('like')[1].strip().replace("'", "")
                 column = self.column_by_name(column_name)
 
@@ -293,7 +293,7 @@ class Table:
                         value = value.split("%")[0]
                         # Take only data starts with value before %
                         for ind, x in enumerate(column):
-                            if value == str(x)[:len(value)+1].strip():
+                            if value == str(x)[:len(value)].strip():
                                 rows.append(ind)
 
                     # Middle
@@ -306,10 +306,10 @@ class Table:
                                 rows.append(ind)
             # continue normally...
             else:
-            	column_name, operator, value = self._parse_condition(condition)
-            	column = self.column_by_name(column_name)
-            	
-            	rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -321,12 +321,12 @@ class Table:
         # we need to set the new column names/types and no of columns, since we might
         # only return some columns
         dict['column_names'] = [self.column_names[i] for i in return_cols]
-        dict['column_types']   = [self.column_types[i] for i in return_cols]
+        dict['column_types'] = [self.column_types[i] for i in return_cols]
 
-        s_table = Table(load=dict) 
+        s_table = Table(load=dict)
         if order_by:
             s_table.order_by(order_by, desc)
-            
+
         # Select DISTINCT
         if distinct:
             tmp_list = []
@@ -338,13 +338,13 @@ class Table:
                     tmp_list.append(s_table.data[index])
                     index += 1
                 else:
-                    tmp_tbl.data.pop(index)
+                    tmp_tbl.data.pop(index)  # remove item from objects data
 
             s_table = tmp_tbl
 
         # Basic select
         else:
-            s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
+            s_table.data = s_table.data[:int(top_k)] if isinstance(top_k, str) else s_table.data
 
         return s_table
 
@@ -390,9 +390,8 @@ class Table:
         s_table = Table(load=dict) 
         if order_by:
             s_table.order_by(order_by, desc)
-            
-        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
 
+        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
 
         return s_table
 
