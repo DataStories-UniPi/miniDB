@@ -242,7 +242,12 @@ class Table:
                     if(col.strip() in grouped.column_names):
                         return_cols.append(grouped.column_names.index(col.strip()))
                     elif(col.strip().startswith('max')):
-                        grouped = max(original=self,grouped=grouped)
+
+
+                        target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
+
+
+                        grouped = max(original=self,grouped=grouped,target_column=target_column.strip())
                         return_cols.append(len(return_cols))
 
                     else:
@@ -259,12 +264,12 @@ class Table:
                     if(col.strip() in grouped.column_names):
                         return_cols.append(grouped.column_names.index(col.strip()))
                     elif(col.strip().startswith('max')):
-                        return_cols.append(grouped.column_names.index('maxer'))
+                        return_cols.append(grouped.column_names.index('agg_max'))
 
                     else:
                         raise Exception("given select list not in GROUP BY")
 
-            print(return_cols)
+
 
             return_dict = {(key):([[grouped.data[i][j] for j in return_cols] for i in [i for i in range(len(grouped.data))]] if key=="data" else value) for key,value in grouped.__dict__.items()}
 
@@ -865,10 +870,34 @@ def min(original,grouped):
 
 
 
-def max(original,grouped):
-    
+def max(original,grouped,target_column):
+
+    target = original.column_names.index(target_column)
+
+    orders = grouped.column_names.copy()
+
+    if(target_column not in grouped.column_names):
+
+        orders.append(target_column)
+
+    original.order_by(orders)
+
+    prev = original.data[0]
+
+    for i in range(len(original.data)):
+        
+        if(prev[2] != original.data[i][2]):
+            print("found group",prev[2])
+            prev = original.data[i]
+
+        #if()
+
+
+
+
+
     c_names = grouped.column_names
-    c_names.append("maxer")
+    c_names.append("agg_max")
     c_types = grouped.column_types
     c_types.append(type(5))
     pk = grouped.column_names[0]
@@ -882,3 +911,46 @@ def max(original,grouped):
 
 
     return n_table
+
+
+
+def sum(groups, column, distinct=False):
+    '''
+    With group by
+    '''
+    index = self.column_names.index(column)
+    self.order_by(self.column_names)
+
+    ret = [[None] * len(groups), [None] * len(groups)]
+    interval = 0
+
+    if(distinct):
+
+        prev = self.data[0]
+
+        for elem in list(self.data[1:]):
+            if(ret[interval][1] is None):
+                ret[interval][1] = prev[-1]
+            if(ret[interval][0] is None):
+                ret[interval][0] = prev[:-1]
+            if(elem[:-1] == prev[:-1] and elem[-1] != prev[-1]):
+                ret[interval][1] += elem[-1]
+            else:
+                interval += 1
+            prev = elem
+    else:
+
+        prev = self.data[0]
+
+        for elem in list(self.data[1:]):
+            if(ret[interval][1] is None):
+                ret[interval][1] = prev[-1]
+            if(ret[interval][0] is None):
+                ret[interval][0] = prev[:-1]
+            if(elem[:-1] == prev[:-1]):
+                ret[interval][1] += elem[-1]
+            else:
+                interval += 1
+            prev = elem
+
+    return ret
