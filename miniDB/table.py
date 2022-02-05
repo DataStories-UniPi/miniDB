@@ -241,14 +241,30 @@ class Table:
                     
                     if(col.strip() in grouped.column_names):
                         return_cols.append(grouped.column_names.index(col.strip()))
-                    elif(col.strip().startswith('min')):
+                    elif(col.strip().startswith('max')):
                         grouped = max(original=self,grouped=grouped)
                         return_cols.append(len(return_cols))
 
                     else:
                         raise Exception("given select list not in GROUP BY")
 
+            return_cols = []
 
+            if return_columns == '*':
+                raise Exception("Syntax error: cannot have '*' in select list when using GROUP BY")
+            else:
+
+                for col in return_columns.split(','):
+                    
+                    if(col.strip() in grouped.column_names):
+                        return_cols.append(grouped.column_names.index(col.strip()))
+                    elif(col.strip().startswith('max')):
+                        return_cols.append(grouped.column_names.index('maxer'))
+
+                    else:
+                        raise Exception("given select list not in GROUP BY")
+
+            print(return_cols)
 
             return_dict = {(key):([[grouped.data[i][j] for j in return_cols] for i in [i for i in range(len(grouped.data))]] if key=="data" else value) for key,value in grouped.__dict__.items()}
 
