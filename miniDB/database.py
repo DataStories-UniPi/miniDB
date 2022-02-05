@@ -53,7 +53,7 @@ class Database:
         self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
 
         # create a table that contains info about triggers of the current database
-        self.create_table('triggers','trigger_name,trigger_table,action','str,str,str','trigger_name')
+        self.create_table('triggers','trigger_name,trigger_table,action,when','str,str,str,str','trigger_name')
         
         self.save_database()
 
@@ -92,7 +92,7 @@ class Database:
             # setattr(self, name, self.tables[name])
 
     #### TRIGGERS ####
-    def create_trigger(self,trigger_name=None,table_name=None,action=None):
+    def create_trigger(self,trigger_name=None,table_name=None,when=None,action=None):
         
         '''
         This function is used to create a trigger which corresponds to a specific table of the database.
@@ -102,10 +102,18 @@ class Database:
             trigger_name: string. The name of the trigger.
             table_name: string. The table to whom trigger corresponds to.
             action: string. The action (INSERT,UPDATE,DELETE) after which the trigger will be fired.
+            when: string. The time in which the trigger will be fired. Only two values are acceptable:
+                BEFORE: trigger is fired before query is runs.
+                AFTER: trigger is fired after query runs.
         '''
         
         self.load_database()
         
+        # name of trigger can not be ""
+        if trigger_name=='':
+            print("Trigger's name can not be empty!")
+            return
+
         '''
         check if action is INSERT, DELETE or UPDATE.
         If it's not, then return
@@ -113,13 +121,20 @@ class Database:
         if action!='insert' and action!='delete' and action!='update':
             print('Action of trigger should be only INSERT or DELETE or UPDATE!')
             return
+
         
+        # when clause can be only BEFORE or AFTER
+        if when!='before' and when!='after':
+            print('WHEN clause can be only BEFORE or AFTER')
+            return
+
+
         # check if trigger to be created is on an existing table of the DB
-        if table_name in self.tables.keys():
+        if table_name in self.tables.keys() and table_name!='triggers':
             # add a new row to 'triggers' table
-            self.insert_into('triggers',trigger_name+','+table_name+','+action,True)
+            self.insert_into('triggers',trigger_name+','+table_name+','+action+','+when,True)
         else:
-            print('You can not create a trigger on a table that does not exist in the Database!')
+            print('You can not create a trigger on this table!')
 
     def drop_trigger(self,trigger_name=None):
         
@@ -135,7 +150,7 @@ class Database:
         # remove a row from 'triggers' table
         self.delete_from('triggers','trigger_name='+trigger_name,True)
 
-    def check_for_triggers(self,trigger_table,action):
+    def check_for_triggers(self,trigger_table,action,when):
 
         '''
         This function scans the 'triggers' table from rows with specific values. This is because,
@@ -147,35 +162,38 @@ class Database:
         Args:
             trigger_table: string. The name of the table that trigger corresponds to.
             action: string. The action of the trigger.
+            when: string. Time, in which trigger is going to be fired.
         '''
         
         '''
-        take the data of the second and third column of 
+        take the data of the second,third and fourth column of 
         'triggers' table and store them in the lists below
         '''
         list_tables = self.tables['triggers'].column_by_name('trigger_table')
         list_actions = self.tables['triggers'].column_by_name('action')
-        
+        list_when = self.tables['triggers'].column_by_name('when')
+
         counter = 0 
 
-        # check if trigger exists with specific values (trigger_table and action)
+        # check if trigger exists with specific values (trigger_table, action and when)
         for x in range(len(list_tables)):
-            if list_tables[x]==trigger_table and list_actions[x]==action: 
+            if list_tables[x]==trigger_table and list_actions[x]==action and list_when[x]==when: 
                 counter+=1 # if exist, then increase counter by 1
         
         return counter # return the number of times that a specific trigger exists
 
     
-    def trigger_function(self,word):
+    def trigger_function(self,event,when):
 
         '''
         This function is excecuted after each trigger of the database
         is fired. The function shows a message to user.
 
-        word: string. Is one of the following words: delete,update or insert
+        event: string. Is one of the following words: delete,update or insert
+        when: Time in which trigger is fired. BEFORE or AFTER the query
         '''
         
-        print("Trigger was excecuted after "+word+" query")
+        print("Trigger was executed "+when+" "+event+" query")
 
     #### IO ####
 
@@ -349,9 +367,17 @@ class Database:
         # Note: 'triggers' table can not be modified from a simple insert query
         if (table_name=='triggers' and flag) or table_name!='triggers':
             
+            # check if exist BEFORE triggers with INSERT event
+            k = self.check_for_triggers(table_name,'insert','before')
+
+            # execute trigger's function
+            for i in range(k):
+                self.trigger_function('insert','before')
+            
             # check if insert query changes the table. 
             # True: if the table is changed
             # False: otherwise
+            # if the method throws exception, then insert query is failed and trigger_flag var is set as false
             trigger_flag = True 
 
             row = row_str.strip().split(',')
@@ -362,6 +388,7 @@ class Database:
             insert_stack = self._get_insert_stack_for_table(table_name)
             try:
                 self.tables[table_name]._insert(row, insert_stack)
+                print('Query is completed')
             except Exception as e:
                 
                 # insert query has not been successfuly completed. So if trigger after insert exists, it will not be fired!
@@ -379,11 +406,11 @@ class Database:
 
             if trigger_flag:
                 # execute trigger if exists
-                n = self.check_for_triggers(table_name,'insert')
+                n = self.check_for_triggers(table_name,'insert','after')
 
                 # execute trigger's function
                 for i in range(n):
-                    self.trigger_function('insert')
+                    self.trigger_function('insert','after')
             
             return
 
@@ -412,22 +439,30 @@ class Database:
         # Note: 'triggers' table can not be modified from a simple update query
         if (table_name=='triggers' and flag) or table_name!='triggers':
 
+            # check if exist BEFORE triggers with UPDATE event
+            k = self.check_for_triggers(table_name,'update','before')
+
+            # execute trigger's function
+            for i in range(k):
+                self.trigger_function('update','before')
+
             set_column, set_value = set_args.replace(' ','').split('=')
             self.load_database()
             
             lock_ownership = self.lock_table(table_name, mode='x')
             changed = self.tables[table_name]._update_rows(set_value, set_column, condition)
-            
+            print('Query is completed')
+
             # if the query changed the table then check for triggers
             if changed:
                 
                 # execute trigger
                 # stores the number of times that a specific trigger is being discovered
-                n = self.check_for_triggers(table_name,'update')
+                n = self.check_for_triggers(table_name,'update','after')
 
                 # execute trigger's function
                 for i in range(n):
-                    self.trigger_function('update')
+                    self.trigger_function('update','after')
                 
             if lock_ownership:
                 self.unlock_table(table_name)
@@ -459,11 +494,19 @@ class Database:
         # Note: 'triggers' table can not be modified from a simple delete query
         if (table_name=='triggers' and flag) or table_name!='triggers':
 
+            # check if exist BEFORE triggers with DELETE event
+            k = self.check_for_triggers(table_name,'delete','before')
+
+            # execute trigger's function
+            for i in range(k):
+                self.trigger_function('delete','before')
+            
             self.load_database()
             
             lock_ownership = self.lock_table(table_name, mode='x')
             deleted = self.tables[table_name]._delete_where(condition)
-            
+            print('Query is completed')
+
             if lock_ownership:
                 self.unlock_table(table_name)
             self._update()
@@ -476,11 +519,11 @@ class Database:
             # if 'deleted' list is not empty, then scan for triggers
             if bool(deleted): 
                 # execute triggers
-                n = self.check_for_triggers(table_name,'delete')
+                n = self.check_for_triggers(table_name,'delete','after')
                 
                 # execute trigger's function
                 for i in range(n):
-                    self.trigger_function('delete')
+                    self.trigger_function('delete','after')
 
             return
         

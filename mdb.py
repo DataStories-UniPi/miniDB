@@ -155,7 +155,7 @@ def interpret(query):
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
-                     'create trigger': ['create trigger','on','after'],
+                     'create trigger': ['create trigger','on','when','action'],
                      'drop trigger': ['drop trigger'],
                      'select': ['select', 'from', 'where', 'order by', 'top'],
                      'lock table': ['lock table', 'mode'],
