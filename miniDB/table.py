@@ -868,7 +868,14 @@ def min(original,grouped):
 
     return n_table
 
+def getTuple(original,grouped,index):
 
+    tup = ()
+
+    for col in grouped.column_names:
+        tup = tup + (original.data[index][original.column_names.index(col)],)
+
+    return tup
 
 def max(original,grouped,target_column):
 
@@ -876,24 +883,37 @@ def max(original,grouped,target_column):
 
     orders = grouped.column_names.copy()
 
-    if(target_column not in grouped.column_names):
+    #if(target_column not in grouped.column_names):
 
-        orders.append(target_column)
+    orders.append(target_column)
 
     original.order_by(orders)
 
     prev = original.data[0]
 
+    prev = getTuple(original,grouped,0)
+
+
+    print(prev)
+    max = []
+    max.append(original.data[0][target])
+
+
     for i in range(len(original.data)):
         
-        if(prev[2] != original.data[i][2]):
-            print("found group",prev[2])
-            prev = original.data[i]
+        if(prev != getTuple(original,grouped,i)):
 
-        #if()
+            max.append(original.data[i][target])
+
+            prev = getTuple(original,grouped,i)
 
 
+        elif(prev == getTuple(original,grouped,i) and i == len(original.data)):
+            max.append(original.data[i][target])
+            print("found group",prev)
 
+
+    print(max)
 
 
     c_names = grouped.column_names
@@ -904,10 +924,10 @@ def max(original,grouped,target_column):
     n_table = Table("temp", c_names, c_types, pk)
     n_table.data = []
 
-    for d in grouped.data:
+    for i in range(len(grouped.data)):
 
-        d.append(100)
-        n_table.data.append(d)
+        (grouped.data[i]).append(max[i])
+        n_table.data.append(grouped.data[i])
 
 
     return n_table
