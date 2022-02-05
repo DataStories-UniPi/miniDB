@@ -254,19 +254,19 @@ class Table:
 
         s_table = Table(load=dict)
         if mode=="min":
-            s_table.min(dict['column_names'], having, group_by, drop)
+            s_table.min(dict['column_names'], having, group_by, drop, order_by)
             
         if mode=="max":
-            s_table.max(dict['column_names'], having, group_by, drop)
+            s_table.max(dict['column_names'], having, group_by, drop, order_by)
             
         if mode=="count":
-            s_table.count(dict['column_names'], having, group_by, drop)
+            s_table.count(dict['column_names'], having, group_by, drop, order_by)
             
         if mode=="sum":
-            s_table.sum(dict['column_names'], having, group_by, drop)
+            s_table.sum(dict['column_names'], having, group_by, drop, order_by)
             
         if mode=="avg":
-            s_table.avg(dict['column_names'], having, group_by, drop)    
+            s_table.avg(dict['column_names'], having, group_by, drop, order_by)    
                     
         if order_by:
             s_table.order_by(order_by, desc)
@@ -366,7 +366,7 @@ class Table:
         self.data = [self.data[i] for i in idx]
         # self._update()
         
-    def min(self, column_name, having, group_by, drop):
+    def min(self, column_name, having, group_by, drop, order_by):
         
         if group_by:
             if having is not None:
@@ -377,35 +377,50 @@ class Table:
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].min() > int(having[3])).groupby(group_by).min().reset_index()
-                
+                    
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
                 elif having[2]=='greater_or_equal':
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].min() >= int(having[3])).groupby(group_by).min().reset_index()
-                
+
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
                 elif having[2]=='<':
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].min() < int(having[3])).groupby(group_by).min().reset_index()
-                
+
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
                 elif having[2]=='less_or_equal':
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].min() <= int(having[3])).groupby(group_by).min().reset_index()
-                
+
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
                 elif having[2]=='=':
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].min() == int(having[3])).groupby(group_by).min().reset_index()
-                
+
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
                 elif having[2]=='not_equal':
@@ -413,6 +428,9 @@ class Table:
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].min() != int(having[3])).groupby(group_by).min().reset_index()
 
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
             else:
@@ -427,7 +445,10 @@ class Table:
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).min().reset_index()
-
+                    
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
 
@@ -442,7 +463,7 @@ class Table:
             #print(self.data)
             # self._update()
         
-    def max(self, column_name, having, group_by, drop):
+    def max(self, column_name, having, group_by, drop, order_by):
     
         if group_by:
             if having is not None:
@@ -453,42 +474,60 @@ class Table:
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].max() > int(having[3])).groupby(group_by).max().reset_index()
-                
+
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
                 elif having[2]=='greater_or_equal':
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].max() >= int(having[3])).groupby(group_by).max().reset_index()
-                
+
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
                 elif having[2]=='<':
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].max() < int(having[3])).groupby(group_by).max().reset_index()
-                
+
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
                 elif having[2]=='less_or_equal':
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].max() <= int(having[3])).groupby(group_by).max().reset_index()
-                
+
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
                 elif having[2]=='=':
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].max() == int(having[3])).groupby(group_by).max().reset_index()
-                
+
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
                 elif having[2]=='not_equal':
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].max() != int(having[3])).groupby(group_by).max().reset_index().drop(group_by, axis = 1)
-                
+
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
             else:
@@ -504,6 +543,9 @@ class Table:
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).max().reset_index()
                     
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
         else:
@@ -517,7 +559,7 @@ class Table:
             #print(self.data)
             # self._update()
         
-    def count(self, column_name, having, group_by, drop):
+    def count(self, column_name, having, group_by, drop, order_by):
     
         if group_by:
             if having is not None:
@@ -529,13 +571,19 @@ class Table:
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: len(x) > int(having[3])).groupby(group_by).count().reset_index()
                     
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
                 elif having[2]=='greater_or_equal':
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: len(x) >= int(having[3])).groupby(group_by).count().reset_index()
-
+                    
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
                 elif having[2]=='<':
@@ -543,6 +591,9 @@ class Table:
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: len(x) < int(having[3])).groupby(group_by).count().reset_index()
                     
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
                 elif having[2]=='less_or_equal':
@@ -550,6 +601,9 @@ class Table:
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: len(x) <= int(having[3])).groupby(group_by).count().reset_index()
                     
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
                 elif having[2]=='=':
@@ -557,6 +611,9 @@ class Table:
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: len(x) == int(having[3])).groupby(group_by).count().reset_index()
                     
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
                 elif having[2]=='not_equal':
@@ -564,6 +621,9 @@ class Table:
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: len(x) != int(having[3])).groupby(group_by).count().reset_index()
                     
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
             else:
@@ -579,6 +639,9 @@ class Table:
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).count().reset_index()
 
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
         else:
@@ -594,7 +657,7 @@ class Table:
             print(self.data)
             # self._update()
         
-    def sum(self, column_name, having, group_by, drop):
+    def sum(self, column_name, having, group_by, drop, order_by):
     
         if group_by:
             if having is not None:
@@ -605,7 +668,10 @@ class Table:
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].sum() > int(having[3])).groupby(group_by).sum().reset_index()
-                
+
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
                     
@@ -613,7 +679,10 @@ class Table:
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].sum() >= int(having[3])).groupby(group_by).sum().reset_index()
-                
+
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
                     
@@ -621,7 +690,10 @@ class Table:
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].sum() < int(having[3])).groupby(group_by).sum().reset_index()
-                
+
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
                     
@@ -629,7 +701,10 @@ class Table:
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].sum() <= int(having[3])).groupby(group_by).sum().reset_index()
-                
+
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
                     
@@ -637,7 +712,10 @@ class Table:
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].sum() == int(having[3])).groupby(group_by).sum().reset_index()
-                
+
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
                     
@@ -645,7 +723,10 @@ class Table:
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].sum() != int(having[3])).groupby(group_by).sum().reset_index()
-                
+
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
             else:
@@ -660,7 +741,10 @@ class Table:
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).sum().reset_index()
-
+                    
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
         else:
@@ -677,7 +761,7 @@ class Table:
             #print(self.data)
             #self._update()
         
-    def avg(self, column_name, having, group_by, drop):
+    def avg(self, column_name, having, group_by, drop, order_by):
     
         if group_by:
             if having is not None:
@@ -688,7 +772,10 @@ class Table:
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].mean() > int(having[3])).groupby(group_by).mean().reset_index()
-            
+
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
                 
@@ -696,7 +783,10 @@ class Table:
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].mean() >= int(having[3])).groupby(group_by).mean().reset_index()
-            
+
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
                 
@@ -705,6 +795,9 @@ class Table:
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].mean() < int(having[3])).groupby(group_by).mean().reset_index()
 
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
                 
@@ -713,6 +806,9 @@ class Table:
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].mean() <= int(having[3])).groupby(group_by).mean().reset_index()
 
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
                 
@@ -721,6 +817,9 @@ class Table:
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].mean() == int(having[3])).groupby(group_by).mean().reset_index()
 
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
                 
@@ -728,7 +827,10 @@ class Table:
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].mean() != int(having[3])).groupby(group_by).mean().reset_index()
-            
+
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
             else: 
@@ -736,14 +838,17 @@ class Table:
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).mean().reset_index().drop(group_by, axis = 1)
-
+                    
                     vals = df.values
                     self.data = vals.tolist()
                 else:
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).mean().reset_index()
-
+                    
+                    if order_by is not None:
+                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        
                     vals = df.values
                     self.data = vals.tolist()
         else:

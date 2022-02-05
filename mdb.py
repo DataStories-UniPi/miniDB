@@ -81,7 +81,7 @@ def create_query_plan(query, keywords, action):
         #dic should look like this: 
         #{'select': '*', 'from': 'department order', 'where': None, 'order by': 'budget', 'top': None}
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
-        #print(dic)
+        print(dic)
         
     #Get ready for sql things to happen now
     #We check if the first word of our command (aka action variable) is select    
@@ -94,6 +94,13 @@ def create_query_plan(query, keywords, action):
         if dic['order by'] is not None:
             #.removesuffix removes ' order' if exists
             dic['from'] = dic['from'].removesuffix(' order')
+            
+            if dic['order by'] and dic['group by'] is not None:
+                dic['group by'] = dic['group by'].removesuffix(' order')
+                    
+            if dic['having'] is not None:
+                dic['having'] = dic['having'].removesuffix(' order')
+                
             #disc['form'] contains now the table alone e.g. select * from department order by budget desc-> classroom
 
             #Check if order by has a desc e.g. 'order by: capacity desc'
@@ -111,6 +118,7 @@ def create_query_plan(query, keywords, action):
         if dic['group by'] is not None:
             #.removesuffix removes ' order' if exists
             dic['from'] = dic['from'].removesuffix(' group')
+            
 
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
