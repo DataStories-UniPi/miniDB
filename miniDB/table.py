@@ -251,11 +251,18 @@ class Table:
                         grouped = min(original=self,grouped=grouped,target_column=target_column.strip(),column_names=column_names)
                         return_cols.append(len(return_cols))
 
+                    elif(col.strip().startswith('count')):
+
+                        target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
+
+                        grouped = count(original=self,grouped=grouped,target_column=target_column.strip(),column_names=column_names)
+                        return_cols.append(len(return_cols))
+
                     elif(col.strip().startswith('sum')):
 
                         target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
 
-                        grouped = sum(original=self,grouped=grouped,target_column=target_column.strip())
+                        grouped = sum(original=self,grouped=grouped,target_column=target_column.strip(),column_names=column_names)
                         return_cols.append(len(return_cols))
 
                     elif(col.strip().startswith('max')):
@@ -264,9 +271,9 @@ class Table:
 
                         grouped = max(original=self,grouped=grouped,target_column=target_column.strip(),column_names=column_names)
                         return_cols.append(len(return_cols))
-                    
-                    
-                    
+
+
+
                     else:
                         raise Exception("given select list not in GROUP BY")
 
@@ -285,8 +292,14 @@ class Table:
                         target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
 
                         return_cols.append(grouped.column_names.index('agg_min_'+target_column.strip()))
+                    elif(col.strip().startswith('count')):
+                        target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
+
+                        return_cols.append(grouped.column_names.index('agg_count_' + target_column.strip().replace(' ', '_')))
                     elif(col.strip().startswith('sum')):
-                        return_cols.append(grouped.column_names.index('agg_sum'))
+                        target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
+
+                        return_cols.append(grouped.column_names.index('agg_sum_' + target_column.strip().replace(' ', '_')))
                     elif(col.strip().startswith('max')):
                         target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
 
@@ -994,31 +1007,24 @@ def min(original,grouped,target_column,column_names):
 
 
 
-def sum(original, grouped, target_column):
+def sum(original, grouped, target_column, column_names):
     '''
     With group by
     '''
-
-    print(target_column)
-
     distinct = False
-
     input_target = target_column.split(' ')
-
     input_target_column = input_target[0]
-
 
     if(input_target[0]=='distinct'):
         distinct = True
         input_target_column = input_target[1]
 
-    
 
     target = original.column_names.index(input_target_column)
-    groups = [original.column_names.index(elem) for elem in grouped.column_names]
+    groups = [original.column_names.index(elem) for elem in column_names]
 
     '''Sort the original table'''
-    orders = grouped.column_names.copy()
+    orders = column_names.copy()
     if(input_target_column not in grouped.column_names):
         orders.append(input_target_column)
     original.order_by(orders)
@@ -1059,7 +1065,7 @@ def sum(original, grouped, target_column):
             prev = elem
 
     c_names = grouped.column_names
-    c_names.append("agg_sum")
+    c_names.append("agg_sum_" + target_column.replace(' ', '_'))
     c_types = grouped.column_types
     c_types.append(type(5))
     pk = grouped.column_names[0]
@@ -1069,6 +1075,75 @@ def sum(original, grouped, target_column):
     interval = 0
     for d in grouped.data:
         d.append(sums[interval])
+        n_table.data.append(d)
+        interval += 1
+
+    return n_table
+
+def count(original, grouped, target_column, column_names):
+    '''
+    With group by
+    '''
+    distinct = False
+    input_target = target_column.split(' ')
+    input_target_column = input_target[0]
+
+    if(input_target[0]=='distinct'):
+        distinct = True
+        input_target_column = input_target[1]
+
+
+    target = original.column_names.index(input_target_column)
+    groups = [original.column_names.index(elem) for elem in column_names]
+
+    '''Sort the original table'''
+    orders = column_names.copy()
+    if(input_target_column not in grouped.column_names):
+        orders.append(input_target_column)
+    original.order_by(orders)
+
+
+    counts = [1] * len(grouped.data)
+    interval = 0
+
+    if(distinct):
+
+        prev = original.data[0]
+
+        for elem in list(original.data[1:]):
+            tlist1 = [prev[groups[i]] for i in range(len(groups))]
+            tlist2 = [elem[groups[i]] for i in range(len(groups))]
+
+            if(tlist1 == tlist2 and elem[target] != prev[target]):
+                counts[interval] += 1
+            else:
+                interval += 1
+            prev = elem
+    else:
+
+        prev = original.data[0]
+
+        for elem in list(original.data[1:]):
+            tlist1 = [prev[groups[i]] for i in range(len(groups))]
+            tlist2 = [elem[groups[i]] for i in range(len(groups))]
+
+            if(tlist1 == tlist2):
+                counts[interval] += 1
+            else:
+                interval += 1
+            prev = elem
+
+    c_names = grouped.column_names
+    c_names.append("agg_count_" + target_column.replace(' ', '_'))
+    c_types = grouped.column_types
+    c_types.append(type(5))
+    pk = grouped.column_names[0]
+    n_table = Table("temp", c_names, c_types, pk)
+    n_table.data = []
+
+    interval = 0
+    for d in grouped.data:
+        d.append(counts[interval])
         n_table.data.append(d)
         interval += 1
 
