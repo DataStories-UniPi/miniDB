@@ -2,6 +2,7 @@ from __future__ import annotations
 from tabulate import tabulate
 import pickle
 import os
+
 from misc import get_op, split_condition
 
 
@@ -197,7 +198,7 @@ class Table:
         return indexes_to_del
 
 
-    def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None):
+    def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None,group_by_col_list=None,aggr_func_list=None,having_condition=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -214,38 +215,76 @@ class Table:
         '''
 
         # if * return all columns, else find the column indexes for the columns specified
+        return_columns = return_columns.replace(' ','')
+        
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
+            return_columns = [col for col in self.column_names]
+        elif aggr_func_list is not None :
+            a = 5 
+            b = 3.5   
+            return_columns = [i for i in aggr_func_list]
+            for func in aggr_func_list : 
+              if func.strip().startswith("avg") | func.strip().startswith("sum") :
+                if self.column_types[self.column_names.index(self.search_betweens(func,"(",")"))] != type(a) and  self.column_types[self.column_names.index(self.search_betweens(func,"(",")"))] != type(b) :
+                   print("Functions Sum and Average only use numeric types")
+                   return False 
+            for col in group_by_col_list :
+               return_columns.append(col)
+            print(return_columns)
+            return_cols =[]
+            for col in return_columns:
+               return_cols.append(return_columns.index(col))
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+            return_columns = [col for col in return_columns.split(',')]
+        
 
+         
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
+            column_name, operator, value = self._parse_condition(condition,return_columns,False)
             column = self.column_by_name(column_name)
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
-
+        if group_by_col_list is not None : 
+          self.data_before_print = self.data
+          print(self.data)
+          self.data = self.group_by_func(group_by_col_list,aggr_func_list,rows)
+          if having_condition is not None:
+            ret = [] 
+            for col in return_columns :
+               ret.append(col.replace(' ',''))
+            column_name, operator, value = self._parse_condition(having_condition,ret,False)
+            column = [row[ret.index(column_name)] for row in self.data]
+            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+          else :
+            rows = [i for i in range(len(self.data))]
         # top k rows
         # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
-
+        
         # we need to set the new column names/types and no of columns, since we might
         # only return some columns
-        dict['column_names'] = [self.column_names[i] for i in return_cols]
+        dict['column_names'] = [i for i in return_columns]
         dict['column_types']   = [self.column_types[i] for i in return_cols]
-
+        #dict['column_names'] = [self.column_names[i] for i in return_cols]
+        #dict['column_types']   = [self.column_types[i] for i in return_cols]
+        
         s_table = Table(load=dict) 
+        
         if order_by:
             s_table.order_by(order_by, desc)
 
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
 
         return s_table
-
+        
+        
+   
 
     def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, desc=True, top_k=None):
 
@@ -280,8 +319,9 @@ class Table:
         # same as simple select from now on
         rows = rows[:top_k]
         # TODO: this needs to be dumbed down
+      
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
-
+        
         dict['column_names'] = [self.column_names[i] for i in return_cols]
         dict['column_types']   = [self.column_types[i] for i in return_cols]
 
@@ -358,7 +398,7 @@ class Table:
         return join_table
 
 
-    def show(self, no_of_rows=None, is_locked=False):
+    def show(self, no_of_rows=None, is_locked=False,group_by = None):
         '''
         Print the table in a nice readable format.
 
@@ -383,9 +423,13 @@ class Table:
         non_none_rows = [row for row in self.data if any(row)]
         # print using tabulate
         print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
+        '''
+           The data of the table is restored in case an aggregate function changes it 
+        '''
+        if group_by is not None : 
+          self.data = self.data_before_print
 
-
-    def _parse_condition(self, condition, join=False):
+    def _parse_condition(self, condition, return_columns=None, join=False):
         '''
         Parse the single string condition and return the value of the column and the operator.
 
@@ -403,9 +447,17 @@ class Table:
 
         # cast the value with the specified column's type and return the column name, the operator and the casted value
         left, op, right = split_condition(condition)
-        if left not in self.column_names:
+        left = left.replace(' ','')
+        if left not in self.column_names and left not in return_columns :
             raise ValueError(f'Condition is not valid (cant find column name)')
-        coltype = self.column_types[self.column_names.index(left)]
+        if return_columns is not None :
+          if left in return_columns and left not in self.column_names :
+            left_col_in = self.search_betweens(left,"(",")") 
+            coltype = self.column_types[self.column_names.index(left_col_in)]
+          else :
+            coltype = self.column_types[self.column_names.index(left)]
+        else :
+            coltype = self.column_types[self.column_names.index(left)]
 
         return left, op, coltype(right)
 
@@ -422,3 +474,152 @@ class Table:
         f.close()
 
         self.__dict__.update(tmp_dict)
+        
+    def search_betweens(self,s, first, last): 
+     '''
+     Search in 's' for the substring that is between 'first' and 'last'
+     '''
+     try:
+        start = s.index( first ) + len( first )
+        end = s.index( last, start )
+     except:
+        return
+     return s[start:end].strip()
+          
+    def group_by_func(self,group_by_col_list,aggr_func_list,rows):
+        '''
+        groups all the distinct combinations in comb_list and then proceeds to the aggregate function.
+        for example ,
+              we have the columns year,month,days and in the group by clause there is count(days)
+              and the values are row1 : year = 2001 ,month = 12 ,days = 15
+              row2 : year = 2001 ,month = 12 ,days = 17
+              row3 : year = 2003 ,month = 10 ,days = 25 
+              The comb_list will be [[2001,12][2003,10]].
+        '''
+        self.group_by_value_lists = []
+        self.comb_list = []
+        for row in rows :
+           self.group_by_distinct = []
+           for col in group_by_col_list :
+             self.group_by_distinct.append(self.data[row][self.column_names.index(col)])
+           if self.group_by_distinct not in self.comb_list :
+             self.comb_list.append(self.group_by_distinct)
+        print('comb list : ', self.comb_list)
+           
+        for func in aggr_func_list :
+           if func.strip().startswith("count") :
+             self.comb_list = self.count(group_by_col_list,rows)
+           elif func.strip().startswith("max") :
+             self.comb_list = self.max(group_by_col_list,rows,func)
+           elif func.strip().startswith("min") :
+             self.comb_list = self.min(group_by_col_list,rows,func)
+           elif func.strip().startswith("avg") :
+             self.comb_list = self.avg(group_by_col_list,rows,func)
+           elif func.strip().startswith("sum") : 
+             self.comb_list = self.sum(group_by_col_list,rows,func)
+        return self.comb_list     
+        
+    def count(self,group_by_col_list,rows) : 
+        '''
+         At the end of this function and every other aggregate function the count or sum etc is added at the end of every comb.
+         for example,
+              lets say the count of days for the comb : [2001,12] is 2 and for the comb : [2003,10] its 1.at the end of this function the comb list
+              will look like this : [[2001,12,2],[2003,10,1]].
+              And then this comb_list will return to the select_where function and replace self.data temporarily.
+        '''
+        #col_in_func = mdb.search_between(func,"(",")")
+        data = []
+        self.count_of_col_in_combs = [0 for i in range(len(self.comb_list))]
+        for row in rows :
+          self.group_by_distinct = []
+          for col in group_by_col_list : 
+             self.group_by_distinct.append(self.data[row][self.column_names.index(col)]) 
+          for comb in self.comb_list : 
+             if self.group_by_distinct == comb : 
+                index = self.comb_list.index(comb) 
+                self.count_of_col_in_combs[index] += 1
+        for idx in range(len(self.comb_list)) : 
+             self.comb_list[idx].insert(0,self.count_of_col_in_combs[idx])
+        return self.comb_list
+        
+    def max(self,group_by_col_list,rows,func) :
+        col_in_func = self.search_betweens(func,"(",")")  
+        col_in_func = col_in_func.strip()
+        max_val_list = [None for i in range(len(self.comb_list))]
+        for row in rows :
+          self.group_by_distinct = []
+          for col in group_by_col_list : 
+             self.group_by_distinct.append(self.data[row][self.column_names.index(col)]) 
+          for idx,comb in enumerate(self.comb_list) : 
+             if self.group_by_distinct == comb :
+               max_val_list[idx] = self.data[row][self.column_names.index(col_in_func)]
+        for row in rows :
+          self.group_by_distinct = []
+          for col in group_by_col_list : 
+             self.group_by_distinct.append(self.data[row][self.column_names.index(col)]) 
+          for idx,comb in enumerate(self.comb_list) : 
+             if self.group_by_distinct == comb :
+               if self.data[row][self.column_names.index(col_in_func)] > max_val_list[idx] :
+                 max_val_list[idx] = self.data[row][self.column_names.index(col_in_func)]
+        for idx in range(len(self.comb_list)) : 
+             self.comb_list[idx].insert(0,max_val_list[idx])
+        return self.comb_list
+        
+    def min(self,group_by_col_list,rows,func) :   
+        col_in_func = self.search_betweens(func,"(",")")  
+        col_in_func = col_in_func.strip()
+        min_val_list = [None for i in range(len(self.comb_list))]
+        for row in rows :
+          self.group_by_distinct = []
+          for col in group_by_col_list : 
+             self.group_by_distinct.append(self.data[row][self.column_names.index(col)]) 
+          for idx,comb in enumerate(self.comb_list) : 
+             if self.group_by_distinct == comb :
+               min_val_list[idx] = self.data[row][self.column_names.index(col_in_func)]
+        for row in rows :
+          self.group_by_distinct = []
+          for col in group_by_col_list : 
+             self.group_by_distinct.append(self.data[row][self.column_names.index(col)]) 
+          for idx,comb in enumerate(self.comb_list) : 
+             if self.group_by_distinct == comb :
+               if self.data[row][self.column_names.index(col_in_func)] < min_val_list[idx] :
+                 min_val_list[idx] = self.data[row][self.column_names.index(col_in_func)]
+        for idx in range(len(self.comb_list)) : 
+             self.comb_list[idx].insert(0,min_val_list[idx])
+        return self.comb_list
+        
+    def avg(self,group_by_col_list,rows,func) :  
+         col_in_func = self.search_betweens(func,"(",")")  
+         col_in_func = col_in_func.strip() 
+         avg_val_list = [[0,0] for i in range(len(self.comb_list))]
+         for row in rows :
+          self.group_by_distinct = []
+          for col in group_by_col_list : 
+             self.group_by_distinct.append(self.data[row][self.column_names.index(col)]) 
+          for idx,comb in enumerate(self.comb_list) : 
+             if self.group_by_distinct == comb :
+               avg_val_list[idx] = [avg_val_list[idx][0] + self.data[row][self.column_names.index(col_in_func)],avg_val_list[idx][1] + 1]
+         for idx in range(len(avg_val_list)) :
+            avg_val_list[idx] = avg_val_list[idx][0] // avg_val_list[idx][1]
+         
+         for idx in range(len(self.comb_list)) : 
+             self.comb_list[idx].insert(0,avg_val_list[idx])
+         print(self.comb_list)
+         return self.comb_list 
+      
+    def sum(self,group_by_col_list,rows,func) : 
+         col_in_func = self.search_betweens(func,"(",")")  
+         col_in_func = col_in_func.strip() 
+         sum_val_list = [0 for i in range(len(self.comb_list))]
+         for row in rows :
+          self.group_by_distinct = []
+          for col in group_by_col_list : 
+             self.group_by_distinct.append(self.data[row][self.column_names.index(col)]) 
+          for idx,comb in enumerate(self.comb_list) : 
+             if self.group_by_distinct == comb :
+               sum_val_list[idx] = sum_val_list[idx] + self.data[row][self.column_names.index(col_in_func)]
+         for idx in range(len(self.comb_list)) : 
+          self.comb_list[idx].insert(0,sum_val_list[idx])
+         return self.comb_list  
+        
+         

@@ -314,7 +314,7 @@ class Database:
         self.save_database()
 
     def select(self, columns, table_name, condition, order_by=None, top_k=True,\
-               desc=None, save_as=None, return_object=True):
+               group_by=None,having_cond=None,desc=None, save_as=None, return_object=True):
         '''
         Selects and outputs a table's data where condtion is met.
 
@@ -334,8 +334,13 @@ class Database:
         '''
         # print(table_name)
         self.load_database()
+        
         if isinstance(table_name,Table):
-            return table_name._select_where(columns, condition, order_by, desc, top_k)
+            if len(group_by_col_list) > 0 :
+                group_by_col_list = [col for col in group_by.split(",")]
+               
+                return table_name._select_group_by(columns,condition,top_k,group_by_col_list,aggr_func_list)
+            return table_name._select_where(columns, condition, order_by, desc, top_k,group_by_col_list,aggr_func_list)
 
         if condition is not None:
             condition_column = split_condition(condition)[0]
@@ -350,8 +355,30 @@ class Database:
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
             table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k)
+        #elif group_by is not None :
+            #group_by_col_list = [col for col in group_by.split(",")]
+            #print("why")
+            #return self.tables[table_name]._select_group_by(columns,condition,top_k,group_by_col_list,aggr_func_list)
         else:
-            table = self.tables[table_name]._select_where(columns, condition, order_by, desc, top_k)
+            '''
+             if the query includes group_by ,the list of the columns that come after group by and the aggregate functions at the start are added in seperate lists.
+             for example,
+                 select year, count(month) from table group by year
+                 group_by_col_list = [year].
+                 aggr_func_list = [count(month)].
+             and if a having clause exists the condition after it is added in having_cond.
+            '''
+            group_by_col_list = None
+            aggr_func_list = None
+            if group_by is not None :
+               cols_of_select = [col for col in columns.split(",")]
+               aggr_func_list = []
+               for col in cols_of_select :
+                 if "(" and ")" in col :
+                   aggr_func_list.append(col)
+              
+               group_by_col_list = [col for col in group_by.split(",")]
+            table = self.tables[table_name]._select_where(columns, condition, order_by, desc, top_k,group_by_col_list,aggr_func_list,having_cond)
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as

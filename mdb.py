@@ -18,7 +18,7 @@ art = '''
  | | | | | || || | | || || |__| || |_) |
  |_| |_| |_||_||_| |_||_||_____/ |____/   2021 - v3.2                               
 '''   
-
+group_by = None
 
 def search_between(s, first, last):
     '''
@@ -44,11 +44,11 @@ def create_query_plan(query, keywords, action):
 
     This can and will be used recursively
     '''
-
+    
     dic = {val: None for val in keywords if val!=';'}
 
     ql = [val for val in query.split(' ') if val !='']
-
+    
     kw_in_query = []
     kw_positions = []
     for i in range(len(ql)):
@@ -58,16 +58,14 @@ def create_query_plan(query, keywords, action):
         elif i!=len(ql)-1 and f'{ql[i]} {ql[i+1]}' in keywords and not in_paren(ql, i):
             kw_in_query.append(f'{ql[i]} {ql[i+1]}')
             kw_positions.append(i+1)
-    print(kw_in_query)
-    print(kw_positions)
+    
 
 
     for i in range(len(kw_in_query)-1):
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
-
+        
     if action=='select':
         dic = evaluate_from_clause(dic)
-        
         if dic['order by'] is not None:
             dic['from'] = dic['from'].removesuffix(' order')
             if 'desc' in dic['order by']:
@@ -78,6 +76,16 @@ def create_query_plan(query, keywords, action):
             
         else:
             dic['desc'] = None
+        '''
+         In case of group by 
+        '''
+        if dic['group by'] is not None:
+            dic['from'] = dic['from'].removesuffix(' group')
+            if dic['where'] is not None : 
+              dic['where'] = dic['where'].removesuffix(' group')
+            if dic['having'] is not None :
+              dic['group by'] = dic['group by'].removesuffix(' having')
+            
 
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
@@ -156,7 +164,7 @@ def interpret(query):
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
-                     'select': ['select', 'from', 'where', 'order by', 'top'],
+                     'select': ['select', 'from', 'where', 'order by', 'top','group by', 'having'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
@@ -180,11 +188,14 @@ def execute_dic(dic):
     '''
     Execute the given dictionary
     '''
+    
     for key in dic.keys():
         if isinstance(dic[key],dict):
             dic[key] = execute_dic(dic[key])
     
     action = list(dic.keys())[0].replace(' ','_')
+    if action.strip() == "select" :
+       group_by = dic['group by']
     return getattr(db, action)(*dic.values())
 
 def interpret_meta(command):
@@ -238,7 +249,13 @@ if __name__ == "__main__":
             dic = interpret(line.lower())
             result = execute_dic(dic)
             if isinstance(result,Table):
-                result.show()
+                if group_by is not None :
+                  '''
+                  the table.data is restored after the select its printed.
+                  '''
+                  result.show("1","2",group_by)
+                else : 
+                  result.show()
     else:
         from prompt_toolkit import PromptSession
         from prompt_toolkit.history import FileHistory
