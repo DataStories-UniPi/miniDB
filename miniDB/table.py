@@ -287,9 +287,8 @@ class Table:
             if aggregate_function[1] == 'sum':
 
                 #first we check if the column that the aggregate function was called is an int. SUM is only callable in ints.
-                print(self.column_types[aggregate_function[0]] != type(0))
-                if type(self.column_types[aggregate_function[0]]) != type(0):
-                    print("ERROR: There must be an integer provided in SUM functions")
+                if self.column_types[aggregate_function[0]] != int:
+                    print(f'ERROR: Column "{self.column_names[aggregate_function[0]]}" is a type of {str(self.column_types[aggregate_function[0]])}. SUM is only callable in {str(type(0))} types.')
                     return None
                 
                 #if the value is int, then we can call calculate_sum, which is roughly the same as count()
