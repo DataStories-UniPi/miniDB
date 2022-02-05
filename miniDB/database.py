@@ -335,16 +335,20 @@ class Database:
             save_as: string. The name that will be used to save the resulting table into the database (no save if None).
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
         '''
-        
+        # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
             if group_by:
                 if " "+group_by+"," in columns:
-                    print(columns)
                     drop=False
                     return table_name._select_where(columns, condition, order_by, desc, group_by, having, top_k)
                 elif " "+group_by+"" in columns:
-                    print(columns)
+                    drop=False
+                    return table_name._select_where(columns, condition, order_by, desc, group_by, having, top_k)
+                elif ""+group_by+"" in columns:
+                    drop=False
+                    return table_name._select_where(columns, condition, order_by, desc, group_by, having, top_k)
+                elif columns=='*':
                     drop=False
                     return table_name._select_where(columns, condition, order_by, desc, group_by, having, top_k)
                 else:
@@ -361,20 +365,27 @@ class Database:
         else:
             condition_column = ''
 
-        
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
             if group_by:
                 if " "+group_by+"," in columns:
-                    print(columns)
                     drop=False
                     index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
                     bt = self._load_idx(index_name)
                     table = self.tables[table_name]._select_where_with_btree(columns, drop, bt, condition, order_by, desc, group_by, having, top_k)
                 elif " "+group_by+"" in columns:
-                    print(columns)
+                    drop=False
+                    index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
+                    bt = self._load_idx(index_name)
+                    table = self.tables[table_name]._select_where_with_btree(columns, drop, bt, condition, order_by, desc, group_by, having, top_k)
+                elif ""+group_by+"" in columns:
+                    drop=False
+                    index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
+                    bt = self._load_idx(index_name)
+                    table = self.tables[table_name]._select_where_with_btree(columns, drop, bt, condition, order_by, desc, group_by, having, top_k)
+                elif columns=='*':
                     drop=False
                     index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
                     bt = self._load_idx(index_name)
@@ -394,13 +405,20 @@ class Database:
         else:
             if group_by:
                 if " "+group_by+"," in columns:
-                    print(columns)
                     drop=False
                     table = self.tables[table_name]._select_where(columns, drop, condition, order_by, desc, group_by, having, top_k)
                 elif " "+group_by+"" in columns:
-                    print(columns)
                     drop=False
                     table = self.tables[table_name]._select_where(columns, drop, condition, order_by, desc, group_by, having, top_k)
+                elif ""+group_by+"" in columns:
+                    drop=False
+                    table = self.tables[table_name]._select_where(columns, drop, condition, order_by, desc, group_by, having, top_k)
+                elif ""+group_by+"" in columns:
+                    drop=False
+                    table = self.tables[table_name]._select_where(columns, drop, condition, order_by, desc, group_by, having, top_k)
+                elif columns=='*':
+                    drop=False
+                    table = self.tables[table_name]._select_where(columns, drop, condition, order_by, desc, group_by, having, top_k)   
                 else:
                     drop=True
                     temp=" , "+group_by

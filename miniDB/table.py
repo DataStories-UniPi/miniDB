@@ -226,7 +226,7 @@ class Table:
         return_columns=return_columns.replace('count ', '')
         return_columns=return_columns.replace('sum ', '')
         return_columns=return_columns.replace('avg ', '')
-        
+
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
@@ -266,7 +266,10 @@ class Table:
             s_table.sum(dict['column_names'], having, group_by, drop, order_by)
             
         if mode=="avg":
-            s_table.avg(dict['column_names'], having, group_by, drop, order_by)    
+            s_table.avg(dict['column_names'], having, group_by, drop, order_by)   
+
+        if group_by and mode!="min" and mode!="max" and mode!="count" and mode!="sum" and mode!="avg":
+            s_table.group_by(dict['column_names'], group_by, drop)
                     
         if order_by:
             s_table.order_by(order_by, desc)
@@ -276,7 +279,7 @@ class Table:
         return s_table
 
 
-    def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, group_by=None, having=None, desc=True, top_k=None):
+    def _select_where_with_btree(self, return_columns, bt, drop, condition, order_by=None, group_by=None, having=None, desc=True, top_k=None):
 
         mode = return_columns[0]
 
@@ -290,6 +293,7 @@ class Table:
         return_columns=return_columns.replace('count ', '')
         return_columns=return_columns.replace('sum ', '')
         return_columns=return_columns.replace('avg ', '')
+        
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
@@ -326,28 +330,28 @@ class Table:
         dict['column_names'] = [self.column_names[i] for i in return_cols]
         dict['column_types']   = [self.column_types[i] for i in return_cols]
 
-        s_table = Table(load=dict) 
+        s_table = Table(load=dict)
         if mode=="min":
-            s_table.min(return_columns)
+            s_table.min(dict['column_names'], having, group_by, drop, order_by)
             
         if mode=="max":
-            s_table.max(return_columns)
+            s_table.max(dict['column_names'], having, group_by, drop, order_by)
             
         if mode=="count":
-            s_table.count(return_columns)
+            s_table.count(dict['column_names'], having, group_by, drop, order_by)
             
         if mode=="sum":
-            s_table.sum(return_columns)
+            s_table.sum(dict['column_names'], having, group_by, drop, order_by)
             
         if mode=="avg":
-            s_table.avg(return_columns)
-              
-        if order_by:
-            s_table.order_by(return_columns, desc)
-            
-        if group_by:
-            s_table.group_by(group_by, desc, having) #Check this again!
+            s_table.avg(dict['column_names'], having, group_by, drop, order_by)   
 
+        if group_by and (mode!="min" or mode!="max" or mode!="count" or mode!="sum" or mode!="avg"):
+            s_table.group_by(dict['column_names'], group_by, drop)
+                    
+        if order_by:
+            s_table.order_by(order_by, desc)
+        
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
         
         return s_table
@@ -361,10 +365,53 @@ class Table:
             desc: boolean. If True, order_by will return results in descending order (False by default).
         '''
         column = self.column_by_name(column_name)
+        
         idx = sorted(range(len(column)), key=lambda k: column[k], reverse=desc)
         # print(idx)
+        
         self.data = [self.data[i] for i in idx]
         # self._update()
+        
+    def group_by(self, column_name, group_by, drop):
+        '''
+        Group based on column and without aggregarate functions.
+
+        Args:
+            column_name: string. Name of column.
+            reset_index() is there for group by to appear every column and not some.
+        '''
+        if drop==True:
+            a = self.data
+            df = pd.DataFrame(a,
+                columns = column_name).groupby(group_by).max().reset_index().drop(group_by, axis = 1)
+
+            #Converts df to values to se can convert it into list later on
+            vals = df.values
+            
+            list(df.columns.values)
+            for i in range(len(list(df.columns.values))):
+                column_name[i]=df.columns.values[i]
+            
+            #Converts df.values to a list in order to be acceptable from self.data list                
+            self.data = vals.tolist()
+                        
+            # self._update() 
+        else:
+            a = self.data
+            df = pd.DataFrame(a,
+                columns = column_name).groupby(group_by).max().reset_index()
+
+            #Converts df to values to se can convert it into list later on
+            vals = df.values
+            
+            list(df.columns.values)
+            for i in range(len(list(df.columns.values))):
+                column_name[i]=df.columns.values[i]
+            
+            #Converts df.values to a list in order to be acceptable from self.data list                
+            self.data = vals.tolist()
+                        
+            # self._update() 
         
     def min(self, column_name, having, group_by, drop, order_by):
         
@@ -374,6 +421,7 @@ class Table:
                 having=having.split(' ')
 
                 if having[2]=='>':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].min() > int(having[3])).groupby(group_by).min().reset_index()
@@ -382,8 +430,18 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "min("+word+")"
+                        
                     self.data = vals.tolist()
                 elif having[2]=='greater_or_equal':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].min() >= int(having[3])).groupby(group_by).min().reset_index()
@@ -392,8 +450,18 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "min("+word+")"
+                        
                     self.data = vals.tolist()
                 elif having[2]=='<':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].min() < int(having[3])).groupby(group_by).min().reset_index()
@@ -402,8 +470,18 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "min("+word+")"
+                        
                     self.data = vals.tolist()
                 elif having[2]=='less_or_equal':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].min() <= int(having[3])).groupby(group_by).min().reset_index()
@@ -412,8 +490,18 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "min("+word+")"
+                        
                     self.data = vals.tolist()
                 elif having[2]=='=':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].min() == int(having[3])).groupby(group_by).min().reset_index()
@@ -422,8 +510,18 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "min("+word+")"
+                        
                     self.data = vals.tolist()
                 elif having[2]=='not_equal':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].min() != int(having[3])).groupby(group_by).min().reset_index()
@@ -432,32 +530,67 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "min("+word+")"
+                        
                     self.data = vals.tolist()
             else:
                 if drop==True:
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).min().reset_index().drop(group_by, axis = 1)
-
+                    
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "min("+word+")"
+                        
                     self.data = vals.tolist()
                 else:
+                    word=column_name[0]
                     a = self.data
+
                     df = pd.DataFrame(a,
-                        columns = column_name).groupby(group_by).min().reset_index()
+                        columns=column_name).groupby(group_by).min().reset_index()
                     
                     if order_by is not None:
-                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                       df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "min("+word+")"
+
                     self.data = vals.tolist()
 
         else:
+            word=column_name[0]
             column = self.column_by_name(column_name[0])
             #print(column)
         
             idx = sorted(range(len(column)), key=lambda k: column[k], reverse=False)
             #print(idx)
+            
+            for i in range(len(column_name)):
+                if column_name[i] == word:
+                    column_name[i] = "min("+word+")"
         
             self.data = [min(self.data)]
             #print(self.data)
@@ -471,6 +604,7 @@ class Table:
                 having=having.split(' ')
 
                 if having[2]=='>':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].max() > int(having[3])).groupby(group_by).max().reset_index()
@@ -479,8 +613,18 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "max("+word+")"
+                        
                     self.data = vals.tolist()
                 elif having[2]=='greater_or_equal':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].max() >= int(having[3])).groupby(group_by).max().reset_index()
@@ -489,8 +633,18 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "max("+word+")"
+                        
                     self.data = vals.tolist()
                 elif having[2]=='<':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].max() < int(having[3])).groupby(group_by).max().reset_index()
@@ -499,8 +653,18 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "max("+word+")"
+                        
                     self.data = vals.tolist()
                 elif having[2]=='less_or_equal':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].max() <= int(having[3])).groupby(group_by).max().reset_index()
@@ -509,8 +673,18 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "max("+word+")"
+                            
                     self.data = vals.tolist()
                 elif having[2]=='=':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].max() == int(having[3])).groupby(group_by).max().reset_index()
@@ -519,8 +693,18 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "max("+word+")"
+                        
                     self.data = vals.tolist()
                 elif having[2]=='not_equal':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].max() != int(having[3])).groupby(group_by).max().reset_index().drop(group_by, axis = 1)
@@ -529,31 +713,65 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "max("+word+")"
+                        
                     self.data = vals.tolist()
             else:
                 if drop==True:
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).max().reset_index().drop(group_by, axis = 1)
 
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "max("+word+")"
+                        
                     self.data = vals.tolist()
                 else:
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).max().reset_index()
-                    
+
                     if order_by is not None:
-                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                        df.sort_values(by=[order_by], ascending=True)
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "max("+word+")"
+                        
                     self.data = vals.tolist()
         else:
+            word=column_name[0]
             column = self.column_by_name(column_name[0])
             #print(column)
         
             idx = sorted(range(len(column)), key=lambda k: column[k], reverse=True)
             #print(idx)
+            
+            for i in range(len(column_name)):
+                if column_name[i] == word:
+                    column_name[i] = "max("+word+")"
         
             self.data = [max(self.data)]
             #print(self.data)
@@ -567,6 +785,7 @@ class Table:
                 having=having.split(' ')
 
                 if having[2]=='>':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: len(x) > int(having[3])).groupby(group_by).count().reset_index()
@@ -575,8 +794,18 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "count("+word+")"
+                        
                     self.data = vals.tolist()
                 elif having[2]=='greater_or_equal':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: len(x) >= int(having[3])).groupby(group_by).count().reset_index()
@@ -585,8 +814,18 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "count("+word+")"
+                        
                     self.data = vals.tolist()
                 elif having[2]=='<':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: len(x) < int(having[3])).groupby(group_by).count().reset_index()
@@ -595,8 +834,14 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
                     self.data = vals.tolist()
                 elif having[2]=='less_or_equal':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: len(x) <= int(having[3])).groupby(group_by).count().reset_index()
@@ -605,8 +850,18 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "count("+word+")"
+                        
                     self.data = vals.tolist()
                 elif having[2]=='=':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: len(x) == int(having[3])).groupby(group_by).count().reset_index()
@@ -615,8 +870,18 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "count("+word+")"
+                        
                     self.data = vals.tolist()
                 elif having[2]=='not_equal':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: len(x) != int(having[3])).groupby(group_by).count().reset_index()
@@ -625,16 +890,36 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "count("+word+")"
+                        
                     self.data = vals.tolist()
             else:
                 if drop==True:
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).count().reset_index().drop(group_by, axis = 1)
 
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "count("+word+")"
+                        
                     self.data = vals.tolist()
                 else:
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).count().reset_index()
@@ -643,8 +928,18 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "count("+word+")"
+                        
                     self.data = vals.tolist()
         else:
+            word=column_name[0]
             column = self.column_by_name(column_name[0])
             #print(column)
         
@@ -652,6 +947,10 @@ class Table:
             #print(idx)
         
             count = str(len(idx))
+            
+            for i in range(len(column_name)):
+                if column_name[i] == word:
+                    column_name[i] = "count("+word+")"
         
             self.data = [count]
             print(self.data)
@@ -665,6 +964,7 @@ class Table:
                 having=having.split(' ')
 
                 if having[2]=='>':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].sum() > int(having[3])).groupby(group_by).sum().reset_index()
@@ -673,9 +973,19 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "sum("+word+")"
+                        
                     self.data = vals.tolist()
                     
                 elif having[2]=='greater_or_equal':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].sum() >= int(having[3])).groupby(group_by).sum().reset_index()
@@ -684,9 +994,19 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "sum("+word+")"
+                        
                     self.data = vals.tolist()
                     
                 elif having[2]=='<':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].sum() < int(having[3])).groupby(group_by).sum().reset_index()
@@ -695,9 +1015,19 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "sum("+word+")"
+                        
                     self.data = vals.tolist()
                     
                 elif having[2]=='less_or_equal':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].sum() <= int(having[3])).groupby(group_by).sum().reset_index()
@@ -706,9 +1036,19 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "sum("+word+")"
+                        
                     self.data = vals.tolist()
                     
                 elif having[2]=='=':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].sum() == int(having[3])).groupby(group_by).sum().reset_index()
@@ -717,9 +1057,19 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "sum("+word+")"
+                            
                     self.data = vals.tolist()
                     
                 elif having[2]=='not_equal':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].sum() != int(having[3])).groupby(group_by).sum().reset_index()
@@ -728,16 +1078,36 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "sum("+word+")"
+                        
                     self.data = vals.tolist()
             else:
                 if drop==True:
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).sum().reset_index().drop(group_by, axis = 1)
 
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "sum("+word+")"
+                        
                     self.data = vals.tolist()
                 else:
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).sum().reset_index()
@@ -746,8 +1116,18 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "sum("+word+")"
+                        
                     self.data = vals.tolist()
         else:
+            word=column_name[0]
             column = self.column_by_name(column_name[0])
             #print(column)
         
@@ -756,6 +1136,10 @@ class Table:
         
             total = sum(column)
             #print(total)
+            
+            for i in range(len(column_name)):
+                if column_name[i] == word:
+                    column_name[i] = "sum("+word+")"
         
             self.data = [str(total)]
             #print(self.data)
@@ -769,6 +1153,7 @@ class Table:
                 having=having.split(' ')
 
                 if having[2]=='>':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].mean() > int(having[3])).groupby(group_by).mean().reset_index()
@@ -777,9 +1162,19 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "avg("+word+")"
+                        
                     self.data = vals.tolist()
                 
                 elif having[2]=='greater_or_equal':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].mean() >= int(having[3])).groupby(group_by).mean().reset_index()
@@ -788,9 +1183,19 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "avg("+word+")"
+                        
                     self.data = vals.tolist()
                 
                 elif having[2]=='<':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].mean() < int(having[3])).groupby(group_by).mean().reset_index()
@@ -799,9 +1204,19 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "avg("+word+")"
+                        
                     self.data = vals.tolist()
                 
                 elif having[2]=='less_or_equal':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].mean() <= int(having[3])).groupby(group_by).mean().reset_index()
@@ -810,9 +1225,19 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "avg("+word+")"
+                        
                     self.data = vals.tolist()
                 
                 elif having[2]=='=':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].mean() == int(having[3])).groupby(group_by).mean().reset_index()
@@ -821,9 +1246,19 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "avg("+word+")"
+                        
                     self.data = vals.tolist()
                 
                 elif having[2]=='not_equal':
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].mean() != int(having[3])).groupby(group_by).mean().reset_index()
@@ -832,16 +1267,36 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "avg("+word+")"
+                        
                     self.data = vals.tolist()
             else: 
                 if drop==True:
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).mean().reset_index().drop(group_by, axis = 1)
                     
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "avg("+word+")"
+                        
                     self.data = vals.tolist()
                 else:
+                    word=column_name[0]
                     a = self.data
                     df = pd.DataFrame(a,
                         columns = column_name).groupby(group_by).mean().reset_index()
@@ -850,8 +1305,18 @@ class Table:
                         df.sort_values(by=[order_by], ascending=True).reset_index()
                         
                     vals = df.values
+                    
+                    list(df.columns.values)
+                    for i in range(len(list(df.columns.values))):
+                        column_name[i]=df.columns.values[i]
+                        
+                    for i in range(len(column_name)):
+                        if column_name[i] == word:
+                            column_name[i] = "avg("+word+")"
+                        
                     self.data = vals.tolist()
         else:
+            word=column_name[0]
             column = self.column_by_name(column_name[0])
             #print(column)
         
@@ -864,6 +1329,10 @@ class Table:
             #print(total)
         
             avg = total/count
+            
+            for i in range(len(column_name)):
+                if column_name[i] == word:
+                    column_name[i] = "avg("+word+")"
         
             self.data = [str(avg)]
             #print(self.data)

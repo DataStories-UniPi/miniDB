@@ -81,7 +81,7 @@ def create_query_plan(query, keywords, action):
         #dic should look like this: 
         #{'select': '*', 'from': 'department order', 'where': None, 'order by': 'budget', 'top': None}
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
-        print(dic)
+        #print(dic)
         
     #Get ready for sql things to happen now
     #We check if the first word of our command (aka action variable) is select    
