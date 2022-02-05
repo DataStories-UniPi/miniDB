@@ -222,7 +222,7 @@ class Table:
             
             '''
             for idx, val in enumerate(condition_column_values): 
-                 if get_op(operator, val, value) and self.data[idx][col_idx] != 'null':
+                if get_op(operator, val, value) and self.data[idx][col_idx] != 'null':
                     count_rows+=1
         else:
             '''
@@ -230,15 +230,38 @@ class Table:
             
             '''
             counted_column_values = self.column_by_name(self.column_names[col_idx]) #list with the counted column's values
+
+            #if the value is not null, then count it.
             for val in counted_column_values:
-                if(val=='null'):
-                    continue
-                count_rows +=1
+                if val != 'null':
+                    count_rows +=1
 
         return count_rows
 
-    def calculate_sum(self, col_idx, condition):
-        pass
+    def calculate_sum(self, col_idx, condition=None):
+
+        #as a typical sum function, there must be a starting value of 0.
+        sum_of_rows = 0
+
+        #if there is a condition to check, we get the name of the WHERE column the operator (<, >, etc.) and the value provided.
+        if condition is not None:
+            condition_column_name, operator, value = self._parse_condition(condition)
+            condition_column_values                = self.column_by_name(condition_column_name)
+
+            #we enumerate every single column. If it satisfies the condition, and also not null, we can sum it.
+            for idx, val in enumerate(condition_column_values):
+                if get_op(operator, val, value) and self.data[idx][col_idx] != 'null':
+                    sum_of_rows += self.data[idx][col_idx]
+
+        else:
+            counted_column_values = self.column_by_name(self.column_names[col_idx])
+
+            for val in counted_column_values:
+                if val != 'null':
+                    sum_of_rows += val
+
+        return sum_of_rows
+        
 
 
     #returns a tuple of the index column and the aggregate function of the given aggregate
@@ -261,8 +284,10 @@ class Table:
             if aggregate_function[1] == 'sum':
 
                 #first we check if the column that the aggregate function was called is an int. SUM is only callable in ints.
-                if type(self.column_types[aggregate_function[0]]) != int:
-                    raise ValueError
+                #print(self.column_types[aggregate_function[0]])
+                if issubclass(type(self.column_types[aggregate_function[0]]), int):
+                    print("ERROR: There must be an integer provided in SUM functions")
+                    return None
                 
                 #if the value is int, then we can call calculate_sum, which is roughly the same as count()
                 sum = self.calculate_sum(aggregate_function[0], condition)
