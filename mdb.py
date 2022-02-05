@@ -87,10 +87,18 @@ def create_query_plan(query, keywords, action):
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
 #insert here
+        '''
+        if the foreign key keyword exists then we extract the possible foreign keys and their 
+        corresponding tables, and update the appropriate dictionary keys.
+        ''' 
         if 'foreign key' in args:
-            print(args)
+            #print(args)
             fkeyres = [i.start() for i in re.finditer('foreign key',args )]
             frefres = [i.start() for i in re.finditer('references',args )]                        
+            '''
+            Some 
+            
+            '''
             if len(fkeyres)==len(frefres):
                 full = args[fkeyres[0]:]                    
                 l=[val.strip().split(' ') for val in full.split(',')]
@@ -109,9 +117,9 @@ def create_query_plan(query, keywords, action):
                         print('all good')
                     else:
                         raise ValueError('The foreign key does not exist in the corresponding table')
-                #del dic['foreign keys']
-                #del dic['foreign table']
-                #del dic['foreign table key']
+                del dic['foreign keys']
+                del dic['foreign table']
+                del dic['foreign table key']
                 '''
                 k=[]
                 for i in range(len(fkeyres)):
