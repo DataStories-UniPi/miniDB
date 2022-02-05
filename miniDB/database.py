@@ -467,7 +467,7 @@ class Database:
         # define the new tables name, its column names and types
         join_table_name = ''
         join_table_colnames = left_names+right_names
-        join_table_coltypes = self.column_types+right_table.column_types
+        join_table_coltypes = left_table.column_types+right_table.column_types
         join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
 
         # check if both tables are sorted
@@ -496,7 +496,7 @@ class Database:
 
                 join_table._insert(left_table.data[i] + right_table.data[j])
 
-                if(right_table[j - 1][column_index_right] != right_table[j][column_index_right]):
+                if(right_table.data[j - 1][column_index_right] != right_table.data[j][column_index_right]):
                     first_occurrence = j
                 
                 if(j + 1 > right_table_length):
