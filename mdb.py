@@ -88,16 +88,15 @@ def create_query_plan(query, keywords, action):
         dic['column_types'] = ','.join([val[1] for val in arglist])
 #insert here
         '''
-        if the foreign key keyword exists then we extract the possible foreign keys and their 
-        corresponding tables, and update the appropriate dictionary keys.
+        if the foreign key keyword exists we process the query to find the position of the keywords.
         ''' 
         if 'foreign key' in args:
             #print(args)
             fkeyres = [i.start() for i in re.finditer('foreign key',args )]
             frefres = [i.start() for i in re.finditer('references',args )]                        
             '''
-            Some 
-            
+            Some consistency checks and then we extract the possible foreign keys and their 
+            corresponding tables, and update the appropriate dictionary keys.            
             '''
             if len(fkeyres)==len(frefres):
                 full = args[fkeyres[0]:]                    
@@ -108,6 +107,12 @@ def create_query_plan(query, keywords, action):
                 print(dic['foreign keys'])
                 print(dic['foreign table'])
                 print(dic['foreign table key'])
+                '''
+                The query may contain multipl foreign keys. for each one,
+                we find if the corresponding fields exist and are correct
+                and accordingly update a boolean flag. If after checking all keys everything is ok
+                we can proceed with the creation of the table.
+                '''
                 for i in range(len(dic['foreign keys'])):
                     myline = 'select '+dic['foreign table key'][i]+  ' from '+ dic['foreign table'][i]
                     print(myline)
@@ -120,44 +125,9 @@ def create_query_plan(query, keywords, action):
                 del dic['foreign keys']
                 del dic['foreign table']
                 del dic['foreign table key']
-                '''
-                k=[]
-                for i in range(len(fkeyres)):
-                    full = args[fkeyres[i]:]                    
-                  #  print(full)
-                    l=[val.strip().split(' ') for val in full.split(',')]
-                    print(l)
-                    #dic['foreign keys '] = ','.join([val[2] for val in l])
-                    dic['foreign keys'] = [[val[2] for val in l]]
-                    dic['foreign tables'] = [[val[4] for val in l]]
-                    print(dic['foreign keys'])
-                    print(dic['foreign tables'])
-                    print('To i einai : '+ str(i))
-                    #print('To len einai : '+ str(len(l[i])))
-                    print (l[0][2])
-                    for j in range(2,8,2):
-                        print('To j einai : '+ str(j))
-                        #k.append(l[i][j],l[i][5],l[i][7])                    
-                        k.append(l[0][j])                    
-                print(k)
-             #   print(fkeyres)
-             #   print(frefres)
-             #   print('ok')
-             '''
+               
             else:
-                raise ValueError('Your parens are not right m8')
-            '''
-            myforeignkeyindex = args.find('foreign key')        
-            myreferenceskeyindex=args.find('references')        
-            print(args)
-            myargs=args[myforeignkeyindex:myreferenceskeyindex]
-            print (myargs)
-            myreferences= args[myreferenceskeyindex:]
-            print (myreferences)
-            '''
-
-
-
+                raise ValueError('Your parens are not right m8')            
       
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
@@ -168,10 +138,14 @@ def create_query_plan(query, keywords, action):
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
-    if action=='insert into':
+    if action=='insert into':        
         if dic['values'] is not None:
             if dic['values'][0] == '(' and dic['values'][-1] == ')':
-                dic['values'] = dic['values'][1:-1]                            
+                dic['values'] = dic['values'][1:-1]  
+            '''
+            We added the select in the dictionary and we create a new subquery 
+                
+            '''                          
         elif dic['select'] is not None:
             dic['select']='select '+dic['select']
             k=interpret(dic['select'])            
