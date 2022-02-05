@@ -231,6 +231,8 @@ class Table:
 
             grouped = s_table.group_by_having(group_by)
 
+            column_names = grouped.column_names.copy()
+
             return_cols = []
 
             if return_columns == '*':
@@ -241,11 +243,12 @@ class Table:
 
                     if(col.strip() in grouped.column_names):
                         return_cols.append(grouped.column_names.index(col.strip()))
+
                     elif(col.strip().startswith('min')):
 
                         target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
 
-                        grouped = min(original=self,grouped=grouped,target_column=target_column.strip())
+                        grouped = min(original=self,grouped=grouped,target_column=target_column.strip(),column_names=column_names)
                         return_cols.append(len(return_cols))
 
                     elif(col.strip().startswith('sum')):
@@ -254,9 +257,20 @@ class Table:
 
                         grouped = sum(original=self,grouped=grouped,target_column=target_column.strip())
                         return_cols.append(len(return_cols))
+
+                    elif(col.strip().startswith('max')):
+
+                        target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
+
+                        grouped = max(original=self,grouped=grouped,target_column=target_column.strip(),column_names=column_names)
+                        return_cols.append(len(return_cols))
+                    
+                    
+                    
                     else:
                         raise Exception("given select list not in GROUP BY")
 
+            print(grouped.data)
             return_cols = []
 
             if return_columns == '*':
@@ -268,9 +282,15 @@ class Table:
                     if(col.strip() in grouped.column_names):
                         return_cols.append(grouped.column_names.index(col.strip()))
                     elif(col.strip().startswith('min')):
-                        return_cols.append(grouped.column_names.index('agg_min'))
+                        target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
+
+                        return_cols.append(grouped.column_names.index('agg_min_'+target_column.strip()))
                     elif(col.strip().startswith('sum')):
                         return_cols.append(grouped.column_names.index('agg_sum'))
+                    elif(col.strip().startswith('max')):
+                        target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
+
+                        return_cols.append(grouped.column_names.index('agg_max_'+target_column.strip()))
 
 
                     else:
@@ -858,53 +878,54 @@ class Table:
 
 
 
-def getTuple(original,grouped,index):
+def getTuple(original,column_names,index):
 
     tup = ()
 
-    for col in grouped.column_names:
+    for col in column_names:
         tup = tup + (original.data[index][original.column_names.index(col)],)
 
     return tup
 
-def max(original,grouped,target_column):
+def max(original,grouped,target_column,column_names):
 
     target = original.column_names.index(target_column)
 
-    orders = grouped.column_names.copy()
+    orders = column_names.copy()
+
+
 
     if(target_column not in grouped.column_names):
 
-        orders.append(target_column)
+        orders.append(target_column+" desc")
 
     original.order_by(orders)
 
     prev = original.data[0]
 
-    prev = getTuple(original,grouped,0)
+    prev = getTuple(original,column_names,0)
 
 
-    print(prev)
     max = []
     max.append(original.data[0][target])
 
 
     for i in range(len(original.data)):
 
-        if(prev != getTuple(original,grouped,i)):
+        if(prev != getTuple(original,column_names,i)):
 
             max.append(original.data[i][target])
 
-            prev = getTuple(original,grouped,i)
+            prev = getTuple(original,column_names,i)
 
 
-        elif(prev == getTuple(original,grouped,i) and i == len(original.data)):
+        elif(prev == getTuple(original,column_names,i) and i == len(original.data)):
             max.append(original.data[i][target])
             print("found group",prev)
 
 
     c_names = grouped.column_names
-    c_names.append("agg_max")
+    c_names.append("agg_max_" +target_column)
     c_types = grouped.column_types
     c_types.append(type(5))
     pk = grouped.column_names[0]
@@ -920,11 +941,11 @@ def max(original,grouped,target_column):
     return n_table
 
 
-def min(original,grouped,target_column):
+def min(original,grouped,target_column,column_names):
 
     target = original.column_names.index(target_column)
 
-    orders = grouped.column_names.copy()
+    orders = column_names.copy()
 
     if(target_column not in grouped.column_names):
 
@@ -934,30 +955,29 @@ def min(original,grouped,target_column):
 
     prev = original.data[0]
 
-    prev = getTuple(original,grouped,0)
+    prev = getTuple(original,column_names,0)
 
 
-    print(prev)
     max = []
     max.append(original.data[0][target])
 
 
     for i in range(len(original.data)):
 
-        if(prev != getTuple(original,grouped,i)):
+        if(prev != getTuple(original,column_names,i)):
 
             max.append(original.data[i][target])
 
-            prev = getTuple(original,grouped,i)
+            prev = getTuple(original,column_names,i)
 
 
-        elif(prev == getTuple(original,grouped,i) and i == len(original.data)):
+        elif(prev == getTuple(original,column_names,i) and i == len(original.data)):
             max.append(original.data[i][target])
             print("found group",prev)
 
 
     c_names = grouped.column_names
-    c_names.append("agg_min")
+    c_names.append("agg_min_"+  target_column)
     c_types = grouped.column_types
     c_types.append(type(5))
     pk = grouped.column_names[0]
