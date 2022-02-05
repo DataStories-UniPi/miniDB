@@ -78,6 +78,9 @@ def create_query_plan(query, keywords, action):
         if dic['group by'] is not None:
             dic['from'] = dic['from'].removesuffix(' group')
 
+            if dic['where'] is not None:
+                dic['where'] = dic['where'].removesuffix( 'group')
+
         if dic['order by'] is not None:
             dic['from'] = dic['from'].removesuffix(' order')
 

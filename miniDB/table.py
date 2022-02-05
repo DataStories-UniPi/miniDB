@@ -215,85 +215,126 @@ class Table:
         '''
 
 
-
-        # if * return all columns, else find the column indexes for the columns specified
-        if return_columns == '*':
-            return_cols = [i for i in range(len(self.column_names))]
-        else:
-            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
-
-        all_columns = [i for i in range(len(self.column_names))]
-
-        # if condition is None, return all rows
-        # if not, return the rows with values where condition is met for value
-        if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
-        else:
-            rows = [i for i in range(len(self.data))]
-
-
-        # copy the old dict, but only the rows of data
-        # with index in rows/columns (the indexes that we want returned)
-        # but keep ALL columns
-        dict = {(key):([[self.data[i][j] for j in all_columns] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
-
-        # create Table object
-        s_table = Table(load=dict)
-
         if group_by is not None:
 
-            grouped = self.group_by_having(group_by)
-            c_names = grouped.column_names
-            c_names.append("id")
-            c_types = grouped.column_types
-            c_types.append(type("id"))
-            pk = grouped.pk
-            n_table = Table("temp", c_names, c_types, pk)
-            n_table.data = [[1,1]]
+            if condition is not None:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            else:
+                rows = [i for i in range(len(self.data))]
+
+            all_columns = [i for i in range(len(self.column_names))]
+            dict = {(key):([[self.data[i][j] for j in all_columns] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+
+            s_table = Table(load=dict)
+
+            grouped = s_table.group_by_having(group_by)
+
+            return_cols = []
+
+            if return_columns == '*':
+                raise Exception("Syntax error: cannot have '*' in select list when using GROUP BY")
+            else:
+
+                for col in return_columns.split(','):
+                    
+                    if(col.strip() in grouped.column_names):
+                        return_cols.append(grouped.column_names.index(col.strip()))
+                    else:
+                        raise Exception("given select list not in GROUP BY")
 
 
-            return n_table
 
-        # if the query has 'order by' without 'distinct'
-        # order by is applied on the table with all the columns
-        if order_by and not(distinct):
-            order_cols = order_by.split(',')
-            s_table.order_by(order_cols)
+            return_dict = {(key):([[grouped.data[i][j] for j in return_cols] for i in [i for i in range(len(grouped.data))]] if key=="data" else value) for key,value in grouped.__dict__.items()}
 
-        # this check is done to prevent a mistake : new_dict raises exception when the meta_insert_stack is called
-        # TODO check why this happens
-        if(s_table._name.startswith("meta_insert_stack")):
-            return s_table
+            return_dict['column_names'] = [grouped.column_names[i] for i in return_cols]
+            return_dict['column_types'] = [grouped.column_types[i] for i in return_cols]
 
-        # create new dict from the s_table object that has only the columns that will be displayed
-        # (only the columns in SELECT)
-        new_dict = {(key):([[s_table.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in s_table.__dict__.items()}
+            return_table = Table(load=return_dict)
 
-        # we need to set the new column names/types and no of columns, since we might
-        # only return some columns
-        new_dict['column_names'] = [self.column_names[i] for i in return_cols]
-        new_dict['column_types'] = [self.column_types[i] for i in return_cols]
+            return return_table
 
-        # create the new table object to be returned
-        s_table = Table(load=new_dict)
+        else:
 
-        if(distinct == True):
-            s_table.distinct()
+            # if * return all columns, else find the column indexes for the columns specified
+            if return_columns == '*':
+                return_cols = [i for i in range(len(self.column_names))]
+            else:
+                return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
-            # if the query has 'order by' AND 'distinct', the 'order by' action is called AFTER the
-            # 'distinct' function and the table has only the rows that will be displayed
+            all_columns = [i for i in range(len(self.column_names))]
 
-            # NOTE : for SELECT DISTINCT, ORDER BY expressions must appear in select list
-            if order_by:
+            # if condition is None, return all rows
+            # if not, return the rows with values where condition is met for value
+            if condition is not None:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            else:
+                rows = [i for i in range(len(self.data))]
+
+
+            # copy the old dict, but only the rows of data
+            # with index in rows/columns (the indexes that we want returned)
+            # but keep ALL columns
+            dict = {(key):([[self.data[i][j] for j in all_columns] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+
+            # create Table object
+            s_table = Table(load=dict)
+
+            if group_by is not None:
+
+                grouped = self.group_by_having(group_by)
+
+                
+
+
+                s_table = max(original=self,grouped=grouped)
+
+                return s_table
+
+
+
+
+            # if the query has 'order by' without 'distinct'
+            # order by is applied on the table with all the columns
+            if order_by and not(distinct):
                 order_cols = order_by.split(',')
                 s_table.order_by(order_cols)
 
-        # if needed, keep only top k rows
-        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
+            # this check is done to prevent a mistake : new_dict raises exception when the meta_insert_stack is called
+            # TODO check why this happens
+            if(s_table._name.startswith("meta_insert_stack")):
+                return s_table
 
-        return s_table
+            # create new dict from the s_table object that has only the columns that will be displayed
+            # (only the columns in SELECT)
+            new_dict = {(key):([[s_table.data[i][j] for j in return_cols] for i in range(len(s_table.data))] if key=="data" else value) for key,value in s_table.__dict__.items()}
+
+            # we need to set the new column names/types and no of columns, since we might
+            # only return some columns
+            new_dict['column_names'] = [self.column_names[i] for i in return_cols]
+            new_dict['column_types'] = [self.column_types[i] for i in return_cols]
+
+            # create the new table object to be returned
+            s_table = Table(load=new_dict)
+
+            if(distinct == True):
+                s_table.distinct()
+
+                # if the query has 'order by' AND 'distinct', the 'order by' action is called AFTER the
+                # 'distinct' function and the table has only the rows that will be displayed
+
+                # NOTE : for SELECT DISTINCT, ORDER BY expressions must appear in select list
+                if order_by:
+                    order_cols = order_by.split(',')
+                    s_table.order_by(order_cols)
+
+            # if needed, keep only top k rows
+            s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
+
+            return s_table
 
 
     def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, desc=True, top_k=None):
@@ -508,9 +549,7 @@ class Table:
         return s_table
 
 
-    def min():
-        #TO DO
-        return
+
 
     def max():
         #TO DO
@@ -784,3 +823,42 @@ class Table:
         f.close()
 
         self.__dict__.update(tmp_dict)
+
+
+def min(original,grouped):
+    
+    c_names = grouped.column_names
+    c_names.append("min")
+    c_types = grouped.column_types
+    c_types.append(type(5))
+    pk = grouped.column_names[0]
+    n_table = Table("temp", c_names, c_types, pk)
+    n_table.data = []
+
+    for d in grouped.data:
+
+        d.append(0)
+        n_table.data.append(d)
+
+
+    return n_table
+
+
+
+def max(original,grouped):
+    
+    c_names = grouped.column_names
+    c_names.append("maxer")
+    c_types = grouped.column_types
+    c_types.append(type(5))
+    pk = grouped.column_names[0]
+    n_table = Table("temp", c_names, c_types, pk)
+    n_table.data = []
+
+    for d in grouped.data:
+
+        d.append(100)
+        n_table.data.append(d)
+
+
+    return n_table
