@@ -5,6 +5,8 @@ import sys
 import readline
 import traceback
 import shutil
+
+from numpy import insert
 sys.path.append('miniDB')
 
 from database import Database
@@ -102,6 +104,10 @@ def create_query_plan(query, keywords, action):
             dic['values'] = dic['values'][1:-1]
         else:
             raise ValueError('Your parens are not right m8')
+
+    if action=='insert into select':
+        if(dic['from'] is None):
+            raise ValueError('HEY, EMPTY FROM BRO')
     
     if action=='unlock table':
         if dic['force'] is not None:
@@ -158,6 +164,7 @@ def interpret(query):
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
+                     'insert into select': ['insert into', 'select', 'from', 'where'],
                      'select': ['select', 'from', 'where', 'order by', 'top'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
@@ -173,7 +180,9 @@ def interpret(query):
     query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip()
 
     for kw in kw_per_action.keys():
-        if query.startswith(kw):
+        if query.startswith('insert') and 'select' in query:
+            action = [k for k, v in kw_per_action.items() if v == ['insert into', 'select', 'from', 'where']][0]
+        elif query.startswith(kw):
             action = kw
 
     return create_query_plan(query, kw_per_action[action]+[';'], action)

@@ -428,3 +428,6 @@ class Table:
         f.close()
 
         self.__dict__.update(tmp_dict)
+
+    def _insert_select(self, row):
+        print('Hello mfs')
