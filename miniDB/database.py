@@ -236,7 +236,7 @@ class Database:
         self._update()
         self.save_database()
 
-    def insert_into(self, table_name, ObjData):
+    def insert_into(self, table_name, InstParm):
         '''
         Inserts data to given table.
 
@@ -264,12 +264,11 @@ class Database:
         self._update()
         self.save_database()
         '''
-        # Check for Simple Insert or Multiple Data Insert. If the ObjData returned as a table variable then the data have to be massively imported into the table
-        if isinstance(ObjData, str):
-            row = ObjData.strip().split(',')
+        # Chekarei to plithos twn eisagxthewn data..An h InstParm epistrefei ws table variable tote ta data tha akolouthisoun eisagwgh megalou plithous (massive import) ston pinaka        
+        if isinstance(InstParm, str):
+            row = InstParm.strip().split(',')
             self.load_database()
-            # fetch the insert_stack. For more info on the insert_stack
-            # check the insert_stack meta table
+            
             lock_ownership = self.lock_table(table_name, mode='x')
             insert_stack = self._get_insert_stack_for_table(table_name)
             try:
@@ -283,13 +282,13 @@ class Database:
                 self.unlock_table(table_name)
             self._update()
             self.save_database()
-        elif isinstance(ObjData, Table):
-            #Checks cause of the way that insert_into function works
-            if len(ObjData.column_names) == len(self.tables[table_name].column_names):
-                #Recursively call the insert_into function for each element/row of the returned table
-                [self.insert_into(table_name,','.join(map(str,tmp_data))) for tmp_data in ObjData.data]
+        elif isinstance(InstParm, Table):
+            
+            if len(InstParm.column_names) == len(self.tables[table_name].column_names):
+                
+                [self.insert_into(table_name,','.join(map(str,tmp_data))) for tmp_data in InstParm.data]
             else:
-                raise Exception(f'The result of the columns of the select query are greater than the destination table columns!\n {len(ObjData.columns)} != {len(self.tables[table_name].columns)}')
+                raise Exception(f'The result of the columns of the select query are greater than the destination table columns!\n {len(InstParm.columns)} != {len(self.tables[table_name].columns)}')
 
 
     def update_table(self, table_name, set_args, condition):
@@ -342,6 +341,7 @@ class Database:
         self.save_database()
 
     def select(self, columns, table_name, condition, order_by=None, top_k=True,\
+        #Prostethike to distinct=false ws arxikh timh idia allagh egine kai sth ndef select_where kai _select_where_with_btree sta table.py
                desc=None, save_as=None, return_object=True,distinct=False):
         '''
         Selects and outputs a table's data where condtion is met.
@@ -360,22 +360,20 @@ class Database:
             save_as: string. The name that will be used to save the resulting table into the database (no save if None).
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
         '''
-
+        #An vrethei to distinct stis stules,to  allazoume se timh true
         if 'distinct' in columns:
             columns = columns.replace('distinct ','')
             distinct = True
 
         # print(table_name)
+        #kai epistrefei ki th ndistinct  kathws ein meros to pinikaka (an uparxei)
         self.load_database()
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, order_by, desc, top_k, distinct)
 
         if condition is not None:
-           # condition_column = split_condition(condition)[0]
-           if("IN" in condition.split() or "in"in  condition.split()):
-               condition_column=condition.split(" ")[0]
-           else:
-               condition_column=split_condition(condition)[0]
+            condition_column = split_condition(condition)[0]
+           
         else:
             condition_column = ''
 
