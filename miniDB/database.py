@@ -236,7 +236,14 @@ class Database:
         self._update()
         self.save_database()
 
-    def insert_into(self, table_name, row_str):
+    def insert_into(self, table_name, row_str,kw_select,kw_from,kw_where): #Added the extra keywords select, from, where. for issue #78
+        '''
+		Added Arg
+		    kw_select:What is selected from the table.
+            kw_from:The table from which it is selected.
+            kw_where:The condition for the selection.			
+		'''
+
         '''
         Inserts data to given table.
 
