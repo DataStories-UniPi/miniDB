@@ -198,13 +198,37 @@ class Table:
         return indexes_to_del
 
     def group_by_having(self, return_columns, condition, group_by_columns, having_condition=None, order_by=None, desc=True, top_k=None):
+        
+        '''
+        SQL SYNTAX CHECK
+        '''
+        #all columns/aggregates of select and group by. We store aggregates as tuples (col_idx, aggregate function)
+        group_by_cols = [self.column_names.index(col.strip()) if col.strip() in self.column_names else self.aggr_idx(col.strip()) for col in group_by_columns.split(",")]
+        return_cols = [self.column_names.index(col.strip()) if col.strip() in self.column_names else self.aggr_idx(col.strip()) for col in return_columns.split(",")]
 
-        group_by_cols = [self.column_names.index(col.strip()) for col in group_by_columns.split(",")]
-        return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(",")]
+        if any(isinstance(c, tuple) for c in group_by_columns): #if we have aggreagtes in group by
+            raise Exception("Aggregate functions are not allowed in group by clause")
+        
+        for col in return_columns:      #if we have to select columns that are not in group by
+            if not(isinstance(col, tuple)) and not col in group_by_columns:
+                raise Exception(f'{col} must appear in group by clause or be used in an aggregate function')
 
-        for col in return_columns:
-            if col not in group_by_columns:
-                raise Exception("All columns in select clause must appear in group by clause")
+        #Find all distinct lists with n elements in table(these are the groups), where n is the count of group by columns
+        n = len(group_by_cols)
+        groups = []
+
+        for row in range(len(self.data)):
+            test_group = [self.data[row][col] for col in group_by_cols]
+            if not test_group in groups:
+                groups.append(test_group)
+           
+        print(groups)
+        #if we have to select only columns and then group by
+        #if we have to select only aggregates and then group by
+        #if we have to select aggregates and columns and then group by
+
+        
+
 
 
     def count(self, col_idx, condition):        #returns the sql count(column) function result as int
@@ -355,6 +379,8 @@ class Table:
                 maximum = self.maximum(aggregate_function[0], condition)
                 result_row.append(maximum)
                 result_names.append(f'max({self.column_names[aggregate_function[0]]})')
+            else:
+                raise Exception(f'Unknown aggregate function {aggregate_function[1]}')
 
         #Set the new attribute dictionary. We change the data attribute, the column names and the types
         dict = {(key):([result_row] if key=="data" else value) for key,value in self.__dict__.items()} #data has only the result row
