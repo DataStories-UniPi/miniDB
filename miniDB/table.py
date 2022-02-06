@@ -195,9 +195,11 @@ class Table:
         # self._update()
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
+    
 
 
-    def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None):
+
+    def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None,distinct=False):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -222,9 +224,35 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            #column_name, operator, value = self._parse_condition(condition)
+            #column = self.column_by_name(column_name)
+            #rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            if "IN" in condition.split() or "in" in condition.split():
+                
+                condition_list = condition.split()
+                values = condition_list[condition_list.index("(")+1:condition_list.index(")")]
+                values = [v.replace(",","") for v in values]
+                condition_list.remove("(")
+                condition_list.remove(")")
+
+                
+                if(len(condition_list) == 3):
+                    values = condition_list[2].split(",")
+                else:
+                    values = []
+                    for v in condition_list[2:]:
+                        vv = v.split(",")
+                        for _ in vv:
+                            if(_ != ''):
+                                values.append(_)
+
+                column_name = condition_list[0]
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if (str(x) in values)]
+            else:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -243,11 +271,14 @@ class Table:
             s_table.order_by(order_by, desc)
 
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
+        
+         # If distinct is True, we remove duplicate rows from the resulting table
+        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
 
         return s_table
 
 
-    def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, desc=True, top_k=None):
+    def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, desc=True, top_k=None,distinct=False):
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
@@ -286,10 +317,18 @@ class Table:
         dict['column_types']   = [self.column_types[i] for i in return_cols]
 
         s_table = Table(load=dict) 
+
+        
+        
         if order_by:
             s_table.order_by(order_by, desc)
 
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
+
+        #Estw dist=true
+        # If distinct is True, we remove duplicate rows from the resulting table
+        s_table.data=list(set(map(lambda x:tuple(x),s_table.data)))if distinct else s_table.data
+        
 
         return s_table
 
