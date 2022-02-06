@@ -204,7 +204,7 @@ class Table:
         '''
         #all columns/aggregates of select and group by. We store aggregates as tuples (col_idx, aggregate function)
         group_by_cols = [self.column_names.index(col.strip()) if col.strip() in self.column_names else self.aggr_idx(col.strip()) for col in group_by_columns.split(",")]
-        return_cols = [self.column_names.index(col.strip()) if col.strip() in self.column_names else self.aggr_idx(col.strip()) for col in return_columns.split(",")]
+        return_cols   = [self.column_names.index(col.strip()) if col.strip() in self.column_names else self.aggr_idx(col.strip()) for col in return_columns.split(",")]
 
         if any(isinstance(c, tuple) for c in group_by_columns): #if we have aggreagtes in group by
             raise Exception("Aggregate functions are not allowed in group by clause")
@@ -223,10 +223,24 @@ class Table:
                 groups.append(test_group)
            
         print(groups)
+
         #if we have to select only columns and then group by
+        result_data = []
+
         #if we have to select only aggregates and then group by
         #if we have to select aggregates and columns and then group by
 
+        dict = {(key):([result_data] if key == "data" else value) for key,value in self.__dict__.items()} #data has only the result row
+        dict['column_names'] = result_names
+        dict['column_types'] = [int for i in result_row]    #all the aggregate functions return int
+
+        s_table = Table(load=dict) 
+        if order_by:
+            s_table.order_by(order_by.replace(" ", ""), desc)
+
+        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
+
+        return s_table
         
 
 
