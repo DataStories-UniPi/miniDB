@@ -206,7 +206,7 @@ class Table:
         group_by_cols = [self.column_names.index(col.strip()) if col.strip() in self.column_names else self.aggr_idx(col.strip()) for col in group_by_columns.split(",")]
         return_cols = [self.column_names.index(col.strip()) if col.strip() in self.column_names else self.aggr_idx(col.strip()) for col in return_columns.split(",")]
 
-        if any(isinstance(c, tuple) for c in group_by_columns): #if we have aggreagtes in group by
+        if any(isinstance(c, tuple) for c in group_by_columns): #if we have aggregates in group by
             raise Exception("Aggregate functions are not allowed in group by clause")
         
         for col in return_columns:      #if we have to select columns that are not in group by
