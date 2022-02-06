@@ -266,7 +266,7 @@ class Database:
 
         Args:
             table_name: string. Name of table (must be part of database).
-            set_value: string. New value of the predefined column name.
+            set_value: string. New value of the predifined column name.
             set_column: string. The column to be altered.
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
@@ -593,7 +593,7 @@ class Database:
         self.tables['meta_insert_stack']._update_rows(new_stack, 'indexes', f'table_name={table_name}')
 
     # indexes
-    def create_index(self, index_name, table_name, selected_column_names, index_type=None):
+    def create_index(self, index_name, table_name, index_type='btree', selected_column_names=None):
         '''
         Creates an index on a specified table with a given name.
         Important: The columns that the index will store must be specified (even the primary key columns).
@@ -605,19 +605,17 @@ class Database:
         '''
         if selected_column_names is None:
             raise Exception('Cannot create index. Columns have not been specified.')
-        if index_name not in self.tables['meta_indexes'].column_by_name('index_name') and self._has_index(table_name, selected_column_names):
+        if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
             # currently only btree is supported. This can be changed by adding another if.
-            if index_type == 'btree' or index_type is None:
+            if index_type == 'btree':
                 logging.info('Creating Btree index.')
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
                 self.tables['meta_indexes']._insert([table_name, index_name, selected_column_names])
                 # create the actual index
                 self._construct_index(table_name, index_name, selected_column_names)
                 self.save_database()
-            if index_type == 'hash':
-                true
         else:
-            raise Exception('Cannot create index. Another index with the same name already exists or an index for these columns is already created.')
+            raise Exception('Cannot create index. Another index with the same name already exists.')
 
     def _construct_index(self, table_name, index_name, selected_column_names):
         '''
@@ -631,26 +629,24 @@ class Database:
         bt = Btree(3)  # 3 is arbitrary
 
         # put the data of the selected columns in a list named column_data
-        column_data = self.tables[table_name]._select_where(selected_column_names)
+        column_data = []
+        for name in range(selected_column_names):
+            column_data.append(self.tables[table_name].column_by_name(name))
         # for each record in the selected columns of the table, insert their values and index to the btree, after joining the column values
-        for idx, key in enumerate(list(zip(*column_data))):
+        for idx, key in enumerate(','.join(column_data)):
             bt.insert(key, idx)
         # save the btree
         self._save_index(index_name, bt)
 
-    # TODO: delete index
-    #def _delete_index(self, index_name):
+    # TODO def _delete_index(self, index_name):
 
-    def _has_index(self, table_name, column_names=None):
+    def _has_index(self, table_name):
         '''
-        Check whether the specified columns of the specified table are indexed
-        or if column_names is None, whether there are any indexes for the specified table.
+        Check whether the specified table's primary key column is indexed.
 
         Args:
             table_name: string. Table name (must be part of database).
-            column_names: list of strings. The columns where the existence of an index is searched for.
         '''
-
         return table_name in self.tables['meta_indexes'].column_by_name('table_name')
 
     def _save_index(self, index_name, index):
