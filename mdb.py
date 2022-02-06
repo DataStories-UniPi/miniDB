@@ -153,7 +153,7 @@ def interpret(query):
                      'cast': ['cast', 'from', 'to'],
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
-                     'insert into': ['insert into', 'values'],
+                     'insert into': ['insert into', 'values','select','from','where'], #Added the keywords select, from and where. for issue #78
                      'select': ['select', 'from', 'where', 'order by', 'top'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
