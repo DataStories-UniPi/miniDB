@@ -22,3 +22,10 @@ select * from classroom where building like Pack_rd;
 select * from classroom where building like P%d;
 select * from classroom where building not like W%;
 select * from classroom where building not like %ard%;
+-- create second table with similar structure
+-- create table classroom2 (building str, room_number str, capacity int);
+-- insert into classroom2 values (Watson2,120,50);
+-- insert into classroom2 values (Pard2,101,500);
+-- insert into classroom2 values (Packurd2,101,500);
+-- insert into classroom select * from classroom2;
+select * from classroom;
