@@ -370,6 +370,8 @@ class Database:
             return
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
             if group_by:
+                # 3 different occassions that checks if group by column is also in select query in order to decide if it will display all the columns
+                # in the end or not.
                 if " "+group_by+"," in columns:
                     drop=False
                     index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]

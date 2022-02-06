@@ -207,7 +207,9 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+            mode: variable. The first letter of return_columns[0]. It is used to understand what aggregate function has been given from the user.
+                            It then holds min, max, cont, sum, avg.
+                            
                 Operatores supported: (<,<=,==,>=,>)
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (False by default).
@@ -378,12 +380,15 @@ class Table:
 
         Args:
             column_name: string. Name of column.
-            reset_index() is there for group by to appear every column and not some.
+            grop_by: string. Name of column user want to group by.
+            drop: boolean. True the group by column is not in the select query and has to be hidden, False if it is and will be dispalyed.
+            reset_index() is there for group by to appear every column.
         '''
         if drop==True:
             a = self.data
+            #a DataFrame is created based on self.data values. 
             df = pd.DataFrame(a,
-                columns = column_name).groupby(group_by).max().reset_index().drop(group_by, axis = 1)
+                columns = column_name).groupby(group_by).max().reset_index().drop(group_by, axis = 1) #.drop is to not display the group_by column
 
             #Converts df to values to se can convert it into list later on
             vals = df.values
@@ -398,8 +403,9 @@ class Table:
             # self._update() 
         else:
             a = self.data
+            #a DataFrame is created based on self.data values.
             df = pd.DataFrame(a,
-                columns = column_name).groupby(group_by).max().reset_index()
+                columns = column_name).groupby(group_by).max().reset_index() #.reset.index() is there for group by to appear every column.
 
             #Converts df to values to se can convert it into list later on
             vals = df.values
@@ -414,27 +420,38 @@ class Table:
             # self._update() 
         
     def min(self, column_name, having, group_by, drop, order_by):
-        
+        '''
+        min() aggregate with group by and/or having on column.
+
+        Args:
+            column_name: string. Name of column.
+            grop_by: string. Name of column user want to group by.
+            drop: boolean. True the group by column is not in the select query and has to be hidden, False if it is and will be dispalyed.
+            reset_index() is there for group by to appear every column.
+        '''
         if group_by:
             if having is not None:
+                #replace with words because some opperators are the same and confuses the program
                 having=having.replace("<>", " not_equal ").replace(">=", " greater_or_equal ").replace("<=", " less_or_equal ").replace(">", " > ").replace("<", " < ").replace("=", " = ").replace("  ", " ")
                 having=having.split(' ')
 
                 if having[2]=='>':
+                    #the word variable is keeping the column name that the aggregate function is applied to.
                     word=column_name[0]
                     a = self.data
-                    df = pd.DataFrame(a,
+                    df = pd.DataFrame(a, # filter is used as having.
                         columns = column_name).groupby(group_by).filter(lambda x: x[column_name[0]].min() > int(having[3])).groupby(group_by).min().reset_index()
                     
-                    if order_by is not None:
-                        df.sort_values(by=[order_by], ascending=True).reset_index()
+                    if order_by is not None: # if order by is asked it happens here
+                        df.sort_values(by=[order_by], ascending=True).reset_index() 
                         
-                    vals = df.values
+                    vals = df.values #Converts df to values to se can convert it into list later on
                     
                     list(df.columns.values)
                     for i in range(len(list(df.columns.values))):
                         column_name[i]=df.columns.values[i]
-                        
+                     
+                    #the column's header with the aggregate func. becomes: min(name) (int)    
                     for i in range(len(column_name)):
                         if column_name[i] == word:
                             column_name[i] = "min("+word+")"
@@ -597,7 +614,15 @@ class Table:
             # self._update()
         
     def max(self, column_name, having, group_by, drop, order_by):
-    
+        '''
+        max() aggregate with group by and/or having on column.
+
+        Args:
+            column_name: string. Name of column.
+            grop_by: string. Name of column user want to group by.
+            drop: boolean. True the group by column is not in the select query and has to be hidden, False if it is and will be dispalyed.
+            reset_index() is there for group by to appear every column.
+        '''
         if group_by:
             if having is not None:
                 having=having.replace("<>", " not_equal ").replace(">=", " greater_or_equal ").replace("<=", " less_or_equal ").replace(">", " > ").replace("<", " < ").replace("=", " = ").replace("  ", " ")
@@ -778,7 +803,15 @@ class Table:
             # self._update()
         
     def count(self, column_name, having, group_by, drop, order_by):
-    
+        '''
+        count() aggregate with group by and/or having on column.
+
+        Args:
+            column_name: string. Name of column.
+            grop_by: string. Name of column user want to group by.
+            drop: boolean. True the group by column is not in the select query and has to be hidden, False if it is and will be dispalyed.
+            reset_index() is there for group by to appear every column.
+        '''
         if group_by:
             if having is not None:
                 having=having.replace("<>", " not_equal ").replace(">=", " greater_or_equal ").replace("<=", " less_or_equal ").replace(">", " > ").replace("<", " < ").replace("=", " = ").replace("  ", " ")
@@ -953,11 +986,19 @@ class Table:
                     column_name[i] = "count("+word+")"
         
             self.data = [count]
-            print(self.data)
+            #print(self.data)
             # self._update()
         
     def sum(self, column_name, having, group_by, drop, order_by):
-    
+        '''
+        sum() aggregate with group by and/or having on column.
+
+        Args:
+            column_name: string. Name of column.
+            grop_by: string. Name of column user want to group by.
+            drop: boolean. True the group by column is not in the select query and has to be hidden, False if it is and will be dispalyed.
+            reset_index() is there for group by to appear every column.
+        '''
         if group_by:
             if having is not None:
                 having=having.replace("<>", " not_equal ").replace(">=", " greater_or_equal ").replace("<=", " less_or_equal ").replace(">", " > ").replace("<", " < ").replace("=", " = ").replace("  ", " ")
@@ -1146,7 +1187,15 @@ class Table:
             #self._update()
         
     def avg(self, column_name, having, group_by, drop, order_by):
-    
+        '''
+        avg() aggregate with group by and/or having on column.
+
+        Args:
+            column_name: string. Name of column.
+            grop_by: string. Name of column user want to group by.
+            drop: boolean. True the group by column is not in the select query and has to be hidden, False if it is and will be dispalyed.
+            reset_index() is there for group by to appear every column.
+        '''
         if group_by:
             if having is not None:
                 having=having.replace("<>", " not_equal ").replace(">=", " greater_or_equal ").replace("<=", " less_or_equal ").replace(">", " > ").replace("<", " < ").replace("=", " = ").replace("  ", " ")
@@ -1337,7 +1386,7 @@ class Table:
             self.data = [str(avg)]
             #print(self.data)
             # self._update()
-        
+            
 
 
     def _inner_join(self, table_right: Table, condition):

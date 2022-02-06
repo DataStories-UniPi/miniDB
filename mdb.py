@@ -94,14 +94,13 @@ def create_query_plan(query, keywords, action):
         if dic['order by'] is not None:
             #.removesuffix removes ' order' if exists
             dic['from'] = dic['from'].removesuffix(' order')
+            #disc['form'] contains now the table alone e.g. select * from department order by budget desc-> classroom
             
             if dic['order by'] and dic['group by'] is not None:
-                dic['group by'] = dic['group by'].removesuffix(' order')
-                    
-            if dic['having'] is not None:
-                dic['having'] = dic['having'].removesuffix(' order')
-                
-            #disc['form'] contains now the table alone e.g. select * from department order by budget desc-> classroom
+                dic['group by'] = dic['group by'].removesuffix(' order') #.removesuffix removes ' order' from group by if exists
+
+            if dic['order by'] and dic['having'] is not None:
+                dic['having'] = dic['having'].removesuffix(' order') #.removesuffix removes ' order' from having if exists
 
             #Check if order by has a desc e.g. 'order by: capacity desc'
             if 'desc' in dic['order by']:
@@ -116,9 +115,8 @@ def create_query_plan(query, keywords, action):
             dic['desc'] = None
             
         if dic['group by'] is not None:
-            #.removesuffix removes ' order' if exists
+            #.removesuffix removes ' group' if exists
             dic['from'] = dic['from'].removesuffix(' group')
-            
 
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
