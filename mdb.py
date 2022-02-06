@@ -100,6 +100,9 @@ def create_query_plan(query, keywords, action):
     if action=='insert into':
         if dic['values'][0] == '(' and dic['values'][-1] == ')':
             dic['values'] = dic['values'][1:-1]
+            #Kalemesma tou interpeter
+            if dic['values'].strip(' ').startswith('select'):
+                    dic['values']=interpret(dic['values'].strip(' '))
         else:
             raise ValueError('Your parens are not right m8')
     
