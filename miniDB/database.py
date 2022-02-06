@@ -252,23 +252,44 @@ class Database:
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             lock_load_save: boolean. If False, user needs to load, lock and save the states of the database (CAUTION). Useful for bulk-loading.
         '''
-        row = row_str.strip().split(',')
-        self.load_database()
-        # fetch the insert_stack. For more info on the insert_stack
-        # check the insert_stack meta table
-        lock_ownership = self.lock_table(table_name, mode='x')
-        insert_stack = self._get_insert_stack_for_table(table_name)
-        try:
-            self.tables[table_name]._insert(row, insert_stack)
-        except Exception as e:
-            logging.info(e)
-            logging.info('ABORTED')
-        self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
+        #if there are no keywords select and from. Just instert into values it does as before. for issue #78
+        if kw_select is None and kw_from is None: 
+          row = row_str.strip().split(',')
+          self.load_database()
+          # fetch the insert_stack. For more info on the insert_stack
+          # check the insert_stack meta table
+          lock_ownership = self.lock_table(table_name, mode='x')
+          insert_stack = self._get_insert_stack_for_table(table_name)
+          try:
+              self.tables[table_name]._insert(row, insert_stack)
+          except Exception as e:
+              logging.info(e)
+              logging.info('ABORTED')
+          self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
 
-        if lock_ownership:
-            self.unlock_table(table_name)
-        self._update()
-        self.save_database()
+          if lock_ownership:
+              self.unlock_table(table_name)
+          self._update()
+          self.save_database()
+        else:  #if there are the keywords select and from. for issue #78
+         self.load_database()
+         #Using the _select_where function to find the selectedrows 
+         selectedrows = self.tables[kw_from]._select_where(kw_select,condition=kw_where,order_by=None,desc=True,top_k=None)
+         # fetch the insert_stack. For more info on the insert_stack
+         # check the insert_stack meta table
+         insert_stack = self._get_insert_stack_for_table(table_name)
+         #The _insert_select function that we'll use, uses a list variable, like the _insert function.
+         #For that reason we'll make selectedrows into a list of lists
+         selectedrows_list = selectedrows._list_of_lists()
+         try:
+           # Just like before, but with the _insert_select function and the selectedrows_list.
+           self.tables[table_name]._insert_select(selectedrows_list, insert_stack)  
+         except Exception as e:
+             logging.info(e)
+             logging.info('ABORTED')
+         self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
+         self._update()
+         self.save_database()
 
 
     def update_table(self, table_name, set_args, condition):
