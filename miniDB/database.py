@@ -11,7 +11,6 @@ import warnings
 import readline
 from tabulate import tabulate
 
-
 # sys.setrecursionlimit(100)
 
 # Clear command cache (journal)
@@ -96,7 +95,6 @@ class Database:
         self._update_meta_length()
         self._update_meta_insert_stack()
 
-
     def create_table(self, name, column_names, column_types, primary_key=None, load=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
@@ -117,7 +115,6 @@ class Database:
         self.save_database()
         # (self.tables[name])
         print(f'Created table "{name}".')
-
 
     def drop_table(self, table_name):
         '''
@@ -140,7 +137,6 @@ class Database:
 
         # self._update()
         self.save_database()
-
 
     def import_table(self, table_name, filename, column_types=None, primary_key=None):
         '''
@@ -166,10 +162,9 @@ class Database:
             self.tables[table_name]._insert(line.strip('\n').split(','))
 
         if lock_ownership:
-             self.unlock_table(table_name)
+            self.unlock_table(table_name)
         self._update()
         self.save_database()
-
 
     def export(self, table_name, filename=None):
         '''
@@ -187,7 +182,7 @@ class Database:
             filename = f'{table_name}.csv'
 
         with open(filename, 'w') as file:
-           file.write(res)
+            file.write(res)
 
     def table_from_object(self, new_table):
         '''
@@ -204,8 +199,6 @@ class Database:
             raise Exception(f'"{new_table._name}" attribute already exists in class "{self.__class__.__name__}".')
         self._update()
         self.save_database()
-
-
 
     ##### table functions #####
 
@@ -228,7 +221,6 @@ class Database:
             cast_type: type. Cast type (do not encapsulate in quotes).
         '''
         self.load_database()
-        
         lock_ownership = self.lock_table(table_name, mode='x')
         self.tables[table_name]._cast_column(column_name, eval(cast_type))
         if lock_ownership:
@@ -263,7 +255,6 @@ class Database:
         self._update()
         self.save_database()
 
-
     def update_table(self, table_name, set_args, condition):
         '''
         Update the value of a column where a condition is met.
@@ -275,12 +266,11 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
         '''
         set_column, set_value = set_args.replace(' ','').split('=')
         self.load_database()
-        
         lock_ownership = self.lock_table(table_name, mode='x')
         self.tables[table_name]._update_rows(set_value, set_column, condition)
         if lock_ownership:
@@ -297,11 +287,11 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
         '''
         self.load_database()
-        
+
         lock_ownership = self.lock_table(table_name, mode='x')
         deleted = self.tables[table_name]._delete_where(condition)
         if lock_ownership:
@@ -324,7 +314,7 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (True by default).
@@ -332,28 +322,53 @@ class Database:
             save_as: string. The name that will be used to save the resulting table into the database (no save if None).
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
         '''
-        
-        #if any of count,max,min,sum,avg is used then we remove it from return columns so when can easily handle these columns
+
+        # if any of count,max,min,sum,avg is used then we remove it from return columns so when can easily handle these columns
         if 'count' in columns:
             columns = columns.replace('count ', '')
+            columns = columns.replace('( ', '')
+            columns = columns.replace(') ', '')
+            columns = columns.replace(' , ', ',')
+            columns = columns.replace(' ,', ',')
+            columns = columns.replace(', ', ',')
             count = True
 
         if 'max' in columns:
             columns = columns.replace('max ', '')
+            columns = columns.replace('( ', '')
+            columns = columns.replace(') ', '')
+            columns = columns.replace(' , ', ',')
+            columns = columns.replace(' ,', ',')
+            columns = columns.replace(', ', ',')
             max = True
 
         if 'min' in columns:
             columns = columns.replace('min ', '')
+            columns = columns.replace('( ', '')
+            columns = columns.replace(') ', '')
+            columns = columns.replace(' , ', ',')
+            columns = columns.replace(' ,', ',')
+            columns = columns.replace(', ', ',')
             min = True
 
         if 'sum' in columns:
             columns = columns.replace('sum ', '')
+            columns = columns.replace('( ', '')
+            columns = columns.replace(') ', '')
+            columns = columns.replace(' , ', ',')
+            columns = columns.replace(' ,', ',')
+            columns = columns.replace(', ', ',')
             sum = True
 
         if 'avg' in columns:
             columns = columns.replace('avg ', '')
+            columns = columns.replace('( ', '')
+            columns = columns.replace(') ', '')
+            columns = columns.replace(' , ', ',')
+            columns = columns.replace(' ,', ',')
+            columns = columns.replace(', ', ',')
             avg = True
-        
+
         # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
@@ -368,7 +383,6 @@ class Database:
         else:
             condition_column = ''
 
-        
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
@@ -388,7 +402,6 @@ class Database:
             else:
                 return table.show()
 
-
     def show_table(self, table_name, no_of_rows=None):
         '''
         Print table in a readable tabular design (using tabulate).
@@ -397,9 +410,7 @@ class Database:
             table_name: string. Name of table (must be part of database).
         '''
         self.load_database()
-        
         self.tables[table_name].show(no_of_rows, self.is_locked(table_name))
-
 
     def sort(self, table_name, column_name, asc=False):
         '''
@@ -412,7 +423,6 @@ class Database:
         '''
 
         self.load_database()
-        
         lock_ownership = self.lock_table(table_name, mode='x')
         self.tables[table_name]._sort(column_name, asc=asc)
         if lock_ownership:
@@ -430,7 +440,7 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
         save_as: string. The output filename that will be used to save the resulting table in the database (won't save if None).
         return_object: boolean. If True, the result will be a table object (useful for internal usage - the result will be printed by default).
@@ -439,10 +449,10 @@ class Database:
         if self.is_locked(left_table) or self.is_locked(right_table):
             return
 
-        left_table = left_table if isinstance(left_table, Table) else self.tables[left_table] 
-        right_table = right_table if isinstance(right_table, Table) else self.tables[right_table] 
-
-
+        left_table = left_table if isinstance(left_table, Table) else self.tables[left_table]
+        right_table = right_table if isinstance(right_table, Table) else self.tables[right_table]        
+        
+        
         if mode=='inner':
             res = left_table._inner_join(right_table, condition)
         else:
@@ -542,7 +552,6 @@ class Database:
         print('journal:', out)
         #return out
 
-
     #### META ####
 
     # The following functions are used to update, alter, load and save the meta tables.
@@ -573,7 +582,6 @@ class Database:
             if table._name[:4]=='meta': #skip meta tables
                 continue
             if table._name not in self.tables['meta_locks'].column_by_name('table_name'):
-
                 self.tables['meta_locks']._insert([table._name, False])
                 # self.insert('meta_locks', [table._name, False])
 
@@ -586,7 +594,6 @@ class Database:
                 continue
             if table._name not in self.tables['meta_insert_stack'].column_by_name('table_name'):
                 self.tables['meta_insert_stack']._insert([table._name, []])
-
 
     def _add_to_insert_stack(self, table_name, indexes):
         '''
@@ -619,7 +626,6 @@ class Database:
             new_stack: string. The stack that will be used to replace the existing one.
         '''
         self.tables['meta_insert_stack']._update_rows(new_stack, 'indexes', f'table_name={table_name}')
-
 
     # indexes
     def create_index(self, index_name, table_name, index_type='btree'):
@@ -660,7 +666,6 @@ class Database:
             bt.insert(key, idx)
         # save the btree
         self._save_index(index_name, bt)
-
 
     def _has_index(self, table_name):
         '''
