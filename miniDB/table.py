@@ -311,7 +311,32 @@ class Table:
 
 
 
-            return_dict = {(key):([[grouped.data[i][j] for j in return_cols] for i in [i for i in range(len(grouped.data))]] if key=="data" else value) for key,value in grouped.__dict__.items()}
+            if(having is not None):
+
+
+                if(having.startswith('max ')):
+                    table_in_agg = having.strip()[having.strip().find('(')+1:having.strip().find(')')]
+                    table_in_agg = table_in_agg.strip()
+
+                    if(('agg_max_'+table_in_agg) in grouped.column_names):
+                        having = having[(having.index(')')+1):]
+                        having = 'agg_max_'+table_in_agg + having
+                    
+                    else:
+                        grouped = max(original=self,grouped=grouped,target_column=table_in_agg.strip(),column_names=column_names)
+                        return_cols.append(grouped.column_names.index('agg_max_'+table_in_agg.strip()))
+                        having = having[(having.index(')')+1):]
+                        having = 'agg_max_'+table_in_agg + having
+
+
+                print("having is :",having)
+                column_name, operator, value = grouped._parse_condition(having)
+                column = grouped.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            else:
+                rows = [i for i in range(len(grouped.data))]
+
+            return_dict = {(key):([[grouped.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in grouped.__dict__.items()}
 
             return_dict['column_names'] = [grouped.column_names[i] for i in return_cols]
             return_dict['column_types'] = [grouped.column_types[i] for i in return_cols]
