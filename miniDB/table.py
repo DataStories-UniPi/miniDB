@@ -127,6 +127,38 @@ class Table:
             self.data.append(row)
         # self._update()
 
+    def _insert_select(self, list_rows, insert_stack=[]):  #for issue #78
+        '''
+        Insert multiple rows into table.
+
+        Args:
+            list_rows: list. A list of lists of values to be inserted.
+            insert_stack: list. The insert stack (empty by default).
+        '''
+
+        # We use a loop to insert every row in the list
+        for row in list_rows:   
+            # Just like in _insert 
+            if len(row)!=len(self.column_names):
+                raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
+            
+            for i in range(len(row)):
+            # for each value, cast and replace it in row.
+            # try:
+                row[i] = self.column_types[i](row[i])
+                # except:
+                #     raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
+                # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
+                if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
+                    raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
+
+            # if insert_stack is not empty, append to its last index
+            if insert_stack != []:
+                self.data[insert_stack[-1]] = row
+            else: # else append to the end
+                self.data.append(row)
+                # self._update()
+
     def _update_rows(self, set_value, set_column, condition):
         '''
         Update where Condition is met.
