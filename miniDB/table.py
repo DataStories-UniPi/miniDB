@@ -22,8 +22,13 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
-
+    def __init__(self, name=None, column_names=None, column_types=None, not_null_columns=None, unique_columns=None, primary_key=None, load=None):
+        '''
+        Added Arg:
+            Added 2 more arguments. for issue #79
+            not_null_columns
+            unique_columns
+        '''
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
             if isinstance(load, dict):
