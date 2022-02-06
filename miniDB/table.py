@@ -129,6 +129,10 @@ class Table:
             # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
+            # The following code was an attempt, but it was creating issues we couldn't solve.
+            # Just like above for the primary key, we check for the unique columns.
+            #if self.column_names[i] in self.unique_columns and row[i] in self.column_by_name(self.column_names[i]):
+            #   raise ValueError(f'## ERROR -> Value {row[i]} already exists and the table is unique.')
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
@@ -161,7 +165,10 @@ class Table:
                 # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
                 if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
                     raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
-
+                # The following code was an attempt, but it was creating issues we couldn't solve.
+                # Just like above for the primary key, we check for the unique columns.
+                #if self.column_names[i] in self.unique_columns and row[i] in self.column_by_name(self.column_names[i]):
+                #    raise ValueError(f'## ERROR -> Value {row[i]} already exists and the table is unique.')
             # if insert_stack is not empty, append to its last index
             if insert_stack != []:
                 self.data[insert_stack[-1]] = row
