@@ -84,6 +84,12 @@ def create_query_plan(query, keywords, action):
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+        # Dic entries for unique columns and not null column. For issue #79
+        # We check if unique and not null is written in the parentheses and if it is we add the corresponding column name. 
+        # If it isn't then it's None.
+        dic['unique_columns'] = ','.join([val[0] for val in arglist if 'unique' in val]) if 'unique' in args else None  
+        dic['not_null_columns'] = ','.join([val[0] for val in arglist if 'not' in val and val.index('not') == val.index('null') - 1]) if 'not null' in args else None
+
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]
