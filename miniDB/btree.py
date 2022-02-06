@@ -97,10 +97,11 @@ class Node:
 
 
 class Btree:
-    def __init__(self, b):
+    def __init__(self, index_name, b):
         '''
         The tree abstraction.
         '''
+        self.index_name = index_name
         self.b = b # branching factor
         self.nodes = [] # list of nodes. Every new node is appended here
         self.root = None # the index of the root node
