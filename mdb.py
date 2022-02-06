@@ -94,11 +94,13 @@ def create_query_plan(query, keywords, action):
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
     if action=='insert into':
-        if dic['values'][0] == '(' and dic['values'][-1] == ')':
+        if dic['select'] is not None:  #Added Keyword select with insert into queries. for issue #78
+            dic = evaluate_from_clause(dic)  #Using the evaluate_from_clause for the select part of the query as when the action is select. 
+        elif dic['values'][0] == '(' and dic['values'][-1] == ')': #Changed the if to elif for values. 
             dic['values'] = dic['values'][1:-1]
         else:
             raise ValueError('Your parens are not right m8')
-    
+
     if action=='unlock table':
         if dic['force'] is not None:
             dic['force'] = True
