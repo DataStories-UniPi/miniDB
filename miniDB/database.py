@@ -115,7 +115,16 @@ class Database:
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
         # print('here -> ', column_names.split(','))
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)})
+        # We check to see if they are not None to avoid the split none error. #for issue #79
+        if not_null_columns is not None:
+            not_null_columns=not_null_columns.split(',')
+        else:
+            not_null_columns=None
+        if unique_columns is not None:
+            unique_columns=unique_columns.split(',')
+        else:
+            unique_columns=None
+        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, not_null_columns=not_null_columns, unique_columns=unique_columns, load=load)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
