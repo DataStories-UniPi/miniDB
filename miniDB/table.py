@@ -71,6 +71,11 @@ class Table:
             self.pk = primary_key
             # self._update()
 
+            # The list of columns for not null or unique columns. #for issue #79
+            self.not_null_columns = not_null_columns
+            self.unique_columns = unique_columns
+            
+
     # if any of the name, columns_names and column types are none. return an empty table object
 
     def column_by_name(self, column_name):
