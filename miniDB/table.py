@@ -277,7 +277,7 @@ class Table:
                     else:
                         raise Exception("given select list not in GROUP BY")
 
-            print(grouped.data)
+
             return_cols = []
 
             if return_columns == '*':
@@ -324,24 +324,99 @@ class Table:
                     
                     else:
                         grouped = max(original=self,grouped=grouped,target_column=table_in_agg.strip(),column_names=column_names)
-                        return_cols.append(grouped.column_names.index('agg_max_'+table_in_agg.strip()))
                         having = having[(having.index(')')+1):]
                         having = 'agg_max_'+table_in_agg + having
 
+                if(having.startswith('min ')):
+                    table_in_agg = having.strip()[having.strip().find('(')+1:having.strip().find(')')]
+                    table_in_agg = table_in_agg.strip()
 
-                print("having is :",having)
+                    if(('agg_min_'+table_in_agg) in grouped.column_names):
+                        having = having[(having.index(')')+1):]
+                        having = 'agg_min_'+table_in_agg + having
+                    
+                    else:
+                        grouped = min(original=self,grouped=grouped,target_column=table_in_agg.strip(),column_names=column_names)
+                        having = having[(having.index(')')+1):]
+                        having = 'agg_min_'+table_in_agg + having
+
+                if(having.startswith('count ')):
+                    table_in_agg = having.strip()[having.strip().find('(')+1:having.strip().find(')')]
+                    table_in_agg = table_in_agg.strip()
+
+                    if(('agg_count_'+table_in_agg.replace(' ', '_')) in grouped.column_names):
+                        having = having[(having.index(')')+1):]
+                        having = 'agg_count_'+table_in_agg.replace(' ', '_') + having
+                    
+                    else:
+                        grouped = count(original=self,grouped=grouped,target_column=table_in_agg.strip(),column_names=column_names)
+                        having = having[(having.index(')')+1):]
+                        having = 'agg_count_'+table_in_agg.replace(' ', '_') + having
+
+
+
+                if(having.startswith('sum ')):
+                    table_in_agg = having.strip()[having.strip().find('(')+1:having.strip().find(')')]
+                    table_in_agg = table_in_agg.strip()
+
+                    if(('agg_sum_'+table_in_agg.replace(' ', '_')) in grouped.column_names):
+                        having = having[(having.index(')')+1):]
+                        having = 'agg_sum_'+table_in_agg.replace(' ', '_') + having
+                    
+                    else:
+                        grouped = sum(original=self,grouped=grouped,target_column=table_in_agg.strip(),column_names=column_names)
+                        having = having[(having.index(')')+1):]
+                        having = 'agg_sum_'+table_in_agg.replace(' ', '_') + having
+
+
+
+
+
+                #print("having is :",having)
                 column_name, operator, value = grouped._parse_condition(having)
                 column = grouped.column_by_name(column_name)
                 rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
             else:
                 rows = [i for i in range(len(grouped.data))]
 
-            return_dict = {(key):([[grouped.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in grouped.__dict__.items()}
 
-            return_dict['column_names'] = [grouped.column_names[i] for i in return_cols]
-            return_dict['column_types'] = [grouped.column_types[i] for i in return_cols]
+            all_columns = [i for i in range(len(grouped.column_names))]
+
+            temp_dict = {(key):([[grouped.data[i][j] for j in all_columns] for i in rows] if key=="data" else value) for key,value in grouped.__dict__.items()}
+
+            temp_table = Table(load=temp_dict)
+
+            # if the query has 'order by' without 'distinct'
+            # order by is applied on the table with all the columns
+            if order_by and not(distinct):
+                order_cols = order_by.split(',')
+                temp_table.order_by(order_cols)
+
+
+
+
+            return_dict = {(key):([[temp_table.data[i][j] for j in return_cols] for i in range(len(temp_table.data))] if key=="data" else value) for key,value in temp_table.__dict__.items()}
+
+            return_dict['column_names'] = [temp_table.column_names[i] for i in return_cols]
+            return_dict['column_types'] = [temp_table.column_types[i] for i in return_cols]
 
             return_table = Table(load=return_dict)
+
+            if(distinct == True):
+                return_table.distinct()
+
+                # if the query has 'order by' AND 'distinct', the 'order by' action is called AFTER the
+                # 'distinct' function and the table has only the rows that will be displayed
+
+                # NOTE : for SELECT DISTINCT, ORDER BY expressions must appear in select list
+                if order_by:
+                    order_cols = order_by.split(',')
+                    return_table.order_by(order_cols)
+
+            # if needed, keep only top k rows
+            return_table.data = return_table.data[:int(top_k)] if isinstance(top_k,str) else return_table.data
+
+
 
             return return_table
 
@@ -372,19 +447,6 @@ class Table:
 
             # create Table object
             s_table = Table(load=dict)
-
-            if group_by is not None:
-
-                grouped = self.group_by_having(group_by)
-
-
-
-
-                s_table = max(original=self,grouped=grouped)
-
-                return s_table
-
-
 
 
             # if the query has 'order by' without 'distinct'

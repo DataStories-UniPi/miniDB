@@ -90,6 +90,9 @@ def create_query_plan(query, keywords, action):
             if dic['where'] is not None:
                 dic['where'] = dic['where'].removesuffix(' order')
 
+            if dic['having'] is not None:
+                dic['having'] = dic['having'].removesuffix(' order')
+
 
 
     if action=='create table':
