@@ -1039,7 +1039,7 @@ def sum(original, grouped, target_column, column_names):
 
         for elem in list(original.data[1:]):
             if(sums[interval] is None):
-                sums[interval] = prev[-1]
+                sums[interval] = prev[target]
 
             tlist1 = [prev[groups[i]] for i in range(len(groups))]
             tlist2 = [elem[groups[i]] for i in range(len(groups))]
@@ -1048,13 +1048,16 @@ def sum(original, grouped, target_column, column_names):
             else:
                 interval += 1
             prev = elem
+
+        if(sums[-1] is None):
+            sums[-1] = prev[target]
     else:
 
         prev = original.data[0]
 
         for elem in list(original.data[1:]):
             if(sums[interval] is None):
-                sums[interval] = prev[-1]
+                sums[interval] = prev[target]
 
             tlist1 = [prev[groups[i]] for i in range(len(groups))]
             tlist2 = [elem[groups[i]] for i in range(len(groups))]
@@ -1063,6 +1066,8 @@ def sum(original, grouped, target_column, column_names):
             else:
                 interval += 1
             prev = elem
+        if(sums[-1] is None):
+            sums[-1] = prev[target]
 
     c_names = grouped.column_names
     c_names.append("agg_sum_" + target_column.replace(' ', '_'))
