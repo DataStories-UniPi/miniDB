@@ -1,11 +1,3 @@
 --select * from (select * from (SELECT * FROM TEACH));
 --select * from t1;
---select * from classroom where capacity>50 order by capacity asc;
---insert into classroom values (packard,101,600);
---create table classroom2 (building str, room_number str, capacity int);
---select distinct building from classroom;
---select * from classroom where room_number between 1000 ad 100;
---select * from classroom where room_number not in (101,100);
-select * from classroom2;
-insert into classroom2 select * from classroom where capacity < 50;
-select * from classroom2;
+select * from classroom where capacity>50 order by capacity asc;
