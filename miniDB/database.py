@@ -97,7 +97,13 @@ class Database:
         self._update_meta_insert_stack()
 
 
-    def create_table(self, name, column_names, column_types, primary_key=None, load=None):
+    def create_table(self, name, column_names, column_types, not_null_columns, unique_columns, primary_key=None, load=None):
+        '''
+        Added Arg:
+            not_null_columns: list. Names of columns we want to be not null.
+            unique_columns: list. Names of columns we want to be unique.
+            For issue #79
+        '''
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
 
