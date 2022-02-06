@@ -58,9 +58,6 @@ def create_query_plan(query, keywords, action):
         elif i!=len(ql)-1 and f'{ql[i]} {ql[i+1]}' in keywords and not in_paren(ql, i):
             kw_in_query.append(f'{ql[i]} {ql[i+1]}')
             kw_positions.append(i+1)
-   # print(kw_in_query)
-   # print(kw_positions)
-
 
     for i in range(len(kw_in_query)-1):
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
@@ -86,7 +83,7 @@ def create_query_plan(query, keywords, action):
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
-#insert here
+
         '''
         if the foreign key keyword exists we process the query to find the position of the keywords.
         ''' 
@@ -104,9 +101,9 @@ def create_query_plan(query, keywords, action):
                 dic['foreign keys'] = [val[2] for val in l]
                 dic['foreign table'] = [val[4] for val in l]
                 dic['foreign table key'] = [val[6] for val in l]
-                print(dic['foreign keys'])
-                print(dic['foreign table'])
-                print(dic['foreign table key'])
+                #print(dic['foreign keys'])
+                #print(dic['foreign table'])
+                #print(dic['foreign table key'])
                 '''
                 The query may contain multiple foreign keys. for each one,
                 we find if the corresponding fields exist and are correct
@@ -132,7 +129,13 @@ def create_query_plan(query, keywords, action):
                 del dic['foreign keys']
                 del dic['foreign table']
                 del dic['foreign table key']
-               
+                #print('ola kala')
+                #print(dic['column_names']) 
+                dic['column_names']=dic['column_names'].replace(',foreign','')
+                dic['column_types']=dic['column_types'].replace(',key','')
+                #print(dic['column_names']) 
+                #print(dic['column_types']) 
+                #print(dic)
             else:
                 raise ValueError('Your parens are not right m8')            
       
