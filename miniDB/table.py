@@ -416,6 +416,12 @@ class Table:
         # print using tabulate
         print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
 
+    def _list_of_lists(self):  #called by insert_into in database.py. for issue #78
+        # Making a list of lists for use in the _insert_select function.
+        # Checking for empty rows like in line 416 in the show function.
+        # Then we add the rows to the list.
+        list_of_lists = [row for row in self.data if any(row)]
+        return list_of_lists
 
     def _parse_condition(self, condition, join=False):
         '''
