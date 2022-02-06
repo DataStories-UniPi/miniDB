@@ -55,6 +55,8 @@ def get_op(op, a, b):
         return False
 
 def split_condition(condition):
+    # at first empty spaces around kw are replaced with $, that will remove the possibility of merging keywords
+    # into arguments (e.g. building => build in g)
     condition=condition.replace(' in ', ' $in$ ').replace(' like ', ' $like$ ')\
         .replace('not $in$', '$not_in$').replace('not $like$', '$not_like$')\
         .replace(' between ', ' $between$ ').replace('not $between$', '$not_between$')

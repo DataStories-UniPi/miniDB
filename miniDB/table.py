@@ -209,6 +209,7 @@ class Table:
                 
                 Operatores supported: (<,<=,==,>=,>)
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
+            distinct: boolean. If we want to eliminate duplicate records
             desc: boolean. If True, order_by will return results in descending order (False by default).
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
@@ -239,6 +240,7 @@ class Table:
         dict['column_types']   = [self.column_types[i] for i in return_cols]
 
         s_table = Table(load=dict)
+
         if distinct:
             s_table.distinct()
         if order_by:

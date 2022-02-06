@@ -330,13 +330,15 @@ class Database:
             table_name: string. Name of table (must be part of database).
             columns: list. The columns that will be part of the output table (use '*' to select all available columns)
             condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
-                
-                Operatores supported: (<,<=,==,>=,>)
+                'column[<,<=,==,>=,>,[not] like]value' or
+                'value[<,<=,==,>=,>, [not] like]column'.
+                'column [not] in (value1,value2,...)'
+                'column [not] between value1 and value2'
+                Operatores supported: (<,<=,==,>=,>, like, in, between)
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (True by default).
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
+            distinct: boolean. If the duplicate records should be eliminated
             save_as: string. The name that will be used to save the resulting table into the database (no save if None).
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
         '''
