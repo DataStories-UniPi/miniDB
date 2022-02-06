@@ -303,7 +303,7 @@ class Table:
     def aggr_idx(self, aggregate):
         return (self.column_names.index(aggregate.split('(')[1][:-1].strip()), aggregate.split('(')[0].strip())
 
-    def select_aggr(self, aggregates, condition=None):
+    def select_aggr(self, aggregates, condition=None, order_by=None, desc=True, top_k=None):
         '''
         Substitute for select. This function gets run when the user uses one or multiple aggregate functions in select (e.g. select count(id), max(salary)).
         '''
@@ -316,7 +316,7 @@ class Table:
             if aggregate_function[1] == 'count':    
                 count = self.count(aggregate_function[0], condition)
                 result_row.append(count)
-                result_names.append(f'COUNT({self.column_names[aggregate_function[0]]})')
+                result_names.append(f'count({self.column_names[aggregate_function[0]]})')
 
             #if the aggregate function the user called is sum
             elif aggregate_function[1] == 'sum':
@@ -329,7 +329,7 @@ class Table:
                 #if the value is int, then we can call calculate_sum, which is roughly the same as count()
                 sum = self.calculate_sum(aggregate_function[0], condition)
                 result_row.append(sum)
-                result_names.append(f'SUM({self.column_names[aggregate_function[0]]})')
+                result_names.append(f'sum({self.column_names[aggregate_function[0]]})')
 
             elif aggregate_function[1] == 'avg':
                 
@@ -341,43 +341,31 @@ class Table:
                 #average is the sum divided by the count. The point is that these things already exist as functions. so we use those two functions simultaneously.
                 avg = self.calculate_sum(aggregate_function[0], condition) / self.count(aggregate_function[0], condition)
                 result_row.append(avg)
-                result_names.append(f'AVG({self.column_names[aggregate_function[0]]})')
+                result_names.append(f'avg({self.column_names[aggregate_function[0]]})')
             
             #minimum and maximum functions don't have int constraints. So they're executed immediately.
             elif aggregate_function[1] == 'min':
                 
                 minimum = self.minimum(aggregate_function[0], condition)
                 result_row.append(minimum)
-                result_names.append(f'MIN({self.column_names[aggregate_function[0]]})')
+                result_names.append(f'min({self.column_names[aggregate_function[0]]})')
 
             elif aggregate_function[1] == 'max':
 
                 maximum = self.maximum(aggregate_function[0], condition)
                 result_row.append(maximum)
-                result_names.append(f'MAX({self.column_names[aggregate_function[0]]})')
+                result_names.append(f'max({self.column_names[aggregate_function[0]]})')
 
-        
-
-        '''dict = {
-        '_name'         : self._name,
-        'column_names'  : [f'count({self.column_names[aggregate_function[0]]})'],
-        'column_types'  : [], 
-        'columns'       : [],
-        'data'          : [],
-        'pk'            : '',
-        'pk_idx'        : 0,
-        }'''
         #Set the new attribute dictionary. We change the data attribute, the column names and the types
         dict = {(key):([result_row] if key=="data" else value) for key,value in self.__dict__.items()} #data has only the result row
         dict['column_names'] = result_names
         dict['column_types'] = [int for i in result_row]    #all the aggregate functions return int
 
-        s_table = Table(load = dict)
+        s_table = Table(load=dict) 
+        if order_by:
+            s_table.order_by(order_by.replace(" ", ""), desc)
 
-        '''if order_by:
-            s_table.order_by(order_by, desc)
-
-        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data'''
+        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
 
         return s_table
 
@@ -411,7 +399,7 @@ class Table:
 
             #then we have to check if we have only aggregate functions in order to select the aggregate values
             if isinstance(return_cols[0], tuple): #if the first element is aggregate all the elements are aggregate 
-                return self.select_aggr(return_cols, condition)
+                return self.select_aggr(return_cols, condition, order_by, desc, top_k)
 
         else:
             return self.group_by_having(return_columns, condition, group_by_columns, having_condition, order_by, desc, top_k)
