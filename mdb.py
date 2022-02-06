@@ -108,19 +108,26 @@ def create_query_plan(query, keywords, action):
                 print(dic['foreign table'])
                 print(dic['foreign table key'])
                 '''
-                The query may contain multipl foreign keys. for each one,
+                The query may contain multiple foreign keys. for each one,
                 we find if the corresponding fields exist and are correct
                 and accordingly update a boolean flag. If after checking all keys everything is ok
                 we can proceed with the creation of the table.
                 '''
                 for i in range(len(dic['foreign keys'])):
+                    '''
+                    We create a subquery for each foreign key and interpret it
+                    '''
                     myline = 'select '+dic['foreign table key'][i]+  ' from '+ dic['foreign table'][i]
-                    print(myline)
+                    #print(myline)
                     mydic = interpret(myline)
                     myresult = execute_dic(mydic)
-                    if isinstance(myresult,Table):
-                        print('all good')
-                    else:
+                    '''
+                    if everything is ok we proceed with the creation of the table.
+                    otherwise we raise an error.
+                    '''
+                    if not isinstance(myresult,Table):
+                       #print('all good')
+                    #else:
                         raise ValueError('The foreign key does not exist in the corresponding table')
                 del dic['foreign keys']
                 del dic['foreign table']
@@ -144,14 +151,20 @@ def create_query_plan(query, keywords, action):
                 dic['values'] = dic['values'][1:-1]  
             '''
             We added the select in the dictionary and we create a new subquery 
-                
+            and interpret it. Upon checking on the results of the records it returns
+            we proceed accordingly. 
+            
             '''                          
         elif dic['select'] is not None:
             dic['select']='select '+dic['select']
             k=interpret(dic['select'])            
             result=execute_dic(k)
+            '''
+            We get the results of the select subquery and for each record
+            we create a simple insert query which we subsequently execute
+            '''
             non_none_rows = [row for row in result.data if any(row)] 
-            print(len(non_none_rows))
+            #print(len(non_none_rows))
             for i_row in non_none_rows:               
                 my_lst_str = ','.join(map(str, i_row))            
                 query='insert into ' + dic['insert into'] + ' values ('+ my_lst_str +')'               
