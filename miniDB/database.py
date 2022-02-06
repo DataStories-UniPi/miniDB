@@ -2,7 +2,7 @@ from __future__ import annotations
 import pickle
 from table import Table
 from time import sleep, localtime, strftime
-import os,sys
+import os, sys
 from btree import Btree
 import shutil
 from misc import split_condition
@@ -15,6 +15,7 @@ from tabulate import tabulate
 
 # Clear command cache (journal)
 readline.clear_history()
+
 
 class Database:
     '''
@@ -77,9 +78,9 @@ class Database:
         path = f'dbdata/{self._name}_db'
         for file in os.listdir(path):
 
-            if file[-3:]!='pkl': # if used to load only pkl files
+            if file[-3:] != 'pkl':  # if used to load only pkl files
                 continue
-            f = open(path+'/'+file, 'rb')
+            f = open(path + '/' + file, 'rb')
             tmp_dict = pickle.load(f)
             f.close()
             name = f'{file.split(".")[0]}'
@@ -107,7 +108,8 @@ class Database:
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
         # print('here -> ', column_names.split(','))
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)})
+        self.tables.update({name: Table(name=name, column_names=column_names.split(','),
+                                        column_types=column_types.split(','), primary_key=primary_key, load=load)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
@@ -149,13 +151,14 @@ class Database:
         '''
         file = open(filename, 'r')
 
-        first_line=True
+        first_line = True
         for line in file.readlines():
             if first_line:
                 colnames = line.strip('\n')
                 if column_types is None:
                     column_types = ",".join(['str' for _ in colnames.split(',')])
-                self.create_table(name=table_name, column_names=colnames, column_types=column_types, primary_key=primary_key)
+                self.create_table(name=table_name, column_names=colnames, column_types=column_types,
+                                  primary_key=primary_key)
                 lock_ownership = self.lock_table(table_name, mode='x')
                 first_line = False
                 continue
@@ -175,8 +178,8 @@ class Database:
             filename: string. Output CSV filename.
         '''
         res = ''
-        for row in [self.tables[table_name].column_names]+self.tables[table_name].data:
-            res+=str(row)[1:-1].replace('\'', '').replace('"','').replace(' ','')+'\n'
+        for row in [self.tables[table_name].column_names] + self.tables[table_name].data:
+            res += str(row)[1:-1].replace('\'', '').replace('"', '').replace(' ', '') + '\n'
 
         if filename is None:
             filename = f'{table_name}.csv'
@@ -221,6 +224,7 @@ class Database:
             cast_type: type. Cast type (do not encapsulate in quotes).
         '''
         self.load_database()
+
         lock_ownership = self.lock_table(table_name, mode='x')
         self.tables[table_name]._cast_column(column_name, eval(cast_type))
         if lock_ownership:
@@ -269,8 +273,9 @@ class Database:
 
                 Operatores supported: (<,<=,==,>=,>)
         '''
-        set_column, set_value = set_args.replace(' ','').split('=')
+        set_column, set_value = set_args.replace(' ', '').split('=')
         self.load_database()
+
         lock_ownership = self.lock_table(table_name, mode='x')
         self.tables[table_name]._update_rows(set_value, set_column, condition)
         if lock_ownership:
@@ -299,11 +304,11 @@ class Database:
         self._update()
         self.save_database()
         # we need the save above to avoid loading the old database that still contains the deleted elements
-        if table_name[:4]!='meta':
+        if table_name[:4] != 'meta':
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
 
-    def select(self, columns, table_name, condition, group_by=None, order_by=None, top_k=True,\
+    def select(self, columns, table_name, condition, group_by=None, order_by=None, top_k=True, \
                desc=None, save_as=None, return_object=True, count=False, max=False, min=False, sum=False, avg=False):
         '''
         Selects and outputs a table's data where condtion is met.
@@ -371,8 +376,8 @@ class Database:
 
         # print(table_name)
         self.load_database()
-        if isinstance(table_name,Table):
-            return table_name._select_where(columns, condition,group_by, order_by, desc, top_k,
+        if isinstance(table_name, Table):
+            return table_name._select_where(columns, condition, group_by, order_by, desc, top_k,
                                             count, max, min, sum, avg)
 
         if condition is not None:
@@ -386,12 +391,17 @@ class Database:
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
-        if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
-            index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
+        if self._has_index(table_name) and condition_column == self.tables[table_name].column_names[
+            self.tables[table_name].pk_idx]:
+            index_name = \
+            self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name(
+                'index_name')[0]
             bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k,count, max, min, sum, avg)
+            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k,
+                                                                     count, max, min, sum, avg)
         else:
-            table = self.tables[table_name]._select_where(columns, condition, group_by, order_by, desc, top_k, count, max, min, sum, avg)
+            table = self.tables[table_name]._select_where(columns, condition, group_by, order_by, desc, top_k, count,
+                                                          max, min, sum, avg)
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as
@@ -410,6 +420,7 @@ class Database:
             table_name: string. Name of table (must be part of database).
         '''
         self.load_database()
+
         self.tables[table_name].show(no_of_rows, self.is_locked(table_name))
 
     def sort(self, table_name, column_name, asc=False):
@@ -423,6 +434,7 @@ class Database:
         '''
 
         self.load_database()
+
         lock_ownership = self.lock_table(table_name, mode='x')
         self.tables[table_name]._sort(column_name, asc=asc)
         if lock_ownership:
@@ -450,10 +462,9 @@ class Database:
             return
 
         left_table = left_table if isinstance(left_table, Table) else self.tables[left_table]
-        right_table = right_table if isinstance(right_table, Table) else self.tables[right_table]        
-        
-        
-        if mode=='inner':
+        right_table = right_table if isinstance(right_table, Table) else self.tables[right_table]
+
+        if mode == 'inner':
             res = left_table._inner_join(right_table, condition)
         else:
             raise NotImplementedError
@@ -474,15 +485,15 @@ class Database:
         Args:
             table_name: string. Table name (must be part of database).
         '''
-        if table_name[:4]=='meta' or table_name not in self.tables.keys() or isinstance(table_name,Table):
+        if table_name[:4] == 'meta' or table_name not in self.tables.keys() or isinstance(table_name, Table):
             return
 
         with open(f'{self.savedir}/meta_locks.pkl', 'rb') as f:
             self.tables.update({'meta_locks': pickle.load(f)})
 
         try:
-            pid = self.tables['meta_locks']._select_where('pid',f'table_name={table_name}').data[0][0]
-            if pid!=os.getpid():
+            pid = self.tables['meta_locks']._select_where('pid', f'table_name={table_name}').data[0][0]
+            if pid != os.getpid():
                 raise Exception(f'Table "{table_name}" is locked by process with pid={pid}')
             else:
                 return False
@@ -490,7 +501,7 @@ class Database:
         except IndexError:
             pass
 
-        if mode=='x':
+        if mode == 'x':
             self.tables['meta_locks']._insert([table_name, os.getpid(), mode])
         else:
             raise NotImplementedError
@@ -511,8 +522,8 @@ class Database:
         if not force:
             try:
                 # pid = self.select('*','meta_locks',  f'table_name={table_name}', return_object=True).data[0][1]
-                pid = self.tables['meta_locks']._select_where('pid',f'table_name={table_name}').data[0][0]
-                if pid!=os.getpid():
+                pid = self.tables['meta_locks']._select_where('pid', f'table_name={table_name}').data[0][0]
+                if pid != os.getpid():
                     raise Exception(f'Table "{table_name}" is locked by the process with pid={pid}')
             except IndexError:
                 pass
@@ -527,30 +538,34 @@ class Database:
         Args:
             table_name: string. Table name (must be part of database).
         '''
-        if isinstance(table_name,Table) or table_name[:4]=='meta':  # meta tables will never be locked (they are internal)
+        if isinstance(table_name, Table) or table_name[
+                                            :4] == 'meta':  # meta tables will never be locked (they are internal)
             return False
 
         with open(f'{self.savedir}/meta_locks.pkl', 'rb') as f:
             self.tables.update({'meta_locks': pickle.load(f)})
 
         try:
-            pid = self.tables['meta_locks']._select_where('pid',f'table_name={table_name}').data[0][0]
-            if pid!=os.getpid():
+            pid = self.tables['meta_locks']._select_where('pid', f'table_name={table_name}').data[0][0]
+            if pid != os.getpid():
                 raise Exception(f'Table "{table_name}" is locked by the process with pid={pid}')
 
         except IndexError:
             pass
         return False
 
-    def journal(idx = None):
+    def journal(idx=None):
         if idx != None:
-            cache_list = '\n'.join([str(readline.get_history_item(i + 1)) for i in range(readline.get_current_history_length())]).split('\n')[int(idx)]
+            cache_list = '\n'.join(
+                [str(readline.get_history_item(i + 1)) for i in range(readline.get_current_history_length())]).split(
+                '\n')[int(idx)]
             out = tabulate({"Command": cache_list.split('\n')}, headers=["Command"])
         else:
-            cache_list = '\n'.join([str(readline.get_history_item(i + 1)) for i in range(readline.get_current_history_length())])
-            out = tabulate({"Command": cache_list.split('\n')}, headers=["Index","Command"], showindex="always")
+            cache_list = '\n'.join(
+                [str(readline.get_history_item(i + 1)) for i in range(readline.get_current_history_length())])
+            out = tabulate({"Command": cache_list.split('\n')}, headers=["Index", "Command"], showindex="always")
         print('journal:', out)
-        #return out
+        # return out
 
     #### META ####
 
@@ -563,9 +578,10 @@ class Database:
         Updates the meta_length table.
         '''
         for table in self.tables.values():
-            if table._name[:4]=='meta': #skip meta tables
+            if table._name[:4] == 'meta':  # skip meta tables
                 continue
-            if table._name not in self.tables['meta_length'].column_by_name('table_name'): # if new table, add record with 0 no. of rows
+            if table._name not in self.tables['meta_length'].column_by_name(
+                    'table_name'):  # if new table, add record with 0 no. of rows
                 self.tables['meta_length']._insert([table._name, 0])
 
             # the result needs to represent the rows that contain data. Since we use an insert_stack
@@ -579,7 +595,7 @@ class Database:
         Updates the meta_locks table.
         '''
         for table in self.tables.values():
-            if table._name[:4]=='meta': #skip meta tables
+            if table._name[:4] == 'meta':  # skip meta tables
                 continue
             if table._name not in self.tables['meta_locks'].column_by_name('table_name'):
                 self.tables['meta_locks']._insert([table._name, False])
@@ -590,7 +606,7 @@ class Database:
         Updates the meta_insert_stack table.
         '''
         for table in self.tables.values():
-            if table._name[:4]=='meta': #skip meta tables
+            if table._name[:4] == 'meta':  # skip meta tables
                 continue
             if table._name not in self.tables['meta_insert_stack'].column_by_name('table_name'):
                 self.tables['meta_insert_stack']._insert([table._name, []])
@@ -604,7 +620,7 @@ class Database:
             indexes: list. The list of indices that will be added to the insert stack (the indices of the newly deleted elements).
         '''
         old_lst = self._get_insert_stack_for_table(table_name)
-        self._update_meta_insert_stack_for_tb(table_name, old_lst+indexes)
+        self._update_meta_insert_stack_for_tb(table_name, old_lst + indexes)
 
     def _get_insert_stack_for_table(self, table_name):
         '''
@@ -613,7 +629,8 @@ class Database:
         Args:
             table_name: string. Table name (must be part of database).
         '''
-        return self.tables['meta_insert_stack']._select_where('*', f'table_name={table_name}').column_by_name('indexes')[0]
+        return \
+        self.tables['meta_insert_stack']._select_where('*', f'table_name={table_name}').column_by_name('indexes')[0]
         # res = self.select('meta_insert_stack', '*', f'table_name={table_name}', return_object=True).indexes[0]
         # return res
 
@@ -637,11 +654,11 @@ class Database:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
         '''
-        if self.tables[table_name].pk_idx is None: # if no primary key, no index
+        if self.tables[table_name].pk_idx is None:  # if no primary key, no index
             raise Exception('Cannot create index. Table has no primary key.')
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
             # currently only btree is supported. This can be changed by adding another if.
-            if index_type=='btree':
+            if index_type == 'btree':
                 logging.info('Creating Btree index.')
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
                 self.tables['meta_indexes']._insert([table_name, index_name])
@@ -659,7 +676,7 @@ class Database:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
         '''
-        bt = Btree(3) # 3 is arbitrary
+        bt = Btree(3)  # 3 is arbitrary
 
         # for each record in the primary key of the table, insert its value and index to the btree
         for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
