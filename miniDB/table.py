@@ -220,6 +220,7 @@ class Table:
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
 
+	#H group_by_method einai synarthsh gia na epistrepsei apotelesmata bash toy group by pou exei ginei
     def _group_by_method(self,group_by,all_rows,all_in,having):
 
 
@@ -239,7 +240,7 @@ class Table:
             else:
                 dic[tuple(record)]=[i]
 
-        if having:
+        if having:#Ean to pedio having den einai keno kaleitai h having function
 
             dic=self.having(having,dic)
 
@@ -280,7 +281,6 @@ class Table:
         value=element[element.find(")")+3:]
 
         #Ean h timh einia typou number tote metatrepetai se float
-        
         try:
             value=float(value)
         except ValueError:
@@ -318,8 +318,7 @@ class Table:
 
         for key in keys_toremove:
             del dic[key]
-
-	#epistrefetai kainoyrio dic
+		#epistrefetai kainoyrio dic
         return dic
 
 
@@ -464,17 +463,17 @@ class Table:
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
 
-        #Using dictionary for aggregate function
+        
 
 
 
-        #We need all columns and rows for aggregate funcion
+        #We need all columns for aggregate funcion
 
 
 
         all_columns=[i for i in range(len(self.column_names))]
 
-        all_in_on = {'sum': [], 'count': [], 'avg': [], 'max': [], 'min': [], 'None': [], '*': []}
+        all_in_on = {'sum': [], 'count': [], 'avg': [], 'max': [], 'min': [], 'None': [], '*': []}#Xrhsimeyei gia na kseroume me poia katatatksi egine to erwthma
         # Ean to return_collumns einai iso  me * tote epistrefontai oles oi sthles
         #Diaforetika xrhsimopoioume to apo panw  dictionary all_in_on wste na mporoun na ikanopoihthoun kai aithmata ths morfhs p.x
         #select *,*,capacity.. from classroom

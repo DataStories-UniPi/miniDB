@@ -178,6 +178,7 @@ def interpret(query):
     if query[-1]!=';':
         query+=';'
     
+    
     query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").replace("group by","group_by").strip()
 
     
