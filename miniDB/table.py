@@ -1007,6 +1007,7 @@ def sum(original, grouped, target_column, column_names):
     (if distinct was specidied, it ignores duplicate values while iterating through the data).
     '''
 
+    #we check wether 'distinct' was specified.
     distinct = False
     input_target = target_column.split(' ')
     input_target_column = input_target[0]
@@ -1021,7 +1022,7 @@ def sum(original, grouped, target_column, column_names):
     if not(str(original.column_types[target]) == "<class 'int'>"):
             raise Exception("The aggregate functions sum, avg are valid on numeric columns only!")
 
-    '''Sort the original table'''
+    #we sort the original table.
     orders = column_names.copy()
     if(input_target_column not in grouped.column_names):
         orders.append(input_target_column)
@@ -1039,8 +1040,12 @@ def sum(original, grouped, target_column, column_names):
             if(sums[interval] is None):
                 sums[interval] = prev[target]
 
+            #we must check whether the two rows are of the same group.
+            #to achieve this, we add the values of each column that takes part in the group
+            #in a list for both the current, and the previous row.
             tlist1 = [prev[groups[i]] for i in range(len(groups))]
             tlist2 = [elem[groups[i]] for i in range(len(groups))]
+
             if(tlist1 == tlist2 and elem[target] != prev[target]):
                 sums[interval] += elem[target]
             elif(tlist1 == tlist2 and elem[target] == prev[target]):
@@ -1049,6 +1054,8 @@ def sum(original, grouped, target_column, column_names):
                 interval += 1
             prev = elem
 
+        #if the last row is its own group, the above loop does not update the sums list
+        #and leaves it empty. Thus, in such case, we update it manually.
         if(sums[-1] is None):
             sums[-1] = prev[target]
     else:
@@ -1128,6 +1135,8 @@ def count(original, grouped, target_column, column_names):
     The function counts how many rows are assiciated with each group (in column_names) by their values in the target_column.
     (if distinct was specidied, it ignores duplicate values while iterating through the data).
     '''
+
+    #we check whether 'distinct' was specified.
     distinct = False
     input_target = target_column.split(' ')
     input_target_column = input_target[0]
@@ -1140,7 +1149,7 @@ def count(original, grouped, target_column, column_names):
     target = original.column_names.index(input_target_column)
     groups = [original.column_names.index(elem) for elem in column_names]
 
-    '''Sort the original table'''
+    #we sort the original table.
     orders = column_names.copy()
     if(input_target_column not in grouped.column_names):
         orders.append(input_target_column)
@@ -1155,6 +1164,10 @@ def count(original, grouped, target_column, column_names):
         prev = original.data[0]
 
         for elem in list(original.data[1:]):
+
+            #we must check whether the two rows are of the same group.
+            #to achieve this, we add the values of each column that takes part in the group
+            #in a list for both the current, and the previous row.
             tlist1 = [prev[groups[i]] for i in range(len(groups))]
             tlist2 = [elem[groups[i]] for i in range(len(groups))]
 
@@ -1217,7 +1230,7 @@ def avg(original, grouped, target_column, column_names):
 
     Custom exception raised if the target_column is not numeric.
 
-    
+
     Procedure:
 
     The function creates a variable target containing the index of target_column in the original table.
@@ -1247,6 +1260,8 @@ def avg(original, grouped, target_column, column_names):
     Finally, it takes the average value of the target_column data for each group by dividing the above.
     (if distinct was specidied, it ignores duplicate values while iterating through the data).
     '''
+
+    #we check whether 'distinct' was specified.
     distinct = False
     input_target = target_column.split(' ')
     input_target_column = input_target[0]
@@ -1262,7 +1277,7 @@ def avg(original, grouped, target_column, column_names):
     if not(str(original.column_types[target]) == "<class 'int'>"):
             raise Exception("The aggregate functions sum, avg are valid on numeric columns only!")
 
-    '''Sort the original table'''
+    #we sort the original table.
     orders = column_names.copy()
     if(input_target_column not in grouped.column_names):
         orders.append(input_target_column)
@@ -1280,8 +1295,12 @@ def avg(original, grouped, target_column, column_names):
             if(sums[interval] is None):
                 sums[interval] = prev[target]
 
+            #we must check whether the two rows are of the same group.
+            #to achieve this, we add the values of each column that takes part in the group
+            #in a list for both the current, and the previous row.
             tlist1 = [prev[groups[i]] for i in range(len(groups))]
             tlist2 = [elem[groups[i]] for i in range(len(groups))]
+
             if(tlist1 == tlist2 and elem[target] != prev[target]):
                 sums[interval] += elem[target]
                 counts[interval] += 1
@@ -1290,7 +1309,9 @@ def avg(original, grouped, target_column, column_names):
             else:
                 interval += 1
             prev = elem
-
+        
+        #if the last row is its own group, the above loop does not update the sums list
+        #and leaves it empty. Thus, in such case, we update it manually.
         if(sums[-1] is None):
             sums[-1] = prev[target]
     else:
