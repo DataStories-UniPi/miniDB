@@ -430,8 +430,20 @@ class Table:
 
     def min(self, col_idx, condition, group = []):
 
+        if group != []:
+            counted_column_values = self.column_by_name(self.column_names[col_idx]) #list with the counted column's values
+            minimum = 'null'
+
+            if condition is not None:
+                condition_column_name, operator, value = self._parse_condition(condition)
+                condition_column_values = self.column_by_name(condition_column_name)
+
+                minimum = min([row for row in range(len(self.data)) if all(val in self.data[row] for val in group) and counted_column_values[row] != 'null' and get_op(operator, condition_column_values[row], value)])
+            else:   
+                minimum = min([row for row in range(len(self.data)) if all(val in self.data[row] for val in group) and counted_column_values[row] != 'null'])
+
         #if there is a condition to check, we get the name of the WHERE column the operator (<, >, etc.) and the value provided.
-        if condition is not None:
+        elif condition is not None:
             condition_column_name, operator, value = self._parse_condition(condition)
             condition_column_values                = self.column_by_name(condition_column_name)
 
@@ -449,8 +461,21 @@ class Table:
     
     def max(self, col_idx, condition, group = []):
 
+        if group != []:
+            counted_column_values = self.column_by_name(self.column_names[col_idx]) #list with the counted column's values
+            maximum = 'null'
+
+            if condition is not None:
+                condition_column_name, operator, value = self._parse_condition(condition)
+                condition_column_values = self.column_by_name(condition_column_name)
+
+                maximum = max([row for row in range(len(self.data)) if all(val in self.data[row] for val in group) and counted_column_values[row] != 'null' and get_op(operator, condition_column_values[row], value)])
+            else:   
+                maximum = max([row for row in range(len(self.data)) if all(val in self.data[row] for val in group) and counted_column_values[row] != 'null'])
+
+
         #everything here is the same as minimum, except there is the max() statement.
-        if condition is not None:
+        elif condition is not None:
             condition_column_name, operator, value = self._parse_condition(condition)
             condition_column_values                = self.column_by_name(condition_column_name)
 
@@ -485,8 +510,9 @@ class Table:
         '''
         Substitute for select. This function gets run when the user uses one or multiple aggregate functions in select (e.g. select count(id), max(salary)).
         '''
-        result_row = []     #the values of the row we are going to show
+        result_row   = []     #the values of the row we are going to show
         result_names = []   #the names of the rows we are going to show
+        result_types = []
 
         for aggregate_function in aggregates:
 
@@ -499,55 +525,11 @@ class Table:
                 aggr_result = getattr(self, aggregate_function[1])(aggregate_function[0], condition)
             result_row.append(aggr_result)
             result_names.append(f'{aggregate_function[1]}({self.column_names[aggregate_function[0]]})')
-
-            '''#we call count function if we have to count a column
-            if aggregate_function[1] == 'count':    
-                count = self.count(aggregate_function[0], condition)
-                result_row.append(count)
-                result_names.append(f'count({self.column_names[aggregate_function[0]]})')
-
-            #if the aggregate function the user called is sum
-            elif aggregate_function[1] == 'sum':
-
-                #first we check if the column that the aggregate function was called is an int. SUM is only callable in ints.
-                if self.column_types[aggregate_function[0]] != int:
-                    print(f'ERROR: Column "{self.column_names[aggregate_function[0]]}" is a type of {str(self.column_types[aggregate_function[0]])}. SUM is only callable in {str(type(0))} types.')
-                    return None
-                
-                #if the value is int, then we can call calculate_sum, which is roughly the same as count()
-                sum = self.sum(aggregate_function[0], condition)
-                result_row.append(sum)
-                result_names.append(f'sum({self.column_names[aggregate_function[0]]})')
-
-            elif aggregate_function[1] == 'avg':
-                
-                #average also needs to be done only on int values
-                if self.column_types[aggregate_function[0]] != int:
-                    print(f'ERROR: Column "{self.column_names[aggregate_function[0]]}" is a type of {str(self.column_types[aggregate_function[0]])}. AVG is only callable in {str(type(0))} types.')
-                    return None
-                
-                #average is the sum divided by the count. The point is that these things already exist as functions. so we use those two functions simultaneously.
-                avg = self.sum(aggregate_function[0], condition) / self.count(aggregate_function[0], condition)
-                result_row.append(avg)
-                result_names.append(f'avg({self.column_names[aggregate_function[0]]})')
-            
-            #minimum and maximum functions don't have int constraints. So they're executed immediately.
-            elif aggregate_function[1] == 'min':
-                
-                minimum = self.min(aggregate_function[0], condition)
-                result_row.append(minimum)
-                result_names.append(f'min({self.column_names[aggregate_function[0]]})')
-
-            elif aggregate_function[1] == 'max':
-
-                maximum = self.max(aggregate_function[0], condition)
-                result_row.append(maximum)
-                result_names.append(f'max({self.column_names[aggregate_function[0]]})')'''
+            result_types.append(int if aggregate_function[1] in ['avg', 'count', 'sum'] else self.column_types[aggregate_function[0]])
 
         #Set the new attribute dictionary. We change the data attribute, the column names and the types
         dict = {(key):([result_row] if key=="data" else value) for key,value in self.__dict__.items()} #data has only the result row
         dict['column_names'] = result_names
-        dict['column_types'] = [int for _ in result_row]    #all the aggregate functions return int
 
         s_table = Table(load=dict) 
         if order_by:
