@@ -236,18 +236,15 @@ class Table:
                 raise Exception("Having condition has to compare aggregate with int")
             having_aggregate = self.aggr_idx(having_aggr)
 
-            
             #Modify the groups list so it will contain only the groups that satisfy the having condition
             groups_to_remove = []
-            if having_aggregate[1] == "count":
-                for group in groups:
-                    group_count = self.count(having_aggregate[0],condition,group)
-                    if not get_op(having_operator, group_count, having_value):
-                        groups_to_remove.append(group)
-                for group in groups_to_remove:
-                    groups.remove(group)
-            #if having_aggregate[1] == "sum":
-                #...
+            for group in groups:
+                #We call the function that has the name of the aggregate with the corresponding parameters
+                aggr_result = getattr(self, having_aggregate[1])(having_aggregate[0], condition, group)
+                if not get_op(having_operator, aggr_result, having_value):
+                    groups_to_remove.append(group)
+            for group in groups_to_remove:
+                groups.remove(group)
         
         result_data = []
         result_names = []
@@ -299,7 +296,7 @@ class Table:
                 for row in range (len(self.data)):
                     if all(val in self.data[row] for val in group) and counted_column_values[row] != 'null':
                         count_rows+=1
-        elif condition is not None: #if we have only a condition to check 
+        elif condition is not None: #if we have only a where condition to check 
             condition_column_name, operator, value = self._parse_condition(condition)   #name of the where column, operator and value
             condition_column_values = self.column_by_name(condition_column_name)        #list with all the condition's column values
             
@@ -324,7 +321,7 @@ class Table:
                     count_rows +=1
         return count_rows
 
-    def calculate_sum(self, col_idx, condition=None):
+    def sum(self, col_idx, condition, group = []):
 
         #as a typical sum function, there must be a starting value of 0.
         sum_of_rows = 0
@@ -348,7 +345,7 @@ class Table:
 
         return sum_of_rows
 
-    def minimum(self, col_idx, condition=None):
+    def min(self, col_idx, condition, group = []):
 
         #if there is a condition to check, we get the name of the WHERE column the operator (<, >, etc.) and the value provided.
         if condition is not None:
@@ -367,7 +364,7 @@ class Table:
 
         return minimum
     
-    def maximum(self, col_idx, condition=None):
+    def max(self, col_idx, condition, group = []):
 
         #everything here is the same as minimum, except there is the max() statement.
         if condition is not None:
@@ -392,7 +389,7 @@ class Table:
         aggregate = aggregate.split('(')[0].strip()
 
         if col not in self.column_names:
-            raise Exception("Column" + str(col) + "cannot be found")
+            raise Exception("Column " + str(col) + " cannot be found")
 
         if aggregate not in ["min", "max", "sum", "avg", "count"]:
             raise Exception(f"Uncorrect aggregate {aggregate}")
@@ -410,7 +407,17 @@ class Table:
 
         for aggregate_function in aggregates:
 
-            #we call count function if we have to count a column
+            if (aggregate_function[1] == 'sum' or aggregate_function[1] == 'avg') and self.column_types[aggregate_function[0]] != int:
+                    print(f'ERROR: Column "{self.column_names[aggregate_function[0]]}" is a type of {str(self.column_types[aggregate_function[0]])}. {aggregate_function[1]} is only callable in {int} types.')
+                    return None
+            if aggregate_function[1] == 'avg':
+                aggr_result = self.sum(aggregate_function[0], condition) / self.count(aggregate_function[0], condition)
+            else:
+                aggr_result = getattr(self, aggregate_function[1])(aggregate_function[0], condition)
+            result_row.append(aggr_result)
+            result_names.append(f'{aggregate_function[1]}({self.column_names[aggregate_function[0]]})')
+
+            '''#we call count function if we have to count a column
             if aggregate_function[1] == 'count':    
                 count = self.count(aggregate_function[0], condition)
                 result_row.append(count)
@@ -425,7 +432,7 @@ class Table:
                     return None
                 
                 #if the value is int, then we can call calculate_sum, which is roughly the same as count()
-                sum = self.calculate_sum(aggregate_function[0], condition)
+                sum = self.sum(aggregate_function[0], condition)
                 result_row.append(sum)
                 result_names.append(f'sum({self.column_names[aggregate_function[0]]})')
 
@@ -437,29 +444,27 @@ class Table:
                     return None
                 
                 #average is the sum divided by the count. The point is that these things already exist as functions. so we use those two functions simultaneously.
-                avg = self.calculate_sum(aggregate_function[0], condition) / self.count(aggregate_function[0], condition)
+                avg = self.sum(aggregate_function[0], condition) / self.count(aggregate_function[0], condition)
                 result_row.append(avg)
                 result_names.append(f'avg({self.column_names[aggregate_function[0]]})')
             
             #minimum and maximum functions don't have int constraints. So they're executed immediately.
             elif aggregate_function[1] == 'min':
                 
-                minimum = self.minimum(aggregate_function[0], condition)
+                minimum = self.min(aggregate_function[0], condition)
                 result_row.append(minimum)
                 result_names.append(f'min({self.column_names[aggregate_function[0]]})')
 
             elif aggregate_function[1] == 'max':
 
-                maximum = self.maximum(aggregate_function[0], condition)
+                maximum = self.max(aggregate_function[0], condition)
                 result_row.append(maximum)
-                result_names.append(f'max({self.column_names[aggregate_function[0]]})')
-            else:
-                raise Exception(f'Unknown aggregate function {aggregate_function[1]}')
+                result_names.append(f'max({self.column_names[aggregate_function[0]]})')'''
 
         #Set the new attribute dictionary. We change the data attribute, the column names and the types
         dict = {(key):([result_row] if key=="data" else value) for key,value in self.__dict__.items()} #data has only the result row
         dict['column_names'] = result_names
-        dict['column_types'] = [int for i in result_row]    #all the aggregate functions return int
+        dict['column_types'] = [int for _ in result_row]    #all the aggregate functions return int
 
         s_table = Table(load=dict) 
         if order_by:
