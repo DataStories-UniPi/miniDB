@@ -618,13 +618,16 @@ class Database:
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
                 self.tables['meta_indexes']._insert([table_name, index_name, column_names])
                 # create the actual index
-                self._construct_index(table_name, index_name, selected_columns_names)
+                if selected_columns_names != self.tables[table_name].pk:
+                    self.tables[table_name].duplicate_column = [i for i in range(len(self.tables[table_name].data))]
+                    self._construct_index(table_name, index_name, selected_columns_names, True)
+                self._construct_index(table_name, index_name, selected_columns_names, False)
                 self.save_database()
                 print(":)")
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
-    def _construct_index(self, table_name, index_name, selected_columns_names):
+    def _construct_index(self, table_name, index_name, selected_columns_names, is_duplicate= False):
         '''
         Construct a btree on a table and save.
 
@@ -633,16 +636,20 @@ class Database:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
         '''
-        bt = Btree(index_name, 3)  # 3 is arbitrary
+        bt = Btree(index_name, 3, is_duplicate)  # 3 is arbitrary
 
         # put the data of the selected columns in a table named column_data
         columns_data = []
         for name in selected_columns_names:
            columns_data.append(self.tables[table_name].column_by_name(name))
         # for each record in the selected columns of the table, insert their values and index to the btree, after joining the column values
-        keys=[]
-        for idx, key in enumerate(list(zip(*columns_data))):
-            bt.insert(key, idx)
+        if not is_duplicate:
+            for idx, key in enumerate(list(zip(*columns_data))):
+                bt.insert(key, idx)
+        else:
+            columns_data.append(self.tables[table_name].duplicate_column)
+            for idx, key in enumerate(list(zip(*columns_data))):
+                bt.insert(key, idx)
         # save the btree
         self._save_index(index_name, bt)
 

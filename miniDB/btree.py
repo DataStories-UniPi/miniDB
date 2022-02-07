@@ -89,12 +89,13 @@ class Node:
 
 
 class Btree:
-    def __init__(self, index_name, b):
+    def __init__(self, index_name, b, is_duplicate= False):
         '''
         The tree abstraction.
         '''
         self.index_name = index_name
         self.b = b # branching factor
+        self.is_duplicate = is_duplicate
         self.nodes = [] # list of nodes. Every new node is appended here
         self.root = None # the index of the root node
 
@@ -291,78 +292,143 @@ class Btree:
         '''
         results = []
         # find the index of the node that the element should exist in
-        leaf_idx, ops = self._search(tuple(value), True)
-        target_node = self.nodes[leaf_idx]
+        if not self.is_duplicate:
+            leaf_idx, ops = self._search(tuple(value), True)
+            target_node = self.nodes[leaf_idx]
+            if operator[len(operator)-1] == '=':
+                # if the element exist, append to list, else pass and return
+                try:
+                    results.append(target_node.ptrs[target_node.values.index(value)])
+                    # print('Found')
+                except:
+                    # print('Not found')
+                    pass
 
-        if operator[len(operator)-1] == '=':
-            # if the element exist, append to list, else pass and return
-            try:
-                results.append(target_node.ptrs[target_node.values.index(value)])
-                # print('Found')
-            except:
-                # print('Not found')
-                pass
+            # for all other ops, the code is the same, only the operations themselves and the sibling indexes change
+            # for > and >= (btree value is >/>= of user supplied value), we return all the right siblings (all values are larger than current cell)
+            # for < and <= (btree value is </<= of user supplied value), we return all the left siblings (all values are smaller than current cell)
 
-        # for all other ops, the code is the same, only the operations themselves and the sibling indexes change
-        # for > and >= (btree value is >/>= of user supplied value), we return all the right siblings (all values are larger than current cell)
-        # for < and <= (btree value is </<= of user supplied value), we return all the left siblings (all values are smaller than current cell)
-
-        if operator[len(operator)-1] == '>':
-            for idx, node_value in enumerate(target_node.values):
-                ops+=1
-                if node_value > value:
-                    results.append(target_node.ptrs[idx])
-            while target_node.right_sibling is not None:
-                target_node = self.nodes[target_node.right_sibling]
-                for data in target_node:
-                    if data[0] != value[0]:
-                        return results
-                    else:
-                        results.append(target_node.ptrs[target_node.values.index(data)])
+            if operator[len(operator)-1] == '>':
+                for idx, node_value in enumerate(target_node.values):
+                    ops+=1
+                    if node_value > value:
+                        results.append(target_node.ptrs[idx])
+                while target_node.right_sibling is not None:
+                    target_node = self.nodes[target_node.right_sibling]
+                    for data in target_node:
+                        if data[0] != value[0]:
+                            return results
+                        else:
+                            results.append(target_node.ptrs[target_node.values.index(data)])
 
 
-        if operator == '>=':
-            for idx, node_value in enumerate(target_node.values):
-                ops+=1
-                if node_value >= value:
-                    results.append(target_node.ptrs[idx])
-            while target_node.right_sibling is not None:
-                target_node = self.nodes[target_node.right_sibling]
-                for data in target_node:
-                    if data[0] != value[0]:
-                        return results
-                    else:
-                        results.append(target_node.ptrs[target_node.values.index(data)])
+            if operator == '>=':
+                for idx, node_value in enumerate(target_node.values):
+                    ops+=1
+                    if node_value >= value:
+                        results.append(target_node.ptrs[idx])
+                while target_node.right_sibling is not None:
+                    target_node = self.nodes[target_node.right_sibling]
+                    for data in target_node:
+                        if data[0] != value[0]:
+                            return results
+                        else:
+                            results.append(target_node.ptrs[target_node.values.index(data)])
 
-        if operator == '<':
-            for idx, node_value in enumerate(target_node.values):
-                ops+=1
-                if node_value < value:
-                    results.append(target_node.ptrs[idx])
-            while target_node.left_sibling is not None:
-                target_node = self.nodes[target_node.left_sibling]
-                for data in target_node:
-                    if data[0] != value[0]:
-                        return results
-                    else:
-                        results.append(target_node.ptrs[target_node.values.index(data)])
+            if operator == '<':
+                for idx, node_value in enumerate(target_node.values):
+                    ops+=1
+                    if node_value < value:
+                        results.append(target_node.ptrs[idx])
+                while target_node.left_sibling is not None:
+                    target_node = self.nodes[target_node.left_sibling]
+                    for data in target_node:
+                        if data[0] != value[0]:
+                            return results
+                        else:
+                            results.append(target_node.ptrs[target_node.values.index(data)])
 
-        if operator == '<=':
-            for idx, node_value in enumerate(target_node.values):
-                ops+=1
-                if node_value <= value:
-                    results.append(target_node.ptrs[idx])
-            while target_node.left_sibling is not None:
-                target_node = self.nodes[target_node.left_sibling]
-                for data in target_node:
-                    if data[0] != value[0]:
-                        return results
-                    else:
-                        results.append(target_node.ptrs[target_node.values.index(data)])
+            if operator == '<=':
+                for idx, node_value in enumerate(target_node.values):
+                    ops+=1
+                    if node_value <= value:
+                        results.append(target_node.ptrs[idx])
+                while target_node.left_sibling is not None:
+                    target_node = self.nodes[target_node.left_sibling]
+                    for data in target_node:
+                        if data[0] != value[0]:
+                            return results
+                        else:
+                            results.append(target_node.ptrs[target_node.values.index(data)])
 
-        # print the number of operations (usefull for benchamrking)
-        # print(f'With BTree -> {ops} comparison operations')
-        return results
+            # print the number of operations (usefull for benchamrking)
+            # print(f'With BTree -> {ops} comparison operations')
+            return results
+        else:
+
+            if operator[len(operator)-1] == '=':
+                value.append(0)
+                leaf_idx, ops = self._search(tuple(value), True)
+                target_node = self.nodes[leaf_idx]
+                for idx, node_value in enumerate(target_node.values):
+                    ops += 1
+                    if node_value >= value:
+                        results.append(target_node.ptrs[idx])
+                while target_node.right_sibling is not None:
+                    target_node = self.nodes[target_node.right_sibling]
+                    for data in target_node:
+                        if data[0] != value[0]:
+                            return results
+                        else:
+                            results.append(target_node.ptrs[target_node.values.index(data)])
+
+            if operator == '>=':
+                value.append(0)
+                leaf_idx, ops = self._search(tuple(value), True)
+                target_node = self.nodes[leaf_idx]
+                for idx, node_value in enumerate(target_node.values):
+                    ops += 1
+                    if node_value >= value:
+                        results.append(target_node.ptrs[idx])
+                while target_node.right_sibling is not None:
+                    target_node = self.nodes[target_node.right_sibling]
+                    results.extend(target_node.ptrs)
+
+            if operator == '<':
+                value.append(0)
+                leaf_idx, ops = self._search(tuple(value), True)
+                target_node = self.nodes[leaf_idx]
+                for idx, node_value in enumerate(target_node.values):
+                    ops += 1
+                    if node_value < value:
+                        results.append(target_node.ptrs[idx])
+                while target_node.left_sibling is not None:
+                    target_node = self.nodes[target_node.left_sibling]
+                    results.extend(target_node.ptrs)
+
+            if operator == '<=':
+                value.append(2000000000000)
+                leaf_idx, ops = self._search(tuple(value), True)
+                target_node = self.nodes[leaf_idx]
+                for idx, node_value in enumerate(target_node.values):
+                    ops += 1
+                    if node_value <= value:
+                        results.append(target_node.ptrs[idx])
+                while target_node.left_sibling is not None:
+                    target_node = self.nodes[target_node.left_sibling]
+                    results.extend(target_node.ptrs)
+
+            if operator == '>':
+                value.append(2000000000000)
+                leaf_idx, ops = self._search(tuple(value), True)
+                target_node = self.nodes[leaf_idx]
+                for idx, node_value in enumerate(target_node.values):
+                    ops += 1
+                    if node_value > value:
+                        results.append(target_node.ptrs[idx])
+                while target_node.right_sibling is not None:
+                    target_node = self.nodes[target_node.right_sibling]
+                    results.extend(target_node.ptrs)
 
     #TODO: delete index
     #def __del__(self):

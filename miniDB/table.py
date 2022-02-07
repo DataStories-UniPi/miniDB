@@ -66,6 +66,7 @@ class Table:
                 self.pk_idx = None
 
             self.pk = primary_key
+            self.duplicate_column = []
             # self._update()
 
     # if any of the name, columns_names and column types are none. return an empty table object
