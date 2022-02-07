@@ -250,19 +250,22 @@ class Table:
         result_names = []
         result_types = []
         #if we have to select only columns and then group by
+        #that means, that we cannot instansiate any tuples, since tuples contain the indeces for aggregates.
         if not any(isinstance(col, tuple) for col in return_cols):      
             for row in groups:
                 result_row = []
+                #in this for loop, we assure that we are looking at the correct column. Because there could be different select columns in SELECT command and different columns in GROUP BY command.
                 for col in return_cols:
                     idx_in_group_by = group_by_cols.index(col)
                     result_row.append(row[idx_in_group_by])
+                                
                 result_data.append(result_row)
             result_names = [self.column_names[idx] for idx in return_cols]
             result_types = [self.column_types[idx] for idx in return_cols]
-        
-        
-
+                
         #if we have to select only aggregates and then group by
+
+
         #if we have to select aggregates and columns and then group by
 
         dict = {(key):(result_data if key == "data" else value) for key,value in self.__dict__.items()} #data has only the result row
@@ -291,11 +294,11 @@ class Table:
                 condition_column_values = self.column_by_name(condition_column_name)        #list with all the condition's column values
                 for row in range (len(self.data)):
                     if all(val in self.data[row] for val in group) and counted_column_values[row] != 'null' and get_op(operator, condition_column_values[row], value):
-                        count_rows+=1         
+                        count_rows += 1         
             else:   #if we dont have a where condition to check
                 for row in range (len(self.data)):
                     if all(val in self.data[row] for val in group) and counted_column_values[row] != 'null':
-                        count_rows+=1
+                        count_rows += 1
         elif condition is not None: #if we have only a where condition to check 
             condition_column_name, operator, value = self._parse_condition(condition)   #name of the where column, operator and value
             condition_column_values = self.column_by_name(condition_column_name)        #list with all the condition's column values
@@ -307,7 +310,7 @@ class Table:
             '''
             for idx, val in enumerate(condition_column_values): 
                 if get_op(operator, val, value) and self.data[idx][col_idx] != 'null':
-                    count_rows+=1
+                    count_rows += 1
         else:   #if we dont have any condition
             '''
             We check one by one the values of the counted column and if they are not null, we count them
@@ -318,7 +321,7 @@ class Table:
             #if the value is not null, then count it.
             for val in counted_column_values:
                 if val != 'null':
-                    count_rows +=1
+                    count_rows += 1
         return count_rows
 
     def sum(self, col_idx, condition, group = []):
@@ -326,22 +329,46 @@ class Table:
         #as a typical sum function, there must be a starting value of 0.
         sum_of_rows = 0
 
-        #if there is a condition to check, we get the name of the WHERE column the operator (<, >, etc.) and the value provided.
-        if condition is not None:
+        if group != []:
+            counted_column_values = self.column_by_name(self.column_names[col_idx]) #list with the counted column's values
+
+            #WHERE AND GROUPS
+            if condition is not None:
+
+                #this is the WHERE part.
+                condition_column_name, operator, value = self._parse_condition(condition)   #name of the where column, operator and value
+                condition_column_values = self.column_by_name(condition_column_name)        #list with all the condition's column values
+
+                for row in range (len(self.data)):
+                    if all(val in self.data[row] for val in group) and counted_column_values[row] != 'null' and get_op(operator, condition_column_values[row], value):
+                        try:
+                            sum_of_rows += self.data[row][col_idx]
+                        except:
+                            raise("ERROR: There must be an int involved in SUM() functions. Aborting.")
+        
+        #ONLY WHERE.
+        elif condition is not None:
             condition_column_name, operator, value = self._parse_condition(condition)
             condition_column_values                = self.column_by_name(condition_column_name)
 
             #we enumerate every single column. If it satisfies the condition, and also not null, we can sum it.
             for idx, val in enumerate(condition_column_values):
                 if get_op(operator, val, value) and self.data[idx][col_idx] != 'null':
-                    sum_of_rows += self.data[idx][col_idx]
+                    try:
+                        sum_of_rows += self.data[idx][col_idx]
+                    except:
+                        raise("ERROR: There must be an int involved in SUM() functions. Aborting.")
 
+        #NEITHER WHERE NOR GROUPS (all)
         else:
             counted_column_values = self.column_by_name(self.column_names[col_idx])
 
             for val in counted_column_values:
                 if val != 'null':
-                    sum_of_rows += val
+                    try:
+                        sum_of_rows += val
+                    except:
+                        raise("ERROR: There must be an int involved in SUM() functions. Aborting.")
 
         return sum_of_rows
 
@@ -392,7 +419,7 @@ class Table:
             raise Exception("Column " + str(col) + " cannot be found")
 
         if aggregate not in ["min", "max", "sum", "avg", "count"]:
-            raise Exception(f"Uncorrect aggregate {aggregate}")
+            raise Exception(f"Incorrect aggregate {aggregate}")
 
         col = self.column_names.index(col)
 
