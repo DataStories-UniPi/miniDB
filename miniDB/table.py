@@ -1198,7 +1198,54 @@ def count(original, grouped, target_column, column_names):
 
 def avg(original, grouped, target_column, column_names):
     '''
-    With group by
+    Arguements:
+
+    -> original: this is a reference to the original table - containing all the columns and rows.
+    -> grouped: this is the table returned from group by and modified by the aggregate functions.
+    -> target_column: this is the string inside the sql statement of the aggregate function, it
+    basically contains the name of the target column and/or the 'distinct' statement.
+    -> column_names: this is a list containing all the column names of the columns that make up
+    the groups created due to group by.
+
+
+    Returns:
+
+    A new table that consists of all the data of table grouped and the appended column of the aggregate function.
+    
+
+    Raises Exception:
+
+    Custom exception raised if the target_column is not numeric.
+
+    
+    Procedure:
+
+    The function creates a variable target containing the index of target_column in the original table.
+    It also creates a list of the indexes of the column_names in the original table.
+    Then, it orders the reference of the original table by the group columns (column_names) and
+    the target column - this helps the function distinguish between groups as well as deal with the distinct case.
+
+    Afterwards, it creates a list of counts, which will contain the counted data of each group and also
+    a list of sums, which is going to contain the summed values of each group.
+    At this point, the function starts a loop, searching through every single row of the original table, while also
+    remembering the previous iteration's row in a variable 'prev'.
+    On each iteration: the loop checks whether the previous row is of the same group as the current row by checking for equality
+    between the group-by column names (the indexes of which, are stored in the list 'groups'). In that case, it counts up by 1 the number
+    of rows assiciated with said group and target column (in the list of counts) and also adds the target-th value of the row to the sums list.
+
+    If the functions was asked to count only distinct values, then on each iteration: the function also checks wether the target-th
+    vaule is equal between the two rows, and only adds to counts and sums if the two values are unequal.
+
+    To finish off, the function creates a new table, containing all the rows (and their data) of table grouped, plus a new
+    row of the appropriate aggregate function name containing the average value (sums/counts) of each group.
+
+
+    To sum up:
+
+    The function counts how many rows are assiciated with each group (in column_names) by their values in the target_column.
+    Also it sums up the data of the target_column for each group in column_names.
+    Finally, it takes the average value of the target_column data for each group by dividing the above.
+    (if distinct was specidied, it ignores duplicate values while iterating through the data).
     '''
     distinct = False
     input_target = target_column.split(' ')
