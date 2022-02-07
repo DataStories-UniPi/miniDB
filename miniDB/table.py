@@ -208,31 +208,69 @@ class Table:
 
         if any(isinstance(c, tuple) for c in group_by_columns): #if we have aggregates in group by
             raise Exception("Aggregate functions are not allowed in group by clause")
+        for col in return_cols:      #if we have to select columns that are not in group by
+            if not(isinstance(col, tuple)) and not col in group_by_cols:
+                raise Exception(f'{self.column_names[col]} must appear in group by clause or be used in an aggregate function')
         
-        for col in return_columns:      #if we have to select columns that are not in group by
-            if not(isinstance(col, tuple)) and not col in group_by_columns:
-                raise Exception(f'{col} must appear in group by clause or be used in an aggregate function')
-
         #Find all distinct lists with n elements in table(these are the groups), where n is the count of group by columns
-        n = len(group_by_cols)
+        #Depending on the where condition, we decide if we are going to put the n list in the groups or not 
         groups = []
 
-        for row in range(len(self.data)):
-            test_group = [self.data[row][col] for col in group_by_cols]
-            if not test_group in groups:
-                groups.append(test_group)
-           
-        print(groups)
+        if condition is not None:
+            where_column_name, where_operator, where_value = self._parse_condition(condition)   #name of the where column, operator and value
 
-        #if we have to select only columns and then group by
+        for row in range(len(self.data)):
+            if condition is not None:
+                col_idx = self.column_names.index(where_column_name)
+                test_group = [self.data[row][col] for col in group_by_cols] if get_op(where_operator, self.data[row][col_idx] , where_value) else []
+            else:
+                test_group = [self.data[row][col] for col in group_by_cols]
+            if not test_group in groups and test_group != []:
+                groups.append(test_group)
+
+        if having_condition is not None : #get the tuple (idx, aggregate) for the having aggregate, the operator and value
+            having_aggr, having_operator, having_value = self._parse_condition(having_condition, having=True)
+            try:
+                having_value = int(having_value)
+            except:
+                raise Exception("Having condition has to compare aggregate with int")
+            having_aggregate = self.aggr_idx(having_aggr)
+
+            
+            #Modify the groups list so it will contain only the groups that satisfy the having condition
+            groups_to_remove = []
+            if having_aggregate[1] == "count":
+                for group in groups:
+                    group_count = self.count(having_aggregate[0],None,group)
+                    if not get_op(having_operator, group_count, having_value):
+                        groups_to_remove.append(group)
+                for group in groups_to_remove:
+                    groups.remove(group)
+            #if having_aggregate[1] == "sum":
+                #...
+        
         result_data = []
+        result_names = []
+        result_types = []
+        #if we have to select only columns and then group by
+        if not any(isinstance(col, tuple) for col in return_cols):      
+            for row in groups:
+                result_row = []
+                for col in return_cols:
+                    idx_in_group_by = group_by_cols.index(col)
+                    result_row.append(row[idx_in_group_by])
+                result_data.append(result_row)
+            result_names = [self.column_names[idx] for idx in return_cols]
+            result_types = [self.column_types[idx] for idx in return_cols]
+        
+        
 
         #if we have to select only aggregates and then group by
         #if we have to select aggregates and columns and then group by
 
-        dict = {(key):([result_data] if key == "data" else value) for key,value in self.__dict__.items()} #data has only the result row
+        dict = {(key):(result_data if key == "data" else value) for key,value in self.__dict__.items()} #data has only the result row
         dict['column_names'] = result_names
-        dict['column_types'] = [int for i in result_row]    #all the aggregate functions return int
+        dict['column_types'] = result_types   
 
         s_table = Table(load=dict) 
         if order_by:
@@ -243,9 +281,7 @@ class Table:
         return s_table
         
 
-
-
-    def count(self, col_idx, condition):        #returns the sql count(column) function result as int
+    def count(self, col_idx, condition, group = []):        #returns the sql count(column) function result as int
 
         count_rows = 0
 
@@ -262,7 +298,14 @@ class Table:
             for idx, val in enumerate(condition_column_values): 
                 if get_op(operator, val, value) and self.data[idx][col_idx] != 'null':
                     count_rows+=1
-        else:
+
+        elif group != []: #if we have to count column values depending on a group of values at each row
+            counted_column_values = self.column_by_name(self.column_names[col_idx]) #list with the counted column's values
+            for row in range (len(self.data)):
+                if all(val in self.data[row] for val in group) and counted_column_values[row] != 'null':
+                    count_rows+=1
+
+        else:   #if we dont have any condition
             '''
             We check one by one the values of the counted column and if they are not null, we count them
             
@@ -273,7 +316,6 @@ class Table:
             for val in counted_column_values:
                 if val != 'null':
                     count_rows +=1
-
         return count_rows
 
     def calculate_sum(self, col_idx, condition=None):
@@ -339,7 +381,19 @@ class Table:
 
     #returns a tuple of the index column and the aggregate function of the given aggregate
     def aggr_idx(self, aggregate):
-        return (self.column_names.index(aggregate.split('(')[1][:-1].strip()), aggregate.split('(')[0].strip())
+
+        col = aggregate.split('(')[1][:-1].strip()
+        aggregate = aggregate.split('(')[0].strip()
+
+        if col not in self.column_names:
+            raise Exception("Column" + str(col) + "cannot be found")
+
+        if aggregate not in ["min", "max", "sum", "avg", "count"]:
+            raise Exception(f"Uncorrect aggregate {aggregate}")
+
+        col = self.column_names.index(col)
+
+        return (col, aggregate)
 
     def select_aggr(self, aggregates, condition=None, order_by=None, desc=True, top_k=None):
         '''
@@ -610,9 +664,9 @@ class Table:
 
 
 
-    def _parse_condition(self, condition, join=False):
+    def _parse_condition(self, condition, join=False, having=False):
         '''
-        Parse the single string condition and return the value of the column and the operator.
+        Parse the single string condition and return the value of the column/aggregate and the operator.
 
         Args:
             condition: string. A condition using the following format:
@@ -621,9 +675,11 @@ class Table:
                 
                 Operatores supported: (<,<=,==,>=,>)
             join: boolean. Whether to join or not (False by default).
+            having: boolean. Whether we have having or not (False by default).
         '''
         # if both_columns (used by the join function) return the names of the names of the columns (left first)
-        if join:
+        # Also if we have a having condition, return the aggregate function the operator and the value
+        if join or having:            
             return split_condition(condition)
 
         # cast the value with the specified column's type and return the column name, the operator and the casted value
