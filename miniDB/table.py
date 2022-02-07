@@ -272,6 +272,12 @@ class Table:
                         grouped = max(original=self,grouped=grouped,target_column=target_column.strip(),column_names=column_names)
                         return_cols.append(len(return_cols))
 
+                    elif(col.strip().startswith('avg')):
+
+                        target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
+
+                        grouped = avg(original=self,grouped=grouped,target_column=target_column.strip(),column_names=column_names)
+                        return_cols.append(len(return_cols))
 
 
                     else:
@@ -305,6 +311,10 @@ class Table:
 
                         return_cols.append(grouped.column_names.index('agg_max_'+target_column.strip()))
 
+                    elif(col.strip().startswith('avg')):
+                        target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
+
+                        return_cols.append(grouped.column_names.index('agg_avg_' + target_column.strip().replace(' ', '_')))
 
                     else:
                         raise Exception("given select list not in GROUP BY")
@@ -321,7 +331,7 @@ class Table:
                     if(('agg_max_'+table_in_agg) in grouped.column_names):
                         having = having[(having.index(')')+1):]
                         having = 'agg_max_'+table_in_agg + having
-                    
+
                     else:
                         grouped = max(original=self,grouped=grouped,target_column=table_in_agg.strip(),column_names=column_names)
                         having = having[(having.index(')')+1):]
@@ -334,7 +344,7 @@ class Table:
                     if(('agg_min_'+table_in_agg) in grouped.column_names):
                         having = having[(having.index(')')+1):]
                         having = 'agg_min_'+table_in_agg + having
-                    
+
                     else:
                         grouped = min(original=self,grouped=grouped,target_column=table_in_agg.strip(),column_names=column_names)
                         having = having[(having.index(')')+1):]
@@ -347,7 +357,7 @@ class Table:
                     if(('agg_count_'+table_in_agg.replace(' ', '_')) in grouped.column_names):
                         having = having[(having.index(')')+1):]
                         having = 'agg_count_'+table_in_agg.replace(' ', '_') + having
-                    
+
                     else:
                         grouped = count(original=self,grouped=grouped,target_column=table_in_agg.strip(),column_names=column_names)
                         having = having[(having.index(')')+1):]
@@ -362,12 +372,26 @@ class Table:
                     if(('agg_sum_'+table_in_agg.replace(' ', '_')) in grouped.column_names):
                         having = having[(having.index(')')+1):]
                         having = 'agg_sum_'+table_in_agg.replace(' ', '_') + having
-                    
+
                     else:
                         grouped = sum(original=self,grouped=grouped,target_column=table_in_agg.strip(),column_names=column_names)
                         having = having[(having.index(')')+1):]
                         having = 'agg_sum_'+table_in_agg.replace(' ', '_') + having
 
+
+
+                if(having.startswith('avg ')):
+                    table_in_agg = having.strip()[having.strip().find('(')+1:having.strip().find(')')]
+                    table_in_agg = table_in_agg.strip()
+
+                    if(('agg_avg_'+table_in_agg.replace(' ', '_')) in grouped.column_names):
+                        having = having[(having.index(')')+1):]
+                        having = 'agg_avg_'+table_in_agg.replace(' ', '_') + having
+
+                    else:
+                        grouped = avg(original=self,grouped=grouped,target_column=table_in_agg.strip(),column_names=column_names)
+                        having = having[(having.index(')')+1):]
+                        having = 'agg_avg_'+table_in_agg.replace(' ', '_') + having
 
 
 
@@ -1238,5 +1262,109 @@ def count(original, grouped, target_column, column_names):
         d.append(counts[interval])
         n_table.data.append(d)
         interval += 1
+
+    return n_table
+def avg(original, grouped, target_column, column_names):
+    '''
+    With group by
+    '''
+    distinct = False
+    input_target = target_column.split(' ')
+    input_target_column = input_target[0]
+
+    if(input_target[0]=='distinct'):
+        distinct = True
+        input_target_column = input_target[1]
+
+
+    target = original.column_names.index(input_target_column)
+    groups = [original.column_names.index(elem) for elem in column_names]
+
+    '''Sort the original table'''
+    orders = column_names.copy()
+    if(input_target_column not in grouped.column_names):
+        orders.append(input_target_column)
+    original.order_by(orders)
+
+    sums = [None] * len(grouped.data)
+    counts = [1] * len(grouped.data)
+    interval = 0
+
+    if(distinct):
+
+        prev = original.data[0]
+
+        for elem in list(original.data[1:]):
+            tlist1 = [prev[groups[i]] for i in range(len(groups))]
+            tlist2 = [elem[groups[i]] for i in range(len(groups))]
+
+            if(tlist1 == tlist2 and elem[target] != prev[target]):
+                print(interval)
+                counts[interval] += 1
+            else:
+                interval += 1
+            prev = elem
+
+        prev = original.data[0]
+        interval = 0
+        for elem in list(original.data[1:]):
+            if(sums[interval] is None):
+                sums[interval] = prev[target]
+
+            tlist1 = [prev[groups[i]] for i in range(len(groups))]
+            tlist2 = [elem[groups[i]] for i in range(len(groups))]
+            if(tlist1 == tlist2 and elem[target] != prev[target]):
+                sums[interval] += elem[target]
+            else:
+                interval += 1
+            prev = elem
+
+        if(sums[-1] is None):
+            sums[-1] = prev[target]
+    else:
+
+        prev = original.data[0]
+
+        for elem in list(original.data[1:]):
+            tlist1 = [prev[groups[i]] for i in range(len(groups))]
+            tlist2 = [elem[groups[i]] for i in range(len(groups))]
+
+            if(tlist1 == tlist2):
+                counts[interval] += 1
+            else:
+                interval += 1
+            prev = elem
+
+        prev = original.data[0]
+        interval = 0
+        for elem in list(original.data[1:]):
+            if(sums[interval] is None):
+                sums[interval] = prev[target]
+
+            tlist1 = [prev[groups[i]] for i in range(len(groups))]
+            tlist2 = [elem[groups[i]] for i in range(len(groups))]
+            if(tlist1 == tlist2):
+                sums[interval] += elem[target]
+            else:
+                interval += 1
+            prev = elem
+        if(sums[-1] is None):
+            sums[-1] = prev[target]
+
+    c_names = grouped.column_names
+    c_names.append("agg_avg_" + target_column.replace(' ', '_'))
+    c_types = grouped.column_types
+    c_types.append(type(5))
+    pk = grouped.column_names[0]
+    n_table = Table("temp", c_names, c_types, pk)
+    n_table.data = []
+
+    interval = 0
+    for d in grouped.data:
+        d.append(sums[interval]/counts[interval])
+        n_table.data.append(d)
+        interval += 1
+
+
 
     return n_table
