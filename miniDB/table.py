@@ -307,7 +307,7 @@ class Table:
                     #otherwise, we have a simple column to show.
                     else:
                         idx_in_group_by = group_by_cols.index(col)
-                        result_row.append(row[idx_in_group_by])
+                        result_row.append(group[idx_in_group_by])
 
                         result_names.append(self.column_names[col])
                         result_types.append(self.column_types[col])
