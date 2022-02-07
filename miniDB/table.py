@@ -272,7 +272,7 @@ class Table:
                 for col in return_cols:
                     #make the appropriate name for every row. The type will be an INT if we have count avg or sum. Otherwise it will stay as it was.
                     result_names.append(f'{col[1]}({self.column_names[col[0]]})')
-                    result_types.append((int if col[1] in ['count', 'avg', 'sum'] else self.column_types[idx]) for idx in return_cols)
+                    result_types.append(int if col[1] in ['count', 'avg', 'sum'] else self.column_types[col])
 
                     if col[1] != 'avg':
                         row_data = getattr(self, col[1])(col[0], condition, group)
