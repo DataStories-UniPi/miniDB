@@ -285,10 +285,35 @@ class Table:
                 
                 #for every group that we made, make an entire column.
                 result_data.append(result_row) 
-                
-                
 
         #if we have to select aggregates and columns and then group by
+        else:
+            for group in groups:
+                result_row = []
+                for col in return_cols:
+                    #if we have an aggregate function, then we call that aggregate function first.
+                    #the code from this point and on is the same as above, as we do all the same stuff for an agg function.
+                    if isinstance(col, tuple):
+                        result_names.append(f'{col[1]}({self.column_names[col[0]]})')
+                        result_types.append(int if col[1] in ['count', 'avg', 'sum'] else self.column_types[col])
+
+                        if col[1] != 'avg':
+                            row_data = getattr(self, col[1])(col[0], condition, group)
+                        else:
+                            row_data = self.count(col[0], condition, group) / self.sum(col[0], condition, group)
+
+                        result_row.append(row_data)
+
+                    #otherwise, we have a simple column to show.
+                    else:
+                        idx_in_group_by = group_by_cols.index(col)
+                        result_row.append(row[idx_in_group_by])
+
+                        result_names.append(self.column_names[col])
+                        result_types.append(self.column_types[col])
+
+                result_data.append(result_row)
+
 
         dict = {(key):(result_data if key == "data" else value) for key,value in self.__dict__.items()} #data has only the result row
         dict['column_names'] = result_names
