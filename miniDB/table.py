@@ -229,7 +229,7 @@ class Table:
 
             s_table = Table(load=dict)
 
-            grouped = s_table.group_by_having(group_by)
+            grouped = s_table.group_by(group_by)
 
             column_names = grouped.column_names.copy()
 
@@ -249,75 +249,46 @@ class Table:
                         target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
 
                         grouped = min(original=self,grouped=grouped,target_column=target_column.strip(),column_names=column_names)
-                        return_cols.append(len(return_cols))
+                        return_cols.append(grouped.column_names.index('agg_min_' + target_column.strip().replace(' ', '_')))
+
 
                     elif(col.strip().startswith('count')):
 
                         target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
 
                         grouped = count(original=self,grouped=grouped,target_column=target_column.strip(),column_names=column_names)
-                        return_cols.append(len(return_cols))
+                        return_cols.append(grouped.column_names.index('agg_count_' + target_column.strip().replace(' ', '_')))
+
 
                     elif(col.strip().startswith('sum')):
 
                         target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
 
                         grouped = sum(original=self,grouped=grouped,target_column=target_column.strip(),column_names=column_names)
-                        return_cols.append(len(return_cols))
+                        return_cols.append(grouped.column_names.index('agg_sum_' + target_column.strip().replace(' ', '_')))
+
 
                     elif(col.strip().startswith('max')):
 
                         target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
 
                         grouped = max(original=self,grouped=grouped,target_column=target_column.strip(),column_names=column_names)
-                        return_cols.append(len(return_cols))
+                        return_cols.append(grouped.column_names.index('agg_max_' + target_column.strip().replace(' ', '_')))
+
 
                     elif(col.strip().startswith('avg')):
 
                         target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
 
                         grouped = avg(original=self,grouped=grouped,target_column=target_column.strip(),column_names=column_names)
-                        return_cols.append(len(return_cols))
-
-
-                    else:
-                        raise Exception("given select list not in GROUP BY")
-
-
-            return_cols = []
-
-            if return_columns == '*':
-                raise Exception("Syntax error: cannot have '*' in select list when using GROUP BY")
-            else:
-
-                for col in return_columns.split(','):
-
-                    if(col.strip() in grouped.column_names):
-                        return_cols.append(grouped.column_names.index(col.strip()))
-                    elif(col.strip().startswith('min')):
-                        target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
-
-                        return_cols.append(grouped.column_names.index('agg_min_'+target_column.strip()))
-                    elif(col.strip().startswith('count')):
-                        target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
-
-                        return_cols.append(grouped.column_names.index('agg_count_' + target_column.strip().replace(' ', '_')))
-                    elif(col.strip().startswith('sum')):
-                        target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
-
-                        return_cols.append(grouped.column_names.index('agg_sum_' + target_column.strip().replace(' ', '_')))
-                    elif(col.strip().startswith('max')):
-                        target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
-
-                        return_cols.append(grouped.column_names.index('agg_max_'+target_column.strip()))
-
-                    elif(col.strip().startswith('avg')):
-                        target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
-
                         return_cols.append(grouped.column_names.index('agg_avg_' + target_column.strip().replace(' ', '_')))
 
+
+
                     else:
                         raise Exception("given select list not in GROUP BY")
+
+            
 
 
 
@@ -714,7 +685,7 @@ class Table:
         return input_list
 
 
-    def group_by_having(self,groups):
+    def group_by(self,groups):
 
         # def _select_where(self, return_columns, condition=None,
         #  group_by=None, having=None, order_by=None, top_k=None, distinct=False):
@@ -1287,7 +1258,7 @@ def avg(original, grouped, target_column, column_names):
     groups = [original.column_names.index(elem) for elem in column_names]
     if not(str(original.column_types[target]) == "<class 'int'>"):
             raise Exception("The aggregate functions sum, avg are valid on numeric columns only!")
-            
+
     '''Sort the original table'''
     orders = column_names.copy()
     if(input_target_column not in grouped.column_names):
