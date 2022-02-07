@@ -295,7 +295,7 @@ class Table:
                     #the code from this point and on is the same as above, as we do all the same stuff for an agg function.
                     if isinstance(col, tuple):
                         result_names.append(f'{col[1]}({self.column_names[col[0]]})')
-                        result_types.append(int if col[1] in ['count', 'avg', 'sum'] else self.column_types[col])
+                        result_types.append(int if col[1] in ['count', 'avg', 'sum'] else self.column_types[col[0]])
 
                         if col[1] != 'avg':
                             row_data = getattr(self, col[1])(col[0], condition, group)
