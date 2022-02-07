@@ -83,6 +83,25 @@ def create_query_plan(query, keywords, action):
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+        dic['not_null_columns'] = '' #initializing
+        
+        count = -1 #couner to check if we are in the first object
+
+        #for every value in arglist which is bigger than 3
+        #we check if a word and its next word are equal to "not null" and we add the val[0] to not_null_columns
+        for val in arglist:
+            count+=1
+            if len(val)>=3:
+                word = 2
+                for word in range(len(val)-1):
+                    if val[word] == "not" and val[word+1] == "null":
+                        if count == 0:
+                            dic['not_null_columns'] += (val[0])
+                        else: dic['not_null_columns'] += ','+(val[0])
+            else:dic['not_null_columns'] += ',None'
+
+
+
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]

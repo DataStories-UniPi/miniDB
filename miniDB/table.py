@@ -36,6 +36,7 @@ class Table:
         - a table name (string)
         - column names (list of strings)
         - column types (list of functions like str/int etc)
+        - not null colymns (list of table names which are not null)
         - primary (name of the primary key column)
 
     OR
@@ -45,7 +46,9 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+
+    not_null_columns = [] #initializing the list
+    def __init__(self, name=None, column_names=None, column_types=None, not_null_columns=None, primary_key=None, load=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -60,12 +63,12 @@ class Table:
         elif (name is not None) and (column_names is not None) and (column_types is not None):
 
             self._name = name
+            print('name', self._name)
 
             if len(column_names)!=len(column_types):
                 raise ValueError('Need same number of column names and types.')
 
             self.column_names = column_names
-
             self.columns = []
 
             for col in self.column_names:
@@ -79,6 +82,7 @@ class Table:
 
             self.column_types = [eval(ct) if not isinstance(ct, type) else ct for ct in column_types]
             self.data = [] # data is a list of lists, a list of rows that is.
+            self.not_null_columns = not_null_columns
 
             # if primary key is set, keep its index as an attribute
             if primary_key is not None:
@@ -132,10 +136,18 @@ class Table:
         if len(row)!=len(self.column_names):
             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
 
+        
         for i in range(len(row)):
             # for each value, cast and replace it in row.
             # try:
             row[i] = self.column_types[i](row[i])
+
+            #Gia elegxoume ean ena stoixeio null prokeitai na ginei insert se kapoio not null orisma, prwta koitame ean eimaste sthn deuterh klhshs tou _insert
+            #  pou shmainei oti to self.not_null_columns den einai 0, epeita elegxoume an to column pou antistoixei h timh einai diaforh tou None
+            #  telos elegxoume an to raw[i] == '',  dhladh h timh einai null.
+            if len(self.not_null_columns) != 0 and self.not_null_columns[i] != 'None' and row[i] == '':
+                print(f'## ERROR -> Column {self.column_names[i]} is a not null column.')
+                raise ValueError(f'## ERROR -> Column {self.column_names[i]} is a not null column.')
             # except:
             #     raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
 
