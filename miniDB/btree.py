@@ -95,7 +95,7 @@ class Btree:
         '''
         self.index_name = index_name
         self.b = b # branching factor
-        self.is_duplicate = is_duplicate
+        self.is_duplicate = is_duplicate #true if we are indexing a column with duplicates
         self.nodes = [] # list of nodes. Every new node is appended here
         self.root = None # the index of the root node
 
