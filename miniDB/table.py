@@ -263,8 +263,30 @@ class Table:
             result_names = [self.column_names[idx] for idx in return_cols]
             result_types = [self.column_types[idx] for idx in return_cols]
                 
-        #if we have to select only aggregates and then group by
+        #if we have to select only aggregates and then group by, which means that ALL are tuples in return_cols (the first element is the row and the second is the agg. function)
+        elif all(isinstance(col, tuple) for col in return_cols):
+            #for every group that's been made:
+            for group in groups:
+                result_row = []
+                #check every column and its aggregate function. Then call said aggregate function.
+                for col in return_cols:
+                    #make the appropriate name for every row. The type will be an INT if we have count avg or sum. Otherwise it will stay as it was.
+                    result_names.append(f'{col[1]}({self.column_names[col[0]]})')
+                    result_types.append((int if col[1] in ['count', 'avg', 'sum'] else self.column_types[idx]) for idx in return_cols)
 
+                    if col[1] != 'avg':
+                        row_data = getattr(self, col[1])(col[0], condition, group)
+                        #except if it is AVG() then you have to call count and sum independently.
+                    else:
+                        row_data = self.count(col[0], condition, group) / self.sum(col[0], condition, group)
+                    
+                    #then append that row to our data.
+                    result_row.append(row_data)
+                
+                #for every group that we made, make an entire column.
+                result_data.append(result_row) 
+                
+                
 
         #if we have to select aggregates and columns and then group by
 
