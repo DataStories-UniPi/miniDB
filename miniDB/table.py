@@ -279,9 +279,12 @@ class Table:
         op=element[element.find(")")+2]
         value=element[element.find(")")+3:]
 
-        #Ean h timh einia typou Integer tote metatrepetai se int
-        if value.isnumeric():
-            value=int(value)
+        #Ean h timh einia typou number tote metatrepetai se float
+        
+        try:
+            value=float(value)
+        except ValueError:
+        	pass
 
         keys_toremove=[]#xrhsimeyei gia na diagrapsoyme ta keys poy den ikanopoioun thn synthiki tou having
         for key,val in dic.items():
