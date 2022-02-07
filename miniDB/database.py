@@ -309,8 +309,8 @@ class Database:
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
 
-    def select(self, columns, table_name, condition, order_by=None, top_k=True, \
-               desc=None, save_as=None, return_object=True):
+    def select(self, columns, table_name, condition, order_by=None, top_k=None, \
+               desc=True, save_as=None, return_object=True):
         '''
         Selects and outputs a table's data where condtion is met.
 
@@ -334,15 +334,15 @@ class Database:
             return table_name._select_where(columns, condition, order_by, desc, top_k)
 
         if condition is not None:
-            condition_column = split_condition(condition)[0]
+            condition_columns = split_condition(condition)[0]
         else:
-            condition_column = ''
+            condition_columns = ''
 
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
 
-        has_index = self._has_index(table_name, condition_column)
+        has_index = self._has_index(table_name, condition_columns)
         if has_index[0]:
             index_name = has_index[1]
             bt = self._load_idx(index_name)
@@ -641,16 +641,14 @@ class Database:
            columns_data.append(self.tables[table_name].column_by_name(name))
         # for each record in the selected columns of the table, insert their values and index to the btree, after joining the column values
         keys=[]
-        for data in list(zip(*columns_data)):
-            keys.append(data[0]+','+data[1])
-        for idx, key in keys:
+        for idx, key in enumerate(list(zip(*columns_data))):
             bt.insert(key, idx)
         # save the btree
         self._save_index(index_name, bt)
 
     # TODO def _delete_index(self, index_name):
 
-    def _has_index(self, table_name, columns_names=None):
+    def _has_index(self, table_name, columns_names):
         '''
         Check whether the specified columns of the specified table are indexed
         or if column_names is None, whether there are any indexes for the specified table.

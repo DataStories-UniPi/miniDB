@@ -146,14 +146,14 @@ class Table:
         column_name, operator, value = self._parse_condition(condition)
 
         # get the condition and the set column
-        column = self.column_by_name(column_name)
+        column = self.column_by_name(column_name[0])
         set_column_idx = self.column_names.index(set_column)
 
         # set_columns_indx = [self.column_names.index(set_column_name) for set_column_name in set_column_names]
 
         # for each value in column, if condition, replace it with set_value
         for row_ind, column_value in enumerate(column):
-            if get_op(operator, column_value, value):
+            if get_op(operator[0], column_value, value[0]):
                 self.data[row_ind][set_column_idx] = set_value
 
         # self._update()
@@ -178,9 +178,9 @@ class Table:
 
         indexes_to_del = []
 
-        column = self.column_by_name(column_name)
+        column = self.column_by_name(column_name[0])
         for index, row_value in enumerate(column):
-            if get_op(operator, row_value, value):
+            if get_op(operator[0], row_value, value[0]):
                 indexes_to_del.append(index)
 
         # we pop from highest to lowest index in order to avoid removing the wrong item
@@ -225,8 +225,8 @@ class Table:
         # if not, return the rows with values where condition is met for value
         if condition is not None:
             column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            column = self.column_by_name(column_name[0])
+            rows = [ind for ind, x in enumerate(column) if get_op(operator[0], x, value[0])]
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -264,18 +264,21 @@ class Table:
 
         # here we run the same select twice, sequentially and using the btree.
         # we then check the results match and compare performance (number of operation)
-        column = self.column_by_name(column_name)
+        if len(operator)==2 and operator[0]=='=':
+            # btree find
+            rows = bt.find(operator, value)
+        elif len(operator)==1:
+            rows = bt.find(operator, value)
+        else:
+            column = self.column_by_name(column_name)
 
-        # sequential
-        rows1 = []
-        opsseq = 0
-        for ind, x in enumerate(column):
-            opsseq+=1
-            if get_op(operator, x, value):
-                rows1.append(ind)
-
-        # btree find
-        rows = bt.find(operator, value)
+            # sequential
+            rows = []
+            opsseq = 0
+            for ind, x in enumerate(column):
+                opsseq += 1
+                if get_op(operator, x, value):
+                    rows.append(ind)
 
         # same as simple select from now on
         rows = rows[:top_k]
@@ -323,12 +326,12 @@ class Table:
         column_name_left, operator, column_name_right = self._parse_condition(condition, join=True)
         # try to find both columns, if you fail raise error
         try:
-            column_index_left = self.column_names.index(column_name_left)
+            column_index_left = self.column_names.index(column_name_left[0])
         except:
             raise Exception(f'Column "{column_name_left}" dont exist in left table. Valid columns: {self.column_names}.')
 
         try:
-            column_index_right = table_right.column_names.index(column_name_right)
+            column_index_right = table_right.column_names.index(column_name_right[0])
         except:
             raise Exception(f'Column "{column_name_right}" dont exist in right table. Valid columns: {table_right.column_names}.')
 
@@ -352,7 +355,7 @@ class Table:
             for row_right in table_right.data:
                 right_value = row_right[column_index_right]
                 no_of_ops+=1
-                if get_op(operator, left_value, right_value): #EQ_OP
+                if get_op(operator[0], left_value, right_value): #EQ_OP
                     join_table._insert(row_left+row_right)
 
         return join_table
@@ -407,11 +410,14 @@ class Table:
 
         # cast the value with the specified column's type and return the column name, the operator and the casted value
         left, op, right = split_condition(condition)
-        if left not in self.column_names:
-            raise ValueError(f'Condition is not valid (cant find column name)')
-        coltype = self.column_types[self.column_names.index(left)]
-
-        return left, op, coltype(right)
+        coltype = []
+        for name in left:
+            if name not in self.column_names:
+                raise ValueError(f'Condition is not valid (cant find column name)')
+            coltype.append(self.column_types[self.column_names.index(name)])
+        for i in range(len(right)):
+            right[i] = coltype[i](right[i])
+        return left, op, right
 
 
     def _load_from_file(self, filename):

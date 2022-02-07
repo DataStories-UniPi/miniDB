@@ -30,16 +30,12 @@ class Node:
         if self.is_leaf: #
             return
 
-        # ignore the comma of string value
-        value1 = value.replace(',', '')
 
         # for each value in the node, if the user supplied value is smaller, return the btrees value index
         # else (no value in the node is larger) return the last ptr
         for index, existing_val in enumerate(self.values):
             ops+=1
-            # ignore the comma of string existing_val
-            existing_val1 = existing_val.replace(',', '')
-            if value1<existing_val1:
+            if value<existing_val:
                 if return_ops:
                     return self.ptrs[index], ops
                 else:
@@ -65,12 +61,8 @@ class Node:
         # if a second ptr is provided, insert it right next to the 1st ptr
         # else (no value in the node is larger) append value and ptr/s to the back of the list.
 
-        # ignore the comma of string value
-        value1 = value.replace(',', '')
         for index, existing_val in enumerate(self.values):
-            # ignore the comma of string existing_val
-            existing_val1 = existing_val.replace(',', '')
-            if value1<existing_val1:
+            if value<existing_val:
 
                 self.values.insert(index, value)
                 self.ptrs.insert(index+1, ptr)
@@ -294,15 +286,15 @@ class Btree:
         The left value of the op is the btree value.
 
         Args:
-            operator: string. The provided evaluation operator.
+            operator: list of strings. The provided evaluation operator for every column.
             value: string. The value being searched for.
         '''
         results = []
         # find the index of the node that the element should exist in
-        leaf_idx, ops = self._search(value, True)
+        leaf_idx, ops = self._search(tuple(value), True)
         target_node = self.nodes[leaf_idx]
 
-        if operator == '=':
+        if operator[len(operator)-1] == '=':
             # if the element exist, append to list, else pass and return
             try:
                 results.append(target_node.ptrs[target_node.values.index(value)])
@@ -315,14 +307,18 @@ class Btree:
         # for > and >= (btree value is >/>= of user supplied value), we return all the right siblings (all values are larger than current cell)
         # for < and <= (btree value is </<= of user supplied value), we return all the left siblings (all values are smaller than current cell)
 
-        if operator == '>':
+        if operator[len(operator)-1] == '>':
             for idx, node_value in enumerate(target_node.values):
                 ops+=1
                 if node_value > value:
                     results.append(target_node.ptrs[idx])
             while target_node.right_sibling is not None:
                 target_node = self.nodes[target_node.right_sibling]
-                results.extend(target_node.ptrs)
+                for data in target_node:
+                    if data[0] != value[0]:
+                        return results
+                    else:
+                        results.append(target_node.ptrs[target_node.values.index(data)])
 
 
         if operator == '>=':
@@ -332,7 +328,11 @@ class Btree:
                     results.append(target_node.ptrs[idx])
             while target_node.right_sibling is not None:
                 target_node = self.nodes[target_node.right_sibling]
-                results.extend(target_node.ptrs)
+                for data in target_node:
+                    if data[0] != value[0]:
+                        return results
+                    else:
+                        results.append(target_node.ptrs[target_node.values.index(data)])
 
         if operator == '<':
             for idx, node_value in enumerate(target_node.values):
@@ -341,7 +341,11 @@ class Btree:
                     results.append(target_node.ptrs[idx])
             while target_node.left_sibling is not None:
                 target_node = self.nodes[target_node.left_sibling]
-                results.extend(target_node.ptrs)
+                for data in target_node:
+                    if data[0] != value[0]:
+                        return results
+                    else:
+                        results.append(target_node.ptrs[target_node.values.index(data)])
 
         if operator == '<=':
             for idx, node_value in enumerate(target_node.values):
@@ -350,7 +354,11 @@ class Btree:
                     results.append(target_node.ptrs[idx])
             while target_node.left_sibling is not None:
                 target_node = self.nodes[target_node.left_sibling]
-                results.extend(target_node.ptrs)
+                for data in target_node:
+                    if data[0] != value[0]:
+                        return results
+                    else:
+                        results.append(target_node.ptrs[target_node.values.index(data)])
 
         # print the number of operations (usefull for benchamrking)
         # print(f'With BTree -> {ops} comparison operations')
