@@ -694,138 +694,7 @@ class Table:
         s_table = self._select_where(groups, None,None,None,None,None,True)
 
         return s_table
-
-
-
-
-    def max():
-        #TO DO
-        return
-
-    def avg():
-        #TO DO
-        return
-
-    def count(groups, column, distinct=False):
-        '''
-        With group by
-        '''
-        index = self.column_names.index(column)
-        self.order_by(self.column_names)
-
-        ret = [[None] * len(groups), [1] * len(groups)]
-        interval = 0
-
-        if(distinct):
-
-            prev = self.data[0]
-
-            for elem in list(self.data[1:]):
-                if(ret[interval][0] is None):
-                    ret[interval][0] = prev[:-1]
-                if(elem[:-1] == prev[:-1] and elem[-1] != prev[-1]):
-                    ret[interval][1] += 1
-                else:
-                    interval += 1
-                prev = elem
-        else:
-
-            prev = self.data[0]
-
-            for elem in list(self.data[1:]):
-                if(ret[interval][0] is None):
-                    ret[interval][0] = prev[:-1]
-                if(elem[:-1] == prev[:-1]):
-                    ret[interval][1] += 1
-                else:
-                    interval += 1
-                prev = elem
-
-        return ret
-
-    def count(column, distinct=False):
-        '''
-        Without group by
-        '''
-        index = self.column_names.index(column)
-        ret = 1
-
-        if(distinct):
-            self.order_by(self.column_names)
-            prev = self.data[0]
-            for elem in list(self.data[1:]):
-                if(elem[index] != prev[index]):
-                    ret += 1
-                prev = elem
-        else:
-            for elem in list(self.data[1:]):
-                ret += 1
-
-        return ret
-
-    def sum(groups, column, distinct=False):
-        '''
-        With group by
-        '''
-        index = self.column_names.index(column)
-        self.order_by(self.column_names)
-
-        ret = [[None] * len(groups), [None] * len(groups)]
-        interval = 0
-
-        if(distinct):
-
-            prev = self.data[0]
-
-            for elem in list(self.data[1:]):
-                if(ret[interval][1] is None):
-                    ret[interval][1] = prev[-1]
-                if(ret[interval][0] is None):
-                    ret[interval][0] = prev[:-1]
-                if(elem[:-1] == prev[:-1] and elem[-1] != prev[-1]):
-                    ret[interval][1] += elem[-1]
-                else:
-                    interval += 1
-                prev = elem
-        else:
-
-            prev = self.data[0]
-
-            for elem in list(self.data[1:]):
-                if(ret[interval][1] is None):
-                    ret[interval][1] = prev[-1]
-                if(ret[interval][0] is None):
-                    ret[interval][0] = prev[:-1]
-                if(elem[:-1] == prev[:-1]):
-                    ret[interval][1] += elem[-1]
-                else:
-                    interval += 1
-                prev = elem
-
-        return ret
-
-    def sum(column, distinct=False):
-        '''
-        Without group by
-        '''
-        index = self.column_names.index(column)
-        ret = self.data[0][index]
-
-        if(distinct):
-            self.order_by(self.column_names)
-            prev = self.data[0]
-            for elem in list(self.data[1:]):
-                if(elem[index] != prev[index]):
-                    ret += elem[index]
-                prev = elem
-        else:
-            for elem in list(self.data[1:]):
-                ret += elem[index]
-
-        return ret
-
-
-
+    
 
     def distinct(self):
         '''
@@ -1241,6 +1110,8 @@ def count(original, grouped, target_column, column_names):
         interval += 1
 
     return n_table
+
+
 def avg(original, grouped, target_column, column_names):
     '''
     With group by
@@ -1256,6 +1127,7 @@ def avg(original, grouped, target_column, column_names):
 
     target = original.column_names.index(input_target_column)
     groups = [original.column_names.index(elem) for elem in column_names]
+
     if not(str(original.column_types[target]) == "<class 'int'>"):
             raise Exception("The aggregate functions sum, avg are valid on numeric columns only!")
 
@@ -1274,21 +1146,6 @@ def avg(original, grouped, target_column, column_names):
         prev = original.data[0]
 
         for elem in list(original.data[1:]):
-            tlist1 = [prev[groups[i]] for i in range(len(groups))]
-            tlist2 = [elem[groups[i]] for i in range(len(groups))]
-
-            if(tlist1 == tlist2 and elem[target] != prev[target]):
-
-                counts[interval] += 1
-            elif(tlist1 == tlist2 and elem[target] == prev[target]):
-                pass
-            else:
-                interval += 1
-            prev = elem
-
-        prev = original.data[0]
-        interval = 0
-        for elem in list(original.data[1:]):
             if(sums[interval] is None):
                 sums[interval] = prev[target]
 
@@ -1296,6 +1153,7 @@ def avg(original, grouped, target_column, column_names):
             tlist2 = [elem[groups[i]] for i in range(len(groups))]
             if(tlist1 == tlist2 and elem[target] != prev[target]):
                 sums[interval] += elem[target]
+                counts[interval] += 1
             elif(tlist1 == tlist2 and elem[target] == prev[target]):
                 pass
             else:
@@ -1307,18 +1165,6 @@ def avg(original, grouped, target_column, column_names):
     else:
 
         prev = original.data[0]
-
-        for elem in list(original.data[1:]):
-            tlist1 = [prev[groups[i]] for i in range(len(groups))]
-            tlist2 = [elem[groups[i]] for i in range(len(groups))]
-
-            if(tlist1 == tlist2):
-                counts[interval] += 1
-            else:
-                interval += 1
-            prev = elem
-
-        prev = original.data[0]
         interval = 0
         for elem in list(original.data[1:]):
             if(sums[interval] is None):
@@ -1328,9 +1174,11 @@ def avg(original, grouped, target_column, column_names):
             tlist2 = [elem[groups[i]] for i in range(len(groups))]
             if(tlist1 == tlist2):
                 sums[interval] += elem[target]
+                counts[interval] += 1
             else:
                 interval += 1
             prev = elem
+
         if(sums[-1] is None):
             sums[-1] = prev[target]
 
@@ -1347,7 +1195,5 @@ def avg(original, grouped, target_column, column_names):
         d.append(sums[interval]/counts[interval])
         n_table.data.append(d)
         interval += 1
-
-
 
     return n_table
