@@ -1133,6 +1133,8 @@ def sum(original, grouped, target_column, column_names):
 
     target = original.column_names.index(input_target_column)
     groups = [original.column_names.index(elem) for elem in column_names]
+    if not(str(original.column_types[target]) == "<class 'int'>"):
+            raise Exception("The aggregate functions sum, avg are valid on numeric columns only!")
 
     '''Sort the original table'''
     orders = column_names.copy()
@@ -1283,7 +1285,9 @@ def avg(original, grouped, target_column, column_names):
 
     target = original.column_names.index(input_target_column)
     groups = [original.column_names.index(elem) for elem in column_names]
-
+    if not(str(original.column_types[target]) == "<class 'int'>"):
+            raise Exception("The aggregate functions sum, avg are valid on numeric columns only!")
+            
     '''Sort the original table'''
     orders = column_names.copy()
     if(input_target_column not in grouped.column_names):
