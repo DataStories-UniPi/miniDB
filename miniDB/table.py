@@ -270,7 +270,7 @@ class Table:
 
 
 
-
+     #Having function pairnei ws orisma to dictionary apo to group_by kathws kai to having pou einai h sthlh opoy efarmozetai kapoia synthiki apo ton xrhsth
     def having(self,having,dic):
 
         #To orisma having analyetai sthn sthlh poy epithymoume na ginei to check,ton operator kathws kai thn timh pou ginetai h sygkrish
@@ -319,7 +319,7 @@ class Table:
         for key in keys_toremove:
             del dic[key]
 
-
+	#epistrefetai kainoyrio dic
         return dic
 
 
@@ -328,7 +328,7 @@ class Table:
 
 
 
-
+	#H aggregate function xrhsimopoeitai gia na epistafoyn apotelesmata twn aggregate functions(sum,min,max..) mono pou se aythn thn periptwsh den yparxei group by sto  erwthma
     def aggregate(self,all_in,all_rows,all_columns):
         data=[]
         minmax=[]
@@ -339,9 +339,9 @@ class Table:
                 temp=[self.data[i][sub[1]] for i in all_rows ]
 
                 final=temp[:]
-                data.insert(sub[0],min(temp))
+                data.insert(sub[0],min(temp))#eisagei sthn katallili thesi tou pinaka data (opws tethike to erwthma) to elaxisto ths sthlhs toy erwthmatos
 
-            if len(final)!=0:
+            if len(final)!=0:#H logikh toy pinaka minmax einai na apothikeyei oloklhra ta rows tou mikroteroy(megalyterou parakatw) stoixeioy kapoioy pedioy gia to opoio yphrkse query
 
                 index_the_row=final.index(min(final))
                 minmax.append([self.data[index_the_row][j] for j in all_columns])
@@ -359,7 +359,7 @@ class Table:
                  index_the_row = final.index(max(final))
                  minmax.append([self.data[index_the_row][j] for j in all_columns])
 
-        if all_in['sum'] :
+        if all_in['sum'] :#Ypologizei to sum ths sthlhs
 
                 for sub in all_in['sum']:
 
@@ -372,7 +372,7 @@ class Table:
 
 
 
-        if all_in['avg'] :
+        if all_in['avg'] :#Ypologizei ton meso oro o opoios prokypth apo to sum ths sthlhs pros to plithos twn stoixeiwn
             for sub in all_in['avg']:
                 temp = [self.data[i][sub[1]] for i in all_rows]
                 data.insert(sub[0], sum(temp)/len(all_rows))
@@ -384,7 +384,8 @@ class Table:
         if all_in['*'] :
             for sub in all_in['*']:
 
-
+		#Ean den yphrkse query me aggregate function min() h max() tote epistrefetai h prwth grammh
+		#Diaforetika epistrefetai h grammh toy teleytaioy stoixioy toy pedioy opoy egine to query
                 if len(minmax)==0:
 
                     temp=[self.data[0][j] for j in sub[1]]
@@ -392,7 +393,7 @@ class Table:
                 else:
                     data.insert(sub[0],minmax[-1])
 
-        if all_in['None'] :
+        if all_in['None'] :#Opws apo panw apla epistrefetai h sthlh anti ths grammhs
             for sub in all_in['None']:
 
                 if len(minmax) == 0:
@@ -421,6 +422,7 @@ class Table:
         return endlist
 
 
+	#Mporei na xeiristei pollaples syntikes
     def multiple_where_clause(self,condition):
 
 
