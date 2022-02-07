@@ -530,14 +530,15 @@ class Database:
         if view_name not in self.tables['meta_views'].column_by_name('view_name'):
             if view_type == 'temp':
                 # currently only btree is supported. This can be changed by adding another if.
-                    logging.info('Creating temp view.')
-                    # insert a record with the name of the view and the table on which it's created to the meta_views table
-                    self.tables['meta_views']._insert([table_name, view_name])
-                    # create the actual index
-                    self._construct_index(table_name, view_name)
-                    self.save_database()
-        else:
-            raise Exception('Cannot create view. Another index with the same name already exists.')
+                logging.info('Creating temp view.')
+                # from the create view query, we isolate the select query.
+                query = query[query.find("(")+1:query.find(")")]
+                # insert a record with the name of the view and the table on which it's created to the meta_views table
+                self.tables['meta_views']._insert([query, view_name])
+                # create the actual index
+                self._construct_view(query, view_name)
+                self.save_database()
+            else: raise Exception('Cannot create view. Another view already exists.')
 
     def _construct_view(self, table_name, view_name):
         '''
