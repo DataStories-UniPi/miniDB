@@ -1051,7 +1051,7 @@ def max(original,grouped,target_column,column_names):
     c_names = grouped.column_names
     c_names.append("agg_max_" +target_column)
     c_types = grouped.column_types
-    c_types.append(type(5))
+    c_types.append(original.column_types[target])
     pk = grouped.column_names[0]
     n_table = Table("temp", c_names, c_types, pk)
     n_table.data = []
@@ -1103,7 +1103,7 @@ def min(original,grouped,target_column,column_names):
     c_names = grouped.column_names
     c_names.append("agg_min_"+  target_column)
     c_types = grouped.column_types
-    c_types.append(type(5))
+    c_types.append(original.column_types[target])
     pk = grouped.column_names[0]
     n_table = Table("temp", c_names, c_types, pk)
     n_table.data = []
@@ -1185,7 +1185,7 @@ def sum(original, grouped, target_column, column_names):
     c_names = grouped.column_names
     c_names.append("agg_sum_" + target_column.replace(' ', '_'))
     c_types = grouped.column_types
-    c_types.append(type(5))
+    c_types.append(original.column_types[target])
     pk = grouped.column_names[0]
     n_table = Table("temp", c_names, c_types, pk)
     n_table.data = []
@@ -1256,7 +1256,7 @@ def count(original, grouped, target_column, column_names):
     c_names = grouped.column_names
     c_names.append("agg_count_" + target_column.replace(' ', '_'))
     c_types = grouped.column_types
-    c_types.append(type(5))
+    c_types.append(original.column_types[target])
     pk = grouped.column_names[0]
     n_table = Table("temp", c_names, c_types, pk)
     n_table.data = []
@@ -1362,7 +1362,7 @@ def avg(original, grouped, target_column, column_names):
     c_names = grouped.column_names
     c_names.append("agg_avg_" + target_column.replace(' ', '_'))
     c_types = grouped.column_types
-    c_types.append(type(5))
+    c_types.append(original.column_types[target])
     pk = grouped.column_names[0]
     n_table = Table("temp", c_names, c_types, pk)
     n_table.data = []
