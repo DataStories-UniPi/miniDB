@@ -345,6 +345,15 @@ class Table:
                             sum_of_rows += self.data[row][col_idx]
                         except:
                             raise("ERROR: There must be an int involved in SUM() functions. Aborting.")
+            
+            #if we don't have WHERE.
+            else:
+                for row in range (len(self.data)):
+                    if all(val in self.data[row] for val in group) and counted_column_values[row] != 'null':
+                        try:
+                            sum_of_rows += self.data[row][col_idx]
+                        except:
+                            raise("ERROR: There must be an int involved in SUM() functions. Aborting.")
         
         #ONLY WHERE.
         elif condition is not None:
