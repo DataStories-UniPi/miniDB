@@ -241,7 +241,7 @@ class Table:
             groups_to_remove = []
             if having_aggregate[1] == "count":
                 for group in groups:
-                    group_count = self.count(having_aggregate[0],None,group)
+                    group_count = self.count(having_aggregate[0],condition,group)
                     if not get_op(having_operator, group_count, having_value):
                         groups_to_remove.append(group)
                 for group in groups_to_remove:
@@ -285,8 +285,21 @@ class Table:
 
         count_rows = 0
 
-        #if we have a condition to check 
-        if condition is not None:
+        if group != []: #if we have to count column values depending on a group of values at each row
+            
+            counted_column_values = self.column_by_name(self.column_names[col_idx]) #list with the counted column's values
+            
+            if condition is not None:   #if we have also a where condition to check
+                condition_column_name, operator, value = self._parse_condition(condition)   #name of the where column, operator and value
+                condition_column_values = self.column_by_name(condition_column_name)        #list with all the condition's column values
+                for row in range (len(self.data)):
+                    if all(val in self.data[row] for val in group) and counted_column_values[row] != 'null' and get_op(operator, condition_column_values[row], value):
+                        count_rows+=1         
+            else:   #if we dont have a where condition to check
+                for row in range (len(self.data)):
+                    if all(val in self.data[row] for val in group) and counted_column_values[row] != 'null':
+                        count_rows+=1
+        elif condition is not None: #if we have only a condition to check 
             condition_column_name, operator, value = self._parse_condition(condition)   #name of the where column, operator and value
             condition_column_values = self.column_by_name(condition_column_name)        #list with all the condition's column values
             
@@ -298,13 +311,6 @@ class Table:
             for idx, val in enumerate(condition_column_values): 
                 if get_op(operator, val, value) and self.data[idx][col_idx] != 'null':
                     count_rows+=1
-
-        elif group != []: #if we have to count column values depending on a group of values at each row
-            counted_column_values = self.column_by_name(self.column_names[col_idx]) #list with the counted column's values
-            for row in range (len(self.data)):
-                if all(val in self.data[row] for val in group) and counted_column_values[row] != 'null':
-                    count_rows+=1
-
         else:   #if we dont have any condition
             '''
             We check one by one the values of the counted column and if they are not null, we count them
