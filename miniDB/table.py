@@ -278,7 +278,7 @@ class Table:
                         row_data = getattr(self, col[1])(col[0], condition, group)
                         #except if it is AVG() then you have to call count and sum independently.
                     else:
-                        row_data = self.count(col[0], condition, group) / self.sum(col[0], condition, group)
+                        row_data = self.sum(col[0], condition, group) / self.count(col[0], condition, group)
                     
                     #then append that row to our data.
                     result_row.append(row_data)
@@ -300,7 +300,7 @@ class Table:
                         if col[1] != 'avg':
                             row_data = getattr(self, col[1])(col[0], condition, group)
                         else:
-                            row_data = self.count(col[0], condition, group) / self.sum(col[0], condition, group)
+                            row_data = self.sum(col[0], condition, group) / self.count(col[0], condition, group)
 
                         result_row.append(row_data)
 
