@@ -66,6 +66,8 @@ def create_query_plan(query, keywords, action):
     for i in range(len(kw_in_query)-1):
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
 
+    print(dic)
+
     if action=='select':
         dic = evaluate_from_clause(dic)
         
@@ -81,7 +83,9 @@ def create_query_plan(query, keywords, action):
             dic['desc'] = None
 
     if action=='create table':
+        print(dic)
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
+        print(args)
         dic['create table'] = dic['create table'].removesuffix(args).strip()
         arg_nopk = args.replace('primary key', '')[1:-1]
         arg_nopk = args.replace('not null', 'not_null')[1:-1]    
@@ -108,6 +112,28 @@ def create_query_plan(query, keywords, action):
     if action=='insert into select':
         if(dic['from'] is None):
             raise ValueError('HEY, EMPTY FROM BRO')
+        args = dic['insert into'][dic['insert into'].index('('):dic['insert into'].index(')')+1]
+        dic['insert into'] = dic['insert into'].replace(args, "")
+        args = args.replace("( ", "").replace(" )", "").replace(" ", "")
+        dic['home_columns'] = args
+
+        out_cols_num = dic['select'].split(',')
+        for x in out_cols_num:
+            if x == '':
+                out_cols_num.remove(x)
+        print(out_cols_num)
+
+        home_cols_num = dic['home_columns'].split(',')
+        for x in home_cols_num:
+            if x == '':
+                home_cols_num.remove(x)
+        print(home_cols_num)
+
+        if out_cols_num != home_cols_num:
+            raise ValueError('Not the same bro')
+        else:
+            print('Nice, they are the same')
+        
     
     if action=='unlock table':
         if dic['force'] is not None:
