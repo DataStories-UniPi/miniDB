@@ -438,9 +438,9 @@ class Table:
                 condition_column_name, operator, value = self._parse_condition(condition)
                 condition_column_values = self.column_by_name(condition_column_name)
 
-                minimum = min([row for row in range(len(self.data)) if all(val in self.data[row] for val in group) and counted_column_values[row] != 'null' and get_op(operator, condition_column_values[row], value)])
+                minimum = min([self.data[row][col_idx] for row in range(len(self.data)) if all(val in self.data[row] for val in group) and counted_column_values[row] != 'null' and get_op(operator, condition_column_values[row], value)])
             else:   
-                minimum = min([row for row in range(len(self.data)) if all(val in self.data[row] for val in group) and counted_column_values[row] != 'null'])
+                minimum = min([self.data[row][col_idx] for row in range(len(self.data)) if all(val in self.data[row] for val in group) and counted_column_values[row] != 'null'])
 
         #if there is a condition to check, we get the name of the WHERE column the operator (<, >, etc.) and the value provided.
         elif condition is not None:
@@ -469,9 +469,9 @@ class Table:
                 condition_column_name, operator, value = self._parse_condition(condition)
                 condition_column_values = self.column_by_name(condition_column_name)
 
-                maximum = max([row for row in range(len(self.data)) if all(val in self.data[row] for val in group) and counted_column_values[row] != 'null' and get_op(operator, condition_column_values[row], value)])
+                maximum = max([self.data[row][col_idx] for row in range(len(self.data)) if all(val in self.data[row] for val in group) and counted_column_values[row] != 'null' and get_op(operator, condition_column_values[row], value)])
             else:   
-                maximum = max([row for row in range(len(self.data)) if all(val in self.data[row] for val in group) and counted_column_values[row] != 'null'])
+                maximum = max([self.data[row][col_idx] for row in range(len(self.data)) if all(val in self.data[row] for val in group) and counted_column_values[row] != 'null'])
 
 
         #everything here is the same as minimum, except there is the max() statement.
