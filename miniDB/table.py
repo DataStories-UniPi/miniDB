@@ -1156,6 +1156,8 @@ def sum(original, grouped, target_column, column_names):
             tlist2 = [elem[groups[i]] for i in range(len(groups))]
             if(tlist1 == tlist2 and elem[target] != prev[target]):
                 sums[interval] += elem[target]
+            elif(tlist1 == tlist2 and elem[target] == prev[target]):
+                pass
             else:
                 interval += 1
             prev = elem
@@ -1232,6 +1234,8 @@ def count(original, grouped, target_column, column_names):
 
             if(tlist1 == tlist2 and elem[target] != prev[target]):
                 counts[interval] += 1
+            elif(tlist1 == tlist2 and elem[target] == prev[target]):
+                pass
             else:
                 interval += 1
             prev = elem
@@ -1299,8 +1303,10 @@ def avg(original, grouped, target_column, column_names):
             tlist2 = [elem[groups[i]] for i in range(len(groups))]
 
             if(tlist1 == tlist2 and elem[target] != prev[target]):
-                print(interval)
+
                 counts[interval] += 1
+            elif(tlist1 == tlist2 and elem[target] == prev[target]):
+                pass
             else:
                 interval += 1
             prev = elem
@@ -1315,6 +1321,8 @@ def avg(original, grouped, target_column, column_names):
             tlist2 = [elem[groups[i]] for i in range(len(groups))]
             if(tlist1 == tlist2 and elem[target] != prev[target]):
                 sums[interval] += elem[target]
+            elif(tlist1 == tlist2 and elem[target] == prev[target]):
+                pass
             else:
                 interval += 1
             prev = elem
