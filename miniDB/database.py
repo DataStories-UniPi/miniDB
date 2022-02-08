@@ -276,10 +276,10 @@ class Database:
 
         #x = self.tables.column_names
         #
-        # Here i will call the function _check_meta_parent_child_tables
+        # Here i will call the function _check_meta_parent_child_tables_for_insert
         # to see if we insert something on a parent or child table
         #
-        self._check_meta_parent_child_tables(row,table_name,"insert")
+        self._check_meta_parent_child_tables_for_insert(row,table_name,"insert")
 
         self.load_database()
         # fetch the insert_stack. For more info on the insert_stack
@@ -297,6 +297,8 @@ class Database:
             self.unlock_table(table_name)
         self._update()
         self.save_database()
+        # Confirmation message
+        print("Row is inserted into the table successfully!")
 
 
     def update_table(self, table_name, set_args, condition):
@@ -313,6 +315,15 @@ class Database:
 
                 Operatores supported: (<,<=,==,>=,>)
         '''
+
+
+        for_function_set_args = set_args.split('=')
+        for_function_condition = condition.split('=')
+        #
+        # Callin this function to check for referential constraints
+        #
+        updating_a_parent_table = self._check_meta_parent_child_tables_for_update_in_child_table(table_name,for_function_set_args,for_function_condition)
+
         set_column, set_value = set_args.replace(' ','').split('=')
         self.load_database()
 
@@ -322,6 +333,14 @@ class Database:
             self.unlock_table(table_name)
         self._update()
         self.save_database()
+        if updating_a_parent_table == True:
+            print("!!!!ATTENTION!!!!")
+            print("You just updated a value of a column that other column values are linked to it.")
+            print("The system will now automatically change every value that references the old value,")
+            print("and it will be converted to the current new value")
+            self._change_referencing_values_everywhere(table_name,for_function_set_args,for_function_condition)
+        # Confirmation message
+        print("Table updated successfully!")
 
     def delete_from(self, table_name, condition):
         '''
@@ -608,7 +627,7 @@ class Database:
 
         self.tables['meta_parent_child_tables']._insert([parent_table, parent_column, child_table, child_column])
 
-    def _check_meta_parent_child_tables(self,row_values,table_name,function_executed):
+    def _check_meta_parent_child_tables_for_insert(self,row_values,table_name,function_executed):
         '''
         This specific function will be called every time in 4  occasions:
             1) When i insert a new row in a child table
@@ -619,16 +638,49 @@ class Database:
         The job of this function is to check in each of these 4 occasions if the
         current query is inserting/updating/deleting a value in a child/parent table
 
-        I that is true, then another function will be called (the "" function)
-        that will take care of the referential constraints
+        If that is true, then i will take care of the referential constraints
+        If that is not true, an error message will be popped!
         '''
         # This contains all the data from the current table in a 2D list
         data_in_table =  self.tables[table_name].data
 
-        # Works perfectly!!!!!!!!!!
-        # I have to find how to use it
-        # It returns a list of list with the data in each row
-        # print(self.tables[table_name].data)
+        #
+        # a list that contains the data of the meta_parent_child_tables table
+        # in 2D list
+        #
+        parent_child_data = self.tables['meta_parent_child_tables'].data
+
+        # a list that will contain all the child column names of the database
+        child_columns_list = []
+
+        # a list that will contain all the parent column names of the database
+        parent_columns_list = []
+
+        # a list that contains the column names of the current table
+        current_table_columns = self.tables[table_name].column_names
+
+        # a list that will contain all the child table names of the database
+        child_tables_list = []
+
+        # a list that will contain all the parent table names of the database
+        parent_tables_list = []
+
+        #
+        # Putting into a list all the names of the parent tables and columns, and
+        # also putting into a list all the names of the child tables and columns
+        #
+        for i in range(len(parent_child_data)):
+            for j in range(len(parent_child_data[i])):
+                if j == 0:
+                    parent_tables_list.append(parent_child_data[i][j])
+                if j == 1:
+                    parent_columns_list.append(parent_child_data[i][j])
+                if j == 2:
+                    child_tables_list.append(parent_child_data[i][j])
+                if j == 3:
+                    child_columns_list.append(parent_child_data[i][j])
+
+
         for table in self.tables.values():
 
             if table._name[:4]=='meta': #skip meta tables
@@ -656,43 +708,6 @@ class Database:
                     # in the parent column
                     #
 
-                    #
-                    # a list that contains the data of the meta_parent_child_tables table
-                    # in 2D list
-                    #
-                    parent_child_data = self.tables['meta_parent_child_tables'].data
-
-                    # a list that will contain all the child column names of the database
-                    child_columns_list = []
-
-                    # a list that will contain all the parent column names of the database
-                    parent_columns_list = []
-
-                    # a list that contains the column names of the current table
-                    current_table_columns = self.tables[table_name].column_names
-
-                    # a list that will contain all the child table names of the database
-                    child_tables_list = []
-
-                    # a list that will contain all the parent table names of the database
-                    parent_tables_list = []
-
-                    #
-                    # Putting into a list all the names of the parent tables and columns, and
-                    # also putting into a list all the names of the child yables and columns
-                    #
-                    for i in range(len(parent_child_data)):
-                        for j in range(len(parent_child_data[i])):
-                            if j == 0:
-                                parent_tables_list.append(parent_child_data[i][j])
-                            if j == 1:
-                                parent_columns_list.append(parent_child_data[i][j])
-                            if j == 2:
-                                child_tables_list.append(parent_child_data[i][j])
-                            if j == 3:
-                                child_columns_list.append(parent_child_data[i][j])
-
-
                     for i in range(len(current_table_columns)):
                         # If i find a column from the current table, in the list
                         # of child columns
@@ -712,14 +727,196 @@ class Database:
 
                             # Error message for when the referencial constraints are not met
                             if found_it == False:
-                                raise Exception("Eror!!! \nOne of the values you try to insert, do not mach the referenced column value")
-                                
+                                raise Exception("Eror!!!\n***************************************************** \nOne of the values you try to insert, do not match the referenced column value\n*****************************************************")
+
 
 
 
             else:
-                print("This table does not exist in meta_parent_child_tables")
+                print("This table does not have any referential constraints")
+                print("Inserting normally...")
             break
+
+
+    def _check_meta_parent_child_tables_for_update_in_child_table(self,table_name,set_args,condition):
+        '''
+        This specific function will be called every time the user tries to update a value.
+        When an update is about to happen, then:
+            1) If the update is on a table with no referential constraints, then
+               nothing will happen here
+            2) If the update is on a value X from a column that references another value Y
+               in another column(we call this type of column a child_column), then we check here
+               if the new value exists in the referenced column.
+               If not, then en error message will be popped
+            3) If the update is on a value X from a column that is  referenced from another value Y
+               in another column(we call this type of column a parent_column), then we make
+               sure here, that boolean variable is set to 'True' and this is the only time
+               that tis function will return 'True' and not the default 'False'
+
+        If the function returns 'True', then another function that we made will be called
+        through the "update table()" function, the function "_change_referencing_values_everywhere()"
+        that deals with the 3rd situation
+
+        The executed query in an "update" query must look something like that:
+            "update table ship_parking set parked_ship_id=102 where parked_ship_id=10222;"
+        and the args in this function will be:
+            table name: ship_parking
+            set_args: ['parked_ship_id', '102']
+            condition: ['parked_ship_id', '10222']
+
+        '''
+        # This is what this function will return
+        updating_a_parent_table = False
+
+        #
+        # a list that contains the data of the meta_parent_child_tables table
+        # in 2D list
+        #
+        parent_child_data = self.tables['meta_parent_child_tables'].data
+
+        # a list that will contain all the child column names of the database
+        child_columns_list = []
+
+        # a list that will contain all the parent column names of the database
+        parent_columns_list = []
+
+        # a list that contains the column names of the current table
+        current_table_columns = self.tables[table_name].column_names
+
+        # a list that will contain all the child table names of the database
+        child_tables_list = []
+
+        # a list that will contain all the parent table names of the database
+        parent_tables_list = []
+
+        # Getting the values of the child column in this current table
+        values_of_child_column = self.tables[table_name].column_by_name(set_args[0])
+
+        # Error message for when we try to search a value that does not exist
+        if str(condition[1]) not in str(values_of_child_column):
+            raise Exception("Error!!!\n***************************************************** \nThere is not such a value in the table you try to update. \nThe \"where\" condition is wrong \nCheck it and try again\n*****************************************************")
+
+
+        #
+        # Putting into a list all the names of the parent tables and columns, and
+        # also putting into a list all the names of the child tables and columns
+        #
+        for i in range(len(parent_child_data)):
+            for j in range(len(parent_child_data[i])):
+                if j == 0:
+                    parent_tables_list.append(parent_child_data[i][j])
+                if j == 1:
+                    parent_columns_list.append(parent_child_data[i][j])
+                if j == 2:
+                    child_tables_list.append(parent_child_data[i][j])
+                if j == 3:
+                    child_columns_list.append(parent_child_data[i][j])
+
+        #
+        # First i am going to check everything for the case when we
+        # update a column in a child table
+        #
+        if str(set_args[0]) in child_columns_list:
+            #print(set_args[0],"is in child columns list")
+            # Getting the name of the parent table
+            parent_table_to_be_checked = parent_tables_list[child_columns_list.index(set_args[0])]
+            # Getting the name of the child table
+            parent_column_to_be_checked = parent_columns_list[child_columns_list.index(set_args[0])]
+            # Getting the values of the parent column
+            values_of_parent_column = self.tables[parent_table_to_be_checked].column_by_name(parent_column_to_be_checked)
+
+            # Trying to find if the new updated value exists in the referenced table
+            value_to_be_checked = set_args[1]
+            found_it = False
+            for v in values_of_parent_column:
+                if str(value_to_be_checked) == str(v):
+                    found_it = True
+
+            # Error message for when the referencial constraints are not met
+            if found_it == False:
+                raise Exception("Error!!!\n*****************************************************\nThis update can not occur due to referential constraints \nThe value you try to update, do not match any of the referenced column values\n*****************************************************")
+
+        #
+        # Secondly, i am going to check everything for the case when we
+        # update a column in a child table
+        #
+        elif str(set_args[0]) in parent_columns_list:
+            # The function now will return true, and this means
+            # that another function will be called to take care of the referential
+            # constraints for the specific situation.
+            # By situation i mean when i update a parent_column vallue
+            updating_a_parent_table = True
+            # Getting the values of the parent column in this current table
+            values_of_parent_column = self.tables[table_name].column_by_name(set_args[0])
+
+            # Error message for when we try to search a value that does not exist
+            if str(condition[1]) not in str(values_of_parent_column):
+                raise Exception("Error!!!\n***************************************************** \nThere is not such a value in the table you try to update. \nThe \"where\" condition is wrong \nCheck it and try again\n*****************************************************")
+
+        # True if we update a parent table
+        # False if we dont
+        return updating_a_parent_table
+
+    def _change_referencing_values_everywhere(self,table_name,set_args,condition):
+        '''
+        This function will only be called if the user tries to update a value X
+        that other values Y refer to it
+        Its job is to update the value X and to change all other values Y that are childs of X
+        In the end, X and all the Ys will all have the same value
+        '''
+        #
+        # a list that contains the data of the meta_parent_child_tables table
+        # in 2D list
+        #
+        parent_child_data = self.tables['meta_parent_child_tables'].data
+
+        # a list that will contain all the child column names of the database
+        child_columns_list = []
+
+        # a list that will contain all the parent column names of the database
+        parent_columns_list = []
+
+        # a list that contains the column names of the current table
+        current_table_columns = self.tables[table_name].column_names
+
+        # a list that will contain all the child table names of the database
+        child_tables_list = []
+
+        # a list that will contain all the parent table names of the database
+        parent_tables_list = []
+
+
+        #
+        # Putting into a list all the names of the parent tables and columns, and
+        # also putting into a list all the names of the child tables and columns
+        #
+        for i in range(len(parent_child_data)):
+            for j in range(len(parent_child_data[i])):
+                if j == 0:
+                    parent_tables_list.append(parent_child_data[i][j])
+                if j == 1:
+                    parent_columns_list.append(parent_child_data[i][j])
+                if j == 2:
+                    child_tables_list.append(parent_child_data[i][j])
+                if j == 3:
+                    child_columns_list.append(parent_child_data[i][j])
+
+
+        referenced_column = set_args[0]
+        referencing_column = child_columns_list[parent_columns_list.index(referenced_column)]
+        referencing_table = child_tables_list[parent_columns_list.index(referenced_column)]
+        new_referencing_value = set_args[1]
+        old_referencing_value = condition[1]
+        values_of_child_column = self.tables[child_tables_list[parent_columns_list.index(referenced_column)]].column_by_name(child_columns_list[parent_columns_list.index(referenced_column)])
+
+        if str(old_referencing_value) in values_of_child_column:
+            new_set_arg = referencing_column + "=" + new_referencing_value
+            new_condition = referencing_column + "=" + old_referencing_value
+            # Calling the function to change everything related to the old value
+            self.update_table(referencing_table,new_set_arg,new_condition)
+
+
+
 
 
 
