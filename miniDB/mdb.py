@@ -79,7 +79,7 @@ def create_query_plan(query, keywords, action):
         else:
             dic['desc'] = None
 
-    if action=='create table':
+    if action=='create table':#not null,unique
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
         arg_nopk = args.replace('primary key', '')[1:-1]
@@ -106,6 +106,8 @@ def create_query_plan(query, keywords, action):
             dic['force'] = True
         else:
             dic['force'] = False
+    #if action =='create trigger':
+        
 
     return dic
 
