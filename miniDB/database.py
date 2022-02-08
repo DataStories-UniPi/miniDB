@@ -8,6 +8,9 @@ import shutil
 from misc import split_condition
 import logging
 import warnings
+#explanation at mdb.py
+import collections
+collections.Callable = collections.abc.Callable
 import readline
 from tabulate import tabulate
 
@@ -71,7 +74,6 @@ class Database:
     def load_database(self):
         '''
         Load all tables that are part of the database (indices noted here are loaded).
-
         Args:
             path: string. Directory (path) of the database on the system.
         '''
@@ -100,7 +102,6 @@ class Database:
     def create_table(self, name, column_names, column_types, primary_key=None, load=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
-
         Args:
             name: string. Name of table.
             column_names: list. Names of columns.
@@ -122,7 +123,6 @@ class Database:
     def drop_table(self, table_name):
         '''
         Drop table from current database.
-
         Args:
             table_name: string. Name of table.
         '''
@@ -145,7 +145,6 @@ class Database:
     def import_table(self, table_name, filename, column_types=None, primary_key=None):
         '''
         Creates table from CSV file.
-
         Args:
             filename: string. CSV filename. If not specified, filename's name will be used.
             column_types: list. Types of columns. If not specified, all will be set to type str.
@@ -174,7 +173,6 @@ class Database:
     def export(self, table_name, filename=None):
         '''
         Transform table to CSV.
-
         Args:
             table_name: string. Name of table.
             filename: string. Output CSV filename.
@@ -192,7 +190,6 @@ class Database:
     def table_from_object(self, new_table):
         '''
         Add table object to database.
-
         Args:
             new_table: string. Name of new table.
         '''
@@ -221,7 +218,6 @@ class Database:
         '''
         Modify the type of the specified column and cast all prexisting values.
         (Executes type() for every value in column and saves)
-
         Args:
             table_name: string. Name of table (must be part of database).
             column_name: string. The column that will be casted (must be part of database).
@@ -236,15 +232,13 @@ class Database:
         self._update()
         self.save_database()
 
-    def insert_into(self, table_name, InstParm):
+    def insert_into(self, table_name, row_str):
         '''
         Inserts data to given table.
-
         Args:
             table_name: string. Name of table (must be part of database).
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             lock_load_save: boolean. If False, user needs to load, lock and save the states of the database (CAUTION). Useful for bulk-loading.
-        '''
         '''
         row = row_str.strip().split(',')
         self.load_database()
@@ -263,38 +257,11 @@ class Database:
             self.unlock_table(table_name)
         self._update()
         self.save_database()
-        '''
-        # Chekarei to plithos twn eisagxthewn data..An h InstParm epistrefei ws table variable tote ta data tha akolouthisoun eisagwgh megalou plithous (massive import) ston pinaka        
-        if isinstance(InstParm, str):
-            row = InstParm.strip().split(',')
-            self.load_database()
-            
-            lock_ownership = self.lock_table(table_name, mode='x')
-            insert_stack = self._get_insert_stack_for_table(table_name)
-            try:
-                self.tables[table_name]._insert(row, insert_stack)
-            except Exception as e:
-                logging.info(e)
-                logging.info('ABORTED')
-            self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
-
-            if lock_ownership:
-                self.unlock_table(table_name)
-            self._update()
-            self.save_database()
-        elif isinstance(InstParm, Table):
-            
-            if len(InstParm.column_names) == len(self.tables[table_name].column_names):
-                
-                [self.insert_into(table_name,','.join(map(str,tmp_data))) for tmp_data in InstParm.data]
-            else:
-                raise Exception(f'The result of the columns of the select query are greater than the destination table columns!\n {len(InstParm.columns)} != {len(self.tables[table_name].columns)}')
 
 
     def update_table(self, table_name, set_args, condition):
         '''
         Update the value of a column where a condition is met.
-
         Args:
             table_name: string. Name of table (must be part of database).
             set_value: string. New value of the predifined column name.
@@ -318,7 +285,6 @@ class Database:
     def delete_from(self, table_name, condition):
         '''
         Delete rows of table where condition is met.
-
         Args:
             table_name: string. Name of table (must be part of database).
             condition: string. A condition using the following format:
@@ -341,11 +307,9 @@ class Database:
         self.save_database()
 
     def select(self, columns, table_name, condition, order_by=None, top_k=True,\
-        #Prostethike to distinct=false ws arxikh timh idia allagh egine kai sth ndef select_where kai _select_where_with_btree sta table.py
-               desc=None, save_as=None, return_object=True,distinct=False):
+               desc=None, save_as=None, return_object=True):
         '''
         Selects and outputs a table's data where condtion is met.
-
         Args:
             table_name: string. Name of table (must be part of database).
             columns: list. The columns that will be part of the output table (use '*' to select all available columns)
@@ -360,20 +324,13 @@ class Database:
             save_as: string. The name that will be used to save the resulting table into the database (no save if None).
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
         '''
-        #An vrethei to distinct stis stules,to  allazoume se timh true
-        if 'distinct' in columns:
-            columns = columns.replace('distinct ','')
-            distinct = True
-
         # print(table_name)
-        #kai epistrefei ki th ndistinct  kathws ein meros to pinikaka (an uparxei)
         self.load_database()
         if isinstance(table_name,Table):
-            return table_name._select_where(columns, condition, order_by, desc, top_k, distinct)
+            return table_name._select_where(columns, condition, order_by, desc, top_k)
 
         if condition is not None:
             condition_column = split_condition(condition)[0]
-           
         else:
             condition_column = ''
 
@@ -384,9 +341,9 @@ class Database:
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k,distinct)
+            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k)
         else:
-            table = self.tables[table_name]._select_where(columns, condition, order_by, desc, top_k,distinct)
+            table = self.tables[table_name]._select_where(columns, condition, order_by, desc, top_k)
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as
@@ -401,7 +358,6 @@ class Database:
     def show_table(self, table_name, no_of_rows=None):
         '''
         Print table in a readable tabular design (using tabulate).
-
         Args:
             table_name: string. Name of table (must be part of database).
         '''
@@ -413,7 +369,6 @@ class Database:
     def sort(self, table_name, column_name, asc=False):
         '''
         Sorts a table based on a column.
-
         Args:
             table_name: string. Name of table (must be part of database).
             column_name: string. the column name that will be used to sort.
@@ -432,7 +387,6 @@ class Database:
     def join(self, mode, left_table, right_table, condition, save_as=None, return_object=True):
         '''
         Join two tables that are part of the database where condition is met.
-
         Args:
             left_table: string. Name of the left table (must be in DB) or Table obj.
             right_table: string. Name of the right table (must be in DB) or Table obj.
@@ -469,7 +423,6 @@ class Database:
     def lock_table(self, table_name, mode='x'):
         '''
         Locks the specified table using the exclusive lock (X).
-
         Args:
             table_name: string. Table name (must be part of database).
         '''
@@ -500,7 +453,6 @@ class Database:
     def unlock_table(self, table_name, force=False):
         '''
         Unlocks the specified table that is exclusively locked (X).
-
         Args:
             table_name: string. Table name (must be part of database).
         '''
@@ -522,7 +474,6 @@ class Database:
     def is_locked(self, table_name):
         '''
         Check whether the specified table is exclusively locked (X).
-
         Args:
             table_name: string. Table name (must be part of database).
         '''
@@ -600,7 +551,6 @@ class Database:
     def _add_to_insert_stack(self, table_name, indexes):
         '''
         Adds provided indices to the insert stack of the specified table.
-
         Args:
             table_name: string. Table name (must be part of database).
             indexes: list. The list of indices that will be added to the insert stack (the indices of the newly deleted elements).
@@ -611,7 +561,6 @@ class Database:
     def _get_insert_stack_for_table(self, table_name):
         '''
         Returns the insert stack of the specified table.
-
         Args:
             table_name: string. Table name (must be part of database).
         '''
@@ -622,7 +571,6 @@ class Database:
     def _update_meta_insert_stack_for_tb(self, table_name, new_stack):
         '''
         Replaces the insert stack of a table with the one supplied by the user.
-
         Args:
             table_name: string. Table name (must be part of database).
             new_stack: string. The stack that will be used to replace the existing one.
@@ -635,7 +583,6 @@ class Database:
         '''
         Creates an index on a specified table with a given name.
         Important: An index can only be created on a primary key (the user does not specify the column).
-
         Args:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
@@ -657,7 +604,6 @@ class Database:
     def _construct_index(self, table_name, index_name):
         '''
         Construct a btree on a table and save.
-
         Args:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
@@ -674,7 +620,6 @@ class Database:
     def _has_index(self, table_name):
         '''
         Check whether the specified table's primary key column is indexed.
-
         Args:
             table_name: string. Table name (must be part of database).
         '''
@@ -683,7 +628,6 @@ class Database:
     def _save_index(self, index_name, index):
         '''
         Save the index object.
-
         Args:
             index_name: string. Name of the created index.
             index: obj. The actual index object (btree object).
@@ -699,7 +643,6 @@ class Database:
     def _load_idx(self, index_name):
         '''
         Load and return the specified index.
-
         Args:
             index_name: string. Name of created index.
         '''

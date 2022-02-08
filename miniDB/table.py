@@ -8,19 +8,15 @@ from misc import get_op, split_condition
 class Table:
     '''
     Table object represents a table inside a database
-
     A Table object can be created either by assigning:
         - a table name (string)
         - column names (list of strings)
         - column types (list of functions like str/int etc)
         - primary (name of the primary key column)
-
     OR
-
         - by assigning a value to the variable called load. This value can be:
             - a path to a Table file saved using the save function
             - a dictionary that includes the appropriate info (all the attributes in __init__)
-
     '''
     def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
 
@@ -83,7 +79,6 @@ class Table:
     def _cast_column(self, column_name, cast_type):
         '''
         Cast all values of a column using a specified type.
-
         Args:
             column_name: string. The column that will be casted.
             cast_type: type. Cast type (do not encapsulate in quotes).
@@ -101,7 +96,6 @@ class Table:
     def _insert(self, row, insert_stack=[]):
         '''
         Insert row to table.
-
         Args:
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             insert_stack: list. The insert stack (empty by default).
@@ -130,7 +124,6 @@ class Table:
     def _update_rows(self, set_value, set_column, condition):
         '''
         Update where Condition is met.
-
         Args:
             set_value: string. The provided set value.
             set_column: string. The column to be altered.
@@ -161,10 +154,8 @@ class Table:
     def _delete_where(self, condition):
         '''
         Deletes rows where condition is met.
-
         Important: delete replaces the rows to be deleted with rows filled with Nones.
         These rows are then appended to the insert_stack.
-
         Args:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
@@ -195,14 +186,11 @@ class Table:
         # self._update()
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
-    
 
 
-# opws anaferthike sthn database.py egine allagh stis 2 select me 1 extra timh thn distinct=false arxika
-    def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None,distinct=False):
+    def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
-
         Args:
             return_columns: list. The columns to be returned.
             condition: string. A condition using the following format:
@@ -227,7 +215,6 @@ class Table:
             column_name, operator, value = self._parse_condition(condition)
             column = self.column_by_name(column_name)
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
-            
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -246,15 +233,11 @@ class Table:
             s_table.order_by(order_by, desc)
 
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
-        
-         #Estw dist=true
-        # An distinct  True dld uparxei, afairoume tis duplicates grammes apo to pinaka ppu dhmiourgeitai auto pragmatopoieitai kai sthn def selecte_where_with_btree
-        s_table.data=list(set(map(lambda x:tuple(x),s_table.data)))if distinct else s_table.data
 
         return s_table
 
-# omoia allagh me thn select_where
-    def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, desc=True, top_k=None,distinct=False):
+
+    def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, desc=True, top_k=None):
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
@@ -293,24 +276,16 @@ class Table:
         dict['column_types']   = [self.column_types[i] for i in return_cols]
 
         s_table = Table(load=dict) 
-
-        
-        
         if order_by:
             s_table.order_by(order_by, desc)
 
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
-
-        #idia logikh  me thn idia grtammh kwdika sthn def select where
-        s_table.data=list(set(map(lambda x:tuple(x),s_table.data)))if distinct else s_table.data
-        
 
         return s_table
 
     def order_by(self, column_name, desc=True):
         '''
         Order table based on column.
-
         Args:
             column_name: string. Name of column.
             desc: boolean. If True, order_by will return results in descending order (False by default).
@@ -325,7 +300,6 @@ class Table:
     def _inner_join(self, table_right: Table, condition):
         '''
         Join table (left) with a supplied table (right) where condition is met.
-
         Args:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
@@ -375,7 +349,6 @@ class Table:
     def show(self, no_of_rows=None, is_locked=False):
         '''
         Print the table in a nice readable format.
-
         Args:
             no_of_rows: int. Number of rows.
             is_locked: boolean. Whether it is locked (False by default).
@@ -402,7 +375,6 @@ class Table:
     def _parse_condition(self, condition, join=False):
         '''
         Parse the single string condition and return the value of the column and the operator.
-
         Args:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
@@ -427,7 +399,6 @@ class Table:
     def _load_from_file(self, filename):
         '''
         Load table from a pkl file (not used currently).
-
         Args:
             filename: string. Name of pkl file.
         '''

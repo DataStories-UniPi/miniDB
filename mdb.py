@@ -2,12 +2,11 @@ import os
 import re
 from pprint import pprint
 import sys
-from pyreadline import Readline
-# Egine import to collections wste na  afairethei to error pou evgase me to parakatw import.
+#xwris to import collections vgazei error  oti dn uparxei to attribute callable
+#kalou kakou tha efarmostei se ola ta .py arxeia poy yparxei to readline
 import collections
 collections.Callable = collections.abc.Callable
-
-
+import readline
 import traceback
 import shutil
 sys.path.append('miniDB')
@@ -100,9 +99,6 @@ def create_query_plan(query, keywords, action):
     if action=='insert into':
         if dic['values'][0] == '(' and dic['values'][-1] == ')':
             dic['values'] = dic['values'][1:-1]
-            #Kalemesma tou interpeter
-            if dic['values'].strip(' ').startswith('select'):
-                    dic['values']=interpret(dic['values'].strip(' '))
         else:
             raise ValueError('Your parens are not right m8')
     
