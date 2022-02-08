@@ -240,14 +240,14 @@ class Table:
             s_table = Table(load=dict)
 
             # pass the s_table object to group_by function to create
+            # a table containing the columns of GROUP BY clause with distinct values
+            # This will be the table of the groups.
             grouped = s_table.group_by(group_by)
-            #
+            # store the names of the columns of GROUP BY clause 
             column_names = grouped.column_names.copy()
 
 
-            #
-            #
-            #
+            # Now examine the return_columns (select list)
 
             return_cols = []
 
@@ -256,7 +256,22 @@ class Table:
             else:
 
                 '''
-                
+                If the select list contains a column name, it must be a name of the group columns
+                (columns in GROUP BY clause). if so add the index of the column from the
+                'grouped' table to return_cols.
+
+                If the select list contains an agg function:
+
+                - get the column that is specified inside the agg finction's parenthesis
+
+                - run the cooresponding function by passing the 's_table', the 'grouped', the target_column
+                and the column_names. The function will append a column to the 'grouped' table
+
+                - add the index of the column that was just added by the agg function to return_cols.
+
+                > The column added by the agg function has a name style:
+
+                agg_[min|max|avg|count|sum]_[distinct]_[column_name]
                 
                 '''
 
@@ -269,7 +284,7 @@ class Table:
 
                         target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
 
-                        grouped = min(original=self,grouped=grouped,target_column=target_column.strip(),column_names=column_names)
+                        grouped = min(original=s_table,grouped=grouped,target_column=target_column.strip(),column_names=column_names)
                         return_cols.append(grouped.column_names.index('agg_min_' + target_column.strip().replace(' ', '_')))
 
 
@@ -277,7 +292,7 @@ class Table:
 
                         target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
 
-                        grouped = count(original=self,grouped=grouped,target_column=target_column.strip(),column_names=column_names)
+                        grouped = count(original=s_table,grouped=grouped,target_column=target_column.strip(),column_names=column_names)
                         return_cols.append(grouped.column_names.index('agg_count_' + target_column.strip().replace(' ', '_')))
 
 
@@ -285,7 +300,7 @@ class Table:
 
                         target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
 
-                        grouped = sum(original=self,grouped=grouped,target_column=target_column.strip(),column_names=column_names)
+                        grouped = sum(original=s_table,grouped=grouped,target_column=target_column.strip(),column_names=column_names)
                         return_cols.append(grouped.column_names.index('agg_sum_' + target_column.strip().replace(' ', '_')))
 
 
@@ -293,7 +308,7 @@ class Table:
 
                         target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
 
-                        grouped = max(original=self,grouped=grouped,target_column=target_column.strip(),column_names=column_names)
+                        grouped = max(original=s_table,grouped=grouped,target_column=target_column.strip(),column_names=column_names)
                         return_cols.append(grouped.column_names.index('agg_max_' + target_column.strip().replace(' ', '_')))
 
 
@@ -301,7 +316,7 @@ class Table:
 
                         target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
 
-                        grouped = avg(original=self,grouped=grouped,target_column=target_column.strip(),column_names=column_names)
+                        grouped = avg(original=s_table,grouped=grouped,target_column=target_column.strip(),column_names=column_names)
                         return_cols.append(grouped.column_names.index('agg_avg_' + target_column.strip().replace(' ', '_')))
 
 
@@ -316,22 +331,49 @@ class Table:
             if(having is not None):
 
                 '''
-                
+                The format of having clause is:
+                'column[<,<=,==,>=,>]value' or
+                'aggregate function (column)[<,<=,==,>=,>]value'
+
+                if the left side is a column, the procedure is the same with WHERE.
+
+                If the left side is an agg function:
+
+                    check if the agg function with the given arguement is already in the
+                    'grouped' table.
+
+                    if yes then, it just needs to examine the condition with the
+                    cooresponding column
+
+                    if no, call the cooresponding function to append a new column to the
+                    'grouped' table and then check the condition with that column
+
+                    The newly added column will not be displayed since it is not in the
+                    'retrun_cols' list
                 
                 '''
 
                 if(having.startswith('max ')):
+                    # get the table in the parentheisis
                     table_in_agg = having.strip()[having.strip().find('(')+1:having.strip().find(')')]
                     table_in_agg = table_in_agg.strip()
 
-                    if(('agg_max_'+table_in_agg) in grouped.column_names):
+                    # if the cooresponding column is already in the 'grouped' table
+                    if(('agg_max_'+table_in_agg.replace(' ', '_')) in grouped.column_names):
+                        # remove the "agg_function ( column name ) " from the condition
+                        # and replace it with the name of the cooresponding column (agg_max_[column_name])
                         having = having[(having.index(')')+1):]
-                        having = 'agg_max_'+table_in_agg + having
+                        having = 'agg_max_'+table_in_agg.replace(' ', '_') + having
 
                     else:
+                        # run the cooresponding function to add the new column
                         grouped = max(original=self,grouped=grouped,target_column=table_in_agg.strip(),column_names=column_names)
+                        # remove the "agg_function ( column name ) " from the condition
                         having = having[(having.index(')')+1):]
-                        having = 'agg_max_'+table_in_agg + having
+                        # and replace it with the name of the cooresponding column (agg_max_[column_name])
+                        having = 'agg_max_'+table_in_agg.replace(' ', '_') + having
+
+                # the rest agg function cases have the same procedure
 
                 if(having.startswith('min ')):
                     table_in_agg = having.strip()[having.strip().find('(')+1:having.strip().find(')')]
@@ -359,8 +401,6 @@ class Table:
                         having = having[(having.index(')')+1):]
                         having = 'agg_count_'+table_in_agg.replace(' ', '_') + having
 
-
-
                 if(having.startswith('sum ')):
                     table_in_agg = having.strip()[having.strip().find('(')+1:having.strip().find(')')]
                     table_in_agg = table_in_agg.strip()
@@ -373,8 +413,6 @@ class Table:
                         grouped = sum(original=self,grouped=grouped,target_column=table_in_agg.strip(),column_names=column_names)
                         having = having[(having.index(')')+1):]
                         having = 'agg_sum_'+table_in_agg.replace(' ', '_') + having
-
-
 
                 if(having.startswith('avg ')):
                     table_in_agg = having.strip()[having.strip().find('(')+1:having.strip().find(')')]
@@ -390,7 +428,7 @@ class Table:
                         having = 'agg_avg_'+table_in_agg.replace(' ', '_') + having
 
 
-                #
+                # do the same as WHERE only now with the string 'having'
                 column_name, operator, value = grouped._parse_condition(having)
                 column = grouped.column_by_name(column_name)
                 rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
@@ -432,7 +470,6 @@ class Table:
 
             # if needed, keep only top k rows
             return_table.data = return_table.data[:int(top_k)] if isinstance(top_k,str) else return_table.data
-
 
 
             return return_table
@@ -875,7 +912,20 @@ class Table:
 # The following are the aggregate functions
 
 def getTuple(original,column_names,index):
+    '''
+    Args:
 
+    original: Table object. 
+    column_names: list.
+    index: int.
+
+    Returns:
+
+    a tuple that contains the data of a single row of Table 'original'.
+    The row's possision is indicated by the 'index'.
+    The tuple contains only the columns whos names are specified in the list 'column_names'
+
+    '''
     tup = ()
 
     for col in column_names:
@@ -887,15 +937,16 @@ def max(original,grouped,target_column,column_names):
     '''
     Arguements:
 
-    -> original: this is a reference to the original table, meaning the table returnedd by FROM .. WHERE -
+    -> original: Table object. this is a reference to the original table, meaning the table returnedd by FROM .. WHERE -
     containing all the columns and rows.
-    -> grouped: this is the table returned from GROUP BY and modified by the aggregate functions.
+    -> grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
     It contains the columns of GROUP BY clause as well as extra columns from aggregate functions
     that have already been applied
-    -> target_column: this is the string inside the sql statement of the aggregate function, it
+    -> target_column: string. this is the string inside the sql statement of the aggregate function, it
     basically contains the name of the target column and/or the 'distinct' statement.
-    -> column_names: this is a list containing all the column names of the columns that make up
+    -> column_names: list. this is a list containing all the column names of the columns that make up
     the groups, meaning the columns in GROUP BY clause.
+
 
 
     Returns:
@@ -905,38 +956,85 @@ def max(original,grouped,target_column,column_names):
 
     Procedure:
 
+    First check if the string target_column contains the keyword 'distinct'. If yes just ignore
+    it and take the second word which is the column inside the agg function's parenthesis.
+    (distinct doesnt make a difference in min/max agg functions when they are used with group by)
     
+    The function sorts the 'original' table object on the columns specified in the group by clause.
+    These columns are specified in the 'column_names' list.
+
     
+
+    If the target column (column inside max's parenthesis) is NOT one of
+    the 'column_names' (columns specified in the group by clause)
+    the table 'original' is sorted with it as well.
+
+    The sorting is done by the order_by function
+
+    Let column_names be : column_names = ['column1', 'column2']
+    and target column : 'column3'
+
+    we essentialy sort by calling: ORDER BY column1, column1, column3 desc
+
+    This way, the 'original' table is sorted based on the groups and then with the target column.
+
+    This means that the fist element in 'original' has the in 'column3' maximum for its class.
+    The maximum element is appended in an array
+
+    Now need to loop thought the 'original' table and do:
+
+        if the columns 'column1', 'column2' (columns of groups) of the previous element
+        are the same with the current element, this means that we are in the same group. So 
+
+        else if the columns 'column1', 'column2' are different, this means that we have reached
+        a new group, so the current element contains the maximum element of the new group
+        in 'column3'
+
+        The maximum element is appended in an array
+
+    When the loop ends we have all the maximum elements of each list in the array mentioned
+
+    We know that the order of the maximum elements mathes the order of the groups in the
+    Table 'grouped' since it is also a sort table (with the same order), so we just need
+    to create a copy of the Table grouped that contains a new row: the maximum elements that were
+    found
+
     '''
 
     # check for 'distinct'
+    input_target = target_column.split(' ')
+    input_target_column = input_target[0]
+
+    if(input_target[0]=='distinct'):
+        input_target_column = input_target[1]
 
 
+    # index of the target column (column inside max's parenthesis) in the original table
+    target = original.column_names.index(input_target_column)
 
-    target = original.column_names.index(target_column)
-
+    # orders: list of the column names that will be sorted
     orders = column_names.copy()
 
+    # add the target column if needed
+    if(input_target_column not in grouped.column_names):
 
+        orders.append(input_target_column+" desc")
 
-    if(target_column not in grouped.column_names):
-
-        orders.append(target_column+" desc")
-
+    # sort the table object by using order_by function
     original.order_by(orders)
 
     prev = original.data[0]
 
-    prev = getTuple(original,column_names,0)
+    prev = getTuple(original,column_names,0) # take only the columns of the group
 
-
+    # array that will have the maximum of each class
     max = []
     max.append(original.data[0][target])
 
 
     for i in range(len(original.data)):
 
-        if(prev != getTuple(original,column_names,i)):
+        if(prev != getTuple(original,column_names,i)): # compare only the columns of the group
 
             max.append(original.data[i][target])
 
@@ -945,11 +1043,11 @@ def max(original,grouped,target_column,column_names):
 
         elif(prev == getTuple(original,column_names,i) and i == len(original.data)):
             max.append(original.data[i][target])
-            print("found group",prev)
+
 
 
     c_names = grouped.column_names
-    c_names.append("agg_max_" +target_column)
+    c_names.append("agg_max_" +target_column.replace(' ', '_'))
     c_types = grouped.column_types
     c_types.append(original.column_types[target])
     pk = grouped.column_names[0]
@@ -969,15 +1067,16 @@ def min(original,grouped,target_column,column_names):
     '''
     Arguements:
 
-    -> original: this is a reference to the original table, meaning the table returnedd by FROM .. WHERE -
+    -> original: Table object. this is a reference to the original table, meaning the table returnedd by FROM .. WHERE -
     containing all the columns and rows.
-    -> grouped: this is the table returned from GROUP BY and modified by the aggregate functions.
+    -> grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
     It contains the columns of GROUP BY clause as well as extra columns from aggregate functions
     that have already been applied
-    -> target_column: this is the string inside the sql statement of the aggregate function, it
+    -> target_column: string. this is the string inside the sql statement of the aggregate function, it
     basically contains the name of the target column and/or the 'distinct' statement.
-    -> column_names: this is a list containing all the column names of the columns that make up
+    -> column_names: list. this is a list containing all the column names of the columns that make up
     the groups, meaning the columns in GROUP BY clause.
+
 
 
     Returns:
@@ -987,8 +1086,49 @@ def min(original,grouped,target_column,column_names):
 
     Procedure:
 
+    First check if the string target_column contains the keyword 'distinct'. If yes just ignore
+    it and take the second word which is the column inside the agg function's parenthesis.
+    (distinct doesnt make a difference in min/max agg functions when they are used with group by)
     
+    The function sorts the 'original' table object on the columns specified in the group by clause.
+    These columns are specified in the 'column_names' list.
+
     
+
+    If the target column (column inside max's parenthesis) is NOT one of
+    the 'column_names' (columns specified in the group by clause)
+    the table 'original' is sorted with it as well.
+
+    The sorting is done by the order_by function
+
+    Let column_names be : column_names = ['column1', 'column2']
+    and target column : 'column3'
+
+    we essentialy sort by calling: ORDER BY column1, column1, column3 (all asc)
+
+    This way, the 'original' table is sorted based on the groups and then with the target column.
+
+    This means that the fist element in 'original' has the in 'column3' minimum for its class.
+    The minimum element is appended in an array
+
+    Now need to loop thought the 'original' table and do:
+
+        if the columns 'column1', 'column2' (columns of groups) of the previous element
+        are the same with the current element, this means that we are in the same group. So 
+
+        else if the columns 'column1', 'column2' are different, this means that we have reached
+        a new group, so the current element contains the minimum element of the new group
+        in 'column3'
+
+        The minimum element is appended in an array
+
+    When the loop ends we have all the minimum elements of each list in the array mentioned
+
+    We know that the order of the minimum elements mathes the order of the groups in the
+    Table 'grouped' since it is also a sort table (with the same order), so we just need
+    to create a copy of the Table grouped that contains a new row: the minimum elements that were
+    found
+
     '''
 
     # check for 'distinct'
@@ -998,12 +1138,13 @@ def min(original,grouped,target_column,column_names):
     if(input_target[0]=='distinct'):
         input_target_column = input_target[1]
 
+    # add the target column if needed
     target = original.column_names.index(input_target_column)
 
     # orders: list of the column names that will be sorted
     orders = column_names.copy()
 
-    # if the target column is not
+    
     if(input_target_column not in grouped.column_names):
         orders.append(input_target_column)
 
