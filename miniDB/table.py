@@ -216,8 +216,28 @@ class Table:
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
+        SELECT DISTINCT
+        distinct = False
+        # check if distinct is in return_columns (it means is after select)
+        if 'distinct' in return_columns:
+            distinct = True 
+            # take columns (remove distinct from return columns)
+            return_columns_tmp = return_columns.split('distinct')[1].strip().split(',')
+            # select everything 
+            if '*' in return_columns_tmp:
+                return_cols = [i for i in range (len(self.column_names))]
+           # select specified columns
+               else:
+                return_cols = [self.column_names.index(col.strip()) for col in return_columns_tmp]
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+            # return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+            
+            # if * return all columns else find the column indexes for the columns specified
+            if return_columns == '*':
+                return_cols = [ifor i in range (len(self.column_names))]
+                else:
+                    return_col = [self.column_names.index(col.strip()) for col in return columns.split(',')]
 
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
