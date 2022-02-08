@@ -84,6 +84,7 @@ def create_query_plan(query, keywords, action):
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
         dic['not_null_columns'] = '' #initializing
+        dic['unique_columns']='' #initializing
         
         count = -1 #couner to check if we are in the first object
 
@@ -91,16 +92,43 @@ def create_query_plan(query, keywords, action):
         #we check if a word and its next word are equal to "not null" and we add the val[0] to not_null_columns
         for val in arglist:
             count+=1
+            loop_counter=0
             if len(val)>=3:
                 word = 2
                 for word in range(len(val)-1):
                     if val[word] == "not" and val[word+1] == "null":
                         if count == 0:
                             dic['not_null_columns'] += (val[0])
-                        else: dic['not_null_columns'] += ','+(val[0])
+                        else:dic['not_null_columns'] += ','+(val[0])
+                        loop_counter+=1
+                if loop_counter==0:
+                    if count == 0:
+                        dic['not_null_columns'] += 'None'
+                    else:
+                        dic['not_null_columns'] += ',None'
             else:dic['not_null_columns'] += ',None'
 
-
+        ##loop counter needed to debug len(val)>=3 cause some values didnt register
+        ##just like not_null_columns above,but here we have one word called 'unique'
+        unique_counter=-1
+        for val in arglist:
+            unique_counter+=1
+            loop_counter=0
+            if len(val)>=3:
+                word = 2
+                for word in range(len(val)):
+                    if val[word] == "unique":
+                        if unique_counter == 0:
+                            dic['unique_columns'] += (val[0])
+                        else: dic['unique_columns'] += ','+(val[0])
+                        loop_counter += 1
+                if loop_counter==0:
+                    if unique_counter == 0:
+                        dic['unique_columns'] += 'None'
+                    else:
+                        dic['unique_columns'] += ',None'
+            else:dic['unique_columns'] += ',None'
+        ##
 
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')

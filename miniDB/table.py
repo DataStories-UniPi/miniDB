@@ -36,7 +36,8 @@ class Table:
         - a table name (string)
         - column names (list of strings)
         - column types (list of functions like str/int etc)
-        - not null colymns (list of table names which are not null)
+        - not null columns (list of table names which are not null)
+        - unique columns (list of table names which have unique values)
         - primary (name of the primary key column)
 
     OR
@@ -48,7 +49,8 @@ class Table:
     '''
 
     not_null_columns = [] #initializing the list
-    def __init__(self, name=None, column_names=None, column_types=None, not_null_columns=None, primary_key=None, load=None):
+    unique_columns = [] #initiliazing unique columns list
+    def __init__(self, name=None, column_names=None, column_types=None, not_null_columns=None,unique_columns=None,  primary_key=None, load=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -63,7 +65,6 @@ class Table:
         elif (name is not None) and (column_names is not None) and (column_types is not None):
 
             self._name = name
-            print('name', self._name)
 
             if len(column_names)!=len(column_types):
                 raise ValueError('Need same number of column names and types.')
@@ -83,6 +84,7 @@ class Table:
             self.column_types = [eval(ct) if not isinstance(ct, type) else ct for ct in column_types]
             self.data = [] # data is a list of lists, a list of rows that is.
             self.not_null_columns = not_null_columns
+            self.unique_columns = unique_columns
 
             # if primary key is set, keep its index as an attribute
             if primary_key is not None:
@@ -148,6 +150,17 @@ class Table:
             if len(self.not_null_columns) != 0 and self.not_null_columns[i] != 'None' and row[i] == '':
                 print(f'## ERROR -> Column {self.column_names[i]} is a not null column.')
                 raise ValueError(f'## ERROR -> Column {self.column_names[i]} is a not null column.')
+
+            ##
+            #we look hwether the table is unique or not
+            if len(self.unique_columns) != 0 and self.unique_columns[i] != 'None':
+                #loop to check the values of the table
+                for val in self.column_by_name(self.column_names[i]):
+                    #compare them with the insert
+                    if row[i] == val:
+                        print(f'## ERROR -> Column {self.column_names[i]} is a unique column.')
+                        raise ValueError(f'## ERROR -> Column {self.column_names[i]} is a unique column.')
+            ##
             # except:
             #     raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
 
