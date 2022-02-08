@@ -130,6 +130,7 @@ def create_query_plan(query, keywords, action):
     if action=='insert into':
         if dic['values'][0] == '(' and dic['values'][-1] == ')':
             dic['values'] = dic['values'][1:-1]
+            print(dic)
         else:
             raise ValueError('Your parens are not right m8')
 

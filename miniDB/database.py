@@ -271,7 +271,16 @@ class Database:
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             lock_load_save: boolean. If False, user needs to load, lock and save the states of the database (CAUTION). Useful for bulk-loading.
         '''
+        # This contains all the row values that are being inserted
         row = row_str.strip().split(',')
+
+        #x = self.tables.column_names
+        #
+        # Here i will call the function _check_meta_parent_child_tables
+        # to see if we insert something on a parent or child table
+        #
+        self._check_meta_parent_child_tables(row,table_name,"insert")
+
         self.load_database()
         # fetch the insert_stack. For more info on the insert_stack
         # check the insert_stack meta table
@@ -597,11 +606,9 @@ class Database:
             4) The name of the child column (the one that is referencing the parent column)
         '''
 
-        print("Yeap...something is being referenced for sure!")
-
         self.tables['meta_parent_child_tables']._insert([parent_table, parent_column, child_table, child_column])
 
-    def _check_meta_parent_child_tables(self):
+    def _check_meta_parent_child_tables(self,row_values,table_name,function_executed):
         '''
         This specific function will be called every time in 4  occasions:
             1) When i insert a new row in a child table
@@ -615,7 +622,105 @@ class Database:
         I that is true, then another function will be called (the "" function)
         that will take care of the referential constraints
         '''
-        print("Checking the referential constraints \n Please wait..")
+        # This contains all the data from the current table in a 2D list
+        data_in_table =  self.tables[table_name].data
+
+        # Works perfectly!!!!!!!!!!
+        # I have to find how to use it
+        # It returns a list of list with the data in each row
+        # print(self.tables[table_name].data)
+        for table in self.tables.values():
+
+            if table._name[:4]=='meta': #skip meta tables
+                continue
+            if table_name in self.tables['meta_parent_child_tables'].column_by_name('parent_table'):
+                #print(table_name,"is in parent_table column")
+                #
+                # In this part of the function i will take care of the executed query
+                # when it belongs in the column "parent_table" in the table "meta_parent_child_tables"
+                #
+
+                if function_executed == "update":
+                    print("doing some stuff about update")
+
+            elif table_name in self.tables['meta_parent_child_tables'].column_by_name('child_table'):
+                #
+                # In this part of the function i will take care of the executed query
+                # when it belongs in the column "child_table" in the table "meta_parent_child_tables"
+                #
+
+                if function_executed == "insert":
+                    #
+                    # When we insert a new row in a child column, then we should
+                    # check if this column has always a value that already exists
+                    # in the parent column
+                    #
+
+                    #
+                    # a list that contains the data of the meta_parent_child_tables table
+                    # in 2D list
+                    #
+                    parent_child_data = self.tables['meta_parent_child_tables'].data
+
+                    # a list that will contain all the child column names of the database
+                    child_columns_list = []
+
+                    # a list that will contain all the parent column names of the database
+                    parent_columns_list = []
+
+                    # a list that contains the column names of the current table
+                    current_table_columns = self.tables[table_name].column_names
+
+                    # a list that will contain all the child table names of the database
+                    child_tables_list = []
+
+                    # a list that will contain all the parent table names of the database
+                    parent_tables_list = []
+
+                    #
+                    # Putting into a list all the names of the parent tables and columns, and
+                    # also putting into a list all the names of the child yables and columns
+                    #
+                    for i in range(len(parent_child_data)):
+                        for j in range(len(parent_child_data[i])):
+                            if j == 0:
+                                parent_tables_list.append(parent_child_data[i][j])
+                            if j == 1:
+                                parent_columns_list.append(parent_child_data[i][j])
+                            if j == 2:
+                                child_tables_list.append(parent_child_data[i][j])
+                            if j == 3:
+                                child_columns_list.append(parent_child_data[i][j])
+
+
+                    for i in range(len(current_table_columns)):
+                        # If i find a column from the current table, in the list
+                        # of child columns
+                        if current_table_columns[i] in child_columns_list:
+                            # I will try to see if this value also exist in the
+                            # referenced column of the referenced table
+                            value_to_be_checked = row_values[i]
+                            referenced_column = parent_columns_list[child_columns_list.index(current_table_columns[i])]
+                            referenced_table = parent_tables_list[child_columns_list.index(current_table_columns[i])]
+                            values_in_referenced_column = self.tables[referenced_table].column_by_name(referenced_column)
+
+                            # Trying to find if the new inserted value exists in the referenced table
+                            found_it = False
+                            for v in values_in_referenced_column:
+                                if str(value_to_be_checked) == str(v):
+                                    found_it = True
+
+                            # Error message for when the referencial constraints are not met
+                            if found_it == False:
+                                raise Exception("Eror!!! \nOne of the values you try to insert, do not mach the referenced column value")
+                                
+
+
+
+            else:
+                print("This table does not exist in meta_parent_child_tables")
+            break
+
 
 
 

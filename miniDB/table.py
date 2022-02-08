@@ -39,7 +39,7 @@ class Table:
 
         # if name, columns_names and column types are not none
         elif (name is not None) and (column_names is not None) and (column_types is not None):
-            
+
             self._name = name
 
             if len(column_names)!=len(column_types):
@@ -438,3 +438,10 @@ class Table:
         f.close()
 
         self.__dict__.update(tmp_dict)
+
+    def _insert_in_child_table(self):
+        '''
+        Here is a function that will do all thw work about referential constraints
+        when a row is being inserted in a child_table
+        '''
+        
