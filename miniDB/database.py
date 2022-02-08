@@ -431,6 +431,14 @@ class Database:
             else:
                 res.show()
 
+    def inlj(self, left_table, right_table):
+        #Index Nested Loop Join
+        return
+
+    def smj(self, left_table, right_table):
+        #Sort-Merge Join
+        return
+
     def lock_table(self, table_name, mode='x'):
         '''
         Locks the specified table using the exclusive lock (X).
