@@ -32,6 +32,7 @@ TODO:
 
 class Table:
     not_nulls = {}
+    uniques = {}
     '''
     Table object represents a table inside a database
 

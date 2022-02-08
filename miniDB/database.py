@@ -108,7 +108,7 @@ class Database:
             column_names: list. Names of columns.
             column_types: list. Types of columns.
             not_nulls: list. Names of not null values columns
-            uniques: List.Names of unique values columns
+            uniques: List. Names of unique values columns
             primary_key: string. The primary key (if it exists).
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
