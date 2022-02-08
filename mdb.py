@@ -106,6 +106,11 @@ def create_query_plan(query, keywords, action):
             dic['force'] = False
 
 
+    if action == 'create trigger':
+        x = dic['create trigger'].split()
+        dic['create trigger'] = x
+        dic['on']=dic['on'][0:-8]
+        dic['execute procedure'] = dic['execute procedure'].split('.')
 
     return dic
 
@@ -165,7 +170,8 @@ def interpret(query):
                      'drop index': ['drop index'],
                      'start transaction': ['start transaction'],
                      'commit':['commit'],
-                     'rollback':['rollback']
+                     'rollback':['rollback'],
+                     'create trigger':['create trigger','on','execute procedure']
                      }
 
     if query[-1]!=';':
