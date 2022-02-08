@@ -97,7 +97,7 @@ class Database:
         self._update_meta_insert_stack()
 
 
-    def create_table(self, name, column_names, column_types, primary_key=None, load=None):
+    def create_table(self, name, column_names, column_types, primary_keys=None, load=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
 
@@ -105,11 +105,11 @@ class Database:
             name: string. Name of table.
             column_names: list. Names of columns.
             column_types: list. Types of columns.
-            primary_key: string. The primary key (if it exists).
+            primary_keys: string. The primary key(s) (if it exists).
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
         # print('here -> ', column_names.split(','))
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)})
+        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_keys=primary_keys.split(','), load=load)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
@@ -142,14 +142,14 @@ class Database:
         self.save_database()
 
 
-    def import_table(self, table_name, filename, column_types=None, primary_key=None):
+    def import_table(self, table_name, filename, column_types=None, primary_keys=None):
         '''
         Creates table from CSV file.
 
         Args:
             filename: string. CSV filename. If not specified, filename's name will be used.
             column_types: list. Types of columns. If not specified, all will be set to type str.
-            primary_key: string. The primary key (if it exists).
+            primary_keys: string. The primary key(s) (if it exists).
         '''
         file = open(filename, 'r')
 
@@ -159,7 +159,7 @@ class Database:
                 colnames = line.strip('\n')
                 if column_types is None:
                     column_types = ",".join(['str' for _ in colnames.split(',')])
-                self.create_table(name=table_name, column_names=colnames, column_types=column_types, primary_key=primary_key)
+                self.create_table(name=table_name, column_names=colnames, column_types=column_types, primary_keys=primary_keys)
                 lock_ownership = self.lock_table(table_name, mode='x')
                 first_line = False
                 continue
