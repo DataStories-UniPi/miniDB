@@ -1,0 +1,13 @@
+create table customers (customer_id str primary key, name str, birthyear int);
+insert into customers values (45678,kennedy,2004);
+insert into customers values (19991,churchill,2008);
+insert into customers values (98988,garfield,2008);
+insert into customers values (76543,reagan,2004);
+insert into customers values (44553,churchill,2013);
+insert into customers values (98765,garfield,2004);
+insert into customers values (23121,churchill,2010);
+insert into customers values (00128,abraham,2004);
+insert into customers values (54321,kennedy,2018);
+insert into customers values (76653,reagan,2013);
+insert into customers values (55739,kennedy,2021);
+insert into customers values (12345,churchill,2004);

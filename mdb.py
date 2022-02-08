@@ -65,7 +65,6 @@ def create_query_plan(query, keywords, action):
 
     if action=='select':
         dic = evaluate_from_clause(dic)
-        #print(dic)
 
         # if distinct was given, the column names where given to the 'distinct' key
         # so they need to be copied to the 'select' key and the 'distinct' key becomes boolean
@@ -77,12 +76,14 @@ def create_query_plan(query, keywords, action):
 
         if dic['group by'] is not None:
             dic['from'] = dic['from'].removesuffix(' group')
-
+        #
             if dic['where'] is not None:
                 dic['where'] = dic['where'].removesuffix( 'group')
 
         if dic['order by'] is not None:
             dic['from'] = dic['from'].removesuffix(' order')
+            
+            #
 
             if dic['group by'] is not None:
                 dic['group by'] = dic['group by'].removesuffix(' order')
