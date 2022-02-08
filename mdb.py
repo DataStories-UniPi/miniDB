@@ -9,8 +9,8 @@ import shutil
 from numpy import insert
 sys.path.append('miniDB')
 
-from miniDB.database import Database
-from miniDB.table import Table
+from database import Database
+from table import Table
 # art font is "big"
 art = '''
              _         _  _____   ____  
