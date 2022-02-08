@@ -232,7 +232,7 @@ class Database:
         self._update()
         self.save_database()
 
-    def insert_into(self, table_name, row_str):
+    def insert_into(self, table_name, row_str, table, obj, issues):
         '''
         Inserts data to given table.
         Args:
@@ -240,23 +240,52 @@ class Database:
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             lock_load_save: boolean. If False, user needs to load, lock and save the states of the database (CAUTION). Useful for bulk-loading.
         '''
-        row = row_str.strip().split(',')
-        self.load_database()
-        # fetch the insert_stack. For more info on the insert_stack
-        # check the insert_stack meta table
-        lock_ownership = self.lock_table(table_name, mode='x')
-        insert_stack = self._get_insert_stack_for_table(table_name)
-        try:
-            self.tables[table_name]._insert(row, insert_stack)
-        except Exception as e:
-            logging.info(e)
-            logging.info('ABORTED')
-        self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
+        # Insert into Table select
+        # if row_str is None and table, obj have values do
+        if row_str is None and table is not None and obj is not None:
+            # call select to load data as select query
+            table = self.select(table, obj, issues)
+            # emfanise data
+            table.show()
+            self.load_database()
+            #  sunexizei kanonika san kanoniko insert
+            lock_ownership = self.lock_table(table_name, mode='x')
+            insert_stack = self._get_insert_stack_for_table(table_name)
+            # for each row in selected data insert into table
+            for row in table.data:
+                try:
+                    self.tables[table_name]._insert(row, insert_stack)
+                except Exception as e:
+                    logging.info(e)
+                    logging.info('ABORTED')
+                self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
 
-        if lock_ownership:
-            self.unlock_table(table_name)
-        self._update()
-        self.save_database()
+            if lock_ownership:
+                self.unlock_table(table_name)
+
+            self._update()
+            self.save_database()
+
+        #klasikh/vasikh insert
+        else:
+            row = row_str.strip().split(',')
+            self.load_database()
+           
+            lock_ownership = self.lock_table(table_name, mode='x')
+            insert_stack = self._get_insert_stack_for_table(table_name)
+            try:
+                self.tables[table_name]._insert(row, insert_stack)
+            except Exception as e:
+                logging.info(e)
+                logging.info('ABORTED')
+            self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
+
+            if lock_ownership:
+                self.unlock_table(table_name)
+
+            self._update()
+            self.save_database()
+        
 
 
     def update_table(self, table_name, set_args, condition):
@@ -330,7 +359,7 @@ class Database:
             return table_name._select_where(columns, condition, order_by, desc, top_k)
 
         if condition is not None:
-            condition_column = split_condition(condition)[0]
+           condition_column=split_condition(condition)[0]
         else:
             condition_column = ''
 

@@ -100,6 +100,7 @@ class Table:
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             insert_stack: list. The insert stack (empty by default).
         '''
+        
         if len(row)!=len(self.column_names):
             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
 
@@ -163,6 +164,7 @@ class Table:
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
+        ##me to pou eisaxthei epomen hentol htermatizetai to temp view ki diagrafetai ( mono to temp view)/allios termatizetai me thn entolh drop
         column_name, operator, value = self._parse_condition(condition)
 
         indexes_to_del = []
@@ -202,12 +204,27 @@ class Table:
             desc: boolean. If True, order_by will return results in descending order (False by default).
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
+        # Select DISTINCT/distinct
 
-        # if * return all columns, else find the column indexes for the columns specified
-        if return_columns == '*':
-            return_cols = [i for i in range(len(self.column_names))]
+        distinct = False
+        # des an uparxei to distinct sto return_columns
+        if 'distinct' in return_columns:
+            distinct = True
+            # pare columns (remove distinct from return columns)
+            return_columns_tmp = return_columns.split('distinct')[1].strip().split(',')
+            # select everything
+            if '*' in return_columns_tmp:
+                return_cols = [i for i in range(len(self.column_names))]
+            # select specified columns
+            else:
+                return_cols = [self.column_names.index(col.strip()) for col in return_columns_tmp]
         else:
-            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+            # return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+            # an exoume * spistrefei ola ta columns allios mono oti egine specified
+                if return_columns == '*':
+                    return_cols = [i for i in range(len(self.column_names))]
+                else:
+                    return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
@@ -215,6 +232,7 @@ class Table:
             column_name, operator, value = self._parse_condition(condition)
             column = self.column_by_name(column_name)
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -231,8 +249,26 @@ class Table:
         s_table = Table(load=dict) 
         if order_by:
             s_table.order_by(order_by, desc)
+        # Select DISTINCT
+        if distinct:
+            tmp_list = []
+            tmp_tbl = s_table
+            index = 0
+            # gia ta stoixeia tou pinaka cheackare gia duplicate data ki agnohseta  wste na exoume onwts distinct ki oxi epanalamvanomena
+            for i in range(len(s_table.data)):
+                if s_table.data[index] not in tmp_list:
+                    tmp_list.append(s_table.data[index])
+                    index += 1
+                else:
+                    tmp_tbl.data.pop(index)
+                    
+                s_table = tmp_tbl
 
-        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
+        # Basic select
+        else:
+            s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
+
+        
 
         return s_table
 

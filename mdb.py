@@ -92,12 +92,27 @@ def create_query_plan(query, keywords, action):
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
+    #
+    #efoson thelei temp view tha prepei to value na ein distinct wste na to vriskei, allios na emfanizei tis grammes me omoia data,alliws sunexise.
+    #if action=='create view':
+        #select sugkekrimena stoixeia
+        #kai emfanise
+    #if drop view
+        #delete temp view
+    
+        
+    
+   
     
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
     if action=='insert into':
-        if dic['values'][0] == '(' and dic['values'][-1] == ')':
+        # eisagoume ston epilegmeno pinaka
+        if dic['select'] is not None:  # an h select propuarxei
+            dic = evaluate_from_clause(dic)  #apla emfanise
+        #allios sunexise
+        elif dic['values'][0] == '(' and dic['values'][-1] == ')':
             dic['values'] = dic['values'][1:-1]
         else:
             raise ValueError('Your parens are not right m8')
@@ -150,20 +165,23 @@ def evaluate_from_clause(dic):
 def interpret(query):
     '''
     Interpret the query.
+    Added create temp view and dropp temp view
     '''
     kw_per_action = {'create table': ['create table'],
                      'drop table': ['drop table'],
                      'cast': ['cast', 'from', 'to'],
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
-                     'insert into': ['insert into', 'values'],
+                     'insert into': ['insert into', 'values','select','from','where'],
                      'select': ['select', 'from', 'where', 'order by', 'top'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
                      'create index': ['create index', 'on', 'using'],
-                     'drop index': ['drop index']
+                     'drop index': ['drop index'],
+                     'create view':['çreate view'],
+                     'drop view':['drop view']
                      }
 
     if query[-1]!=';':
