@@ -259,10 +259,8 @@ class Table:
             for e in all_in['None']:
                 temporary.insert(e[0],self.data[value[0]][e[1]])
             for z in all_in['*']:
-                ind=z[0]
                 for column in z[1]:
-                    temporary.insert(ind,self.data[value[0]][column])
-                    ind+=1
+                    temporary.insert(column,self.data[value[0]][column])
 
 
             results.append(temporary)
@@ -467,10 +465,10 @@ class Table:
 
 
 
-        #We need all columns for aggregate funcion
+        
 
 
-
+	#We need all columns for aggregate funcion
         all_columns=[i for i in range(len(self.column_names))]
 
         all_in_on = {'sum': [], 'count': [], 'avg': [], 'max': [], 'min': [], 'None': [], '*': []}#Xrhsimeyei gia na kseroume me poia katatatksi egine to erwthma
