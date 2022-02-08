@@ -99,6 +99,24 @@ class Table:
         self.column_types[column_idx] = cast_type
         # self._update()
 
+    def _handle_constraints(self, row, i):
+        '''
+        Handles column constraints (not null, unique)
+
+        Args:
+            row: list. A list of values to be inserted (will be casted to a predifined type automatically).
+            i: Points to row value
+        '''
+        if self.column_constraints is not None:
+            for constraints in self.column_constraints[i]:
+                if "not_null" in constraints and not row[i]:
+                    print("You can't add a null value inside the not_null column")
+                    raise ValueError("Adding a null value into a not_null column ")
+
+                if "unique" in constraints:
+                    if str(row[i]) in (str(value) for value in self.column_by_name(self.column_names[i])):
+                        print(f"The value {row[i]} cannot be added in column {self.column_names[i]} with unique contraint, because it already exists")
+                        raise ValueError("Adding a duplicate value in the unique column")
 
     def _insert(self, row, insert_stack=[]):
         '''
@@ -116,12 +134,8 @@ class Table:
             # try:
             row[i] = self.column_types[i](row[i])
 
-            if self.column_constraints is not None:
-                for constraints in self.column_constraints[i]:
-                    if "not_null" in constraints and not row[i]:
-                        print("You can't add a null value inside the not_null column")
-                        raise ValueError("Adding a null value into a not_null column ")
-            
+            self._handle_constraints(row, i)
+
             # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
             if i == self.pk_idx and row[i] in self.column_by_name(self.pk):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
