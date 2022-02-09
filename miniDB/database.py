@@ -748,13 +748,13 @@ class Database:
             self.save_state=False
             self.load_database()
         else:
-            raise ValueError("Transaction not started, nothng to rollback to")
+            raise ValueError("Transaction not started, nothing to rollback to")
     def commit(self,action):
         if self.save_state:
             self.save_state=False
             self.save_database()
         else:
-            raise ValueError("Transaction not started, nothng to rollback to")
+            raise ValueError("Transaction not started, nothing to rollback to")
     def create_trigger(self,params,table_name,function):
         self.load_database
         error= None
