@@ -253,6 +253,7 @@ class Database:
         lock_ownership = self.lock_table(table_name, mode='x')
         insert_stack = self._get_insert_stack_for_table(table_name)
         try:
+            print(row)
             self.tables[table_name]._insert(row, insert_stack)
         except Exception as e:
             logging.info(e)
@@ -264,14 +265,22 @@ class Database:
         self._update()
         self.save_database()
 
-    def insert_into_select(self, home_table, target_cols, target_table, condition, home_cols):
+    def insert_into_select(self, home_table_name, target_cols, target_table_name, condition, home_cols):
 
-        # home_table = The table where the data will be inserted
+        # home_table_name = The table's name where the data will be inserted
         # home_cols = The cols where the data will be inserted. The columns that are not filled with data, will contain NULL
-        # target_table = The table from where the data will be fethed
+        # target_table_name = The table's name from where the data will be fethed
         # target_cols = The table from where the data will be fethed.
 
-        target_table = self.select(target_cols, target_table, condition, None, None)
+        target_table = self.select(target_cols, target_table_name, condition, None, None)
+        home_table = self.select(home_cols, home_table_name, None, None, None)
+        
+        if len(target_table.column_names) > len(home_table.column_names):
+            raise ValueError("Number of home cols must be less or equal than the number of target cols")
+
+        for row in target_table.data:
+            insert_stack = self._get_insert_stack_for_table(home_table)
+            home_table._insert(row, insert_stack)
 
     def update_table(self, table_name, set_args, condition):
         '''

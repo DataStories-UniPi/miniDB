@@ -108,12 +108,13 @@ def create_query_plan(query, keywords, action):
     if action=='insert into select':
         if(dic['from'] is None):
             raise ValueError('HEY, EMPTY FROM BRO')
-        args = dic['insert into'][dic['insert into'].index('('):dic['insert into'].index(')')+1]
-        if args is None:
-            print('None args')
-        dic['insert into'] = dic['insert into'].replace(args, "")
-        args = args.replace("( ", "").replace(" )", "").replace(" ", "")
-        dic['home_columns'] = args
+        try:
+            args = dic['insert into'][dic['insert into'].index('('):dic['insert into'].index(')')+1]
+            dic['insert into'] = dic['insert into'].replace(args, "").replace(" ","")
+            args = args.replace("( ", "").replace(" )", "").replace(" ", "")
+            dic['home_columns'] = args
+        except:
+            dic['home_columns'] = '*'
 
         out_cols_num = dic['select'].split(',')
         for x in out_cols_num:
@@ -124,9 +125,6 @@ def create_query_plan(query, keywords, action):
         for x in home_cols_num:
             if x == '':
                 home_cols_num.remove(x)
-
-        if out_cols_num != home_cols_num:
-            raise ValueError('Not the same bro')
     
     if action=='unlock table':
         if dic['force'] is not None:
