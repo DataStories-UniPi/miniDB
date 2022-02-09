@@ -263,8 +263,14 @@ class Database:
         self._update()
         self.save_database()
 
-    def insert_into_select(self, table_name, new_table_name):
-        print('INSERT SELECT MOTHERFUCKERS')
+    def insert_into_select(self, home_table, target_cols, target_table, condition, home_cols):
+
+        # home_table = The table where the data will be inserted
+        # home_cols = The cols where the data will be inserted. The columns that are not filled with data, will contain NULL
+        # target_table = The table from where the data will be fethed
+        # target_cols = The table from where the data will be fethed.
+
+        target_table = self.select(target_cols, target_table, condition, None, None)
 
     def update_table(self, table_name, set_args, condition):
         '''
