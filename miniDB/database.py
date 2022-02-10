@@ -647,7 +647,7 @@ class Database:
         
         if index_type=='hash':
             '''
-            Construch a hash index on a table and save.
+            Construct a hash index on a table and save.
 
             Args:
                 table_name: string. Table name (must be part of database).
@@ -657,9 +657,10 @@ class Database:
 
             # for each record in the primary key of the table, insert its value and index to the hash 
             for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
-                h.update(key,idx)
+                h.insert(key,idx)
             # save the hash
             self._save_index(index_name, h)
+            print(h.__repr__)
         
 
 
