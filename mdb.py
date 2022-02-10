@@ -66,8 +66,6 @@ def create_query_plan(query, keywords, action):
     for i in range(len(kw_in_query)-1):
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
 
-    print(dic)
-
     if action=='select':
         dic = evaluate_from_clause(dic)
         
@@ -83,9 +81,7 @@ def create_query_plan(query, keywords, action):
             dic['desc'] = None
 
     if action=='create table':
-        print(dic)
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
-        print(args)
         dic['create table'] = dic['create table'].removesuffix(args).strip()
         arg_nopk = args.replace('primary key', '')[1:-1]
         arg_nopk = args.replace('not null', 'not_null')[1:-1]    
@@ -112,28 +108,23 @@ def create_query_plan(query, keywords, action):
     if action=='insert into select':
         if(dic['from'] is None):
             raise ValueError('HEY, EMPTY FROM BRO')
-        args = dic['insert into'][dic['insert into'].index('('):dic['insert into'].index(')')+1]
-        dic['insert into'] = dic['insert into'].replace(args, "")
-        args = args.replace("( ", "").replace(" )", "").replace(" ", "")
-        dic['home_columns'] = args
+        try:
+            args = dic['insert into'][dic['insert into'].index('('):dic['insert into'].index(')')+1]
+            dic['insert into'] = dic['insert into'].replace(args, "").replace(" ","")
+            args = args.replace("( ", "").replace(" )", "").replace(" ", "")
+            dic['home_columns'] = args
+        except:
+            dic['home_columns'] = '*'
 
         out_cols_num = dic['select'].split(',')
         for x in out_cols_num:
             if x == '':
                 out_cols_num.remove(x)
-        print(out_cols_num)
 
         home_cols_num = dic['home_columns'].split(',')
         for x in home_cols_num:
             if x == '':
                 home_cols_num.remove(x)
-        print(home_cols_num)
-
-        if out_cols_num != home_cols_num:
-            raise ValueError('Not the same bro')
-        else:
-            print('Nice, they are the same')
-        
     
     if action=='unlock table':
         if dic['force'] is not None:
@@ -210,7 +201,6 @@ def interpret(query):
             action = [k for k, v in kw_per_action.items() if v == ['insert into', 'select', 'from', 'where']][0]
         elif query.startswith(kw):
             action = kw
-
     return create_query_plan(query, kw_per_action[action]+[';'], action)
 
 def execute_dic(dic):
@@ -220,8 +210,12 @@ def execute_dic(dic):
     for key in dic.keys():
         if isinstance(dic[key],dict):
             dic[key] = execute_dic(dic[key])
-    
-    action = list(dic.keys())[0].replace(' ','_')
+
+    if all (k in dic for k in ('insert into','select')):
+        action = 'insert_into_select'
+    else:
+        action = list(dic.keys())[0].replace(' ','_')
+
     return getattr(db, action)(*dic.values())
 
 def interpret_meta(command):
