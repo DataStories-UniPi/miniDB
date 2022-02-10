@@ -98,11 +98,11 @@ def create_query_plan(query, keywords, action):
         # Add column names and types to dictionary
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+
         if 'primary key' in args:
+            # Find the name of the column that is the primary key and add it to dictionary
             arglist = args[1:-1].split(' ')
-            print(arglist)
             dic['primary key'] = arglist[arglist.index('primary')-2]
-            print(dic['primary key'])
         else:
             dic['primary key'] = None
     
@@ -198,6 +198,7 @@ def execute_dic(dic):
         if isinstance(dic[key],dict):
             dic[key] = execute_dic(dic[key])
     
+    # List with the action (e.g. create table) as the only element
     action = list(dic.keys())[0].replace(' ','_')
     return getattr(db, action)(*dic.values())
 

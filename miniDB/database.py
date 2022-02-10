@@ -17,6 +17,9 @@ from tabulate import tabulate
 # Clear command cache (journal)
 readline.clear_history()
 
+# Set logging to INFO level in order to show all logging on console
+logging.getLogger().setLevel(logging.INFO)
+
 class Database:
     '''
     Main Database class, containing tables.
