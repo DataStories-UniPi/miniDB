@@ -101,7 +101,7 @@ class Table:
 
     def _handle_constraints(self, row, i):
         '''
-        Handles column constraints (not null, unique)
+        Checks if column constraints are met (not null, unique)
 
         Args:
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
@@ -117,6 +117,7 @@ class Table:
                     if str(row[i]) in (str(value) for value in self.column_by_name(self.column_names[i])):
                         print(f"The value {row[i]} cannot be added in column {self.column_names[i]} with unique contraint, because it already exists")
                         raise ValueError("Adding a duplicate value in the unique column")
+
 
     def _insert(self, row, insert_stack=[]):
         '''
@@ -171,6 +172,7 @@ class Table:
 
         # for each value in column, if condition, replace it with set_value
         for row_ind, column_value in enumerate(column):
+
             if get_op(operator, column_value, value):
                 self.data[row_ind][set_column_idx] = set_value
 

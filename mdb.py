@@ -267,6 +267,8 @@ if __name__ == "__main__":
     fname = os.getenv('SQL')
     dbname = os.getenv('DB')
 
+    print(fname)
+
     db = Database(dbname, load=True)
 
     if fname is not None:
