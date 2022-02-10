@@ -216,11 +216,11 @@ class Table:
             order_by: list. The columns that signal that the resulting table should be ordered based on them (no order if None).
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
             distinct: boolean. If it is 'True' it indicates that the query is "select distinct" and a new function is called to remove duplicate rows
-        
+
         The function behaves differntly if group_by is None or not.
         If group_by is None the procedure is almost vanilla.
-        
-        
+
+
         '''
 
 
@@ -243,7 +243,7 @@ class Table:
             # a table containing the columns of GROUP BY clause with distinct values
             # This will be the table of the groups.
             grouped = s_table.group_by(group_by)
-            # store the names of the columns of GROUP BY clause 
+            # store the names of the columns of GROUP BY clause
             column_names = grouped.column_names.copy()
 
 
@@ -272,7 +272,7 @@ class Table:
                 > The column added by the agg function has a name style:
 
                 agg_[min|max|avg|count|sum]_[distinct]_[column_name]
-                
+
                 '''
 
                 for col in return_columns.split(','):
@@ -324,7 +324,7 @@ class Table:
                     else:
                         raise Exception("given select list not in GROUP BY")
 
-            
+
 
 
 
@@ -350,7 +350,7 @@ class Table:
 
                     The newly added column will not be displayed since it is not in the
                     'retrun_cols' list
-                
+
                 '''
 
                 if(having.startswith('max ')):
@@ -753,15 +753,15 @@ class Table:
         a table object with the columns given in the GROUP BY clause (groups)
         with distinct rows
         '''
-        
+
         if(groups is None):
             return
-        
+
         # use the _select_where function to do a 'query': select distinct <groups> from <self>
         s_table = self._select_where(groups, None,None,None,None,None,True)
 
         return s_table
-    
+
 
     def distinct(self):
         '''
@@ -915,7 +915,7 @@ def getTuple(original,column_names,index):
     '''
     Args:
 
-    original: Table object. 
+    original: Table object.
     column_names: list.
     index: int.
 
@@ -959,11 +959,11 @@ def max(original,grouped,target_column,column_names):
     First check if the string target_column contains the keyword 'distinct'. If yes just ignore
     it and take the second word which is the column inside the agg function's parenthesis.
     (distinct doesnt make a difference in min/max agg functions when they are used with group by)
-    
+
     The function sorts the 'original' table object on the columns specified in the group by clause.
     These columns are specified in the 'column_names' list.
 
-    
+
 
     If the target column (column inside max's parenthesis) is NOT one of
     the 'column_names' (columns specified in the group by clause)
@@ -984,7 +984,7 @@ def max(original,grouped,target_column,column_names):
     Now need to loop thought the 'original' table and do:
 
         if the columns 'column1', 'column2' (columns of groups) of the previous element
-        are the same with the current element, this means that we are in the same group. So 
+        are the same with the current element, this means that we are in the same group. So
 
         else if the columns 'column1', 'column2' are different, this means that we have reached
         a new group, so the current element contains the maximum element of the new group
@@ -1050,8 +1050,7 @@ def max(original,grouped,target_column,column_names):
     c_names.append("agg_max_" +target_column.replace(' ', '_'))
     c_types = grouped.column_types
     c_types.append(original.column_types[target])
-    pk = grouped.column_names[0]
-    n_table = Table("temp", c_names, c_types, pk)
+    n_table = Table("temp", c_names, c_types)
     n_table.data = []
 
     for i in range(len(grouped.data)):
@@ -1089,11 +1088,11 @@ def min(original,grouped,target_column,column_names):
     First check if the string target_column contains the keyword 'distinct'. If yes just ignore
     it and take the second word which is the column inside the agg function's parenthesis.
     (distinct doesnt make a difference in min/max agg functions when they are used with group by)
-    
+
     The function sorts the 'original' table object on the columns specified in the group by clause.
     These columns are specified in the 'column_names' list.
 
-    
+
 
     If the target column (column inside max's parenthesis) is NOT one of
     the 'column_names' (columns specified in the group by clause)
@@ -1114,7 +1113,7 @@ def min(original,grouped,target_column,column_names):
     Now need to loop thought the 'original' table and do:
 
         if the columns 'column1', 'column2' (columns of groups) of the previous element
-        are the same with the current element, this means that we are in the same group. So 
+        are the same with the current element, this means that we are in the same group. So
 
         else if the columns 'column1', 'column2' are different, this means that we have reached
         a new group, so the current element contains the minimum element of the new group
@@ -1144,7 +1143,7 @@ def min(original,grouped,target_column,column_names):
     # orders: list of the column names that will be sorted
     orders = column_names.copy()
 
-    
+
     if(input_target_column not in grouped.column_names):
         orders.append(input_target_column)
 
@@ -1178,8 +1177,7 @@ def min(original,grouped,target_column,column_names):
     c_names.append("agg_min_"+  target_column.replace(' ', '_'))
     c_types = grouped.column_types
     c_types.append(original.column_types[target])
-    pk = grouped.column_names[0]
-    n_table = Table("temp", c_names, c_types, pk)
+    n_table = Table("temp", c_names, c_types)
     n_table.data = []
 
     # append the min values to a new column
@@ -1237,7 +1235,7 @@ def sum(original, grouped, target_column, column_names):
 
     To sum up:
 
-    The function sums up the data of the target_column for each group in column_names 
+    The function sums up the data of the target_column for each group in column_names
     (if distinct was specidied, it ignores duplicate values while iterating through the data).
     '''
 
@@ -1314,8 +1312,7 @@ def sum(original, grouped, target_column, column_names):
     c_names.append("agg_sum_" + target_column.replace(' ', '_'))
     c_types = grouped.column_types
     c_types.append(original.column_types[target])
-    pk = grouped.column_names[0]
-    n_table = Table("temp", c_names, c_types, pk)
+    n_table = Table("temp", c_names, c_types)
     n_table.data = []
 
     interval = 0
@@ -1430,8 +1427,7 @@ def count(original, grouped, target_column, column_names):
     c_names.append("agg_count_" + target_column.replace(' ', '_'))
     c_types = grouped.column_types
     c_types.append(original.column_types[target])
-    pk = grouped.column_names[0]
-    n_table = Table("temp", c_names, c_types, pk)
+    n_table = Table("temp", c_names, c_types)
     n_table.data = []
 
     interval = 0
@@ -1458,7 +1454,7 @@ def avg(original, grouped, target_column, column_names):
     Returns:
 
     A new table that consists of all the data of table grouped and the appended column of the aggregate function.
-    
+
 
     Raises Exception:
 
@@ -1543,7 +1539,7 @@ def avg(original, grouped, target_column, column_names):
             else:
                 interval += 1
             prev = elem
-        
+
         #if the last row is its own group, the above loop does not update the sums list
         #and leaves it empty. Thus, in such case, we update it manually.
         if(sums[-1] is None):
@@ -1572,8 +1568,7 @@ def avg(original, grouped, target_column, column_names):
     c_names.append("agg_avg_" + target_column.replace(' ', '_'))
     c_types = grouped.column_types
     c_types.append(original.column_types[target])
-    pk = grouped.column_names[0]
-    n_table = Table("temp", c_names, c_types, pk)
+    n_table = Table("temp", c_names, c_types)
     n_table.data = []
 
     interval = 0
