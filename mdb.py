@@ -45,21 +45,26 @@ def create_query_plan(query, keywords, action):
     This can and will be used recursively
     '''
 
+    # A dictionary with all possible keywords (given the selected action) as keys and None for all the values
     dic = {val: None for val in keywords if val!=';'}
 
+    # A list with every seperate word in the query and ";" 
     ql = [val for val in query.split(' ') if val !='']
 
+    # Detect and store the keywords in the query and their positions in the list 
     kw_in_query = []
     kw_positions = []
+
     for i in range(len(ql)):
         if ql[i] in keywords and not in_paren(ql, i):
             kw_in_query.append(ql[i])
             kw_positions.append(i)
+        # If a query of 2 words exists (e.g. order by) save it as one
         elif i!=len(ql)-1 and f'{ql[i]} {ql[i+1]}' in keywords and not in_paren(ql, i):
             kw_in_query.append(f'{ql[i]} {ql[i+1]}')
             kw_positions.append(i+1)
 
-
+    # In the dictionary replace None with the value that corresponds to each keyword in the query 
     for i in range(len(kw_in_query)-1):
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
 
@@ -78,15 +83,26 @@ def create_query_plan(query, keywords, action):
             dic['desc'] = None
 
     if action=='create table':
+        # Save the arguments of the table (column names, column types, primary key etc) as string
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
+
+        # Only keep the name of the table in the dictionary
         dic['create table'] = dic['create table'].removesuffix(args).strip()
+
+        # Arguments without the primary key
         arg_nopk = args.replace('primary key', '')[1:-1]
+
+        # List of column names and types
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
+
+        # Add column names and types to dictionary
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
+            print(arglist)
             dic['primary key'] = arglist[arglist.index('primary')-2]
+            print(dic['primary key'])
         else:
             dic['primary key'] = None
     
