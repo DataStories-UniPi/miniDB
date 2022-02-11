@@ -330,6 +330,10 @@ class Database:
         '''
         # print(table_name)
         self.load_database()
+        if table_name=='meta_indexes1':
+            table_name = table_name.replace('1','')
+            table = self.tables[table_name]._select_where(columns, condition, order_by, desc, top_k)
+
         if isinstance(table_name, Table):
             return table_name._select_where(columns, condition, order_by, desc, top_k)
 
@@ -345,7 +349,7 @@ class Database:
         has_index = self._has_index(table_name, condition_columns)
         if has_index[0]:
             index_name = has_index[1]
-            bt = self._load_idx(index_name)
+            bt = self._load_idx(index_name[0])
             table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k)
         else:
             table = self.tables[table_name]._select_where(columns, condition, order_by, desc, top_k)
@@ -675,7 +679,7 @@ class Database:
 
         # if there are indexes for the specified table and the columns that are specified are indexed --> method returns true and the column names and the name of the index for these columns
         if table_name in self.tables['meta_indexes'].column_by_name('table_name') and columns in self.tables['meta_indexes'].column_by_name('selected_columns_names'):
-            result = self.select('*', 'meta_indexes', 'table_name = '+table_name+' and selected_column_names = ' + columns)
+            result = self.select('*', 'meta_indexes1', f'{table_name}.{columns}')
             return [True, result.column_by_name('index_name')]
         else:
             return [False, '']

@@ -368,7 +368,7 @@ class Btree:
 
             if operator[len(operator)-1] == '=':
                 value.append(0)
-                leaf_idx, ops = self._search(tuple(value), True)
+                leaf_idx, ops = self._search(value, True)
                 target_node = self.nodes[leaf_idx]
                 for idx, node_value in enumerate(target_node.values):
                     ops += 1

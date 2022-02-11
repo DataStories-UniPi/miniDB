@@ -221,13 +221,21 @@ class Table:
             return_cols = [i for i in range(len(self.column_names))]
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
-
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
+
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name[0])
-            rows = [ind for ind, x in enumerate(column) if get_op(operator[0], x, value[0])]
+            if self._name == 'meta_indexes' and len(condition.split('.')) > 1:
+                cond = condition.split('.')
+                column1 = self.column_by_name('table_name')
+                column2 = self.column_by_name('selected_columns_names')
+                rows1 = set([ind for ind, x in enumerate(column1) if get_op('=', x, cond[0])])
+                rows2 = set([ind for ind, x in enumerate(column2) if get_op('=', x, cond[1])])
+                rows = list(rows1 & rows2)
+            else:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name[0])
+                rows = [ind for ind, x in enumerate(column) if get_op(operator[0], x, value[0])]
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -269,6 +277,7 @@ class Table:
             # btree find
             rows = bt.find(operator, value)
         elif len(operator)==1:
+            print('checkpoint1')
             rows = bt.find(operator, value)
         else:
             column = self.column_by_name(column_name)

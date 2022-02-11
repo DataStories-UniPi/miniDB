@@ -1,0 +1,1 @@
+create index test_index on department using hash;
