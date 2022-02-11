@@ -140,6 +140,8 @@ class Table:
                 
                 Operatores supported: (<,<=,=,>=,>)
         '''
+        # the update has not happened yet and table has not been modified.
+        table_modified = False
         # parse the condition
         column_name, operator, value = self._parse_condition(condition)
 
@@ -153,9 +155,13 @@ class Table:
         for row_ind, column_value in enumerate(column):
             if get_op(operator, column_value, value):
                 self.data[row_ind][set_column_idx] = set_value
+                # the update query is completed and the table got modified.
+                table_modified = True
+
+        return table_modified
 
         # self._update()
-                # print(f"Updated {len(indexes_to_del)} rows")
+        # print(f"Updated {len(indexes_to_del)} rows")
 
 
     def _delete_where(self, condition):
@@ -423,10 +429,6 @@ class Table:
 
         self.__dict__.update(tmp_dict)
 
-    # Needs to be implemented.
-    '''
-    def _create_trigger(self, condition):
-    '''
     
         
         
