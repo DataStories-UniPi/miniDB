@@ -4,6 +4,7 @@ from table import Table
 from time import sleep, localtime, strftime
 import os, sys
 from btree import Btree
+from hash import HashTable
 import shutil
 from misc import split_condition
 import logging
@@ -616,42 +617,70 @@ class Database:
                     else:
                         column_names += selected_columns_names[i]
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
+
                 self.tables['meta_indexes']._insert([table_name, index_name, column_names])
                 # create the actual index
                 if selected_columns_names != self.tables[table_name].pk:
                     self.tables[table_name].duplicate_column = [i for i in range(len(self.tables[table_name].data))]
                     self._construct_index(table_name, index_name, selected_columns_names, True)
                 self._construct_index(table_name, index_name, selected_columns_names, False)
+            # if statement for index type hash
+            if index_type=='hash':
+                logging.info('Creating Hash index.')
+                # insert a record with the name of the index and the table on which it's created to the meta_indexes table
+                self.tables['meta_indexes']._insert([table_name, index_name])
+                # create the actual index
+                self._construct_index(table_name, index_name, index_type)
+
                 self.save_database()
                 print(":)")
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
-    def _construct_index(self, table_name, index_name, selected_columns_names, is_duplicate= False):
-        '''
-        Construct a btree on a table and save.
+    def _construct_index(self, table_name, index_name, index_type, selected_columns_names, is_duplicate= False):
+        if index_type=='btree':
+		'''
+		Construct a btree on a table and save.
 
-        Args:
-            selected_columns_names: list of strings. Name of the columns the index will store.
-            table_name: string. Table name (must be part of database).
-            index_name: string. Name of the created index.
-        '''
-        bt = Btree(index_name, 3, is_duplicate)  # 3 is arbitrary
+		Args:
+		    selected_columns_names: list of strings. Name of the columns the index will store.
+		    table_name: string. Table name (must be part of database).
+		    index_name: string. Name of the created index.
+		'''
+		bt = Btree(index_name, 3, is_duplicate)  # 3 is arbitrary
 
-        # put the data of the selected columns in a table named column_data
-        columns_data = []
-        for name in selected_columns_names:
-           columns_data.append(self.tables[table_name].column_by_name(name))
-        # for each record in the selected columns of the table, insert their values and index to the btree, after joining the column values
-        if not is_duplicate:
-            for idx, key in enumerate(list(zip(*columns_data))):
-                bt.insert(key, idx)
-        else:
-            columns_data.append(self.tables[table_name].duplicate_column)
-            for idx, key in enumerate(list(zip(*columns_data))):
-                bt.insert(key, idx)
-        # save the btree
-        self._save_index(index_name, bt)
+		# put the data of the selected columns in a table named column_data
+		columns_data = []
+		for name in selected_columns_names:
+		   columns_data.append(self.tables[table_name].column_by_name(name))
+		# for each record in the selected columns of the table, insert their values and index to the btree, after joining the column values
+		if not is_duplicate:
+		    for idx, key in enumerate(list(zip(*columns_data))):
+		        bt.insert(key, idx)
+		else:
+		    columns_data.append(self.tables[table_name].duplicate_column)
+		    for idx, key in enumerate(list(zip(*columns_data))):
+		        bt.insert(key, idx)
+		# save the btree
+		self._save_index(index_name, bt)
+        
+        if index_type=='hash':
+            '''
+            Construct a hash index on a table and save.
+
+            Args:
+                table_name: string. Table name (must be part of database).
+                index_name: string. Name of the created index.
+            '''
+            h = HashTable() 
+
+            # for each record in the primary key of the table, insert its value and index to the hash 
+            for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
+                h.insert(key,idx)
+            # save the hash
+            self._save_index(index_name, h)
+            print(h.__repr__)
+
 
     # TODO def _delete_index(self, index_name):
 
