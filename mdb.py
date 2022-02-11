@@ -7,6 +7,8 @@ import traceback
 import shutil
 
 from numpy import insert
+
+from miniDB.column_constraints import ColumnConstraints
 sys.path.append('miniDB')
 
 from database import Database
@@ -20,8 +22,6 @@ art = '''
  | | | | | || || | | || || |__| || |_) |
  |_| |_| |_||_||_| |_||_||_____/ |____/   2021 - v3.2                               
 '''   
-
-constraints = ['not_null', 'unique']
 
 def search_between(s, first, last):
     '''
@@ -92,25 +92,41 @@ def create_query_plan(query, keywords, action):
         # Only keep the name of the table in the dictionary
         dic['create table'] = dic['create table'].removesuffix(args).strip()
 
-        # Arguments without the primary key
-        arg_nopk = args.replace('primary key', '')[1:-1]
-        arg_nopk = args.replace('not null', 'not_null')[1:-1]   
+        # Arguments without any of the contraints
+        constraints = ['not null', 'unique', 'primary key']
 
-        # List of column names and types 
-        arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
-        constraints_list = [[element for element in list if element in constraints] for list in arglist]
+        arg_no_constraints = args
+        for constraint in constraints:
+            arg_no_constraints = arg_no_constraints.replace(constraint, "")
+
+        arg_no_constraints = re.sub(' +', ' ',arg_no_constraints)[1:-1]
+
+        # List of only column names and types 
+        arglist = [val.strip().split(' ') for val in arg_no_constraints.split(',')]
 
         # Add column names and types to dictionary
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
-        dic['column_constraints'] = constraints_list
-        
+
+        # Find and save the column constraints and their respective column names to the ColumnConstraint object 
+        col_con = ColumnConstraints()
+
+        for column_arg in args.split(','):
+            strip_col_arg = column_arg.strip("(").strip(")").strip(" ")
+            for constraint in constraints:
+                if (constraint in strip_col_arg):
+                    col_con._add_constraint(constraint, strip_col_arg.split(' ')[0])
+
+        dic['column_constraints'] = col_con
+
+        # Find and save primary key if it exists
         if 'primary key' in args:
             # Find the name of the column that is the primary key and add it to dictionary
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
+
     
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
@@ -217,6 +233,7 @@ def interpret(query):
             action = [k for k, v in kw_per_action.items() if v == ['insert into', 'select', 'from', 'where']][0]
         elif query.startswith(kw):
             action = kw
+
     return create_query_plan(query, kw_per_action[action]+[';'], action)
 
 def execute_dic(dic):
@@ -232,6 +249,7 @@ def execute_dic(dic):
     else:
         action = list(dic.keys())[0].replace(' ','_')
 
+    print(dic)
     return getattr(db, action)(*dic.values())
 
 def interpret_meta(command):

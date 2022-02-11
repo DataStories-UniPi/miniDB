@@ -100,7 +100,7 @@ class Database:
         self._update_meta_insert_stack()
 
 
-    def create_table(self, name, column_names, column_types, column_constraints, primary_key=None, load=None):
+    def create_table(self, name, column_names, column_types, column_constraints=None, primary_key=None, load=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
 
@@ -108,12 +108,19 @@ class Database:
             name: string. Name of table.
             column_names: list. Names of columns.
             column_types: list. Types of columns.
-            column_constraints: list. Constraints of columns (not null, unique).
+            column_constraints: list. Constraints of columns (not null, unique) (if they exist).
             primary_key: string. The primary key (if it exists).
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
         # print('here -> ', column_names.split(','))
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, column_constraints=column_constraints, load=load)})
+        self.tables.update(
+           {name: Table(name=name, 
+                        column_names=column_names.split(','), 
+                        column_types=column_types.split(','), 
+                        column_constraints=column_constraints, 
+                        primary_key=primary_key, 
+                        load=load)})
+
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
@@ -256,7 +263,6 @@ class Database:
         lock_ownership = self.lock_table(table_name, mode='x')
         insert_stack = self._get_insert_stack_for_table(table_name)
         try:
-            print(row)
             self.tables[table_name]._insert(row, insert_stack)
         except Exception as e:
             logging.info(e)
@@ -303,7 +309,13 @@ class Database:
         self.load_database()
         
         lock_ownership = self.lock_table(table_name, mode='x')
-        self.tables[table_name]._update_rows(set_value, set_column, condition)
+
+        try:
+            self.tables[table_name]._update_rows(set_value, set_column, condition)
+        except Exception as e:
+            logging.info(e)
+            logging.info('ABORTED')
+            
         if lock_ownership:
             self.unlock_table(table_name)
         self._update()

@@ -22,7 +22,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, column_constraints=None, load=None):
+    def __init__(self, name=None, column_names=None, column_types=None, column_constraints=None, primary_key=None, load=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -57,7 +57,8 @@ class Table:
             self.column_types = [eval(ct) if not isinstance(ct, type) else ct for ct in column_types]
             self.data = [] # data is a list of lists, a list of rows that is.
 
-            self.column_constraints = column_constraints
+            if (column_constraints is not None):
+                self.column_constraints = column_constraints._generate_dictionary()
 
             # if primary key is set, keep its index as an attribute
             if primary_key is not None:
@@ -99,24 +100,23 @@ class Table:
         self.column_types[column_idx] = cast_type
         # self._update()
 
-    def _handle_constraints(self, row, i):
+    def __check_constraints(self, col_name, value):
         '''
         Checks if column constraints are met (not null, unique)
 
         Args:
-            row: list. A list of values to be inserted (will be casted to a predifined type automatically).
-            i: Points to row value
+            col_name: The name of the column to check
+            value: The value to check against the constraints
         '''
-        if self.column_constraints is not None:
-            for constraints in self.column_constraints[i]:
-                if "not_null" in constraints and not row[i]:
-                    print("You can't add a null value inside the not_null column")
-                    raise ValueError("Adding a null value into a not_null column ")
+        if (hasattr(self, 'column_constraints')):
+            # Check for a null value in a not null column
+            if not value and col_name in self.column_constraints["not_null"]:
+                raise ValueError("Tried to add a null value into a not null column ")
 
-                if "unique" in constraints:
-                    if str(row[i]) in (str(value) for value in self.column_by_name(self.column_names[i])):
-                        print(f"The value {row[i]} cannot be added in column {self.column_names[i]} with unique contraint, because it already exists")
-                        raise ValueError("Adding a duplicate value in the unique column")
+            # Check for duplicate value in a unique column
+            if col_name in self.column_constraints["unique"]:
+                if value in (str(col) for col in self.column_by_name(col_name)):
+                    raise ValueError("Tried to add a duplicate value into a unique column")
 
 
     def _insert(self, row, insert_stack=[]):
@@ -135,7 +135,7 @@ class Table:
             # try:
             row[i] = self.column_types[i](row[i])
 
-            self._handle_constraints(row, i)
+            self.__check_constraints(self.column_names[i], row[i])
 
             # if value is to be appended to the primary_key column, check that it doesnt already exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
@@ -150,7 +150,7 @@ class Table:
 
     def _update_rows(self, set_value, set_column, condition):
         '''
-        Update where Condition is met.
+        Update where Condition is met.c
 
         Args:
             set_value: string. The provided set value.
@@ -163,6 +163,9 @@ class Table:
         '''
         # parse the condition
         column_name, operator, value = self._parse_condition(condition)
+
+        # check if the new value satisfies the constraints
+        self.__check_constraints(set_column, set_value)
 
         # get the condition and the set column
         column = self.column_by_name(column_name)
