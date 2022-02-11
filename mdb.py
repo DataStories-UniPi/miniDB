@@ -65,7 +65,13 @@ def create_query_plan(query, keywords, action):
 
     if action=='select':
         dic = evaluate_from_clause(dic)
-        
+        dic = evaluate_aggregation_clause(dic)
+
+        if dic['group by'] is not None:
+            dic['select'] = f"{dic['select']}, {dic['group by']}"
+            dic['from'] = dic['from'].removesuffix(' group')
+
+
         if dic['order by'] is not None:
             dic['from'] = dic['from'].removesuffix(' order')
             if 'desc' in dic['order by']:
@@ -144,6 +150,54 @@ def evaluate_from_clause(dic):
         
     return dic
 
+def evaluate_aggregation_clause(dic):
+    '''
+    Evaluate the parts of the query that refer to an aggregation clause:
+        1. aggregation functions (avg, sum, count, min, max)
+        2. aggregation field
+        3. having condition
+    '''
+
+    ''' 
+    the loop finds the aggregation field and adds it to the 'select' key of the dictionary using another dictionary
+    the nested dictionary holds information about which aggregation function is applied to which field
+    with that way, we can keep more than one aggregations to separate fields
+    example of dic['aggregation']: 
+    {
+      'aggregation_field': ['sum']
+    }
+    '''
+    for kw in ['avg', 'sum', 'count', 'min', 'max']:
+        if kw in dic['select'].lower():
+            aggregation_field = dic['select'].split("( ")[1].strip().split(" )")[0].strip()
+            dic['aggregation'] = {
+                aggregation_field: [kw]
+            }
+
+    ''' 
+    if there is a having condition on an aggregation, 
+    the having condition is added to the value of dic['aggregation'] for the referred aggregation field 
+    example of dic['aggregation']: 
+    {
+      'aggregation_field': ['sum', 'aggregation_field > 10']
+    }
+    '''
+    if dic['having'] is not None:
+        having_aggregation = dic['having'].split(" (")[0].strip()
+        having_field = dic['having'].split("( ")[1].strip().split(" )")[0].strip()
+
+        for agg_k, agg_v in dic['aggregation'].items():
+            if agg_k == having_field and agg_v[0] == having_aggregation:
+                dic['aggregation'][agg_k].append(f"{having_field} {dic['having'].split(') ')[1]}")
+
+    '''
+    the aggregation field is added to the select dictionary, so we can query the table for the referred field 
+    '''
+    if dic['aggregation'] is not None:
+        dic['select'] = dic['select'].split("( ")[1].strip().split(" )")[0].strip()
+
+    return dic
+
 def interpret(query):
     '''
     Interpret the query.
@@ -154,7 +208,8 @@ def interpret(query):
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
-                     'select': ['select', 'from', 'where', 'order by', 'top'],
+                    # added 3 extra keys for select: group by, having, aggregation
+                     'select': ['select', 'from', 'where', 'order by', 'top', 'group by', 'having', 'aggregation'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
@@ -179,7 +234,8 @@ def execute_dic(dic):
     Execute the given dictionary
     '''
     for key in dic.keys():
-        if isinstance(dic[key],dict):
+        # do not use execute_dic for 'aggregation' dict, just pass it to method
+        if isinstance(dic[key],dict) and key != "aggregation":
             dic[key] = execute_dic(dic[key])
     
     action = list(dic.keys())[0].replace(' ','_')
