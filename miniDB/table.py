@@ -1,4 +1,5 @@
 from __future__ import annotations
+from http.client import FOUND
 from re import S
 from typing import List
 from xmlrpc.client import SYSTEM_ERROR
@@ -134,7 +135,7 @@ class Table:
             counter_2 = 0
             for col_name in self.column_names:
                 if unique_col == col_name and self._is_unique(counter_2,row[counter_2]) == False:
-                    print('The values in column'+str(col_name)+"must be unique")
+                    print('The values in column '+str(col_name)+" must be unique")
                 counter_2 += 1
         
         for i in range(len(row)):
@@ -473,6 +474,15 @@ class Table:
                  if str(null) == str(name) and bool(str(row[counter]).strip()) == False:     
                      print('The value in column '+str(name)+" can not be null")           
                  counter += 1
+            #gia to unique
+            counter_2 = 0
+            for unique_col in self.uniques:
+                counter_2 = 0
+                for col_name in self.column_names:
+                  if unique_col == col_name and self._is_unique(counter_2,row[counter_2]) == False:
+                     print('The values in column '+str(col_name)+" must be unique")
+                  counter_2 += 1
+        
             for i in range(len(row)):
                 # for each value, cast and replace it in row.
                 # try:
@@ -527,7 +537,12 @@ class Table:
 
     def _is_unique(self,counter,value_to_be_inserted):
         contens = self._contents_to_list()
+        found = False
         for row in contens:
-            if row[counter] == value_to_be_inserted :
-                   return False
-        return True 
+            if int(row[counter]) == int(value_to_be_inserted) :
+                   found = True
+                   break
+        if found == True:
+           return False
+        else:
+            return True

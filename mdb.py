@@ -97,11 +97,6 @@ def create_query_plan(query, keywords, action):
              for str in val:
                  if str == "unique":
                      dic['uniques'].append(val[0])
-        #xrhsima prints
-        #print("contents of arglist: ",arglist)
-        #print("Column_names_are: ",dic['column_names'])
-        #print("Column_types_are: ",dic['column_types'])
-        #print("Nulls are: ",dic['not_nulls'])
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]

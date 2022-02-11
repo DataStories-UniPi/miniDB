@@ -67,19 +67,5 @@ DB=smdb SQL=YOUR_FILE python3.9 mdb.py
 
 ## The people
 George S. Theodoropoulos, Yannis Kontoulis, Yannis Theodoridis; Data Science Lab., University of Piraeus.
-## [#78](https://github.com/DataStories-UniPi/miniDB/issues/78)
-## Queries Used for Testing in the Process Of Completing the issue
-Example of insert : insert into test_table_f values(john,105,34)
-Example of select : select * from classroom
-Example of select: insert into classroom select * from classroom
-Example of create_table_test : create table test_table_f2(building_test str, room_number_test str)
-Example of insert_test: insert into test_table  values(test_ins,105,34)
-Example of insert_test: insert into test_table select * from test_table_f2 where room_number_test = 105
-Example of select: select * from test_table_f2
-----------------------------------------------------------------------------------------------------------------------------
-## [#79](https://github.com/DataStories-UniPi/miniDB/issues/79)
-## Queries Used for Testing in the Process Of Completing the issue
-Example of create_table: create table ct_test_table_f(bld int not null, r_m str , c_t int)
-Example of select_for_tables: select * from ct_test_table_f
-Example of insert_into_for_not_null_test:  insert into ct_test_table_f values( , 2,35)
+
 
