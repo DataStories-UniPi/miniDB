@@ -238,7 +238,7 @@ class Database:
         self._update()
         self.save_database()
 
-    def insert_into(self, table_name, row_str):
+    def insert_into(self, table_name, row_str, flag = False):
         '''
         Inserts data to given table.
 
@@ -246,6 +246,8 @@ class Database:
             table_name: string. Name of table (must be part of database).
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             lock_load_save: boolean. If False, user needs to load, lock and save the states of the database (CAUTION). Useful for bulk-loading.
+            flag: Boolean. False, when an insert query can't be executed on the 'meta_triggers' table.
+                           True, when an insert query can be executed on the 'meta_triggers' table.
         '''
         row = row_str.strip().split(',')
         self.load_database()
@@ -622,6 +624,7 @@ class Database:
         self.save_database()
         '''
 
+
     def drop_trigger(self, trigger_name):
         '''
         This function deletes a trigger of a specific table of the database from the 'meta_triggers' table.
@@ -632,6 +635,29 @@ class Database:
 
         self.load_database()
         self.delete_from("meta_triggers", "trigger_name=" + trigger_name, True)
+
+
+    def count_trigger(self, table_name, condition, action):
+        '''
+        This function searches the 'meta_triggers' table in order to find out how many 
+        times has a trigger been created with the same action and condition on a table.
+
+        Args:
+            table_name: string. The table for whom the trigger is created.
+            condition: string. It only accepts the values 'BEFORE', 'AFTER', 'INSTEAD'. 
+            action: string. It only accepts the values 'INSERT', 'DELETE', 'UPDATE'.   
+        '''
+        counter = 0
+
+        tables = self.tables["meta_triggers"].column_by_name("table_name")
+        conditions = self.tables["meta_triggers"].column_by_name("condition")
+        actions = self.tables["meta_triggers"].column_by_name("actions")
+
+        for i in range(len(tables)):
+            if tables[i] == table_name and conditions[i] == condition and actions[i] == action:
+                counter += 1
+
+        return counter
 
 
     #### META ####
