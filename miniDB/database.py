@@ -602,6 +602,7 @@ class Database:
         Important: The columns that the index will store must be specified (even the primary key columns).
 
         Args:
+            index_type:
             selected_columns_names: list of strings. Name of the columns the index will store.
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
@@ -624,9 +625,12 @@ class Database:
                 self.tables['meta_indexes']._insert([table_name, index_name, column_names])
                 # create the actual index
                 if selected_columns_names != self.tables[table_name].pk:
+                    print('hello mirto')
                     self.tables[table_name].duplicate_column = [i for i in range(len(self.tables[table_name].data))]
                     self._construct_index(table_name, index_name, selected_columns_names, True)
-                self._construct_index(table_name, index_name, selected_columns_names, False)
+                else:
+                    print('hello everyone')
+                    self._construct_index(table_name, index_name, selected_columns_names, False)
                 self.save_database()
                 print(":)")
         else:
@@ -657,6 +661,7 @@ class Database:
                 bt.insert(key, idx)
         # save the btree
         self._save_index(index_name, bt)
+        bt.show()
 
     # TODO def _delete_index(self, index_name):
 

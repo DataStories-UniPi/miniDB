@@ -74,6 +74,7 @@ class Node:
         self.ptrs.append(ptr)
         if ptr1:
             self.ptrs.append(ptr1)
+        print(self.values)
 
 
 
@@ -291,6 +292,8 @@ class Btree:
             value: string. The value being searched for.
         '''
         results = []
+        value = tuple(value)
+        operator = tuple(operator)
         # find the index of the node that the element should exist in
         if not self.is_duplicate:
             leaf_idx, ops = self._search(value, True)
@@ -362,17 +365,28 @@ class Btree:
                             results.append(target_node.ptrs[target_node.values.index(data)])
 
             # print the number of operations (usefull for benchamrking)
-            # print(f'With BTree -> {ops} comparison operations')
+            print(f'With BTree -> {ops} comparison operations')
             return results
         else:
-
+            print('hello dump')
             if operator[len(operator)-1] == '=':
+                value = list(value)
                 value.append(0)
+                value = tuple(value)
+                print(value)
                 leaf_idx, ops = self._search(value, True)
                 target_node = self.nodes[leaf_idx]
+                print(self.nodes[leaf_idx].values)
                 for idx, node_value in enumerate(target_node.values):
                     ops += 1
+                    print(node_value)
                     if node_value >= value:
+                        print('hello ioakeim')
+                        #new
+                        #if node_value[0] != value[0]:
+                        #   return results
+                        #new
+                        print(target_node.ptrs[idx])
                         results.append(target_node.ptrs[idx])
                 while target_node.right_sibling is not None:
                     target_node = self.nodes[target_node.right_sibling]
