@@ -91,8 +91,12 @@ def create_query_plan(query, keywords, action):
         if dic['group by'] is not None:
             dic['group by'] = dic['group by'].removesuffix(' order')
         
-        # add prefix for aggregate functions
+        # add aggregate functions flags and clean string
         add_aggregate_prefix(dic)
+        # add distinct functions flags and clean string
+        add_distinct_prefix(dic)
+
+        print(dic)
 
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
@@ -241,6 +245,25 @@ def interpret_meta(command):
 
     commands_dict[action](db_name)
 
+def add_distinct_prefix(dic):
+    #dic['distinct_flags'] = []
+
+    word_list = dic['select'].lower().split(' ')
+    new_word_list:list = word_list.copy()
+
+    for i, word in enumerate(word_list):
+        if word == 'distinct' and word_list[i+1] == '(':
+            col_name = word_list[i + 2]
+            #dic['distinct_flags'].append(col_name)
+
+            new_word_list.remove(word)
+            new_word_list.remove(word_list[i+1])
+            new_word_list.remove(word_list[i+3])
+        
+    temp = ' '.join(new_word_list)
+    dic['select'] = temp
+
+
 def add_aggregate_prefix(dic):
     """Cleans up the query string from anything related to aggregate functions and 
     saves the aggregate flags for each column into two new dicts.
@@ -263,20 +286,20 @@ def add_aggregate_prefix(dic):
         if dic[action] is None:
             continue
 
-        word_list = dic[action].split(' ')
-        newWorldList:list = word_list.copy()
+        word_list = dic[action].lower().split(' ')
+        new_word_list:list = word_list.copy()
 
         for i, word in enumerate(word_list):
             if word in aggregate_functions and word_list[i + 1] == '(':
                 col_name = word_list[i + 2]
                 dic[new_dic_key][col_name] = word
 
-                newWorldList.remove(word)
-                newWorldList.remove(word_list[i+1])
-                newWorldList.remove(word_list[i+3])
+                new_word_list.remove(word)
+                new_word_list.remove(word_list[i+1])
+                new_word_list.remove(word_list[i+3])
 
         
-        temp = ' '.join(newWorldList)
+        temp = ' '.join(new_word_list)
         dic[action] = temp
 
 if __name__ == "__main__":

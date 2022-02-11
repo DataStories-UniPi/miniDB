@@ -2,6 +2,7 @@ from __future__ import annotations
 from email import message
 from numbers import Number
 from re import I
+from traceback import print_tb
 from tabulate import tabulate
 import pickle
 import os
@@ -201,7 +202,7 @@ class Table:
 
     def _select_where(self, return_columns, where_condition=None, group_by=None,
         having_condition=None, order_by=None, desc=True, top_k=None, select_aggregate_dic={},
-        having_aggregate_dic={}):
+        having_aggregate_dic={}, distinct_list=[]):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -271,7 +272,7 @@ class Table:
                 col_lists[index] = self.apply_aggregate_func(col, select_aggregate_dic[index])      
             dic['data'] = [col_lists]
         elif (group_by is not None):
-            newDict = []
+            newDict = {}
  
             for row in dic['data']:
                 group_by_index = dic['column_names'].index(group_by)
@@ -296,9 +297,9 @@ class Table:
 
             if group_by is not None and having_condition is not None:
                 column_name, operator, value = self._parse_condition(having_condition)
-                column_index = dic['column_names'].index(col_name)
+                column_index = dic['column_names'].index(column_name)
 
-                new_rows = [row for row in new_rows if get_op(operator, row[column_index], value)]
+                new_rows = [row for row in new_rows if get_op(operator, row[column_index], int(value))]
 
             # add the aggregate funcs to the col names
             for col_index in select_aggregate_dic.keys():
