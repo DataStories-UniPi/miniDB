@@ -415,10 +415,91 @@ class Database:
 
         left_table = left_table if isinstance(left_table, Table) else self.tables[left_table]
         right_table = right_table if isinstance(right_table, Table) else self.tables[right_table]
-
+        '''
+        def spinner(thing1, thing2):
+            
+            #function that literally exhcanges the values of 2 things 
+           
+            wasRight = thing1  # is right table
+            wasLeft = thing2  # left
+            thing1 = wasLeft
+            thing2 = wasRight
+            return thing1, thing2
+        '''
 
         if mode=='inner':
             res = left_table._inner_join(right_table, condition)
+        elif mode == 'inlj':
+
+            if (right_table.pk == None) and left_table.pk is not None:
+                # if theleft table is indexable but right table is not indexable we need to reverse left with right table
+
+                wasright=right_table
+                right_table=left_table
+                left_table=wasright
+                spin = True
+
+            index = Btree()
+            x = 0
+            adder = enumerate(right_table.column_by_name(right_table.pk))
+            # we insert every record of the PK into the btree as well as its index
+            while (x < adder): index.insert(key, idx)
+
+            column_name_left, operator, column_name_right = Table()._parse_condition(condition, join=True)
+            # try to find both columns, if you fail raise error
+            try:
+                column_index_left = self.column_names.index(column_name_left)
+            except:
+                raise Exception(
+                    f'Column "{column_name_left}" dont exist in left table. Valid columns: {self.column_names}.')
+
+            try:
+                column_index_right = right_table.column_names.index(column_name_right)
+            except:
+                raise Exception(
+                    f'Column "{column_name_right}" dont exist in right table. Valid columns: {right_table.column_names}.')
+
+            join_table_name = ''
+            # get the column names of both tables with the table name in front
+            # ex. for left -> name becomes left_table_name_name etc
+            left_names = [f'{left_table._name}.{colname}' if left_table._name != '' else colname for colname in
+                          left_table.column_names]
+            right_names = [f'{right_table._name}.{colname}' if right_table._name != '' else colname for colname in
+                           right_table.column_names]
+
+            # depending if we 'spinned' or not we need to give the
+            if (spin == 1):
+                join_table_colnames = right_names + left_names
+                join_table_coltypes = right_table.column_types + left_table.column_types
+
+            else:
+                join_table_colnames = left_names + right_names
+                join_table_coltypes = left_table.column_types + right_table.column_types
+
+            join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types=join_table_coltypes)
+
+            # now we need the index-nested-join to be in a loop so we can make the table appear(if the spin==1)
+
+            if (spin == 1):
+                for row_left in left_table.data:
+                    left_value = row_left[column_index_left]
+
+                    things_inside = index.find(operator, left_value)
+                    # for every thing inside the 'things_inside" list i insert depending on the spin inside the new table
+                    # example : if the left table is indexable but right table is not indexable
+                    for _ in things_inside:
+                        join_table._insert(right_table.data[_] + row_left)
+            else:
+                for row_left in left_table.data:
+                    left_value = row_left[column_index_left]
+                    # finding position of operator starting at the left value and then depending on the spaces i insert the
+
+                    things_inside = index.find(operator, left_value)
+                    # for every thing inside the 'things_inside" list i insert depending on the spin inside the new table
+                    for _ in things_inside:
+                        join_table._insert(row_left + right_table.data[_])
+
+            return join_table
         else:
             raise NotImplementedError
 
