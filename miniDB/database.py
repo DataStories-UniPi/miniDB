@@ -1,5 +1,4 @@
 from __future__ import annotations
-from msilib import init_database
 import pickle
 from table import Table
 from time import sleep, localtime, strftime
@@ -52,7 +51,8 @@ class Database:
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
         self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
-        self.create_table('meta_views', 'table_name,view_name', 'str,str')
+        self.create_table('meta_views', 'query,view_name', 'str,str')
+        self.create_table('meta_triggers', 'trigger_name, trigger_table, action, condition', 'str, str, str, str')
         self.save_database()
 
     def save_database(self):
@@ -518,7 +518,7 @@ class Database:
         print('journal:', out)
         #return out
 
-    def create_view(self, view_name, table_name, view_type):
+    def create_view(self, view_name, query, view_type):
         '''
         Creates a view of a specified table with a given name.
 
@@ -538,14 +538,16 @@ class Database:
                 # create the actual index
                 self._construct_view(query, view_name)
                 self.save_database()
-            else: raise Exception('Cannot create view. Another view already exists.')
 
-    def _construct_view(self, table_name, view_name):
+            else: 
+                raise Exception('Cannot create view. Another view already exists.')
+
+    def _construct_view(self, view, view_name):
         '''
         Construct a btree on a table and save.
 
         Args:
-            table_name: string. Table name (must be part of database).
+            view: string. view (select string).
             view_name: string. Name of the created view.
         '''
         # Still need to implement it.
@@ -582,23 +584,54 @@ class Database:
         return view
 
 
-    # Needs to be implemented.
-    '''
-    def create_trigger(self, table_name, keyword):
+    # Triggers
+    
+    def create_trigger(self, trigger_name, table_name, condition, action):
+        '''
+        This function creates a trigger for a specific table of the database. Everything about
+        the trigger is stored into a table 'meta_triggers'.
+
+        Args:
+            trigger_name: string. The trigger's name.
+            table_name: string. The table for whom the trigger is created.
+            condition: string. It only accepts the values 'BEFORE', 'AFTER', 'INSTEAD'.
+            action: string. It only accepts the values 'INSERT', 'DELETE', 'UPDATE'.
+        '''
 
         self.load_database()
+
+        if trigger_name == " ":
+            print("The trigger's name can't be empty!")
+
+        if condition != "before" and condition != "after" and condition != "instead":
+            print("The 'condition' parameter can't be anything but 'BEFORE', 'AFTER', or 'INSTEAD'")
+
+        if action != "insert" and action != "delete" and action != "update":
+            print("The trigger's action can't be anything but 'INSERT', 'DELETE', or 'UPDATE'!")
+
+        if table_name in self.tables.keys() and table_name != "meta_triggers":
+            self.insert_into("meta_triggers", trigger_name + ',' + table_name + ',' + action + ',' + condition, True)
+        else:
+            print("It is not possible to create a trigegr on this table!")
+
+        '''
         lock_ownership = self.lock_table(table_name, mode='x')
-
-
-
-
-
-
         if lock_ownership:
             self.unlock_table(table_name)
         self._update()
         self.save_database()
-    '''
+        '''
+
+    def drop_trigger(self, trigger_name):
+        '''
+        This function deletes a trigger of a specific table of the database from the 'meta_triggers' table.
+
+        Args:
+            trigger_name: string. The trigger's name.
+        '''
+
+        self.load_database()
+        self.delete_from("meta_triggers", "trigger_name=" + trigger_name, True)
 
 
     #### META ####
