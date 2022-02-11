@@ -49,6 +49,13 @@ def create_query_plan(query, keywords, action):
 
     ql = [val for val in query.split(' ') if val !='']
 
+    if action=='select':
+        for word in ql:
+            if word.lower() == 'distinct':
+                dic['distinct'] = True
+                ql.remove(word)
+
+
     kw_in_query = []
     kw_positions = []
     for i in range(len(ql)):
@@ -65,6 +72,9 @@ def create_query_plan(query, keywords, action):
 
     if action=='select':
         dic = evaluate_from_clause(dic)
+
+        if not dic['distinct']:
+            dic['distinct'] = False
    
         if dic['order by'] is not None:
             dic['from'] = dic['from'].removesuffix(' order')
@@ -93,8 +103,6 @@ def create_query_plan(query, keywords, action):
         
         # add aggregate functions flags and clean string
         add_aggregate_prefix(dic)
-        # add distinct functions flags and clean string
-        add_distinct_prefix(dic)
 
         print(dic)
 
@@ -175,7 +183,7 @@ def interpret(query):
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
-                     'select': ['select', 'from', 'where', 'group by', 'having', 'order by', 'top'],
+                     'select': ['select', 'distinct', 'from', 'where', 'group by', 'having', 'order by', 'top'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
@@ -245,24 +253,6 @@ def interpret_meta(command):
 
     commands_dict[action](db_name)
 
-def add_distinct_prefix(dic):
-    #dic['distinct_flags'] = []
-
-    word_list = dic['select'].lower().split(' ')
-    new_word_list:list = word_list.copy()
-
-    for i, word in enumerate(word_list):
-        if word == 'distinct' and word_list[i+1] == '(':
-            col_name = word_list[i + 2]
-            #dic['distinct_flags'].append(col_name)
-
-            new_word_list.remove(word)
-            new_word_list.remove(word_list[i+1])
-            new_word_list.remove(word_list[i+3])
-        
-    temp = ' '.join(new_word_list)
-    dic['select'] = temp
-
 
 def add_aggregate_prefix(dic):
     """Cleans up the query string from anything related to aggregate functions and 
@@ -301,6 +291,23 @@ def add_aggregate_prefix(dic):
         
         temp = ' '.join(new_word_list)
         dic[action] = temp
+
+
+def add_distinct_prefix(dic):
+    dic['distinct_flags'] = []
+
+    word_list = dic['select'].lower().split(' ')
+    new_word_list:list = word_list.copy()
+
+    for i, word in enumerate(word_list):
+        if word == 'distinct':
+            col_name = word_list[i + 1]
+            dic['distinct_flags'].append(col_name)
+            new_word_list.remove(word)
+        
+    temp = ' '.join(new_word_list)
+    dic['select'] = temp
+
 
 if __name__ == "__main__":
     fname = os.getenv('SQL')

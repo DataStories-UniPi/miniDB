@@ -1,6 +1,7 @@
 from __future__ import annotations
 from email import message
 from numbers import Number
+from operator import itemgetter
 from re import I
 from traceback import print_tb
 from tabulate import tabulate
@@ -200,9 +201,9 @@ class Table:
         return indexes_to_del
 
 
-    def _select_where(self, return_columns, where_condition=None, group_by=None,
+    def _select_where(self, return_columns, distinct_flag, where_condition=None, group_by=None,
         having_condition=None, order_by=None, desc=True, top_k=None, select_aggregate_dic={},
-        having_aggregate_dic={}, distinct_list=[]):
+        having_aggregate_dic={}):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -241,6 +242,24 @@ class Table:
         # only return some columns
         dic['column_names'] = [self.column_names[i] for i in return_cols]
         dic['column_types'] = [self.column_types[i] for i in return_cols]
+
+        if distinct_flag and len(dic['data']) != 0:
+            
+            dic['data'] = sorted(dic['data'])
+            tempList = []
+
+            for row in dic['data']:
+                tempList.append(' '.join(row))
+
+            indexList = []
+            for index, item in enumerate(tempList):
+                if index+1 < len(tempList) and item == tempList[index+1]:
+                    indexList.append(index)
+            
+            for index, i in enumerate(indexList):
+                dic['data'].remove(dic['data'][i - index])
+
+            print(dic['data'])
 
         # convert the select_aggregate_dic from {col_name: aggregate_func} to
         # {col_index: aggregate_func}
@@ -318,7 +337,7 @@ class Table:
         return s_table
 
 
-    def _select_where_with_btree(self, return_columns, bt, where_condition=None, group_by=None,
+    def _select_where_with_btree(self, return_columns, distinct_flag, bt, where_condition=None, group_by=None,
         having_condition=None, order_by=None, desc=True, top_k=None, select_aggregate_dic={},
         having_aggregate_dic={}):
 
