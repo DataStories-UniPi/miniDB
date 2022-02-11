@@ -197,7 +197,8 @@ class Table:
         return indexes_to_del
 
 
-    def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None):
+    def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None,
+                      group_by=None, aggregation=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -241,6 +242,14 @@ class Table:
         s_table = Table(load=dict) 
         if order_by:
             s_table.order_by(order_by, desc)
+
+        # if group_by exists, group by the data
+        if group_by:
+            group_by = s_table.group_by()
+
+        # if aggregation exists, apply the aggregation
+        if aggregation:
+            s_table.aggregate(aggregation, group_by)
 
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
 
@@ -306,6 +315,91 @@ class Table:
         # print(idx)
         self.data = [self.data[i] for i in idx]
         # self._update()
+
+    def group_by(self):
+            '''
+            group data according to distinct values of the group by field
+            example:
+            {
+                'building1': [capacity1]
+                'building2': [capacity2],
+                'building3': [capacity3, capacity4]
+            }
+            '''
+            grouped_data = {}
+            for elem in self.data:
+                if elem[-1] not in grouped_data:
+                    grouped_data[elem[-1]] = []
+                grouped_data[elem[-1]].append(elem[0])
+
+            return grouped_data
+
+    def aggregate(self, aggregation: dict, group_by):
+            '''
+            apply aggregation to grouped data
+            example:
+            {
+                'building1': [capacity1]
+                'building2': [capacity2],
+                'building3': [capacity3, capacity4]
+            }
+            '''
+            grouping = True if group_by else False
+
+            if not group_by:
+                for aggregation_key, aggregation_value in aggregation.items():
+                    group_by = {}
+                    aggregation_idx = self.column_names.index(aggregation_key)
+
+                    group_by[aggregation_key] = [el[aggregation_idx] for el in self.data]
+
+            keys_to_delete = []
+            for aggregation_key, aggregation_value in aggregation.items():
+                # if aggregation function is avg or sum, column must be integer or float
+                if aggregation_value[0] == 'avg' or aggregation_value[0] == 'sum':
+                    col_type = self.column_types[self.column_names.index(aggregation_key)]
+                    if col_type is not int and col_type is not float:
+                        raise Exception(f'{aggregation_value[0]} can be applied only to numeric columns')
+
+                # save aggregation function to a lambda function, so it can be applied later
+                if aggregation_value[0] == 'min':
+                    aggregation_function = lambda values: min(values)
+                elif aggregation_value[0] == 'max':
+                    aggregation_function = lambda values: max(values)
+                elif aggregation_value[0] == 'avg':
+                    aggregation_function = lambda values: sum(values) / len(values)
+                elif aggregation_value[0] == 'count':
+                    aggregation_function = lambda values: len(values)
+                elif aggregation_value[0] == 'sum':
+                    aggregation_function = lambda values: sum(values)
+                else:
+                    raise Exception('Aggregation function was not found')
+
+                # loop through grouped items and apply aggregation function
+                for k, v in group_by.items():
+                    group_by[k] = [aggregation_function(v)]
+
+                    # if len > 1, a having condition exists and data should be filtered
+                    if len(aggregation_value) > 1:
+                        column_name, operator, value = self._parse_condition(aggregation_value[1])
+                        if not get_op(operator, group_by[k][0], value):
+                            # append keys of data that should be filtered out due to having condition
+                            keys_to_delete.append(k)
+
+                # delete filtered out keys
+                for k in keys_to_delete:
+                    del group_by[k]
+
+                # add aggregation function as a column to be displayed in final print of data
+                # example: sum( capacity)
+                self.column_names = [f'{aggregation_value[0]} ( {col} )' if col == aggregation_key else col
+                                    for col in self.column_names]
+
+            # if grouping was applied, add grouped items to the final print of data
+            if grouping:
+                self.data = [v+[k] for k, v in group_by.items()]
+            else:
+                self.data = [v for k, v in group_by.items()]
 
 
     def _inner_join(self, table_right: Table, condition):
