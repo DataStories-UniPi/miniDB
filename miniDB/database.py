@@ -28,12 +28,13 @@ class Database:
         self.save_state = False
         self.savedir = f'dbdata/{name}_db'
         self.triggers={}
-
+        self.transaction_locks=[]
         if load:
             try:
                 self.load_database()
                 logging.info(f'Loaded "{name}".')
                 print(self.save_state)
+
                 return
             except:
                 warnings.warn(f'Database "{name}" does not exist. Creating new.')
@@ -49,10 +50,12 @@ class Database:
             pass
 
         # create all the meta tables
+        self.create_table('meta_triggers', 'table_name,trigger_name,when,act,func_name', 'str,str,str,str,str')
         self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
         self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
+
         self.save_database()
 
     def save_database(self):
@@ -168,8 +171,10 @@ class Database:
                 continue
             self.tables[table_name]._insert(line.strip('\n').split(','))
 
-        if lock_ownership:
+        if lock_ownership and not self.save_state:
             self.unlock_table(table_name)
+        else:
+            self.transaction_locks+=table_name
         self._update()
         self.save_database()
 
@@ -250,28 +255,17 @@ class Database:
         '''
         row = row_str.strip().split(',')
         self.load_database()
-        trigger = None
-        if self.triggers.get(table_name):
-            trigger = self.triggers.get(table_name)
-        if not trigger == None:
-            if trigger[1]=='update':
-                if trigger[0]=='instead':
-                    getattr(trigger[2][0],trigger[2],[1])
-                else:
-                    # fetch the insert_stack. For more info on the insert_stack
-                    # check the insert_stack meta table
-                    lock_ownership = self.lock_table(table_name, mode='x')
-                    insert_stack = self._get_insert_stack_for_table(table_name)
-                    try:
-                        if trigger[0]=='before':
-                            getattr(trigger[2])
-                        self.tables[table_name]._insert(row, insert_stack)
-                        if trigger[0] == 'after':
-                            getattr(trigger[2])
-                    except Exception as e:
-                        logging.info(e)
-                        logging.info('ABORTED')
-                    self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
+        trigger = self._trigger_select(table_name,'insert')
+        if trigger.get('before'):
+            execute = trigger.get('before')
+            for functions in execute:
+                getattr(__import__(functions[0]), functions[1])()
+        if trigger.get('instead'):
+            execute = trigger.get('instead')
+            print(execute)
+            for functions in execute:
+                print('got here')
+                getattr(__import__(functions[0]), functions[1])()
         else:
             # fetch the insert_stack. For more info on the insert_stack
             # check the insert_stack meta table
@@ -283,10 +277,18 @@ class Database:
                 logging.info(e)
                 logging.info('ABORTED')
             self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
-        if lock_ownership:
-            self.unlock_table(table_name)
-        self._update()
-        self.save_database()
+            self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
+            if lock_ownership and not self.save_state:
+                self.unlock_table(table_name)
+            else:
+                self.transaction_locks += table_name
+            self._update()
+            self.save_database()
+            if trigger.get('after'):
+                execute = trigger.get('after')
+                for functions in execute:
+                    getattr(__import__(functions[0]), functions[1])()
+
 
 
     def update_table(self, table_name, set_args, condition):
@@ -305,30 +307,29 @@ class Database:
         '''
         set_column, set_value = set_args.replace(' ','').split('=')
         self.load_database()
-        trigger=None
-        if self.triggers.get(table_name):
-            trigger = self.triggers.get(table_name)
-        if not trigger==None:
-            if trigger[1]=='update':
-                if trigger[0]=='instead':
-                    getattr(trigger[2])
-                else:
-                    if trigger[0]=='before':
-                        getattr(trigger[2])
-                    lock_ownership = self.lock_table(table_name, mode='x')
-                    self.tables[table_name]._update_rows(set_value, set_column, condition)
-                    if lock_ownership:
-                        self.unlock_table(table_name)
-                    self._update()
-                    if trigger[0]=='after':
-                        getattr(trigger[2])
+        trigger=self._trigger_select(table_name,'delete')
+        if trigger.get('before'):
+            execute = trigger.get('before')
+            for functions in execute:
+                getattr(__import__(functions[0]), functions[1])()
+        if trigger.get('instead'):
+            execute = trigger.get('instead')
+            for functions in execute:
+                getattr(__import__(functions[0]), functions[1])()
         else:
             lock_ownership = self.lock_table(table_name, mode='x')
             self.tables[table_name]._update_rows(set_value, set_column, condition)
-            if lock_ownership:
+            if lock_ownership and not self.save_state:
                 self.unlock_table(table_name)
+            else:
+                self.transaction_locks += table_name
             self._update()
-        self.save_database()
+            self.save_database()
+        if trigger.get('after'):
+            execute = trigger.get('after')
+            for functions in execute:
+                getattr(__import__(functions[0]), functions[1])()
+
 
     def delete_from(self, table_name, condition):
         '''
@@ -343,39 +344,35 @@ class Database:
                 Operatores supported: (<,<=,==,>=,>)
         '''
         self.load_database()
-        trigger= None
-        deleted= None
-        if self.triggers.get(table_name):
-            trigger=self.triggers.get(table_name)
-        if not (trigger==None):
-            print("here")
-            if trigger[1]=="delete":
-                print('here')
-                if (trigger[0] == 'instead'):
-                    print(trigger[2])
-                    getattr(__import__(trigger[2][0]),str(trigger[2][1]))()
-                else:
-                    if (trigger[0]=='before') and not (trigger==None):
-                        getattr(trigger[2])
-                    lock_ownership = self.lock_table(table_name, mode='x')
-                    deleted = self.tables[table_name]._delete_where(condition)
-                    if (trigger[0]=='after')and not (trigger==None):
-                        getattr(trigger[2])
-                    if lock_ownership:
-                        self.unlock_table(table_name)
-                    self._update()
-                    self.save_database()
-                    # we need the save above to avoid loading the old database that still contains the deleted elements
+        trigger= self._trigger_select(table_name,'delete')
+        if trigger.get('before'):
+            execute=trigger.get('before')
+
+            for functions in execute:
+
+                getattr(__import__(functions[0]),functions[1])()
+        if trigger.get('instead'):
+            execute = trigger.get('instead')
+            print(execute)
+            for functions in execute:
+                print(functions)
+                getattr(__import__(functions[0]), functions[1])()
         else:
             lock_ownership = self.lock_table(table_name, mode='x')
             deleted = self.tables[table_name]._delete_where(condition)
-            if lock_ownership:
+            if lock_ownership and not self.save_state:
                 self.unlock_table(table_name)
+            else:
+                self.transaction_locks+=table_name
             self._update()
             self.save_database()
-        if table_name[:4]!='meta' and deleted!=None:
-            self._add_to_insert_stack(table_name, deleted)
-        self.save_database()
+            if table_name[:4] != 'meta':
+                self._add_to_insert_stack(table_name, deleted)
+            self.save_database()
+        if trigger.get('after'):
+            execute = trigger.get('after')
+            for functions in execute:
+                getattr(__import__(functions[0]), functions[1])()
 
     def select(self, columns, table_name, condition, order_by=None, top_k=True, \
                desc=None, save_as=None, return_object=True):
@@ -454,8 +451,10 @@ class Database:
 
         lock_ownership = self.lock_table(table_name, mode='x')
         self.tables[table_name]._sort(column_name, asc=asc)
-        if lock_ownership:
+        if lock_ownership and not self.save_state:
             self.unlock_table(table_name)
+        else:
+            self.transaction_locks+=table_name
         self._update()
         self.save_database()
 
@@ -746,22 +745,33 @@ class Database:
     def rollback(self,action):
         if self.save_state:
             self.save_state=False
+            self.unlocking_phase()
             self.load_database()
         else:
-            raise ValueError("Transaction not started, nothing to rollback to")
+            raise ValueError("Transaction not started, nothng to rollback to")
     def commit(self,action):
         if self.save_state:
             self.save_state=False
+            self.unlocking_phase()
             self.save_database()
         else:
-            raise ValueError("Transaction not started, nothing to rollback to")
+            raise ValueError("Transaction not started, nothng to rollback to")
+
+    def unlocking_phase(self):
+        for table in self.transaction_locks:
+            self.unlock_table(table)
+
     def create_trigger(self,params,table_name,function):
         self.load_database
         error= None
+
         if table_name in self.tables.keys():
             if params[1]=='before' or params[1]=='instead' or params[1]=='after':
                 if params[2]=='update' or params[2]=='delete' or params[2]=='insert':
-                    self.triggers[table_name]=[params[1],params[2],function,params[0]]
+                    self.tables['meta_triggers']._insert((table_name+','+params[0]+','+params[1]+','+params[2]+','+function).split(','))
+                    test=self._trigger_select('classroom','delete')
+                    print('here')
+                    print(test)
                 else:
                    error='Triggers only work on : Update,Delete,Insert'
             else:
@@ -771,3 +781,24 @@ class Database:
         if error!=None:
             raise Exception(error)
         self.save_database()
+        #[table_name]=[params[1],params[2],function,params[0]]
+
+    def _trigger_select(self,table_name,where):
+        test=self.tables['meta_triggers']._select_where('*','act = '+where,)._select_where('*','table_name ='+table_name)
+        result_list=[[test.data[i][2]]+test.data[i][4:] for i in range(len(test.data))]
+        result={result_list[i][0]:[] for i in range(len(result_list))}
+        instead=[]
+        before=[]
+        after=[]
+        for i in result_list:
+            if i[0]=='instead':
+                instead.append(i[1].split('.'))
+            elif i[0]=='before':
+                before.append([1].split('.'))
+            else:
+                after.append(i[1].split('.'))
+        result['instead']=instead
+        result['after']=after
+        result['before']=before
+        print(result)
+        return result
