@@ -108,8 +108,15 @@ class Database:
             primary_keys: string. The primary key(s) (if it exists).
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
+        def check_pr_key(primary_keys):
+            if primary_keys is None:
+                return 0
+        ch = check_pr_key(primary_keys)
+        if (ch==0):
+            self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_keys=primary_keys, load=load)})
+        else:
+            self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_keys=primary_keys.split(','), load=load)})
         # print('here -> ', column_names.split(','))
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_keys=primary_keys.split(','), load=load)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
