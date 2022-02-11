@@ -21,7 +21,7 @@ class Database:
     '''
     Main Database class, containing tables.
     '''
-
+    tempviews = []
     def __init__(self, name, load=True):
         self.tables = {}
         self._name = name
@@ -228,7 +228,7 @@ class Database:
             cast_type: type. Cast type (do not encapsulate in quotes).
         '''
         self.load_database()
-        
+
         lock_ownership = self.lock_table(table_name, mode='x')
         self.tables[table_name]._cast_column(column_name, eval(cast_type))
         if lock_ownership:
@@ -275,12 +275,12 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
         '''
         set_column, set_value = set_args.replace(' ','').split('=')
         self.load_database()
-        
+
         lock_ownership = self.lock_table(table_name, mode='x')
         self.tables[table_name]._update_rows(set_value, set_column, condition)
         if lock_ownership:
@@ -297,11 +297,11 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
         '''
         self.load_database()
-        
+
         lock_ownership = self.lock_table(table_name, mode='x')
         deleted = self.tables[table_name]._delete_where(condition)
         if lock_ownership:
@@ -324,7 +324,7 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (True by default).
@@ -342,7 +342,7 @@ class Database:
         else:
             condition_column = ''
 
-        
+
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
@@ -371,7 +371,7 @@ class Database:
             table_name: string. Name of table (must be part of database).
         '''
         self.load_database()
-        
+
         self.tables[table_name].show(no_of_rows, self.is_locked(table_name))
 
 
@@ -386,7 +386,7 @@ class Database:
         '''
 
         self.load_database()
-        
+
         lock_ownership = self.lock_table(table_name, mode='x')
         self.tables[table_name]._sort(column_name, asc=asc)
         if lock_ownership:
@@ -404,7 +404,7 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
         save_as: string. The output filename that will be used to save the resulting table in the database (won't save if None).
         return_object: boolean. If True, the result will be a table object (useful for internal usage - the result will be printed by default).
@@ -413,8 +413,8 @@ class Database:
         if self.is_locked(left_table) or self.is_locked(right_table):
             return
 
-        left_table = left_table if isinstance(left_table, Table) else self.tables[left_table] 
-        right_table = right_table if isinstance(right_table, Table) else self.tables[right_table] 
+        left_table = left_table if isinstance(left_table, Table) else self.tables[left_table]
+        right_table = right_table if isinstance(right_table, Table) else self.tables[right_table]
 
 
         if mode=='inner':
@@ -672,3 +672,51 @@ class Database:
         index = pickle.load(f)
         f.close()
         return index
+
+    def create_view(self, name, columns, table_name, condition, order_by=None, top_k=True, desc=None):
+
+        # view `tested1` has been created for testing reasons running the following command
+        # create view tested1 select building, capacity from classroom where capacity > 10
+        print(f'\nView `{name}` has been created!\n')
+        # Parameterizing the select query so it can be added in tables
+        sel = self.select(columns, table_name, condition, order_by, top_k, return_object=True)
+
+        # Printing what is selected in the new table (view) we have created
+        self.select(columns, table_name, condition, order_by, top_k, return_object=False)
+
+        # Updating and saving to database
+        self.tables.update({name: sel})
+        self._update()
+        self.save_database()
+
+
+    def create_tempview(self, name, columns, table_name, condition, order_by=None, top_k=True, desc=None):
+        # Adding view's name to the tempview list
+        self.tempviews.append(name)
+        print(f'\nTemp View `{name}` has been created!\n')
+        # Parameterizing the select query so it can be added in tables
+        sel = self.select(columns, table_name, condition, order_by, top_k, return_object=True)
+
+        #Printing what is selected in the new table (view) we have created
+        self.select(columns, table_name, condition, order_by, top_k, return_object=False)
+
+        # Updating and saving to database
+        self.tables.update({name: sel})
+        self._update()
+        self.save_database()
+
+    def drop_view(self, table_name):
+        if(table_name in self.tempviews):
+            print(f'Temp View `{table_name}` has been deleted!')
+            self.drop_table(table_name)
+        else:
+            print(f'View `{table_name}` has been deleted!')
+            self.drop_table(table_name)
+
+    def clear_tempviews(self):
+        '''
+        Deletes any tempview saved in the database because temporary views don't stay saved in the disk like materialized views.
+        '''
+        if(len(self.tempviews)>0):
+            for v in self.tempviews:
+                self.drop_table(v)
