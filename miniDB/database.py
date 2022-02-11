@@ -602,6 +602,7 @@ class Database:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
         '''
+        table_name=table_name.strip()
         if selected_columns_names is None:
             raise Exception('Cannot create index. Columns have not been specified.')
 
