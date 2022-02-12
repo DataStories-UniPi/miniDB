@@ -77,6 +77,13 @@ def create_query_plan(query, keywords, action):
         else:
             dic['desc'] = None
 
+    if action == 'create trigger':
+        args = dic['create trigger'].split(" ", 1)[-1]
+        dic['create trigger'] = dic['create trigger'].removesuffix(args).strip()
+        arglist = args.split(" ")
+        dic['condition'] = arglist[0]
+        dic['action'] = arglist[1]
+        dic['on'] = arglist[3]
 
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
@@ -107,7 +114,6 @@ def create_query_plan(query, keywords, action):
             dic['force'] = False
 
     return dic
-
 
 
 def evaluate_from_clause(dic):
@@ -164,7 +170,7 @@ def interpret(query):
                      'drop index' : ['drop index'],
                      'create view' : ['create view', 'on'],
                      'drop view' : ['drop view'],
-                     'create trigger' : ['create trigger', 'condition', 'on', 'action'],
+                     'create trigger' : ['create trigger'],
                      'drop trigger' : ['drop trigger']
                      }
 
