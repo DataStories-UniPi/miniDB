@@ -78,17 +78,29 @@ def create_query_plan(query, keywords, action):
             dic['desc'] = None
 
     if action=='create table':
+        '''
+        Example:
+        create table table_name (column1 type1 primary key constraint1, column2 type2 constraint2a constraint2b)
+        '''
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
-        arg_nopk = args.replace('primary key', '')[1:-1]
+        arg_nopk = args.replace('primary key', '')[1:-1]    #everything inside parenthesis, without 'primary key'
+        
+        argwpk = args.replace('primary key','primary_key')[1:-1]    #same as arg_nopk, but 'primary key' becomes 'primary_key'
+    
+        arglist_findpk = [val.strip().split(' ') for val in argwpk.split(',')]  #split on commas (column) and then on spaces (name,type,contraints etc)
+        test_pk = None
+        for i in range(len(arglist_findpk)):
+            if 'primary_key' in arglist_findpk[i]:
+                test_pk = arglist_findpk[i][0]  #save pk
+        
+        arg_nopk = arg_nopk.replace('not null','not_null')[1:-1]
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
-        if 'primary key' in args:
-            arglist = args[1:-1].split(' ')
-            dic['primary key'] = arglist[arglist.index('primary')-2]
-        else:
-            dic['primary key'] = None
+
+        dic['column_constraints'] = [val[2:] if len(val)>2 else 'None' for val in arglist]
+        dic['primary key']=test_pk
     
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
