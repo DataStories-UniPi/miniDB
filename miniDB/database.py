@@ -236,7 +236,7 @@ class Database:
         self._update()
         self.save_database()
 
-    def insert_into(self, table_name, row_str):
+    def insert_into(self, table_name, row_str, select_columns=None, from_table=None, condition=None):
         '''
         Inserts data to given table.
 
@@ -244,24 +244,75 @@ class Database:
             table_name: string. Name of table (must be part of database).
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             lock_load_save: boolean. If False, user needs to load, lock and save the states of the database (CAUTION). Useful for bulk-loading.
-        '''
-        row = row_str.strip().split(',')
-        self.load_database()
-        # fetch the insert_stack. For more info on the insert_stack
-        # check the insert_stack meta table
-        lock_ownership = self.lock_table(table_name, mode='x')
-        insert_stack = self._get_insert_stack_for_table(table_name)
-        try:
-            self.tables[table_name]._insert(row, insert_stack)
-        except Exception as e:
-            logging.info(e)
-            logging.info('ABORTED')
-        self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
+            select_columns: list. A list of the selected columns from the 'SELECT columns FROM table' part of the statement.
+            (only used for INSERT INTO table SELECT, otherwise it is None)
+            from_table: string. Name of the table that we take data from in the 'SELECT columns FROM table' part of the statement.
+            (must be part of database),(only used for INSERT INTO table SELECT, otherwise it is None)
+            condition: string. A condition using the following format:
+                'column[<,<=,=,>=,>]value' or
+                'value[<,<=,=,>=,>]column'.
 
-        if lock_ownership:
-            self.unlock_table(table_name)
-        self._update()
-        self.save_database()
+                Operatores supported: (<,<=,=,>=,>)
+        '''
+        #if INSERT INTO table SELECT
+        if (select_columns is not None and from_table is not None):
+            self.load_database()
+            #acquire the result of INSERT INTO table SELECT, aka the rows we are going to insert
+            selected_rows = self.tables[from_table]._select_where(select_columns,condition,None,None,None)
+            # fetch the insert_stack. For more info on the insert_stack
+            # check the insert_stack meta table
+            lock_ownership = self.lock_table(table_name, mode='x')
+            insert_stack = self._get_insert_stack_for_table(table_name)
+            #get the length of the columns of the rows we want to insert and the length of the columns of the table
+            #we want to insert them in. Then compare the lengths.
+            lengthIN = len(self.tables[table_name].column_names)
+            lengthQUERY = len(selected_rows.column_names)
+            #if the lengths of the columns aren't the same, fail.
+            if (lengthIN < lengthQUERY):
+                print("The number of columns of the query to be inserted are too many. Try again!")
+            elif (lengthIN > lengthQUERY):
+                print("The number of columns of the query to be inserted are not enough. Try again!")
+            #if the types of the inserted columns and the table's columns aren't the same, fail
+            elif (selected_rows.column_types != self.tables[table_name].column_types):
+                print("The types of the columns from the queried table aren't the same as the table's. Try again!")
+            try:
+                #for every row of the result in the SELECT query, insert said row
+                for row in selected_rows.data:
+                    self.tables[table_name]._insert(row, insert_stack)
+                #if there is a primary key, sort the table on the primary key column
+                if self.tables[table_name].pk is not None:
+                    self.tables[table_name].order_by(self.tables[table_name].pk,False)
+            except Exception as e:
+                logging.info(e)
+                logging.info('ABORTED')
+            self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
+
+            if lock_ownership:
+                self.unlock_table(table_name)
+            self._update()
+            self.save_database()
+        #else run regular INSERT INTO
+        elif (select_columns is None and from_table is None and condition is None):
+            row = row_str.strip().split(',')
+            self.load_database()
+            # fetch the insert_stack. For more info on the insert_stack
+            # check the insert_stack meta table
+            lock_ownership = self.lock_table(table_name, mode='x')
+            insert_stack = self._get_insert_stack_for_table(table_name)
+            try:
+                self.tables[table_name]._insert(row, insert_stack)
+            except Exception as e:
+                logging.info(e)
+                logging.info('ABORTED')
+            self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
+
+            if lock_ownership:
+                self.unlock_table(table_name)
+            self._update()
+            self.save_database()
+        #else, warn the user that the syntax of the command is false.
+        else:
+            print("Wrong Syntax")
 
 
     def update_table(self, table_name, set_args, condition):
@@ -402,10 +453,10 @@ class Database:
             left_table: string. Name of the left table (must be in DB) or Table obj.
             right_table: string. Name of the right table (must be in DB) or Table obj.
             condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+                'column[<,<=, =,>=,>]value' or
+                'value[<,<=,=,>=,>]column'.
 
-                Operatores supported: (<,<=,==,>=,>)
+                Operatores supported: (<,<=,=,>=,>)
         save_as: string. The output filename that will be used to save the resulting table in the database (won't save if None).
         return_object: boolean. If True, the result will be a table object (useful for internal usage - the result will be printed by default).
         '''
