@@ -105,7 +105,7 @@ def create_query_plan(query, keywords, action):
         else:
             dic['force'] = False
 
-
+    # split each argument allowing us to process them in each function
     if action == 'create trigger':
         x = dic['create trigger'].split()
         dic['create trigger'] = x
@@ -150,7 +150,7 @@ def evaluate_from_clause(dic):
         dic['from'] = join_dic
         
     return dic
-
+# added necesarry commands nedeed for #82 and #84
 def interpret(query):
     '''
     Interpret the query.

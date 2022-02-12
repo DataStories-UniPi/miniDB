@@ -10,7 +10,6 @@ import logging
 import warnings
 import readline
 from tabulate import tabulate
-import copy
 
 # sys.setrecursionlimit(100)
 
@@ -25,9 +24,10 @@ class Database:
     def __init__(self, name, load=True):
         self.tables = {}
         self._name = name
+        # flag for when transaction initiation starts
         self.save_state = False
         self.savedir = f'dbdata/{name}_db'
-        self.triggers={}
+        # to keep locked tables allowing us to unlock them at the end of the transaction
         self.transaction_locks=[]
         if load:
             try:
@@ -50,14 +50,23 @@ class Database:
             pass
 
         # create all the meta tables
+        # table for saving triggers and selecting them .
+        # meta_triggers fields 
+        # table_name -> table affected by trigger
+        # trigger_name -> pretty self explanatory
+        # when -> timing prin meta ktlp...
+        # act -> what action shall be taken
+        # func_name -> file name/name of function
         self.create_table('meta_triggers', 'table_name,trigger_name,when,act,func_name', 'str,str,str,str,str')
         self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
         self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
-
         self.save_database()
 
+    # altered :
+    # for save_database and load_database we added an if as to not save so the database does not have 
+    # to be saved when we start_transaction as per ticket #82
     def save_database(self):
         '''
         Save database as a pkl file. This method saves the database object, including all tables and attributes.
@@ -255,11 +264,15 @@ class Database:
         '''
         row = row_str.strip().split(',')
         self.load_database()
+        # call returns a dictionary with the triggers that need to be excecuted(probably wrong grammatically)
         trigger = self._trigger_select(table_name,'insert')
+        #returns list of triggers that need to run in before
+        #if it is empty we dont go in
         if trigger.get('before'):
             execute = trigger.get('before')
             for functions in execute:
                 getattr(__import__(functions[0]), functions[1])()
+        #same logic but insert dont run
         if trigger.get('instead'):
             execute = trigger.get('instead')
             print(execute)
@@ -290,7 +303,7 @@ class Database:
                     getattr(__import__(functions[0]), functions[1])()
 
 
-
+    # read comments in delete or insert same logic this is not an agatha christie novel
     def update_table(self, table_name, set_args, condition):
         '''
         Update the value of a column where a condition is met.
@@ -344,24 +357,30 @@ class Database:
                 Operatores supported: (<,<=,==,>=,>)
         '''
         self.load_database()
+        # call returns a dictionary with the triggers that need to be excecuted(probably wrong grammar)
         trigger= self._trigger_select(table_name,'delete')
         if trigger.get('before'):
+            #returns list of triggers that need to run in before
+            #if it is empty we dont go in
             execute=trigger.get('before')
-
             for functions in execute:
-
+                # runs aformentioned triggers
                 getattr(__import__(functions[0]),functions[1])()
+        #same logic but delete dont run
         if trigger.get('instead'):
             execute = trigger.get('instead')
             print(execute)
             for functions in execute:
                 print(functions)
                 getattr(__import__(functions[0]), functions[1])()
+        
         else:
             lock_ownership = self.lock_table(table_name, mode='x')
             deleted = self.tables[table_name]._delete_where(condition)
+            # dont unlock table if transaction has begun
             if lock_ownership and not self.save_state:
                 self.unlock_table(table_name)
+            # if transaction has begun add to list with tables to be unlocked
             else:
                 self.transaction_locks+=table_name
             self._update()
@@ -369,6 +388,7 @@ class Database:
             if table_name[:4] != 'meta':
                 self._add_to_insert_stack(table_name, deleted)
             self.save_database()
+        #run triggers after excecution of query 
         if trigger.get('after'):
             execute = trigger.get('after')
             for functions in execute:
@@ -736,69 +756,103 @@ class Database:
         index = pickle.load(f)
         f.close()
         return index
-    save_state = None
+    # starts transaction #82
+    # anything run after this moment shall not be saved unless
+    # commit command is run and saves it or
+    # rollback in with phase we will roll to the last save 
     def start_transaction(self,action):
+        # you cannot start a transaction whilst in a transaction is already running  
         if self.save_state:
             raise ValueError("Transaction already started")
         else:
             self.save_state= True
+    # if transation begins and user want to undo what he has done( dont we all )
+    # we turn savestate into false we call the unlocking phase well doing what its named
+    # and we load the last save of players
     def rollback(self,action):
+
         if self.save_state:
             self.save_state=False
             self.unlocking_phase()
             self.load_database()
+        # if a transaction has not started you cant really roll back can you
         else:
             raise ValueError("Transaction not started, nothng to rollback to")
+    # if we wish to save the aformentioned transation via commit
+    # we turn save state to False we unlock the locked tables and instead of loading last save
+    # we save the altered (or perhaps not) DB as the now last save 
     def commit(self,action):
         if self.save_state:
             self.save_state=False
             self.unlocking_phase()
             self.save_database()
+        # if a transaction has not started you cant really commit can you
         else:
             raise ValueError("Transaction not started, nothng to rollback to")
 
+    # well it unlocks the locked tables
     def unlocking_phase(self):
         for table in self.transaction_locks:
             self.unlock_table(table)
 
-    def create_trigger(self,params,table_name,function):
-        self.load_database
-        error= None
 
+    def create_trigger(self,params,table_name,function):
+        
+        self.load_database
+        # intialize and error var in case of an error
+        error= None
+        # check if table exists or are we getting catfished
         if table_name in self.tables.keys():
+            # check if timing is correct
             if params[1]=='before' or params[1]=='instead' or params[1]=='after':
+                #check if procedure is implemented
                 if params[2]=='update' or params[2]=='delete' or params[2]=='insert':
-                    self.tables['meta_triggers']._insert((table_name+','+params[0]+','+params[1]+','+params[2]+','+function).split(','))
-                    test=self._trigger_select('classroom','delete')
-                    print('here')
-                    print(test)
+                    # add wanted trigger to the trigger table
+                    self.tables['meta_triggers']._insert((table_name+','+params[0]+','+params[1]+','+params[2]+','+function).split(','))                    
                 else:
                    error='Triggers only work on : Update,Delete,Insert'
+
             else:
                 error='Trigger can only be executed on timings: Before,Instead,After'
+        # if table doesnt exist
         else:
             error='There is no table '+table_name
+        # if error has something print that something
         if error!=None:
             raise Exception(error)
         self.save_database()
         #[table_name]=[params[1],params[2],function,params[0]]
 
     def _trigger_select(self,table_name,where):
+        # returns table and procedure triggers
         test=self.tables['meta_triggers']._select_where('*','act = '+where,)._select_where('*','table_name ='+table_name)
+        # turn it into a list
         result_list=[[test.data[i][2]]+test.data[i][4:] for i in range(len(test.data))]
+        # create a dict for insted before and after as keys
         result={result_list[i][0]:[] for i in range(len(result_list))}
+        # initialize 3 empty lists gia ekasto shmeio
         instead=[]
+        
         before=[]
+        
         after=[]
+        
+        # add items to their predetermined lists
         for i in result_list:
+            
             if i[0]=='instead':
                 instead.append(i[1].split('.'))
+            
             elif i[0]=='before':
                 before.append([1].split('.'))
+            
             else:
                 after.append(i[1].split('.'))
+        # add to dictionary each of their coresponding values
         result['instead']=instead
+        
         result['after']=after
+        
         result['before']=before
-        print(result)
+                
         return result
