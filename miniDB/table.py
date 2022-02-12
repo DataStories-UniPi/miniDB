@@ -356,6 +356,79 @@ class Table:
                     join_table._insert(row_left+row_right)
 
         return join_table
+    
+    def _inl_join(self, table_left: Table, table_right: Table, condition):
+        # get columns and operator
+        '''
+        The query will have this form:
+                SELECT * FROM T1 INLJ T2 ON T1.COL1 = T2.COL2
+        '''
+
+        #If none of the tables have pk reject the query 
+        if table_left.pk is None and table_right.pk is None:
+            print("We can't use inlj if none of them has primary key")
+            return
+        else:
+            '''
+                If both tables have primary key we must index the table with less rows but we don't have meta-tables to check the number of rows at each table
+
+                if table_left.pk is not None and table_right.pk is not None:
+                    #CODE
+                    
+            '''
+            #If the right table has pk we index this table
+            if table_left.pk is None and table_right.pk is not None:
+                #We create index for the right table
+                index = Btree(3)
+                #We use enumerate as a counter for loop 
+                for right_indx, key in enumerate(table_right.column_by_name(table_right.pk)):
+                    index.insert(key,right_indx)
+            #If the left table has pk we must reverse them and use the table with primary key 
+            elif table_left.pk is not None and table_right.pk is None:
+                temp = table_right
+                table_right = table_left
+                table_left = temp
+                #We create index for the right table
+                index = Btree(3)
+                #We use enumerate as a counter for loop 
+                for right_indx, key in enumerate(table_right.column_by_name(table_right.pk)):
+                    index.insert(key,right_indx)
+
+            
+            # get columns and operator
+            column_name_left, operator, column_name_right = table_left._parse_condition(condition, join=True)
+            if operator != '=':
+                print("Wrong operator!!! You can only use the '=' operator")
+                return
+            # try to find both columns, if you fail raise error
+            try:
+                column_index_left = table_left.column_names.index(column_name_left)
+            except:
+                raise Exception(f'Column "{column_name_left}" dont exist in left table. Valid columns: {table_left.column_names}.')
+            try:
+                column_index_right = table_right.column_names.index(column_name_right)
+            except:
+                raise Exception(f'Column "{column_name_right}" dont exist in right table. Valid columns: {table_right.column_names}.')
+            # get the column names of both tables with the table name in front
+            # ex. for left -> name becomes left_table_name_name etc
+            left_names = [f'{table_left._name}.{colname}' if table_left._name!='' else colname for colname in table_left.column_names]
+            right_names = [f'{table_right._name}.{colname}' if table_right._name!='' else colname for colname in table_right.column_names]
+
+            # define the new tables name, its column names and types
+            join_table_name = ''
+            join_table_colnames = left_names+right_names
+            join_table_coltypes = table_left.column_types+table_right.column_types
+            join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
+
+            # INDEX NESTED LOOP ALGORITHM 
+            for row_left in table_left.data:
+                left_value = row_left[column_index_left]
+                results = index.find(operator,left_value)
+                if(len(results)>0):
+                    for i in results:
+                        join_table._insert(row_left + table_right.data[i])
+
+            return join_table
 
 
     def show(self, no_of_rows=None, is_locked=False):
