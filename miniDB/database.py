@@ -10,6 +10,7 @@ import logging
 import warnings
 import readline
 from tabulate import tabulate
+import triggers
 
 
 # sys.setrecursionlimit(100)
@@ -236,7 +237,7 @@ class Database:
         self._update()
         self.save_database()
 
-    def insert_into(self, table_name, row_str):
+    def insert_into(self, table_name, row_str,run_triggers=True):
         '''
         Inserts data to given table.
 
@@ -244,7 +245,28 @@ class Database:
             table_name: string. Name of table (must be part of database).
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             lock_load_save: boolean. If False, user needs to load, lock and save the states of the database (CAUTION). Useful for bulk-loading.
+            run_triggers: boolean. If true, triggers are allowed to run.
         '''
+
+        if run_triggers:    #check for instead of trigger
+            table = self.tables[table_name]
+            for t in table.triggers:
+                if t['when']=='instead of' and 'insert' in t['action']:
+                    func = t['function']
+                    query = getattr(triggers,func)()
+
+                    if query:   #if trigger returns a query, run it through the interpreter again
+
+                        dic = mdb.interpret(query)
+                        result = mdb.execute_dic(dic,False)
+                        if isinstance(result,Table):
+                            result.show()
+                    return
+        
+
+        if run_triggers:    #if triggers are allowed to run
+            self.execute_trigger(table_name,'before','insert')  #search for before insert triggers
+
         row = row_str.strip().split(',')
         self.load_database()
         # fetch the insert_stack. For more info on the insert_stack
@@ -263,8 +285,11 @@ class Database:
         self._update()
         self.save_database()
 
+        if run_triggers:
+            self.execute_trigger(table_name,'after','insert')   #search for after insert triggers
 
-    def update_table(self, table_name, set_args, condition):
+
+    def update_table(self, table_name, set_args, condition,run_triggers=True):
         '''
         Update the value of a column where a condition is met.
 
@@ -277,7 +302,27 @@ class Database:
                 'value[<,<=,==,>=,>]column'.
                 
                 Operatores supported: (<,<=,==,>=,>)
+            run_triggers: boolean. If true, triggers are allowed to run.
         '''
+
+        if run_triggers:    #check for instead of trigger
+            table = self.tables[table_name]
+            for t in table.triggers:
+                if t['when']=='instead of' and 'update' in t['action']:
+                    func = t['function']
+                    query = getattr(triggers,func)()
+
+                    if query:   #if trigger returns a query, run it through the interpreter again
+
+                        dic = mdb.interpret(query)
+                        result = mdb.execute_dic(dic,False)
+                        if isinstance(result,Table):
+                            result.show()
+                    return
+
+        if run_triggers:
+            self.execute_trigger(table_name,'before','update')  #search for before update triggers
+
         set_column, set_value = set_args.replace(' ','').split('=')
         self.load_database()
         
@@ -288,7 +333,10 @@ class Database:
         self._update()
         self.save_database()
 
-    def delete_from(self, table_name, condition):
+        if run_triggers:
+            self.execute_trigger(table_name,'after','update')   #search for after update triggers
+
+    def delete_from(self, table_name, condition,run_triggers=True):
         '''
         Delete rows of table where condition is met.
 
@@ -299,7 +347,27 @@ class Database:
                 'value[<,<=,==,>=,>]column'.
                 
                 Operatores supported: (<,<=,==,>=,>)
+            triggers: boolean. If true, triggers are allowed to run.
         '''
+
+        if run_triggers:    #check for instead of trigger
+            table = self.tables[table_name]
+            for t in table.triggers:
+                if t['when']=='instead of' and 'delete' in t['action']:
+                    func = t['function']
+                    query = getattr(triggers,func)()
+
+                    if query:   #if trigger returns a query, run it through the interpreter again
+
+                        dic = mdb.interpret(query)
+                        result = mdb.execute_dic(dic,False)
+                        if isinstance(result,Table):
+                            result.show()
+                    return
+
+        if run_triggers:
+            self.execute_trigger(table_name,'before','delete')  #search for before delete triggers
+
         self.load_database()
         
         lock_ownership = self.lock_table(table_name, mode='x')
@@ -312,6 +380,9 @@ class Database:
         if table_name[:4]!='meta':
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
+
+        if run_triggers:
+            self.execute_trigger(table_name,'after','delete')   #search for after delete triggers
 
     def select(self, columns, table_name, condition, order_by=None, top_k=True,\
                desc=None, save_as=None, return_object=True):
