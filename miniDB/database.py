@@ -108,9 +108,9 @@ class Database:
             primary_key: string. The primary key (if it exists).
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
-        # print(f'\nforeign key: {foreign_key}\n')
+        print(f'\nforeign key: {foreign_key}\n')
 
-        # print(f'\nref[0]: {ref[0]}\n')
+        print(f'\nref[0]: {ref[0]}\n')
 
         if ref != None:
 
@@ -120,14 +120,14 @@ class Database:
                 return
 
             # check if column names are part of a table
-            if not ref[1] in column_names:
+            if not ref[1][0:-1] in self.tables.get(ref[0]).column_names:
                 print(f'ERROR: Column {ref[1]} doesn\'t exist in table {ref[0]}') 
                 return
 
             # check if given referenced column is the pk of the given referenced table
-            if self.tables.get(ref[0]).pk != ref[1:-1]:
+            if self.tables.get(ref[0]).pk != ref[1][0:-1]:
                 print(f'{self.tables.get(ref[0]).pk}')
-                print(f'{ref[1:-1]}')
+                print(f'{ref[1][0:-1]}')
             
 
         # print('here -> ', column_names.split(','))
