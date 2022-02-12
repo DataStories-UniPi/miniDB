@@ -33,11 +33,15 @@ class Database:
             try:
                 self.load_database()
                 logging.info(f'Loaded "{name}".')
-                print(self.save_state)
-
+                for i in self.tables.keys():
+                    if not self.is_locked(i):
+                        self.unlock_table(i, True)
                 return
-            except:
+            except pickle.PickleError:
                 warnings.warn(f'Database "{name}" does not exist. Creating new.')
+            except:
+                warnings.warn('a table is locked')
+                return
 
         # create dbdata directory if it doesnt exist
         if not os.path.exists('dbdata'):
@@ -584,6 +588,8 @@ class Database:
         try:
             pid = self.tables['meta_locks']._select_where('pid',f'table_name={table_name}').data[0][0]
             if pid!=os.getpid():
+                if not (os.path.isdir('/proc/{}'.format(pid))):
+                     return False
                 raise Exception(f'Table "{table_name}" is locked by the process with pid={pid}')
 
         except IndexError:
@@ -765,7 +771,8 @@ class Database:
         if self.save_state:
             raise ValueError("Transaction already started")
         else:
-            self.save_state= True
+            self.save_state=True
+
     # if transation begins and user want to undo what he has done( dont we all )
     # we turn savestate into false we call the unlocking phase well doing what its named
     # and we load the last save of players
