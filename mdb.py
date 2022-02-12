@@ -105,6 +105,65 @@ def create_query_plan(query, keywords, action):
         else:
             dic['force'] = False
 
+    if action=='create index':
+        '''
+        Example:
+        create index index_name on table(column_name)   (specific column)
+        create index index_name on table                (primary key column)
+        '''
+
+        dic['on']=ql[4] #table name
+        if "(" in ql:   #parenthesis indicates specific column
+            dic['column'] = ql[6]
+        else:
+            dic['column']=None  #if column is not specified, index will be created on PK
+        dic['using']='btree'
+    
+    if action=='create trigger':
+        '''
+        Example
+        create trigger trigger_name before update on table execute procedure function
+        '''
+        args = dic['create trigger'].split(" ",1)[-1]
+        dic['create trigger'] = dic['create trigger'].removesuffix(args).strip()
+        arglist= args.split(' ')
+        
+        if arglist[0]=='instead':
+            arglist[0:2] = [' '.join(arglist[0:2])] #turn 'instead' 'of' into 'instead of'
+
+        dic['when'] = arglist[0]    #before/after/instead of
+        #dic['action'] = arglist[1]  #insert/update/delete
+        #dic['on'] = arglist[3]
+
+        #arglist[4:6] = [' '.join(arglist[4:6])] #turn 'execute procedure' into 'execute procedure'
+
+        if arglist[-2]=='(':  #if 'function' is written as 'function()'
+            dic['on']=arglist[-6]
+            arglist[-5:-3] = [' '.join(arglist[-5:-3])] #turn 'execute' 'procedure' into 'execute_procedure'
+
+            actions = arglist[1:-6]
+            actions = [ac for ac in actions if ac!='or']
+            dic['action'] = actions
+
+            dic['execute_procedure'] = arglist[-3]  #function name
+        else:
+            dic['on']=arglist[-4]
+            arglist[-3:-1] = [' '.join(arglist[-3:-1])] #turn 'execute' 'procedure' into 'execute procedure'
+
+            actions = arglist[1:-4]
+            actions = [ac for ac in actions if ac!='or']    #multiple actions are separated by or
+            dic['action'] = actions
+
+            dic['execute_procedure'] = arglist[-1]  #function name
+
+    
+    if action=='drop trigger':
+        '''
+        Example:
+        drop trigger trigger_name on table
+        '''
+        dic['drop trigger'] = ql[2] #trigger name
+        dic['table'] = ql[4]   #table name
     return dic
 
 
