@@ -430,10 +430,55 @@ class Database:
                 return res
             else:
                 res.show()
+        
+    def inlj(self, left_table, right_table, condition='=='):
+        '''
+        Index Nested Loop Join (INLJ)
+        '''
+        left_table = left_table if isinstance(left_table, Table) else self.tables[left_table] 
+        right_table = right_table if isinstance(right_table, Table) else self.tables[right_table] 
 
-    def inlj(self, left_table, right_table):
-        #Index Nested Loop Join
-        return
+        if (right_table.pk != None):
+            # get columns and operator
+            column_name_left, operator, column_name_right = self._parse_condition(condition, join=True)
+            # try to find both columns, if you fail raise error
+            try:
+                column_index_left = self.column_names.index(column_name_left)
+            except:
+                raise Exception(f'Column "{column_name_left}" dont exist in left table. Valid columns: {self.column_names}.')
+
+            try:
+                column_index_right = right_table.column_names.index(column_name_right)
+            except:
+                raise Exception(f'Column "{column_name_right}" dont exist in right table. Valid columns: {right_table.column_names}.')
+
+            # get the column names of both tables with the table name in front
+            # ex. for left -> name becomes left_table_name_name etc
+            left_names = [f'{self._name}.{colname}' if self._name!='' else colname for colname in self.column_names]
+            right_names = [f'{right_table._name}.{colname}' if right_table._name!='' else colname for colname in right_table.column_names]
+
+            # define the new tables name, its column names and types
+            inlj_table_name = ''
+            inlj_table_colnames = left_names+right_names
+            inlj_table_coltypes = self.column_types+right_table.column_types
+            inlj_table = Table(name=inlj_table_name, column_names=inlj_table_colnames, column_types= inlj_table_coltypes)
+
+            if(self._has_index(right_table)): #if it does not have an index:
+                #create index
+                self.create_index(right_table + 'Indx' ,right_table)
+                pass
+
+            idx = self._load_idx(right_table + 'Indx')
+           
+            #INLJ algorithm
+            for row in left_table.data:
+                left_value = row[column_index_left]
+                res = idx.find('=',left_value)
+                if len(res) > 0: #if there is a common value, the length will be > 0
+                    for i in res:
+                        inlj_table._insert(row + right_table.data[i]) #populate the join_table with the results
+
+            return inlj_table
 
     def smj(self, left_table, right_table):
         #Sort-Merge Join
