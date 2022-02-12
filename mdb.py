@@ -89,6 +89,26 @@ def create_query_plan(query, keywords, action):
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
+        
+        if 'foreign key' in args:
+
+            if not 'ref' in args:
+                print(f'Error: Didn\'t provide a reference table and column for the foreign key.')
+                return
+            
+            arglist = args[1:-1].split(' ')
+
+            print(f'\narglist: {arglist}\n')
+
+            # foreign key will eventually become a list cause we can have 
+            # more than one foreign key in a table
+            dic['foreign key'] = arglist[arglist.index('foreign')-2]
+
+            dic['ref'] = []
+            dic['ref'].append(arglist[arglist.index('ref')+1])
+            dic['ref'].append(arglist[arglist.index('ref')+2])
+
+            print(f'dic[\'foreign key\']: {dic["foreign key"]}')
     
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
