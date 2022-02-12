@@ -125,6 +125,14 @@ class Table:
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
 
+            # if value is to be appended to a unique column, check that it doesnt already exist (no duplicates in unique column)
+            if 'unique' in self.column_constraints[i] and row[i] in self.column_by_name(self.column_names[i]):
+                raise ValueError(f'## ERROR -> Value {row[i]} already exists in unique column.')
+
+            # if value is to be appended to a not null column, check that this value is not null
+            if 'not_null' in self.column_constraints[i] and not row[i]:
+                raise ValueError(f'## ERROR -> Value {row[i]} cannot be null.')
+
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
             self.data[insert_stack[-1]] = row
