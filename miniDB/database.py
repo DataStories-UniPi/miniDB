@@ -238,7 +238,7 @@ class Database:
         self._update()
         self.save_database()
 
-    def insert_into(self, table_name, row_str, flag = False):
+    def insert_into(self, table_name, row_str):
         '''
         Inserts data to given table.
 
@@ -246,26 +246,42 @@ class Database:
             table_name: string. Name of table (must be part of database).
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             lock_load_save: boolean. If False, user needs to load, lock and save the states of the database (CAUTION). Useful for bulk-loading.
-            flag: Boolean. False, when an insert query can't be executed on the 'meta_triggers' table.
-                           True, when an insert query can be executed on the 'meta_triggers' table.
         '''
-        row = row_str.strip().split(',')
-        self.load_database()
-        # fetch the insert_stack. For more info on the insert_stack
-        # check the insert_stack meta table
-        lock_ownership = self.lock_table(table_name, mode='x')
-        insert_stack = self._get_insert_stack_for_table(table_name)
-        try:
-            self.tables[table_name]._insert(row, insert_stack)
-        except Exception as e:
-            logging.info(e)
-            logging.info('ABORTED')
-        self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
 
-        if lock_ownership:
-            self.unlock_table(table_name)
-        self._update()
-        self.save_database()
+        if table_name != "triggers":
+
+            # searching for triggers with condition 'BEFORE' and action 'INSERT'.
+            bfr_insert = self.count_trigger(table_name, "before", "insert")
+
+            for i in range(bfr_insert):
+                print("Do something.")
+
+            table_changed = True
+
+            row = row_str.strip().split(',')
+            self.load_database()
+            # fetch the insert_stack. For more info on the insert_stack
+            # check the insert_stack meta table
+            lock_ownership = self.lock_table(table_name, mode='x')
+            insert_stack = self._get_insert_stack_for_table(table_name)
+            try:
+                self.tables[table_name]._insert(row, insert_stack)
+            except Exception as e:
+                logging.info(e)
+                logging.info('ABORTED')
+            self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
+
+            if lock_ownership:
+                self.unlock_table(table_name)
+            self._update()
+            self.save_database()
+
+            if table_changed:
+                # searching for triggers with condition 'AFTER' and action 'INSERT'.
+                after_insert = self.count_trigger(table_name, "after", "insert")
+
+                for i in range(after_insert):
+                    print("Do something")
 
 
     def update_table(self, table_name, set_args, condition):
@@ -282,15 +298,33 @@ class Database:
 
                 Operatores supported: (<,<=,==,>=,>)
         '''
-        set_column, set_value = set_args.replace(' ','').split('=')
-        self.load_database()
+        if table_name != "triggers":
 
-        lock_ownership = self.lock_table(table_name, mode='x')
-        self.tables[table_name]._update_rows(set_value, set_column, condition)
-        if lock_ownership:
-            self.unlock_table(table_name)
-        self._update()
-        self.save_database()
+            # searching for triggers with condition 'BEFORE' and action 'UPDATE'.
+            bfr_update = self.count_trigger(table_name, "before", "update")
+
+            for i in range(bfr_update):
+                print("Do something.")
+
+            set_column, set_value = set_args.replace(' ','').split('=')
+            self.load_database()
+
+            lock_ownership = self.lock_table(table_name, mode='x')
+            table_changed = self.tables[table_name]._update_rows(set_value, set_column, condition)
+            
+            if table_changed:
+                # searching for triggers with condition 'AFTER' and action 'UPDATE'.
+                after_update = self.count_trigger(table_name, "after", "update")
+
+                for i in range(after_update):
+                    print("Do something")
+
+            if lock_ownership:
+                self.unlock_table(table_name)
+            self._update()
+            self.save_database()
+
+        
 
     def delete_from(self, table_name, condition):
         '''
@@ -304,18 +338,32 @@ class Database:
 
                 Operatores supported: (<,<=,==,>=,>)
         '''
-        self.load_database()
+        # searching for triggers with condition 'BEFORE' and action 'DELETE'.
 
-        lock_ownership = self.lock_table(table_name, mode='x')
-        deleted = self.tables[table_name]._delete_where(condition)
-        if lock_ownership:
-            self.unlock_table(table_name)
-        self._update()
-        self.save_database()
-        # we need the save above to avoid loading the old database that still contains the deleted elements
-        if table_name[:4]!='meta':
-            self._add_to_insert_stack(table_name, deleted)
-        self.save_database()
+        if table_name != "triggers":
+            bfr_delete = self.count_trigger(table_name, "before", "delete")
+
+            for i in range(bfr_delete):
+                print("Do something")
+
+            self.load_database()
+
+            lock_ownership = self.lock_table(table_name, mode='x')
+            deleted = self.tables[table_name]._delete_where(condition)
+            if lock_ownership:
+                self.unlock_table(table_name)
+            self._update()
+            self.save_database()
+            # we need the save above to avoid loading the old database that still contains the deleted elements
+            if table_name[:4]!='meta':
+                self._add_to_insert_stack(table_name, deleted)
+            self.save_database()
+
+            if deleted == True:
+                # searching for triggers with condition 'AFTER' and action 'DELETE'.
+                after_delete = self.count_trigger(table_name, "after", "delete")
+                for i in range(after_delete):
+                    print("Do something")
 
     def select(self, columns, table_name, condition, order_by=None, top_k=True,\
                desc=None, save_as=None, return_object=True):
@@ -583,6 +631,7 @@ class Database:
         f = open(f'{self.savedir}/views/meta_{view_name}_view.pkl', 'rb')
         view = pickle.load(f)
         f.close()
+
         return view
 
 
@@ -614,7 +663,7 @@ class Database:
         if table_name in self.tables.keys() and table_name != "meta_triggers":
             self.insert_into("meta_triggers", trigger_name + ',' + table_name + ',' + action + ',' + condition, True)
         else:
-            print("It is not possible to create a trigegr on this table!")
+            print("It is not possible to create a trigger on this table!")
 
         '''
         lock_ownership = self.lock_table(table_name, mode='x')
