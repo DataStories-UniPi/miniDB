@@ -3,6 +3,8 @@ from tabulate import tabulate
 import pickle
 import os
 from misc import get_op, split_condition
+import triggers
+import mdb as mdb
 
 
 class Table:
@@ -14,6 +16,7 @@ class Table:
         - column names (list of strings)
         - column types (list of functions like str/int etc)
         - primary (name of the primary key column)
+        - triggers (list of dictionaries)   #AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 
     OR
 
@@ -22,7 +25,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+    def __init__(self, name=None, column_names=None, column_types=None, column_constraints=None, primary_key=None, load=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -55,7 +58,9 @@ class Table:
                     raise Exception(f'"{col}" attribute already exists in "{self.__class__.__name__} "class.')
 
             self.column_types = [eval(ct) if not isinstance(ct, type) else ct for ct in column_types]
+            self.column_constraints = column_constraints    # column_constraints is a list of lists, that contain constraints for each column
             self.data = [] # data is a list of lists, a list of rows that is.
+            self.triggers = []  #triggers is a list of triggers stored as dictionaries  
 
             # if primary key is set, keep its index as an attribute
             if primary_key is not None:
