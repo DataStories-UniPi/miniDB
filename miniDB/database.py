@@ -419,8 +419,13 @@ class Database:
 
         if mode=='inner':
             res = left_table._inner_join(right_table, condition)
+        elif mode == 'inlj':
+            res = left_table._inl_join(left_table,right_table,condition)
+        elif mode == 'smj':
+            res = left_table._sm_join(left_table,right_table,condition)
         else:
             raise NotImplementedError
+            
 
         if save_as is not None:
             res._name = save_as
