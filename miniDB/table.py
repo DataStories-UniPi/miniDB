@@ -440,3 +440,26 @@ class Table:
         f.close()
 
         self.__dict__.update(tmp_dict)
+
+    def _add_trigger(self, trigger):
+        '''
+        Adds a trigger to the table.
+
+        Args:
+            trigger: dictionary. Stores action (INSERT | UPDATE etc.) and other trigger information.
+        '''
+
+        if isinstance(trigger,dict):
+            
+            self.triggers.append(trigger)   #append trigger to list of triggers
+
+    def _drop_trigger(self, trigger_name):
+        '''
+        Drop trigger from the table.
+
+        Args:
+            trigger_name: string. Name of the trigger to be deleted.
+        '''
+        for t in self.triggers: #iterate list and delete trigger
+            if t['name']==trigger_name: 
+                self.triggers.remove(t)
