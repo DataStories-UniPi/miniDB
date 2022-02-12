@@ -1,4 +1,5 @@
 from __future__ import annotations
+from  importlib import import_module
 import pickle
 from table import Table
 from time import sleep, localtime, strftime
@@ -50,6 +51,7 @@ class Database:
         self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
+        self.create_table('meta_triggers', 'trigger_name,placeholder,event,table_name,trigger_function', 'str,str,str,str,str')
         self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
         self.save_database()
 
@@ -118,6 +120,26 @@ class Database:
         # (self.tables[name])
         print(f'Created table "{name}".')
 
+    def create_trigger(self, trigger_name, table_name, trigger_function):
+        #all args are strings
+        #rearranges the input using arrays to get the input values in the rig>
+        array1 = trigger_name.split(' ')
+        array2 = table_name.split(' ')
+        placeholder = array1[1]
+        event = array1[2]
+        table_name = array2[0]
+        trigger_name = array1[0]
+        #inserts values in table meta_triggers as one row
+        self.tables['meta_triggers']._insert([trigger_name,placeholder,event,table_name,trigger_function])
+        self.save_database()
+
+    
+    def drop_trigger(self, trigger_name):
+        for row in self.tables['meta_triggers'].data: #for all rows of meta_triggers...
+         if row[0]==trigger_name: #check if there is trigger with name same as the input
+          self.delete_from('meta_triggers', f'trigger_name={trigger_name}') #drop trigger(replace attributes witn Nones)
+         else:
+          print('No trigger with that name exists')
 
     def drop_table(self, table_name):
         '''
@@ -245,6 +267,23 @@ class Database:
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             lock_load_save: boolean. If False, user needs to load, lock and save the states of the database (CAUTION). Useful for bulk-loading.
         '''
+        for row in self.tables['meta_triggers'].data: #for every row in meta_triggers...
+          if row[1]=='before' and row[2]=='insert' and row[3]==table_name: #check if there is a trigger on the table the user wants to insert into that should run before the insert_into function
+            tr_f = row[4].split('.') #split the last string of the row into 3 strings(file_name,py,function_name)
+            if len(tr_f)>2: #check if the input was given correctly
+             if tr_f[1]== 'py': #check if the input contains the py extension
+               mod = import_module(tr_f[0]) #import the python file and run the function of the trigger
+               han = getattr(mod,tr_f[2])
+               han()
+          elif row[1]=='instead_of' and row[2]=='insert' and row[3]==table_name:
+            tr_f = row[4].split('.')
+            if len(tr_f)>2:
+              if tr_f[1]== 'py':
+                mod = import_module(tr_f[0])
+                han = getattr(mod,tr_f[2])
+                han()
+                return # in case the trigger is meant to run instead of the insert into function we exit the function right after the trigger runs
+
         row = row_str.strip().split(',')
         self.load_database()
         # fetch the insert_stack. For more info on the insert_stack
@@ -262,6 +301,15 @@ class Database:
             self.unlock_table(table_name)
         self._update()
         self.save_database()
+        #the rest of the triggers run the same way
+        for row in self.tables['meta_triggers'].data:
+         if row[1]=='after' and row[2]=='insert' and row[3]==table_name:
+           tr_f = row[4].split('.')
+           if len(tr_f)>2:
+             if tr_f[1]== 'py':
+               mod = import_module(tr_f[0])
+               han = getattr(mod,tr_f[2])
+               han()
 
 
     def update_table(self, table_name, set_args, condition):
@@ -278,6 +326,22 @@ class Database:
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
+        for row in self.tables['meta_triggers'].data:
+         if row[1]=='before' and row[2]=='update' and row[3]==table_name:
+           tr_f = row[4].split('.')
+           if len(tr_f)>2:
+             if tr_f[1]== 'py':
+               mod = import_module(tr_f[0])
+               han = getattr(mod,tr_f[2])
+               han()
+         elif row[1]=='instead_of' and row[2]=='update' and row[3]==table_name:
+          tr_f = row[4].split('.')
+          if len(tr_f)>2:
+            if tr_f[1]== 'py':
+              mod = import_module(tr_f[0])
+              han = getattr(mod,tr_f[2])
+              han()
+              return
         set_column, set_value = set_args.replace(' ','').split('=')
         self.load_database()
         
@@ -287,6 +351,14 @@ class Database:
             self.unlock_table(table_name)
         self._update()
         self.save_database()
+        for row in self.tables['meta_triggers'].data:
+         if row[1]=='after' and row[2]=='update' and row[3]==table_name:
+           tr_f = row[4].split('.')
+           if len(tr_f)>2:
+             if tr_f[1]== 'py':
+               mod = import_module(tr_f[0])
+               han = getattr(mod,tr_f[2])
+               han()
 
     def delete_from(self, table_name, condition):
         '''
@@ -300,6 +372,22 @@ class Database:
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
+        for row in self.tables['meta_triggers'].data:
+         if row[1]=='before' and row[2]=='delete' and row[3]==table_name:
+           tr_f = row[4].split('.')
+           if len(tr_f)>2:
+             if tr_f[1]== 'py':
+               mod = import_module(tr_f[0])
+               han = getattr(mod,tr_f[2])
+               han()
+         elif row[1]=='instead_of' and row[2]=='delete' and row[3]==table_name:
+          tr_f = row[4].split('.')
+          if len(tr_f)>2:
+            if tr_f[1]== 'py':
+              mod = import_module(tr_f[0])
+              han = getattr(mod,tr_f[2])
+              han()
+              return
         self.load_database()
         
         lock_ownership = self.lock_table(table_name, mode='x')
@@ -312,6 +400,14 @@ class Database:
         if table_name[:4]!='meta':
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
+        for row in self.tables['meta_triggers'].data:
+         if row[1]=='after' and row[2]=='delete'and row[3]==table_name:
+           tr_f = row[4].split('.')
+           if len(tr_f)>2:
+             if tr_f[1]== 'py':
+               mod = import_module(tr_f[0])
+               han = getattr(mod,tr_f[2])
+               han()
 
     def select(self, columns, table_name, condition, order_by=None, top_k=True,\
                desc=None, save_as=None, return_object=True):

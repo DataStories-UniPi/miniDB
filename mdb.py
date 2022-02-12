@@ -160,7 +160,9 @@ def interpret(query):
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
                      'create index': ['create index', 'on', 'using'],
-                     'drop index': ['drop index']
+                     'drop index': ['drop index'],
+                     'create trigger': ['create trigger', 'on', 'execute procedure'],
+                     'drop trigger': ['drop trigger']
                      }
 
     if query[-1]!=';':
