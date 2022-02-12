@@ -740,8 +740,8 @@ class Database:
             column_name: string. Name of the column to create the index on. If None, index will be created on primary key.
         '''
         if not column_name: #if user did not specify the column, check for primary key
-        if self.tables[table_name].pk_idx is None: # if no primary key, no index
-            raise Exception('Cannot create index. Table has no primary key.')
+            if self.tables[table_name].pk_idx is None: # if no primary key, no index
+                raise Exception('Cannot create index. Table has no primary key.')
         else:
             col_idx = self.tables[table_name].column_names.index(column_name)   #index of column
             if 'unique' not in self.tables[table_name].column_constraints[col_idx] and column_name!=self.tables[table_name].pk:  #if not unique or pk, no index
