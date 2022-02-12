@@ -31,8 +31,8 @@ def split_condition(condition):
             'between':between_operator, # The between operator selects values within a given range. The values can be numbers, text, or dates.
             'like':like_operator}   # The LIKE operator is used in a WHERE clause to search for a specified pattern in a column.
                                     # There are two wildcards often used in conjunction with the LIKE operator:
-                                    # * The percent sign (%) represents zero, one, or multiple characters.
-                                    # * The underscore sign (_) represents one, single character.
+                                    # ~ The percent sign (%) represents zero, one, or multiple characters.
+                                    # ~ The underscore sign (_) represents one, single character.
 
     for op_key in ops.keys():
         splt=condition.split(op_key)
