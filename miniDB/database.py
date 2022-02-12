@@ -108,14 +108,27 @@ class Database:
             primary_key: string. The primary key (if it exists).
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
-        print(f'\nforeign key: {foreign_key}\n')
+        # print(f'\nforeign key: {foreign_key}\n')
 
-        print(f'\nref[0]: {ref[0]}\n')
+        # print(f'\nref[0]: {ref[0]}\n')
 
-        if not ref[0] in self.tables:
-            print(f'ERROR: Cannot create table {name}\n')
-            print(f'Referenced table {ref[0]} does not exist! \n')
-            return
+        if ref != None:
+
+            if not ref[0] in self.tables:
+                print(f'ERROR: Cannot create table {name}\n')
+                print(f'Referenced table {ref[0]} does not exist! \n')
+                return
+
+            # check if column names are part of a table
+            if not ref[1] in column_names:
+                print(f'ERROR: Column {ref[1]} doesn\'t exist in table {ref[0]}') 
+                return
+
+            # check if given referenced column is the pk of the given referenced table
+            if self.tables.get(ref[0]).pk != ref[1:-1]:
+                print(f'{self.tables.get(ref[0]).pk}')
+                print(f'{ref[1:-1]}')
+            
 
         # print('here -> ', column_names.split(','))
         self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, foreign_key=foreign_key, ref=ref, load=load)})
