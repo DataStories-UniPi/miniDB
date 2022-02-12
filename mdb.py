@@ -230,8 +230,10 @@ def interpret(query):
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
-                     'create index': ['create index', 'on', 'using'],
-                     'drop index': ['drop index']
+                     'create index': ['create index', 'on', 'column','using'],
+                     'drop index': ['drop index'],
+                     'create trigger': ['create trigger'],
+                     'drop trigger': ['drop trigger']
                      }
 
     if query[-1]!=';':
