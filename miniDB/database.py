@@ -135,11 +135,13 @@ class Database:
 
     
     def drop_trigger(self, trigger_name):
+        count=0
         for row in self.tables['meta_triggers'].data: #for all rows of meta_triggers...
          if row[0]==trigger_name: #check if there is trigger with name same as the input
           self.delete_from('meta_triggers', f'trigger_name={trigger_name}') #drop trigger(replace attributes witn Nones)
-         else:
-          print('No trigger with that name exists')
+          count++
+        if(count==0):
+         print('No trigger with that name exists')
 
     def drop_table(self, table_name):
         '''
