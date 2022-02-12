@@ -252,7 +252,7 @@ class Table:
         s_table = Table(load=dict) 
         if order_by:
             s_table.order_by(order_by, desc)
-
+        
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
 
         return s_table
@@ -291,7 +291,9 @@ class Table:
                     rows.append(ind)
 
         # same as simple select from now on
-        rows = rows[:top_k]
+        print('top k testing')
+        rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
+        print(rows)
         # TODO: this needs to be dumbed down
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
 

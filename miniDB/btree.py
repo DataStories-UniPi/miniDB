@@ -367,6 +367,7 @@ class Btree:
             # print the number of operations (usefull for benchamrking)
             print(f'With BTree -> {ops} comparison operations')
             return results
+        # if we have duplicates - everything other than the pk for now
         else:
             print('hello dump')
             if operator[len(operator)-1] == '=':
@@ -375,27 +376,41 @@ class Btree:
                 value = tuple(value)
                 print(value)
                 leaf_idx, ops = self._search(value, True)
+                print(leaf_idx)
                 target_node = self.nodes[leaf_idx]
                 print(self.nodes[leaf_idx].values)
                 for idx, node_value in enumerate(target_node.values):
                     ops += 1
-                    print(node_value)
-                    if node_value >= value:
+                    print('node value')
+                    print(node_value[0].replace(" ", ""))
+                    print('value')
+                    print(value[0])
+                    # if we find a match
+                    if node_value[0].replace(" ", "") == value[0]:
                         print('hello ioakeim')
                         #new
                         #if node_value[0] != value[0]:
                         #   return results
                         #new
-                        print(target_node.ptrs[idx])
-                        results.append(target_node.ptrs[idx])
+                        
+                        results.append(node_value[1])
+                        
                 while target_node.right_sibling is not None:
+                    print('check: inside RS not None')
                     target_node = self.nodes[target_node.right_sibling]
-                    for data in target_node:
-                        if data[0] != value[0]:
+                    print(target_node)
+                    for data in enumerate(target_node.values):
+                        print(data)
+                        print(value)
+                        if data[1][0] != value[0]:  
+                            print('evi1')
+                            print(results)
                             return results
                         else:
-                            results.append(target_node.ptrs[target_node.values.index(data)])
-
+                            print('evi2')
+                            results.append(data[1][1])
+                
+                return results
             if operator[len(operator)-1] == '>=':
                 value.append(0)
                 leaf_idx, ops = self._search(tuple(value), True)
