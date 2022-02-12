@@ -247,15 +247,25 @@ def interpret(query):
 
     return create_query_plan(query, kw_per_action[action]+[';'], action)
 
-def execute_dic(dic):
+def execute_dic(dic,execute_triggers=True):
     '''
     Execute the given dictionary
+    -dic: Dictionary to execute.
+    -execute_triggers: Boolean flag. Indicates whether we want triggers to run. This flag is used to stop triggers running on a query returned by a trigger (infinite loop) 
     '''
+    global db
+    db = database.Database(dbname, load=True)
+
     for key in dic.keys():
         if isinstance(dic[key],dict):
-            dic[key] = execute_dic(dic[key])
+            dic[key] = execute_dic(dic[key],execute_triggers)
     
     action = list(dic.keys())[0].replace(' ','_')
+
+    if action=='insert_into' or action=='update_table' or action =='delete_from':
+        #if action is part of trigger actions (insert/update/delete), pass the flag.
+        return getattr(db, action)(*dic.values(),run_triggers=execute_triggers)
+    else:
     return getattr(db, action)(*dic.values())
 
 def interpret_meta(command):
