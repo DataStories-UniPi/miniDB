@@ -751,19 +751,25 @@ class Database:
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
-    def _construct_index(self, table_name, index_name):
+    def _construct_index(self, table_name, index_name, column_name):
         '''
         Construct a btree on a table and save.
 
         Args:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
+            column_name: string. Name of the column to create the index on. If it is None, create index on primary key.
         '''
         bt = Btree(3) # 3 is arbitrary
 
+        if not column_name: #if column is not specified, create index on PK
         # for each record in the primary key of the table, insert its value and index to the btree
         for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
             bt.insert(key, idx)
+        else:
+            #for each record in the predefined column of the table, insert its value and index to the btree
+            for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
+                bt.insert(key, idx)
         # save the btree
         self._save_index(index_name, bt)
 
