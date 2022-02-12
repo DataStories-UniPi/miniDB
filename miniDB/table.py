@@ -63,6 +63,8 @@ class Table:
             # if primary key is set, keep its index as an attribute
             if primary_key is not None:
                 self.pk_idx = self.column_names.index(primary_key)
+                print(f"Primary key is {primary_key}")
+                print(f"Primary key index is {self.pk_idx}")
             else:
                 self.pk_idx = None
 
@@ -110,7 +112,7 @@ class Table:
         '''
         if (hasattr(self, 'column_constraints')):
             # Check for a null value in a not null column
-            if not value and col_name in self.column_constraints["not_null"]:
+            if (not value or value=="null") and col_name in self.column_constraints["not_null"]:
                 raise ValueError("Tried to add a null value into a not null column ")
 
             # Check for duplicate value in a unique column
