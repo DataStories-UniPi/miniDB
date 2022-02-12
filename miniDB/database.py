@@ -11,6 +11,7 @@ import warnings
 import readline
 from tabulate import tabulate
 import triggers
+import mdb as mdb
 
 
 # sys.setrecursionlimit(100)
@@ -48,10 +49,10 @@ class Database:
             pass
 
         # create all the meta tables
-        self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
-        self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
-        self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
-        self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
+        self.create_table('meta_length', 'table_name,no_of_rows', 'str,int',['None','None'])    #pass 'None' column constraints to meta tables
+        self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str',['None','None','None'])
+        self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list',['None','None'])
+        self.create_table('meta_indexes', 'table_name,index_name', 'str,str',['None','None'])
         self.save_database()
 
     def save_database(self):
