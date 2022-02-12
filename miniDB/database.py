@@ -244,24 +244,49 @@ class Database:
             table_name: string. Name of table (must be part of database).
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             lock_load_save: boolean. If False, user needs to load, lock and save the states of the database (CAUTION). Useful for bulk-loading.
-        '''
-        row = row_str.strip().split(',')
-        self.load_database()
-        # fetch the insert_stack. For more info on the insert_stack
-        # check the insert_stack meta table
-        lock_ownership = self.lock_table(table_name, mode='x')
-        insert_stack = self._get_insert_stack_for_table(table_name)
-        try:
-            self.tables[table_name]._insert(row, insert_stack)
-        except Exception as e:
-            logging.info(e)
-            logging.info('ABORTED')
-        self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
+        '''   
+        #elegxos ean row_str einai tipou Table
+        if isinstance(row_str,Table):
+            self.load_database()
+            # fetch the insert_stack. For more info on the insert_stack
+            # check the insert_stack meta table
+            lock_ownership = self.lock_table(table_name, mode='x')
+            #pairnume mia-mia eggrafi(sira)
+            for r in row_str.data:
+                insert_stack = self._get_insert_stack_for_table(table_name)
+                try:
+                    #tin prosthetume sto table me tin voithia tis sinartisis _insert
+                    self.tables[table_name]._insert(r, insert_stack)
+                except Exception as e:
+                    print(e)
+                    logging.info(e)
+                    logging.info('ABORTED')
+                self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
+            if lock_ownership:
+                self.unlock_table(table_name)
+            self._update()
+            self.save_database()
+        else:
+            row = row_str.strip().split(',')
+            self.load_database()
+            # fetch the insert_stack. For more info on the insert_stack
+            # check the insert_stack meta table
+            lock_ownership = self.lock_table(table_name, mode='x')
+            insert_stack = self._get_insert_stack_for_table(table_name)
+            try:
+                self.tables[table_name]._insert(row, insert_stack)
+            except Exception as e:
+                print(e)
+                logging.info(e)
+                logging.info('ABORTED')
+            self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
 
-        if lock_ownership:
-            self.unlock_table(table_name)
-        self._update()
-        self.save_database()
+            if lock_ownership:
+                self.unlock_table(table_name)
+            self._update()
+            self.save_database()
+           
+        
 
 
     def update_table(self, table_name, set_args, condition):

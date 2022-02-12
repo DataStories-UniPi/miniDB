@@ -125,7 +125,7 @@ class Table:
             self.data[insert_stack[-1]] = row
         else: # else append to the end
             self.data.append(row)
-        # self._update()
+        #self._update()
 
     def _update_rows(self, set_value, set_column, condition):
         '''

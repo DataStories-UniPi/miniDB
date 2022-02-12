@@ -1,8 +1,10 @@
 import os
 import re
 from pprint import pprint
+from select import select
 import sys
 import readline
+from this import d
 import traceback
 import shutil
 sys.path.append('miniDB')
@@ -18,8 +20,6 @@ art = '''
  | | | | | || || | | || || |__| || |_) |
  |_| |_| |_||_||_| |_||_||_____/ |____/   2021 - v3.2                               
 '''   
-
-
 def search_between(s, first, last):
     '''
     Search in 's' for the substring that is between 'first' and 'last'
@@ -61,6 +61,7 @@ def create_query_plan(query, keywords, action):
 
 
     for i in range(len(kw_in_query)-1):
+
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
 
     if action=='select':
@@ -94,8 +95,23 @@ def create_query_plan(query, keywords, action):
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
     if action=='insert into':
-        if dic['values'][0] == '(' and dic['values'][-1] == ')':
+        #Ama mesa sto dic tou insert into uparxei h lexi select
+        if "select" in dic['insert into']:
+            #split to query select (dimiourgia emfolelfenu query select)
+            s = dic['insert into'].split(" ")[1:]
+             #ean to query select  exei condition(where)
+            if 'where' in s:
+                #vazume sto  where to condition
+                dic['values']= {"select":s[1],"from":s[3],"where":"".join(s[5:])}
+            else:
+                #condition is none
+                 dic['values']= {"select":s[1],"from":s[3],"where":None}
+            #dic['insert into']= sto 1o stixio tou  dic['insert into']
+            dic['insert into']= dic['insert into'].split(" ")[0]
+
+        elif dic['values'][0] == '(' and dic['values'][-1] == ')':
             dic['values'] = dic['values'][1:-1]
+            
         else:
             raise ValueError('Your parens are not right m8')
     
@@ -144,6 +160,7 @@ def evaluate_from_clause(dic):
         
     return dic
 
+
 def interpret(query):
     '''
     Interpret the query.
@@ -165,9 +182,9 @@ def interpret(query):
 
     if query[-1]!=';':
         query+=';'
-    
+    #afinei ena keno meta ana mesa sto quety kai to ;
     query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip()
-
+   
     for kw in kw_per_action.keys():
         if query.startswith(kw):
             action = kw
@@ -184,7 +201,7 @@ def execute_dic(dic):
     
     action = list(dic.keys())[0].replace(' ','_')
     return getattr(db, action)(*dic.values())
-
+    
 def interpret_meta(command):
     """
     Interpret meta commands. These commands are used to handle DB stuff, something that can not be easily handled with mSQL given the current architecture.
