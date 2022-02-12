@@ -7,8 +7,10 @@ import traceback
 import shutil
 sys.path.append('miniDB')
 
-from database import Database
-from table import Table
+#from database import Database
+#from table import Table
+import database as database
+import table as table
 # art font is "big"
 art = '''
              _         _  _____   ____  
@@ -18,7 +20,7 @@ art = '''
  | | | | | || || | | || || |__| || |_) |
  |_| |_| |_||_||_| |_||_||_____/ |____/   2021 - v3.2                               
 '''   
-
+dbname = os.getenv('DB')
 
 def search_between(s, first, last):
     '''
@@ -58,6 +60,8 @@ def create_query_plan(query, keywords, action):
         elif i!=len(ql)-1 and f'{ql[i]} {ql[i+1]}' in keywords and not in_paren(ql, i):
             kw_in_query.append(f'{ql[i]} {ql[i+1]}')
             kw_positions.append(i+1)
+    print(kw_in_query)
+    print(kw_positions)
 
 
     for i in range(len(kw_in_query)-1):
@@ -176,6 +180,7 @@ def create_query_plan(query, keywords, action):
         '''
         dic['drop trigger'] = ql[2] #trigger name
         dic['table'] = ql[4]   #table name
+
     return dic
 
 
@@ -266,7 +271,8 @@ def execute_dic(dic,execute_triggers=True):
         #if action is part of trigger actions (insert/update/delete), pass the flag.
         return getattr(db, action)(*dic.values(),run_triggers=execute_triggers)
     else:
-    return getattr(db, action)(*dic.values())
+        return getattr(db, action)(*dic.values())
+    
 
 def interpret_meta(command):
     """
@@ -292,7 +298,7 @@ def interpret_meta(command):
 
     def change_db(db_name):
         global db
-        db = Database(db_name, load=True)
+        db = database.Database(db_name, load=True)
     
     def remove_db(db_name):
         shutil.rmtree(f'dbdata/{db_name}_db')
@@ -309,16 +315,16 @@ def interpret_meta(command):
 
 if __name__ == "__main__":
     fname = os.getenv('SQL')
-    dbname = os.getenv('DB')
+    dbname = os.getenv('DB')    #also global
 
-    db = Database(dbname, load=True)
+    db = database.Database(dbname, load=True)
 
     if fname is not None:
         for line in open(fname, 'r').read().splitlines():
             if line.startswith('--'): continue
             dic = interpret(line.lower())
             result = execute_dic(dic)
-            if isinstance(result,Table):
+            if isinstance(result,table.Table):
                 result.show()
     else:
         from prompt_toolkit import PromptSession
@@ -346,7 +352,7 @@ if __name__ == "__main__":
                 else:
                     dic = interpret(line)
                     result = execute_dic(dic)
-                    if isinstance(result,Table):
+                    if isinstance(result,table.Table):
                         result.show()
             except Exception:
                 print(traceback.format_exc())
