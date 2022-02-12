@@ -2,6 +2,7 @@ from __future__ import annotations
 from tabulate import tabulate
 import pickle
 import os
+import re
 from misc import get_op, split_condition
 
 
@@ -222,12 +223,66 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            if "LIKE" in condition.split() or "like" in condition.split():
+
+
+                condition_list = condition.split()
+                column_name = condition_list[0]
+                column = self.column_by_name(column_name)
+
+                #change the regexpression to be for python rather than sql
+                regExpression = re.compile(condition_list[2].replace("%",".*").replace("_",".").replace("'", ""))
+
+                #only if it matches the regular expression for each x
+                rows = [ind for ind, x in enumerate(column) if regExpression.fullmatch(str(x))]
+            elif "BETWEEN" in condition.split() or "between" in condition.split():
+                condition_list = condition.split()
+                between_low = condition_list[2]
+                between_up = condition_list[4]
+                column_name = condition_list[0]
+                column = self.column_by_name(column_name)
+                #check for rows only between the boundaries given first for between strings else for between ints
+                try:
+                    rows = [ind for ind, x in enumerate(column) if x >= between_low and x <= between_up]
+                
+                except:
+                    rows = [ind for ind, x in enumerate(column) if (x >= int(between_low) and x <= int(between_up))]   
+            elif "IN" in condition.split() or "in" in condition.split():
+                #split the condition and remove parenthesis.
+                #the values are in the parenthesis
+                #replace the comma
+                
+
+                condition_list = condition.split()
+                values = condition_list[condition_list.index("(")+1:condition_list.index(")")]
+                values = [v.replace(",","") for v in values]
+                condition_list.remove("(")
+                condition_list.remove(")")
+               
+                #Check how the condition is given if it has 3 args split the second
+                #this is done to cover both (x,y) and (x, y)
+                # _ stores the last expression used
+                if(len(condition_list) == 3):
+                    values = condition_list[2].split(",")
+                else:
+                    values = []
+                    for v in condition_list[2:]:
+                        v1 = v.split(",")
+                        for _ in v1:
+                            if(_ != ''):
+                                values.append(_)
+                                
+                column_name = condition_list[0]
+                column = self.column_by_name(column_name)
+                #str(x) must be in values list
+                rows = [ind for ind, x in enumerate(column) if (str(x) in values)]         
+
+            else:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
-
         # top k rows
         # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
