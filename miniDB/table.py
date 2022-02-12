@@ -267,21 +267,21 @@ class Table:
             
             for x, y in dict.items():
                 if any(isinstance(i, list) for i in y):
-                    dict2[x].append( mean( list(filter( (None).__ne__,[ z[self.column_names.index(column)] for z in y ] )) ) )
+                    dict2[x].append( mean( list(filter( ('').__ne__,[ z[self.column_names.index(column)] for z in y ] )) ) )
                 else:
                     dict2[x].append( y[self.column_names.index(column)] )
             
         def _groupby_min(column):
             for x, y in dict.items():
                 if any(isinstance(i, list) for i in y):
-                    dict2[x].append( min( list(filter( (None).__ne__,[ z[self.column_names.index(column)] for z in y ] ))) )
+                    dict2[x].append( min( list(filter( ('').__ne__,[ z[self.column_names.index(column)] for z in y ] ))) )
                 else:
                     dict2[x].append( y[self.column_names.index(column)] )
 
         def _groupby_max(column):
             for x, y in dict.items():
                 if any(isinstance(i, list) for i in y):
-                    dict2[x].append( max( list(filter( (None).__ne__,[ z[self.column_names.index(column)] for z in y ] ))) )
+                    dict2[x].append( max( list(filter( ('').__ne__,[ z[self.column_names.index(column)] for z in y ] ))) )
                 else:
                     dict2[x].append( y[self.column_names.index(column)] )
 
@@ -345,7 +345,7 @@ class Table:
                         if not get_op(con_list[i], dict['data'][y][a], dict['data'][y][b]):
                             dict['data'][y] = None
 
-                dict['data'] = list(filter( (None).__ne__,[ z for z in dict['data'] ] ))
+                dict['data'] = list(filter( ('').__ne__,[ z for z in dict['data'] ] ))
 
 
         agg_funcs = {'sum': _groupby_sum, 'avg':_groupby_avg, 'min':_groupby_min, 'max':_groupby_max, 'count':_groupby_count}
