@@ -615,6 +615,7 @@ class Database:
             # currently only btree is supported. This can be changed by adding another if.
             if index_type == 'btree':
                 logging.info('Creating Btree index.')
+                #bt = []
                 column_names = ''
                 for i in range(len(selected_columns_names)):
                     if i != len(selected_columns_names) - 1:

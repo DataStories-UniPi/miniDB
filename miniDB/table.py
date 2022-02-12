@@ -275,11 +275,13 @@ class Table:
         # we then check the results match and compare performance (number of operation)
         if len(operator)==2 and operator[0]=='=':
             # btree find
+            print('checkpoint2 and first with =')
             rows = bt.find(operator, value)
         elif len(operator)==1:
             print('checkpoint1')
             rows = bt.find(operator, value)
         else:
+            print('last case')
             column = self.column_by_name(column_name)
 
             # sequential
@@ -293,7 +295,7 @@ class Table:
         # same as simple select from now on
         print('top k testing')
         rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
-        print(rows)
+        print('rows are: ', rows)
         # TODO: this needs to be dumbed down
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
 

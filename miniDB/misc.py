@@ -16,8 +16,9 @@ def get_op(op, a, b):
         return False
 
 def split_condition(condition):
-    condition = condition.replace(' ','') # remove all whitespaces
-    condition = condition.split('and')
+    condition = condition.split(' and ')
+    for i in range(len(condition)):
+        condition[i] = condition[i].replace(' ','') # remove all whitespaces
     ops = {'>=': operator.ge,
            '<=': operator.le,
            '=': operator.eq,
@@ -33,5 +34,4 @@ def split_condition(condition):
                 left.append(splt[0])
                 op.append(op_key)
                 right.append(splt[1])
-
     return left, op, right
