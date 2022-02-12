@@ -474,12 +474,11 @@ class Table:
                 if cur_sel_column.split(' (')[0] in agg_funcs.keys():
                     agg_funcs.get( cur_sel_column.split(' (')[0] )( _groupby_agg_func_input(cur_sel_column) )
 
-            
-            dict = dict2 ; del dict2 # set the final table
+            dict = dict2 # set the final table
             dict2 = {}
 
-            for x in dict:
-                dict[x].insert(return_columns.index(group_by), x)
+            for x in dict: # Add Group By selected column to the final table
+                dict[x].insert(return_columns.split(',').index(group_by), x)
             
             # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
             dict2['data'] = list(dict.values())
