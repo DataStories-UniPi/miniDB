@@ -728,25 +728,33 @@ class Database:
 
 
     # indexes
-    def create_index(self, index_name, table_name, index_type='btree'):
+    def create_index(self, index_name, table_name, column_name, index_type='btree'):
         '''
         Creates an index on a specified table with a given name.
-        Important: An index can only be created on a primary key (the user does not specify the column).
+        Important: If the user does not specify a column name, the index is created on the primary key of the table.
+        Note: The specified column have the unique constraint.
 
         Args:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
+            column_name: string. Name of the column to create the index on. If None, index will be created on primary key.
         '''
+        if not column_name: #if user did not specify the column, check for primary key
         if self.tables[table_name].pk_idx is None: # if no primary key, no index
             raise Exception('Cannot create index. Table has no primary key.')
+        else:
+            col_idx = self.tables[table_name].column_names.index(column_name)   #index of column
+            if 'unique' not in self.tables[table_name].column_constraints[col_idx] and column_name!=self.tables[table_name].pk:  #if not unique or pk, no index
+                raise Exception('Cannot create index. This column is not pk/unique.')
+
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
             # currently only btree is supported. This can be changed by adding another if.
             if index_type=='btree':
                 logging.info('Creating Btree index.')
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
                 self.tables['meta_indexes']._insert([table_name, index_name])
-                # crate the actual index
-                self._construct_index(table_name, index_name)
+                # create the actual index
+                self._construct_index(table_name, index_name, column_name)
                 self.save_database()
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
