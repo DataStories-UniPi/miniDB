@@ -257,22 +257,32 @@ def add_aggregate_prefix(dic):
         dic (query dic)
     """
     aggregate_functions = ['min', 'max', 'count', 'sum', 'avg']
-    dic['select_aggregate_flag'] = {}
+    actions_to_filter = ['select', 'having']
 
-    word_list = dic['select'].lower().split(' ')
-    new_word_list:list = word_list.copy()
+    for action in actions_to_filter:
+        new_dic_key = action + '_aggregate_flag'
+        if action == 'select':
+            dic[new_dic_key] = {}
 
-    for i, word in enumerate(word_list):
-        if word in aggregate_functions and word_list[i + 1] == '(':
-            col_name = word_list[i + 2]
-            dic['select_aggregate_flag'][col_name] = word
+        if dic[action] is None:
+            continue
 
-            new_word_list.remove(word)
-            new_word_list.remove(word_list[i+1])
-            new_word_list.remove(word_list[i+3])
+        word_list = dic[action].lower().split(' ')
+        new_word_list:list = word_list.copy()
 
-    temp = ' '.join(new_word_list)
-    dic['select'] = temp
+        for i, word in enumerate(word_list):
+            if word in aggregate_functions and word_list[i + 1] == '(':
+                col_name = word_list[i + 2]
+                if action == 'select':
+                    dic[new_dic_key][col_name] = word
+
+                new_word_list.remove(word)
+                new_word_list.remove(word_list[i+1])
+                new_word_list.remove(word_list[i+3])
+
+        
+        temp = ' '.join(new_word_list)
+        dic[action] = temp
 
 
 if __name__ == "__main__":
