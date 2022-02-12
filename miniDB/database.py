@@ -772,8 +772,8 @@ class Database:
 
         if not column_name: #if column is not specified, create index on PK
         # for each record in the primary key of the table, insert its value and index to the btree
-        for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
-            bt.insert(key, idx)
+            for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
+                bt.insert(key, idx)
         else:
             #for each record in the predefined column of the table, insert its value and index to the btree
             for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
