@@ -170,7 +170,7 @@ class Table:
                 elif 'not_null' in self.column_constraints[set_column_idx] and not set_value:   #check if value is null
                     raise ValueError(f'## ERROR -> Value {set_value} cannot be null.')
                 else:
-                self.data[row_ind][set_column_idx] = set_value
+                    self.data[row_ind][set_column_idx] = set_value
 
         # self._update()
                 # print(f"Updated {len(indexes_to_del)} rows")
