@@ -165,6 +165,11 @@ class Table:
         # for each value in column, if condition, replace it with set_value
         for row_ind, column_value in enumerate(column):
             if get_op(operator, column_value, value):
+                if 'unique' in self.column_constraints[set_column_idx] and set_value in self.column_by_name(self.column_names[set_column_idx]): #check if value already exists.
+                    raise ValueError(f'## ERROR -> Value {set_value} already exists in unique column.')
+                elif 'not_null' in self.column_constraints[set_column_idx] and not set_value:   #check if value is null
+                    raise ValueError(f'## ERROR -> Value {set_value} cannot be null.')
+                else:
                 self.data[row_ind][set_column_idx] = set_value
 
         # self._update()
