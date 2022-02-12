@@ -651,7 +651,11 @@ class Database:
         # put the data of the selected columns in a table named column_data
         columns_data = []
         for name in selected_columns_names:
-           columns_data.append(self.tables[table_name].column_by_name(name))
+            rows = self.tables[table_name].column_by_name(name)
+            for i in range(len(rows)):
+                if type(rows[i]) == str:
+                    rows[i] = rows[i].replace(" ", "")
+            columns_data.append(rows)
         # for each record in the selected columns of the table, insert their values and index to the btree, after joining the column values
         if not is_duplicate:
             for idx, key in enumerate(list(zip(*columns_data))):
@@ -662,7 +666,7 @@ class Database:
                 bt.insert(key, idx)
         # save the btree
         self._save_index(index_name, bt)
-        bt.show()
+        #bt.show()
 
     # TODO def _delete_index(self, index_name):
 

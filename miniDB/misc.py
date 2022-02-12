@@ -34,4 +34,5 @@ def split_condition(condition):
                 left.append(splt[0])
                 op.append(op_key)
                 right.append(splt[1])
+                break
     return left, op, right
