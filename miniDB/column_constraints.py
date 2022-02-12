@@ -2,8 +2,10 @@ class ColumnConstraints:
     '''
     Used to store a list of every column names that has a constraint
     '''
-    not_null = []
-    unique = []
+
+    def __init__(self):
+        self.not_null = list()
+        self.unique = list()
 
     def _add_constraint(self, constraint, col_name):
         '''
@@ -28,6 +30,7 @@ class ColumnConstraints:
         dic = dict()
         dic["not_null"] = self.not_null
         dic["unique"] = self.unique
+        print(dic)
         return dic
 
     def __str__(self):
