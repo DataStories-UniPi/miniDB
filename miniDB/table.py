@@ -202,8 +202,7 @@ class Table:
 
 
     def _select_where(self, return_columns, distinct_flag, where_condition=None, group_by=None,
-        having_condition=None, order_by=None, desc=True, top_k=None, select_aggregate_dic={},
-        having_aggregate_dic={}):
+        having_condition=None, order_by=None, desc=True, top_k=None, select_aggregate_dic={}):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -237,37 +236,14 @@ class Table:
         # top k rows
         # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
-        dic = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
-        # we need to set the new column names/types and no of columns, since we might
-        # only return some columns
+        dic = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()} 
+        # we need to set the new column names/types and no of columns, since we might only return some columns
         dic['column_names'] = [self.column_names[i] for i in return_cols]
         dic['column_types'] = [self.column_types[i] for i in return_cols]
 
+        # sorts list and removes duplicates
         if distinct_flag and len(dic['data']) != 0:
-            
-            dic['data'] = sorted(dic['data'])
-            tempList = []
-
-            for row in dic['data']:
-                tempList.append(' '.join(row))
-
-            indexList = []
-            for index, item in enumerate(tempList):
-                if index+1 < len(tempList) and item == tempList[index+1]:
-                    indexList.append(index)
-            
-            for index, i in enumerate(indexList):
-                dic['data'].remove(dic['data'][i - index])
-
-            print(dic['data'])
-
-        # convert the select_aggregate_dic from {col_name: aggregate_func} to
-        # {col_index: aggregate_func}
-        col_indexes = []
-        for col_name in select_aggregate_dic.keys():
-            col_indexes.append(dic['column_names'].index(col_name))
-
-        select_aggregate_dic = dict(zip(col_indexes, list(select_aggregate_dic.values())))
+            dic['data'] = self.get_distinct(dic['data'])
 
         if group_by is not None and len(select_aggregate_dic.keys()) != (len(return_cols) - 1):
             message = 'invalid columns to return. All columns except the group by column must be a product of an aggregate function'
@@ -277,6 +253,15 @@ class Table:
             if row == group_by:
                 raise ValueError('invalid group by column')
 
+        # convert the select_aggregate_dic from {col_name: aggregate_func} to
+        # {col_index: aggregate_func}
+        col_indexes = []
+        for col_name in select_aggregate_dic.keys():
+            col_indexes.append(dic['column_names'].index(col_name))
+
+        select_aggregate_dic = dict(zip(col_indexes, list(select_aggregate_dic.values())))
+
+        # aggregate functions functionality without group by
         if (group_by is None and len(select_aggregate_dic) == len(return_cols)):
             col_lists = []
 
@@ -288,15 +273,17 @@ class Table:
                         col_lists[index].append(item)
 
             for index, col in enumerate(col_lists):
-                col_lists[index] = self.apply_aggregate_func(col, select_aggregate_dic[index])      
+                col_lists[index] = self.apply_aggregate_func(col, select_aggregate_dic[index])
             dic['data'] = [col_lists]
+        # aggregate functions functionality with group by
         elif (group_by is not None):
+            # newDict = {group : list of items that belong to the group}
+            # ex. {semester : [winter, fall, spring]}
             newDict = {}
- 
             for row in dic['data']:
                 group_by_index = dic['column_names'].index(group_by)
                 group = row[group_by_index]
-
+                
                 if (group not in newDict.keys()):
                     for index, item in enumerate(row):
                         if (index in select_aggregate_dic.keys()):
@@ -321,6 +308,7 @@ class Table:
                 new_rows = [row for row in new_rows if get_op(operator, row[column_index], int(value))]
 
             # add the aggregate funcs to the col names
+            # ex. if semester is passed in sum func, we rename semesters to sum_semester
             for col_index in select_aggregate_dic.keys():
                 dic['column_names'][col_index] = select_aggregate_dic[col_index] + '_of_' +\
                     dic['column_names'][col_index]
@@ -338,8 +326,7 @@ class Table:
 
 
     def _select_where_with_btree(self, return_columns, distinct_flag, bt, where_condition=None, group_by=None,
-        having_condition=None, order_by=None, desc=True, top_k=None, select_aggregate_dic={},
-        having_aggregate_dic={}):
+        having_condition=None, order_by=None, desc=True, top_k=None, select_aggregate_dic={}):
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
@@ -398,12 +385,6 @@ class Table:
         # print(idx)
         self.data = [self.data[i] for i in idx]
         # self._update()
-
-    def group_by(self, column_name, desc=True):
-        column = self.column_by_name(column_name)
-        idx = sorted(range(len(column)), key=lambda k: column[k], reverse=desc)
-        self.data = [self.data[i] for i in idx]
-
 
     def _inner_join(self, table_right: Table, condition):
         '''
@@ -520,6 +501,30 @@ class Table:
 
         self.__dict__.update(tmp_dict)
 
+    def get_distinct(self, table):
+        '''
+        Returns a sorted table of distinct values (removes duplicates)
+
+        Args:
+            table: matrix
+        '''
+        table = sorted(table)
+        tempList = []
+
+        for row in table:
+            tempList.append(' '.join(row))
+
+        indexList = []
+        for index, item in enumerate(tempList):
+            if index + 1 < len(tempList) and item == tempList[index + 1]:
+                indexList.append(index)
+        
+        for index, i in enumerate(indexList):
+            table.remove(table[i - index])
+        
+        return table
+
+    # all aggregate fucnctions SQL supports
     def min(self, column):
         return min(column)
 

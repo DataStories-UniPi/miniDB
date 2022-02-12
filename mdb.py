@@ -72,7 +72,6 @@ def create_query_plan(query, keywords, action):
 
     if action=='select':
         dic = evaluate_from_clause(dic)
-
         if not dic['distinct']:
             dic['distinct'] = False
    
@@ -97,14 +96,8 @@ def create_query_plan(query, keywords, action):
             
         else:
             dic['desc'] = None
-
-        if dic['group by'] is not None:
-            dic['group by'] = dic['group by'].removesuffix(' order')
-        
         # add aggregate functions flags and clean string
         add_aggregate_prefix(dic)
-
-        print(dic)
 
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
@@ -211,7 +204,7 @@ def execute_dic(dic):
     for key in dic.keys():
         if isinstance(dic[key],dict) and key not in dics_to_ignore:
             dic[key] = execute_dic(dic[key])
-    
+     
     action = list(dic.keys())[0].replace(' ','_')
     return getattr(db, action)(*dic.values())
 
@@ -256,55 +249,28 @@ def interpret_meta(command):
 
 def add_aggregate_prefix(dic):
     """Cleans up the query string from anything related to aggregate functions and 
-    saves the aggregate flags for each column into two new dicts.
-    First dict (select_aggregate_flag) corresponds to the cols found in the select
-    string and second dict (having_aggregate_flag) to the cols
-    found in the where string.
+    saves the aggregate flags for each column into a new dict.
+    The new dict called select_aggregate_flag corresponds to the cols found in the select
+    string that need to be passed to an aggregate func.
 
     Args:
         dic (query dic)
     """
-
-    # add prefix for aggregate functions
     aggregate_functions = ['min', 'max', 'count', 'sum', 'avg']
-    actions_to_filter = ['select', 'having']
-
-    for action in actions_to_filter:
-        new_dic_key = action + '_aggregate_flag'
-        dic[new_dic_key] = {}
-
-        if dic[action] is None:
-            continue
-
-        word_list = dic[action].lower().split(' ')
-        new_word_list:list = word_list.copy()
-
-        for i, word in enumerate(word_list):
-            if word in aggregate_functions and word_list[i + 1] == '(':
-                col_name = word_list[i + 2]
-                dic[new_dic_key][col_name] = word
-
-                new_word_list.remove(word)
-                new_word_list.remove(word_list[i+1])
-                new_word_list.remove(word_list[i+3])
-
-        
-        temp = ' '.join(new_word_list)
-        dic[action] = temp
-
-
-def add_distinct_prefix(dic):
-    dic['distinct_flags'] = []
+    dic['select_aggregate_flag'] = {}
 
     word_list = dic['select'].lower().split(' ')
     new_word_list:list = word_list.copy()
 
     for i, word in enumerate(word_list):
-        if word == 'distinct':
-            col_name = word_list[i + 1]
-            dic['distinct_flags'].append(col_name)
+        if word in aggregate_functions and word_list[i + 1] == '(':
+            col_name = word_list[i + 2]
+            dic['select_aggregate_flag'][col_name] = word
+
             new_word_list.remove(word)
-        
+            new_word_list.remove(word_list[i+1])
+            new_word_list.remove(word_list[i+3])
+
     temp = ' '.join(new_word_list)
     dic['select'] = temp
 

@@ -311,7 +311,7 @@ class Database:
         self.save_database()
 
     def select(self, columns, distinct_flag, table_name, where_condition, group_by=None, having_condition=None, order_by=None, top_k=True,\
-               desc=None, select_aggregate_dic={}, having_aggregate_dic={}, distinct_list=[], save_as=None, return_object=True):
+               desc=None, select_aggregate_dic={}, save_as=None, return_object=True):
         '''
         Selects and outputs a table's data where condtion is met.
 
@@ -331,7 +331,7 @@ class Database:
         '''
         self.load_database()
         if isinstance(table_name,Table):
-            return table_name._select_where(columns, distinct_flag, where_condition, group_by, having_condition, order_by, desc, top_k, select_aggregate_dic, having_aggregate_dic)
+            return table_name._select_where(columns, distinct_flag, where_condition, group_by, having_condition, order_by, desc, top_k, select_aggregate_dic)
 
         if where_condition is not None:
             condition_column = split_condition(where_condition)[0]
@@ -346,10 +346,10 @@ class Database:
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
             table = self.tables[table_name]._select_where_with_btree(columns, distinct_flag, bt, where_condition, group_by, having_condition,
-                order_by, desc, top_k, select_aggregate_dic, having_aggregate_dic)
+                order_by, desc, top_k, select_aggregate_dic)
         else:
             table = self.tables[table_name]._select_where(columns, distinct_flag, where_condition, group_by, having_condition, order_by,
-                desc, top_k, select_aggregate_dic, having_aggregate_dic)
+                desc, top_k, select_aggregate_dic)
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as
