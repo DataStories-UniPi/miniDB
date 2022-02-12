@@ -57,7 +57,7 @@ class Database:
         # when -> timing prin meta ktlp...
         # act -> what action shall be taken
         # func_name -> file name/name of function
-        self.create_table('meta_triggers', 'table_name,trigger_name,when,act,func_name', 'str,str,str,str,str')
+        self.create_table('meta_triggers', 'table_name,trigger_name,when,act,func_name', 'str,str,str,str,str','trigger_name')
         self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
@@ -271,14 +271,14 @@ class Database:
         if trigger.get('before'):
             execute = trigger.get('before')
             for functions in execute:
-                getattr(__import__(functions[0]), functions[1])()
+                getattr(__import__(functions[0]), functions[1])(self.tables[table_name])
         #same logic but insert dont run
         if trigger.get('instead'):
             execute = trigger.get('instead')
             print(execute)
             for functions in execute:
                 print('got here')
-                getattr(__import__(functions[0]), functions[1])()
+                getattr(__import__(functions[0]), functions[1])(self.tables[table_name])
         else:
             # fetch the insert_stack. For more info on the insert_stack
             # check the insert_stack meta table
@@ -300,7 +300,7 @@ class Database:
             if trigger.get('after'):
                 execute = trigger.get('after')
                 for functions in execute:
-                    getattr(__import__(functions[0]), functions[1])()
+                    getattr(__import__(functions[0]), functions[1])(self.tables[table_name])
 
 
     # read comments in delete or insert same logic this is not an agatha christie novel
@@ -324,11 +324,11 @@ class Database:
         if trigger.get('before'):
             execute = trigger.get('before')
             for functions in execute:
-                getattr(__import__(functions[0]), functions[1])()
+                getattr(__import__(functions[0]), functions[1])(self.tables[table_name])
         if trigger.get('instead'):
             execute = trigger.get('instead')
             for functions in execute:
-                getattr(__import__(functions[0]), functions[1])()
+                getattr(__import__(functions[0]), functions[1])(self.tables[table_name])
         else:
             lock_ownership = self.lock_table(table_name, mode='x')
             self.tables[table_name]._update_rows(set_value, set_column, condition)
@@ -341,7 +341,7 @@ class Database:
         if trigger.get('after'):
             execute = trigger.get('after')
             for functions in execute:
-                getattr(__import__(functions[0]), functions[1])()
+                getattr(__import__(functions[0]), functions[1])(self.tables[table_name])
 
 
     def delete_from(self, table_name, condition):
@@ -365,14 +365,14 @@ class Database:
             execute=trigger.get('before')
             for functions in execute:
                 # runs aformentioned triggers
-                getattr(__import__(functions[0]),functions[1])()
+                getattr(__import__(functions[0]),functions[1])(self.tables[table_name])
         #same logic but delete dont run
         if trigger.get('instead'):
             execute = trigger.get('instead')
             print(execute)
             for functions in execute:
                 print(functions)
-                getattr(__import__(functions[0]), functions[1])()
+                getattr(__import__(functions[0]), functions[1])(self.tables[table_name])
         
         else:
             lock_ownership = self.lock_table(table_name, mode='x')
@@ -382,7 +382,7 @@ class Database:
                 self.unlock_table(table_name)
             # if transaction has begun add to list with tables to be unlocked
             else:
-                self.transaction_locks+=table_name
+                self.transaction_locks.append(table_name)
             self._update()
             self.save_database()
             if table_name[:4] != 'meta':
@@ -392,7 +392,7 @@ class Database:
         if trigger.get('after'):
             execute = trigger.get('after')
             for functions in execute:
-                getattr(__import__(functions[0]), functions[1])()
+                getattr(__import__(functions[0]), functions[1])(self.tables[table_name])
 
     def select(self, columns, table_name, condition, order_by=None, top_k=True, \
                desc=None, save_as=None, return_object=True):
@@ -808,7 +808,7 @@ class Database:
                 #check if procedure is implemented
                 if params[2]=='update' or params[2]=='delete' or params[2]=='insert':
                     # add wanted trigger to the trigger table
-                    self.tables['meta_triggers']._insert((table_name+','+params[0]+','+params[1]+','+params[2]+','+function).split(','))                    
+                    self.tables['meta_triggers']._insert((table_name+','+params[0]+','+params[1]+','+params[2]+','+function).split(','))
                 else:
                    error='Triggers only work on : Update,Delete,Insert'
 
@@ -856,3 +856,8 @@ class Database:
         result['before']=before
                 
         return result
+
+    def drop_trigger(self,trigger_name):
+        self.load_database()
+        self.tables['meta_triggers']._delete_where('trigger_name = '+trigger_name)
+        self.save_database()

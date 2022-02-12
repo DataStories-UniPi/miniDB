@@ -1,4 +1,5 @@
 import table
 def test1(table):
-	table._order_by(table.colliumns[0])
+	print(table.column_names)
+	table.order_by(table.column_names[0])
 	table.show()    
