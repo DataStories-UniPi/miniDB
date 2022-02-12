@@ -516,6 +516,66 @@ class Database:
         print('journal:', out)
         #return out
 
+    def create_trigger(self, trigger_name, when, table_name, action, procedure ):
+        '''
+        Add a new trigger to the specified table.
+        Args:
+            trigger_name: name of the trigger.
+            when: when the trigger should execute (before/after/instead of)
+            action: action that causes the trigger to run (insert/update/delete)
+            table_name: table associated with the trigger
+            procedure: function to execute when the trigger runs
+        '''
+        self.load_database()
+        if self.is_locked(table_name):  #if table is locked do nothing
+            return
+
+        if hasattr(triggers,procedure): #if the function exists in the triggers.py file
+            for t in self.tables.values():  #else search for table and add trigger to list of triggers of that table
+                if t._name == table_name:
+                    t._add_trigger({'name': trigger_name,'when': when,'action': action,'function': procedure})
+        else:
+            raise Exception('Trigger creation failed. No such function found.') 
+        self.save_database()
+
+    def drop_trigger(self, trigger_name, table_name):
+        '''
+        Drop a trigger from a table.
+        Args:
+            trigger_name: name of the trigger.
+            table_name: name of the table that the trigger belongs to.
+        '''
+        self.load_database()
+        if self.is_locked(table_name):  #if table is locked do nothing
+            return
+        
+        for t in self.tables.values():  #else find table and remove trigger 
+            if t._name == table_name:
+                t._drop_trigger(trigger_name)
+        
+        self.save_database()
+        
+    def execute_trigger(self,table_name,when,action):
+        '''
+        Run a trigger.
+        Args:
+            table_name: name of the table that the trigger belongs to.
+            when: when the trigger should run (before/after/instead of)
+            action: action associated with the trigger (insert/update/delete)
+        '''
+        table = self.tables[table_name] #get specified table
+        
+        for t in table.triggers:    #search triggers
+            if t['when']==when and action in t['action']:
+                func = t['function']    #function to be executed
+                query = getattr(triggers,func)()
+
+                if query:   #if trigger returns a query, run it through the interpreter again
+
+                    dic = mdb.interpret(query)
+                    result = mdb.execute_dic(dic,False)
+                    if isinstance(result,Table):
+                        result.show()
 
     #### META ####
 
