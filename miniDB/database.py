@@ -25,7 +25,7 @@ class Database:
     def __init__(self, name, load=True):
         self.tables = {}
         self._name = name
-
+        self.checkpoint = False
         self.savedir = f'dbdata/{name}_db'
 
         if load:
@@ -672,3 +672,23 @@ class Database:
         index = pickle.load(f)
         f.close()
         return index
+
+    def begin_transaction(self, action):
+        if self.checkpoint:
+            print('There is already a checkpoint!')
+        else:
+            self.checkpoint = True
+
+    def rollback(self, action):
+        if self.checkpoint:
+            self.checkpoint = False
+            self.load_database()
+        else:
+            print('There is not any checkpoint to roll back to!')
+
+    def commit(self, action):
+        if self.checkpoint:
+            self.checkpoint = False
+            self.save_database()
+        else:
+            print('There is nothing to commit!')

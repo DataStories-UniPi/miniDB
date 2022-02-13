@@ -160,7 +160,10 @@ def interpret(query):
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
                      'create index': ['create index', 'on', 'using'],
-                     'drop index': ['drop index']
+                     'drop index': ['drop index'],
+                     'begin transaction':['begin transaction'],
+                     'rollback':['rollback'],
+                     'commit':['commit']
                      }
 
     if query[-1]!=';':
