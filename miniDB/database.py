@@ -286,10 +286,26 @@ class Database:
         
         if len(target_table.column_names) > len(home_table.column_names):
             raise ValueError("Number of home cols must be less or equal than the number of target cols")
+        
+        target_cols = target_cols.split(',')
 
-        for row in target_table.data:
-            insert_stack = self._get_insert_stack_for_table(home_table)
-            home_table._insert(row, insert_stack)
+        temp = []
+        for i in range(len(self.tables[home_table_name].column_names)):
+            if self.tables[home_table_name].column_names[i] not in target_cols:
+                temp.insert(i, None)
+            else:
+                for j in range(len(target_cols)):
+                    if self.tables[home_table_name].column_names[i] == target_cols[j]:
+                        temp.insert(i, j)
+
+        for data in target_table.data:
+            row = []
+            for i in range(len(temp)):
+                if temp[i] is None:
+                    row.insert(i, None)
+                else:
+                    row.insert(i, data[temp[i]])
+            self.tables[home_table_name]._insert(row, None)
 
     def update_table(self, table_name, set_args, condition):
         '''
