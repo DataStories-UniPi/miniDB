@@ -22,7 +22,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+    def __init__(self, name=None, column_names=None, column_types=None, column_constraints=None, primary_key=None, load=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -112,7 +112,35 @@ class Table:
         for i in range(len(row)):
             # for each value, cast and replace it in row.
             # try:
-            row[i] = self.column_types[i](row[i])
+            
+            
+            if self.column_types == str:
+                row[i] = self.column_types[i](row[i])
+
+            # For columns with constrains
+            if self.column_constraints is not None:
+
+                # For unique column and non-unique value inserted, we have an exception
+                if self.column_constraints[i] == 'unique':
+                    if str(row[i]) in [str(value) for value in self.column_by_name(self.column_names[i])]:
+                        print(self.column_names[i], "is a unique column, you can't add a non-unique value")
+                        raise ValueError("Try to add a non-unique value to a unique column")
+                    else:
+                        continue
+
+                # For not_null column and ' ' value inserted, we have an exception
+                if self.column_constraints[i] == 'not_null':
+                    value = row[i]
+                    value = ''.join(str(value).split())
+                    if not value or value == "''":
+                        print(self.column_names[i], "is a not_null column, you can't add ' ' value")
+                        raise ValueError("Try to add ' ' value to a not_null column")
+                
+                # For columns with no constrains
+                if self.column_constraints[i] == 'None':
+                    continue
+            
+            
             # except:
             #     raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
 
