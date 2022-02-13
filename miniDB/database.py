@@ -47,10 +47,10 @@ class Database:
             pass
 
         # create all the meta tables
-        self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
-        self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
-        self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
-        self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
+        self.create_table('meta_length', 'table_name,no_of_rows', 'str,int', None)
+        self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str', None)
+        self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list', None)
+        self.create_table('meta_indexes', 'table_name,index_name', 'str,str', None)
         self.save_database()
 
     def save_database(self):
@@ -97,7 +97,7 @@ class Database:
         self._update_meta_insert_stack()
 
 
-    def create_table(self, name, column_names, column_types, primary_key=None, load=None):
+    def create_table(self, name, column_names, column_types, column_constraints, primary_key=None, load=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
 
@@ -105,19 +105,23 @@ class Database:
             name: string. Name of table.
             column_names: list. Names of columns.
             column_types: list. Types of columns.
+            column_constraints: list. Constraints of columns.
             primary_key: string. The primary key (if it exists).
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
-        # print('here -> ', column_names.split(','))
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)})
-        # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
-        # check that new dynamic var doesnt exist already
-        # self.no_of_tables += 1
-        self._update()
-        self.save_database()
-        # (self.tables[name])
-        print(f'Created table "{name}".')
-
+        # Create table if we have constraints in columns
+        if column_constraints is not None:
+            self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), column_constraints=column_constraints.split(','), primary_key=primary_key, load=load)})
+            self._update()
+            self.save_database()
+            print(f'Created table "{name}".')
+        
+        # Create table if we don't have constraints in columns
+        else:
+            self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)})
+            self._update()
+            self.save_database()
+            print(f'Created table "{name}".')
 
     def drop_table(self, table_name):
         '''
