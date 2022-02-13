@@ -1,9 +1,17 @@
 from __future__ import annotations
+from cgi import test
+import enum
+from termios import VLNEXT
+from traceback import print_tb
+from typing import Dict
 from tabulate import tabulate
 import pickle
 import os
-from misc import get_op, split_condition
-
+import re
+from misc import  get_op, split_condition
+from collections import Counter
+import itertools
+import operator
 
 class Table:
     '''
@@ -140,22 +148,136 @@ class Table:
                 
                 Operatores supported: (<,<=,=,>=,>)
         '''
-        # parse the condition
-        column_name, operator, value = self._parse_condition(condition)
 
-        # get the condition and the set column
-        column = self.column_by_name(column_name)
-        set_column_idx = self.column_names.index(set_column)
+        # in, between, like operators
 
-        # set_columns_indx = [self.column_names.index(set_column_name) for set_column_name in set_column_names]
+        if (' in ' in condition):
 
-        # for each value in column, if condition, replace it with set_value
-        for row_ind, column_value in enumerate(column):
-            if get_op(operator, column_value, value):
-                self.data[row_ind][set_column_idx] = set_value
+            # split condition into 2 parts, the column name and the values
+            splt = condition.split(' in ',1) 
 
-        # self._update()
-                # print(f"Updated {len(indexes_to_del)} rows")
+            #splt[0], 'in', splt[1]
+
+            column_name = splt[0]  
+            value = splt[1]
+
+            column = self.column_by_name(column_name) # gets the column as a list
+
+            value = value.replace(' ','') # remove all whitespaces from the values
+            value = value.replace('(','') # remove parentheses from the values
+            value = value.replace(')','')
+            value = value.replace("'","") # remove character (') for string values
+
+            value = value.split(',') # makes value a string type list
+
+            column_to_str = [str(x) for x in column] # makes column a list of strings
+
+            set_column_idx = self.column_names.index(set_column)
+            
+            # for each value in column, if condition, replace it with set_value
+            for row_ind, column_value in enumerate(column_to_str):
+                
+                for i in range(len(value)):
+                    if (column_value == value[i]):
+                        self.data[row_ind][set_column_idx] = set_value
+
+        elif (' between ' and ' and ' in condition):
+                
+            splt=condition.split(' between ',1) # split condition one time on 'between' keyword
+
+            # if splt is more than 1 characters, split "splt" one time on the 'and' keyword
+
+            if len(splt)>1:
+                    
+                # column name, between, ... and ...
+                # splt[0], 'between', splt[1]
+                    
+                if len(splt[1])>1:
+                    splt_and=splt[1].split(' and ',1)
+
+                    # value1, and, value2
+                    # splt_and[0], 'and', splt_and[1]
+
+                    # remove all whitespaces
+                    condition_column = splt[0].replace(' ','') # name of the column
+                    value1 = splt_and[0].replace(' ','') # name of the first value ('BETWEEN value1 AND value2')
+                    value2 = splt_and[1].replace(' ','') # name of the second value
+
+
+            column = self.column_by_name(condition_column) # get the column as a list
+
+            column_to_str = [str(x) for x in column] # makes column a list of strings  
+
+            # if there are values between value1 and value2 append in the list value
+            values = []
+
+            values = [x for x in column_to_str if(x >= value1 and x <= value2)]
+
+            set_column_idx = self.column_names.index(set_column)
+
+            for row_ind, column_value in enumerate(column_to_str):
+                
+                for i in range(len(values)):
+                    if (column_value == values[i]):
+                        self.data[row_ind][set_column_idx] = set_value
+        
+        elif(' like ' in condition):
+ 
+            # split condition one time on keyword 'like'
+            splt = condition.split(' like ',1)
+
+            column_name = splt[0] # column name is the first word in the condition
+
+            column = self.column_by_name(column_name) # gets column as a list
+
+            value = splt[1] # value is the third word in the condition (column_name like value)
+
+            value = value.replace("'","") # removes " ' " (like 'a%')
+
+
+            # using RegEx (Regular Expression) to implement like wildcards 
+            # using module re
+            # SQL wildcards can convert into RegEx as:
+            # |  SQL   |   RegEx   |
+            # |  %a    |   ^.*?a$  |
+            # |  a%    |   ^a.*?$  |
+            # |  a_    |    ^a.$   |
+            # | [a-b]  |   ^[a-b]$ |
+
+            value = value.replace('%','.*?') # replace % from condition to .*?
+            value = value.replace('_','.') # replace _ from condition to .
+
+            out = re.compile('^'+value+'$') # compile value into RegEx (^ starts with, $ ends with)
+
+            column_to_str = [str(x) for x in column] # convert column to list of string
+
+            result = list(filter(out.match, column_to_str)) # find matching values in the column
+
+            set_column_idx = self.column_names.index(set_column)
+
+            for row_ind, column_value in enumerate(column_to_str):
+            
+                for i in range(len(result)):
+                    if (column_value == result[i]):
+                        self.data[row_ind][set_column_idx] = set_value     
+        
+        else:
+            # parse the condition
+            column_name, operator, value = self._parse_condition(condition)
+
+            # get the condition and the set column
+            column = self.column_by_name(column_name)
+            set_column_idx = self.column_names.index(set_column)
+
+            # set_columns_indx = [self.column_names.index(set_column_name) for set_column_name in set_column_names]
+
+            # for each value in column, if condition, replace it with set_value
+            for row_ind, column_value in enumerate(column):
+                if get_op(operator, column_value, value):
+                    self.data[row_ind][set_column_idx] = set_value
+
+            # self._update()
+                    # print(f"Updated {len(indexes_to_del)} rows")
 
 
     def _delete_where(self, condition):
@@ -172,14 +294,119 @@ class Table:
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
-        column_name, operator, value = self._parse_condition(condition)
 
         indexes_to_del = []
 
-        column = self.column_by_name(column_name)
-        for index, row_value in enumerate(column):
-            if get_op(operator, row_value, value):
-                indexes_to_del.append(index)
+
+        if (' in ' in  condition):
+
+            # split condition into 2 parts, the column name and the values
+            splt = condition.split(' in ',1) 
+
+            #splt[0], 'in', splt[1]
+
+            column_name = splt[0]  
+            value = splt[1]
+
+            column = self.column_by_name(column_name) # gets the column as a list
+
+            value = value.replace(' ','') # remove all whitespaces from the values
+            value = value.replace('(','') # remove parentheses from the values
+            value = value.replace(')','')
+            value = value.replace("'","") # remove character (') for string values
+
+            value = value.split(',') # makes value a string type list
+
+            column_to_str = [str(x) for x in column] # makes column a list of strings
+
+            
+            for index, row_value in enumerate(column_to_str):
+                for i in range (len(value)):
+                    if(row_value == value[i]):
+                        indexes_to_del.append(index)
+               
+        elif(' between ' and ' and ' in condition):
+
+            splt=condition.split(' between ',1) # split condition one time on 'between' keyword
+
+            # if splt is more than 1 characters, split "splt" one time on the 'and' keyword
+
+            if len(splt)>1:
+                    
+                # column name, between, ... and ...
+                # splt[0], 'between', splt[1]
+                    
+                if len(splt[1])>1:
+                    splt_and=splt[1].split(' and ',1)
+
+                    # value1, and, value2
+                    # splt_and[0], 'and', splt_and[1]
+
+                    # remove all whitespaces
+                    condition_column = splt[0].replace(' ','') # name of the column
+                    value1 = splt_and[0].replace(' ','') # name of the first value ('BETWEEN value1 AND value2')
+                    value2 = splt_and[1].replace(' ','') # name of the second value
+
+
+            column = self.column_by_name(condition_column) # get the column as a list
+                    
+            column_to_str = [str(x) for x in column] # makes column a list of strings
+                
+            # if there are values between value1 and value2 append in the list value
+            values = []
+
+            values = [x for x in column_to_str if(x >= value1 and x <= value2)]
+
+
+            for index, row_value in enumerate(column_to_str):
+                for i in range (len(values)):
+                    if(row_value == values[i]):
+                        indexes_to_del.append(index)
+
+        elif (' like ' in condition):
+
+            # split condition one time on keyword 'like'
+            splt = condition.split(' like ',1)
+
+            column_name = splt[0] # column name is the first word in the condition
+
+            column = self.column_by_name(column_name) # gets column as a list
+
+            value = splt[1] # value is the third word in the condition (column_name like value)
+
+            value = value.replace("'","") # removes " ' " (like 'a%')
+
+            # using RegEx (Regular Expression) to implement like wildcards 
+            # using module re
+            # SQL wildcards can convert into RegEx as:
+            # |  SQL   |   RegEx   |
+            # |  %a    |   ^.*?a$  |
+            # |  a%    |   ^a.*?$  |
+            # |  a_    |    ^a.$   |
+            # | [a-b]  |   ^[a-b]$ |
+
+            value = value.replace('%','.*?') # replace % from condition to .*?
+            value = value.replace('_','.') # replace _ from condition to .
+
+            out = re.compile('^'+value+'$') # compile value into RegEx (^ starts with, $ ends with)
+
+            column_to_str = [str(x) for x in column] # convert column to list of string
+
+            result = list(filter(out.match, column_to_str)) # find matching values in the column
+
+            for index, row_value in enumerate(column_to_str):
+                for i in range (len(result)):
+                    if(row_value == result[i]):
+                        indexes_to_del.append(index)   
+
+        else:
+            column_name, operator, value = self._parse_condition(condition)
+
+
+            column = self.column_by_name(column_name)
+            for index, row_value in enumerate(column):
+                if get_op(operator, row_value, value):
+                    indexes_to_del.append(index)
 
         # we pop from highest to lowest index in order to avoid removing the wrong item
         # since we dont delete, we dont have to to pop in that order, but since delete is used
@@ -197,7 +424,7 @@ class Table:
         return indexes_to_del
 
 
-    def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None):
+    def _select_where(self, return_columns, condition=None, select=None, group_by=None, having=None, order_by=None, desc=True, count=None, max_k=None, min_k=None, sum_k=None, avg_k=None, top_k=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -211,37 +438,306 @@ class Table:
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (False by default).
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
+            select: string. Used for "insert into select" query. It contains the query followed after the select clause. It's purpose here is to return the table data. (None by default)
+            group_by: string. The name of the column after the group by clause. (None by default)
+            having: string. The condition after the having clause. (None by default)
+            count: boolean. True if there is count() clause in the query. (None by default)
+            max_k: boolean. True if there is max() function in the query. (None by default)
+            min_k: boolean. True if there is min() function in the query. (None by default)
+            sum_k: boolean. True if there is sum() function in the query. (None by default)
+            avg_k: boolean. True id there is avg() function in the query. (None by deafault)
         '''
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
+        # if count,max,min,avg,sum remove the function and return the column specified
+        elif('count (' in return_columns):
+            
+            return_columns2 = return_columns.replace('count ( ','').replace(' )','')
+            return_cols = [self.column_names.index(col.strip()) for col in return_columns2.split(',')]
+       
+        elif('max (' in return_columns):
+            
+            return_columns2 = return_columns.replace('max ( ','').replace(' )','')
+            return_cols = [self.column_names.index(col.strip()) for col in return_columns2.split(',')]
+       
+        elif('min (' in return_columns):
+            
+            return_columns2 = return_columns.replace('min ( ','').replace(' )','')
+            return_cols = [self.column_names.index(col.strip()) for col in return_columns2.split(',')]
+        
+        elif('sum (' in return_columns):
+            
+            return_columns2 = return_columns.replace('sum ( ','').replace(' )','')
+            return_cols = [self.column_names.index(col.strip()) for col in return_columns2.split(',')]    
+        elif('avg (' in return_columns):
+
+            return_columns2 = return_columns.replace('avg ( ','').replace(' )','')
+            return_cols = [self.column_names.index(col.strip()) for col in return_columns2.split(',')] 
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+        
+        # aggregate functions without group by
+        if group_by==None and 'count (' in return_columns:
 
+            # find the column between count() 
+            count_value = re.findall(r'\(.*?\)', return_columns)[0]
+            count_value = count_value.replace('( ','').replace(' )','')
+
+            # index of the count() column 
+            count_column_index = self.column_names.index(count_value)  
+
+            # make list of the column to group by
+            group_list = []
+            for i in range(len(self.data)):
+                group_list.append(self.data[i][count_column_index])
+            
+            count_list = len(group_list) 
+
+            for i in range(len(self.data)):
+                if i == 0:
+                    self.data[i][count_column_index] = count_list
+                else:
+                    self.data[i][count_column_index] = ''
+            
+            self.column_names[count_column_index] = 'count(' + count_value + ')'
+
+        
+        elif group_by == None and 'max (' in return_columns:
+
+            # find the column between max() 
+            max_value = re.findall(r'\(.*?\)', return_columns)[0]
+            max_value = max_value.replace('( ','').replace(' )','')
+            
+            
+            # index of the max() column 
+            max_column_index = self.column_names.index(max_value) 
+           
+            # sort data by max() column
+            self.data.sort(key=lambda x : x[max_column_index] , reverse=True)
+
+            for i in range(len(self.data)):
+                
+                if i == 0:   
+                    self.data[i][max_column_index]
+                else:
+                    self.data[i][max_column_index] = ''
+            
+            self.column_names[max_column_index] = 'max(' + max_value + ')'
+        
+        elif group_by == None and 'min (' in return_columns:
+
+            # find the column between min() 
+            min_value = re.findall(r'\(.*?\)', return_columns)[0]
+            min_value = min_value.replace('( ','').replace(' )','')
+            
+            # index of the min() column 
+            min_column_index = self.column_names.index(min_value) 
+           
+            # sort data by min() column
+            self.data.sort(key=lambda x : x[min_column_index])
+
+            for i in range(len(self.data)):
+                
+                if i == 0:   
+                    self.data[i][min_column_index]
+                else:
+                    self.data[i][min_column_index] = ''
+            
+            self.column_names[min_column_index] = 'min(' + min_value + ')'
+
+        elif group_by == None and 'sum (' in return_columns:
+            
+            # find the column between "sum(" and ")" 
+            sum_value = re.findall(r'\(.*?\)', return_columns)[0]
+            sum_value = sum_value.replace('( ','').replace(' )','')
+
+            # index of the sum() column 
+            sum_column_index = self.column_names.index(sum_value) 
+            
+            # sum() is valid on numeric columns only
+            # check if the column type of the column in the sum() function is int
+            if self.column_types[sum_column_index] == int: 
+                
+                # calculate the sum 
+                for i in range(len(self.data)):
+                    try:
+                        sum += self.data[i][sum_column_index]
+                    except:
+                        sum = self.data[i][sum_column_index]
+                
+                # insert sum in the first column
+                for i in range(len(self.data)):
+
+                    if i == 0:   
+                        self.data[i][sum_column_index] = sum
+                    else:
+                        self.data[i][sum_column_index] = ''
+                        
+            self.column_names[sum_column_index] = 'sum(' + sum_value + ')'
+
+        
+        elif group_by == None and 'avg (' in return_columns:
+            
+            # find the column between "avg(" and ")" 
+            avg_value = re.findall(r'\(.*?\)', return_columns)[0]
+            avg_value = avg_value.replace('( ','').replace(' )','')
+
+            # index of the avg() column 
+            avg_column_index = self.column_names.index(avg_value) 
+            
+            # avg() is valid on numeric columns only
+            # check if the column type of the column in the avg() function is int
+            if self.column_types[avg_column_index] == int: 
+                
+                # calculate the sum 
+                for i in range(len(self.data)):
+                    try:
+                        sum += self.data[i][avg_column_index]
+                    except:
+                        sum = self.data[i][avg_column_index]
+                
+                avg = sum / len(self.data)
+
+                # insert avg in the first column
+                for i in range(len(self.data)):
+
+                    if i == 0:   
+                        self.data[i][avg_column_index] = avg
+                    else:
+                        self.data[i][avg_column_index] = '' 
+            
+            self.column_names[avg_column_index] = 'avg(' + avg_value + ')'
+
+          
+            
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            
+            # in, between, like operators
+
+            if ' in ' in condition:
+                                
+                # split condition into 2 parts, the column name and the values
+                splt = condition.split(' in ',1) 
+
+                #splt[0], 'in', splt[1]
+
+                column_name = splt[0]  
+                value = splt[1]
+
+                column = self.column_by_name(column_name) # gets the column as a list
+
+                value = value.replace(' ','') # remove all whitespaces from the values
+                value = value.replace('(','') # remove parentheses from the values
+                value = value.replace(')','')
+                value = value.replace("'","") # remove character (') for string values
+
+                value = value.split(',') # makes value a string type list
+
+                column_to_str = [str(x) for x in column] # makes column a list of strings
+
+                # comparing the list value with the list column_to_str
+                common = set(value) & set (column_to_str)
+
+                rows = [ind for ind, x in enumerate(column_to_str) if(x in list(common))]
+
+            elif ' between ' and ' and ' in condition:
+
+                splt=condition.split(' between ',1) # split condition one time on 'between' keyword
+
+                # if splt is more than 1 characters, split "splt" one time on the 'and' keyword
+
+                if len(splt)>1:
+                    
+                    # column name, between, ... and ...
+                    # splt[0], 'between', splt[1]
+                    
+                    if len(splt[1])>1:
+                        splt_and=splt[1].split(' and ',1)
+
+                        # value1, and, value2
+                        # splt_and[0], 'and', splt_and[1]
+
+                        # remove all whitespaces
+                        condition_column = splt[0].replace(' ','') # name of the column
+                        value1 = splt_and[0].replace(' ','') # name of the first value ('BETWEEN value1 AND value2')
+                        value2 = splt_and[1].replace(' ','') # name of the second value
+
+
+                column = self.column_by_name(condition_column) # get the column as a list
+                    
+                column_to_str = [str(x) for x in column] # makes column a list of strings
+                
+                # if there are values between value1 and value2 append in the list value
+                values = []
+
+                values = [x for x in column_to_str if(x >= value1 and x <= value2)]
+
+
+                rows = [ind for ind, x in enumerate(column_to_str) if(x in list(values))]
+
+            elif ' like ' in condition:
+                
+                # split condition one time on keyword 'like'
+                splt = condition.split(' like ',1)
+
+                column_name = splt[0] # column name is the first word in the condition
+
+                column = self.column_by_name(column_name) # gets column as a list
+
+                value = splt[1] # value is the third word in the condition (column_name like value)
+
+                value = value.replace("'","") # removes " ' " (like 'a%')
+
+
+                # using RegEx (Regular Expression) to implement like wildcards 
+                # using module re
+                # SQL wildcards can convert into RegEx as:
+                # |  SQL   |   RegEx   |
+                # |  %a    |   ^.*?a$  |
+                # |  a%    |   ^a.*?$  |
+                # |  a_    |    ^a.$   |
+                # | [a-b]  |   ^[a-b]$ |
+
+                value = value.replace('%','.*?') # replace % from condition to .*?
+                value = value.replace('_','.') # replace _ from condition to .
+
+                out = re.compile('^'+value+'$') # compile value into RegEx (^ starts with, $ ends with)
+
+                column_to_str = [str(x) for x in column] # convert column to list of string
+
+                result = list(filter(out.match, column_to_str)) # find matching values in the column
+
+                rows = [ind for ind, x in enumerate(column_to_str) if(x in result)]
+
+            else:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
 
         # top k rows
         # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
-        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+        dict_ = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+
+        if select: # if insert into select return data 
+            return dict_['data']
 
         # we need to set the new column names/types and no of columns, since we might
         # only return some columns
-        dict['column_names'] = [self.column_names[i] for i in return_cols]
-        dict['column_types']   = [self.column_types[i] for i in return_cols]
+        dict_['column_names'] = [self.column_names[i] for i in return_cols]
+        dict_['column_types']   = [self.column_types[i] for i in return_cols]
 
-        s_table = Table(load=dict) 
+        s_table = Table(load=dict_) 
         if order_by:
             s_table.order_by(order_by, desc)
-
+        elif group_by:
+            s_table.group_by(return_columns, group_by, having, count, max_k, min_k, sum_k, avg_k)
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
 
         return s_table
@@ -307,6 +803,303 @@ class Table:
         self.data = [self.data[i] for i in idx]
         # self._update()
 
+
+    def group_by(self, return_columns, column_name, having, count, max_k, min_k, sum_k, avg_k):
+        column = self.column_by_name(column_name)
+        
+        
+        if count:
+            
+            # find the column between count() 
+            count_value = re.findall(r'\(.*?\)', return_columns)[0]
+            count_value = count_value.replace('( ','').replace(' )','')
+
+            # index of the count() column 
+            count_column_index = self.column_names.index(count_value) 
+            # index of the column to group by
+            group_column_index = self.column_names.index(column_name) 
+
+            # make list of the column to group by
+            group_list = []
+            for i in range(len(self.data)):
+                group_list.append(self.data[i][group_column_index])
+            
+
+            # make a dictionary that counts the times a value in group_list is repeated    
+            dct = dict(Counter(group_list))
+
+            
+            # if the query contains having
+            # get the column of the condition, the operator and the value
+            if having:
+                having = having.replace('count ( ', '').replace(' )','')
+                having_column, op, value = split_condition(having)
+                
+                # for every key in the dictionary
+                # using the function get_op
+                # if the key of the dictionary doesnt match the having value
+                # simply delete that key
+
+                for key in list(dct.keys()):
+                    #for i in range(len(self.data)):
+                    if not get_op(op, dct[key], int(value)):
+                        del dct[key]
+
+                # the final list contains the items of the dictionary
+                self.data = (list(dct.items())) 
+                
+
+            else:
+                # if the key in the dictionary is in the "group by column" 
+                # insert the value of the dictionary in the column that uses count() 
+                for key in list(dct.keys()):
+                    for i in range(len(self.data)):
+                        if self.data[i][group_column_index] ==  key:
+                            self.data[i][count_column_index] = (dct[key])
+                   
+            # sort table and group by 
+                   
+            self.data.sort(key=lambda x: x[group_column_index])
+            self.data = list(x for x, _ in itertools.groupby(self.data))
+            
+            # change the column name with the name of the aggregate function
+            self.column_names[count_column_index] = 'count(' + count_value + ')'
+        
+        elif max_k:
+            
+            # find the column between max() 
+            max_value = re.findall(r'\(.*?\)', return_columns)[0]
+            max_value = max_value.replace('( ','').replace(' )','')
+            print(max_value)
+            
+            # index of the max() column 
+            max_column_index = self.column_names.index(max_value) 
+            # index of the column to group by
+            group_column_index = self.column_names.index(column_name) 
+            
+            # sort data by max() column
+            self.data.sort(key=lambda x : x[max_column_index] , reverse=True)
+
+            # for every item in the data list 
+            # if the "group by" column item is not in grp list
+            # insert that item in the grp list
+            # else remove that item
+            # this way we group by that column 
+            grp = []
+
+            for i in range(len(self.data)):
+                
+                if self.data[i][group_column_index] not in grp:
+                    # if query contains having
+                    # for every value of the column that satisfies the having condition
+                    # insert that value into grp list else leave that value empty
+                    if having:
+                        having = having.replace('max ( ', '').replace(' )','')
+                        having_column, op, value = split_condition(having)  
+
+                        if get_op(op, self.data[i][max_column_index], value):
+                            print(op)
+                            grp.append(self.data[i][group_column_index])
+                        
+                        else:
+                            self.data[i][group_column_index] = ''
+                            self.data[i][max_column_index] = ''
+                    
+                    else:    
+                        grp.append(self.data[i][group_column_index])
+                elif (self.data[i][group_column_index] in grp):
+                    self.data[i][group_column_index] = ''
+                    self.data[i][max_column_index] = ''
+            
+            self.column_names[max_column_index] = 'max(' + max_value + ')'
+        elif min_k:
+
+            # find the column between min() 
+            min_value = re.findall(r'\(.*?\)', return_columns)[0]
+            min_value = min_value.replace('( ','').replace(' )','')
+            print(min_value)
+            
+            # index of the min() column 
+            min_column_index = self.column_names.index(min_value) 
+            # index of the column to group by
+            group_column_index = self.column_names.index(column_name) 
+            
+            # sort data by min() column
+            self.data.sort(key=lambda x : x[min_column_index])
+
+            # for every item in data list
+            # if item in the column we group by if not in the grp list
+            # add that item in the grp list
+            # else replace that item with blank
+            grp = []
+
+            for i in range(len(self.data)):
+                
+                if self.data[i][group_column_index] not in grp:
+                    if having:
+                        having = having.replace('min ( ', '').replace(' )','')
+                        having_column, op, value = split_condition(having)  
+
+                        if get_op(op, self.data[i][min_column_index], value):
+                            print(op)
+                            grp.append(self.data[i][group_column_index])
+                        else:
+                            self.data[i][group_column_index] = ''
+                            self.data[i][min_column_index] = ''     
+                    else:
+                        grp.append(self.data[i][group_column_index])
+                elif (self.data[i][group_column_index] in grp):
+                    self.data[i][group_column_index] = ''
+                    self.data[i][min_column_index] = ''
+            
+            self.column_names[min_column_index] = 'min(' + min_value + ')'
+
+        elif sum_k:
+            
+            # find the column between "sum(" and ")" 
+            sum_value = re.findall(r'\(.*?\)', return_columns)[0]
+            sum_value = sum_value.replace('( ','').replace(' )','')
+            print(sum_value)
+
+            # index of the sum() column 
+            sum_column_index = self.column_names.index(sum_value) 
+            # index of the column to group by
+            group_column_index = self.column_names.index(column_name)  
+
+            # sum() is valid on numeric columns only
+            # check if the column type of the column in the sum() function is int
+            if self.column_types[sum_column_index] == int: 
+                
+                grp = [] # group by list
+                sum = {} # sum of the int values
+
+                # group column and append into the grp list 
+                for i in range(len(self.data)):
+                    if self.data[i][group_column_index] not in grp:
+                        grp.append(self.data[i][group_column_index])
+
+                # make a dictionary with keys the data of the group by column 
+                # and values the sum of the int column
+
+                for i in range(len(self.data)):
+                    if self.data[i][group_column_index] in grp:
+                        try:
+                            sum[self.data[i][group_column_index]] += self.data[i][sum_column_index]
+                        except:
+                            sum[str(self.data[i][group_column_index])] = self.data[i][sum_column_index]
+
+                # for every key in the sum dictionary
+                # insert dictionary values into the right rows of the table
+
+                for key in sum.keys():
+                    for i in range(len(self.data)):
+                        if key in self.data[i][group_column_index]:
+                            self.data[i][sum_column_index] = int(sum[key])
+
+                            # if having return the right columns
+                            # usign get_op function
+                            if having:
+                                having = having.replace('sum ( ', '').replace(' )','')
+                                having_column, op, value = split_condition(having)                         
+                               
+                                if not get_op(op, self.data[i][sum_column_index], int(value)):
+                    
+                                    self.data[i][sum_column_index] = ''
+                                    self.data[i][group_column_index] = ''
+
+                            
+                # sort column and group by
+                self.data.sort(key=lambda x: x[group_column_index])
+                self.data = list(x for x, _ in itertools.groupby(self.data))
+            else:
+                print("Error: The column in the sum() function is not type int")
+                self.data = [[]]
+
+            self.column_names[sum_column_index] = 'sum(' + sum_value + ')'
+
+        elif avg_k:
+            
+            # find the column between "avg(" and ")" 
+            avg_value = re.findall(r'\(.*?\)', return_columns)[0]
+            avg_value = avg_value.replace('( ','').replace(' )','')
+            print(avg_value)
+            
+            # index of the avg() column 
+            avg_column_index = self.column_names.index(avg_value) 
+            # index of the column to group by
+            group_column_index = self.column_names.index(column_name) 
+
+            # avg() is valid on numeric columns only
+            # check if the column type of the column in the avg() function is int
+            if self.column_types[avg_column_index] == int: 
+
+                grp = [] # group by list
+                sum = {} # sum of the int values
+                times_repeated = {} # times group by column is repeated 
+
+                # group column and append into the grp list 
+                for i in range(len(self.data)):
+                    if self.data[i][group_column_index] not in grp:
+                        grp.append(self.data[i][group_column_index])
+
+                # make a dictionary with keys the data of the group by column 
+                # and values the sum of the int column
+
+                for i in range(len(self.data)):
+                    if self.data[i][group_column_index] in grp:
+                        try:
+                            sum[self.data[i][group_column_index]] += self.data[i][avg_column_index]
+                            times_repeated[str(self.data[i][group_column_index])] += 1 # times the same column found in grp list 
+                        except:
+                            sum[str(self.data[i][group_column_index])] = self.data[i][avg_column_index]
+                            times_repeated[str(self.data[i][group_column_index])] = 1
+                print(sum)
+                print(times_repeated)
+
+                #result = []
+
+                # divide the values of dictionary "sum" with the values of the dictionary "times_repeated"
+                # to get the average value of each row
+                # the result is stored in the list of tuples result
+
+                result = ({k: sum[k] / times_repeated[k] for k in sum if k in times_repeated})
+                
+                print (result)
+                # for every value in the "group by" column
+                # if the "group by" column is in the result dictionary
+                # insert the value of each key from the dictionary
+                # into the values of the "avg()" column
+                for key in result.keys():
+                    for i in range(len(self.data)):
+                        if key in self.data[i][group_column_index]:
+                            self.data[i][avg_column_index] = int(result[key])
+                            
+                            # if having return the right columns
+                            # usign get_op function
+                            if having:
+                                having = having.replace('avg ( ', '').replace(' )','')
+                                having_column, op, value = split_condition(having)                         
+                               
+                                if not get_op(op, self.data[i][avg_column_index], int(value)):
+                    
+                                    self.data[i][avg_column_index] = ''
+                                    self.data[i][group_column_index] = ''
+                                    
+                # sort column and group by
+                idx = sorted(range(len(column)), key=lambda k: column[k])
+                self.data = [self.data[i] for i in idx]   
+                self.data = list(x for x, _ in itertools.groupby(self.data))
+
+            else:
+                print("Error: The column in the avg() function is not type int")
+                self.data = [[]]
+
+
+            self.column_names[avg_column_index] = 'avg(' + avg_value + ')'
+
+        else:
+            print(column)
+            #return column
 
     def _inner_join(self, table_right: Table, condition):
         '''
@@ -406,6 +1199,10 @@ class Table:
         if left not in self.column_names:
             raise ValueError(f'Condition is not valid (cant find column name)')
         coltype = self.column_types[self.column_names.index(left)]
+
+        # if in operator
+        #if ' in ' in condition:
+         #   return left, op, right
 
         return left, op, coltype(right)
 

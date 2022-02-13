@@ -1,4 +1,5 @@
 from __future__ import annotations
+from ast import operator
 import pickle
 from table import Table
 from time import sleep, localtime, strftime
@@ -236,7 +237,7 @@ class Database:
         self._update()
         self.save_database()
 
-    def insert_into(self, table_name, row_str):
+    def insert_into(self, table_name, row_str, select=None):
         '''
         Inserts data to given table.
 
@@ -244,8 +245,48 @@ class Database:
             table_name: string. Name of table (must be part of database).
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             lock_load_save: boolean. If False, user needs to load, lock and save the states of the database (CAUTION). Useful for bulk-loading.
+            select: string. The query followed after the select clause (None by default)
         '''
+
+        
+        if select:
+            
+            table_name2 = select.split()[2]
+            self.load_database()
+            # column, condition
+            column = select.split()[0]
+            
+            if ' where ' in select:
+                condition = select.split(' where ')[1]
+                
+            else:
+                condition = None
+            row_str = self.tables[table_name2]._select_where(column, condition, select, order_by = None)
+            
+
+            lock_ownership = self.lock_table(table_name, mode='x')
+            insert_stack = self._get_insert_stack_for_table(table_name)
+
+            for i in range (len(row_str)):
+                
+                row = row_str[i]
+                try:
+                    self.tables[table_name]._insert(row, insert_stack)
+                except Exception as e:
+                    logging.info(e)
+                    logging.info('ABORTED')
+            self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
+
+            if lock_ownership:
+                self.unlock_table(table_name)
+            self._update()
+            self.save_database()
+            return
+
+
         row = row_str.strip().split(',')
+
+
         self.load_database()
         # fetch the insert_stack. For more info on the insert_stack
         # check the insert_stack meta table
@@ -313,8 +354,8 @@ class Database:
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
 
-    def select(self, columns, table_name, condition, order_by=None, top_k=True,\
-               desc=None, save_as=None, return_object=True):
+    def select(self, columns, table_name, condition, group_by=None, having=None, order_by=None, top_k=True,\
+               desc=None, count=None, max_k=None, min_k=None, sum_k=None, avg_k=None, save_as=None, return_object=True):
         '''
         Selects and outputs a table's data where condtion is met.
 
@@ -331,14 +372,26 @@ class Database:
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
             save_as: string. The name that will be used to save the resulting table into the database (no save if None).
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
+            group_by: string. The name of the column after the group by clause. (None by default)
+            having: string. The condition after the having clause. (None by default)
+            count: boolean. True if there is count() clause in the query. (None by default)
+            max_k: boolean. True if there is max() function in the query. (None by default)
+            min_k: boolean. True if there is min() function in the query. (None by default)
+            sum_k: boolean. True if there is sum() function in the query. (None by default)
+            avg_k: boolean. True id there is avg() function in the query. (None by deafault)
+
         '''
         # print(table_name)
+        select = None # insert into select.. 
+
         self.load_database()
         if isinstance(table_name,Table):
-            return table_name._select_where(columns, condition, order_by, desc, top_k)
-
+            return table_name._select_where(columns, condition, select, group_by, having, order_by, desc, count, max_k, min_k, sum_k, avg_k, top_k)
+        
         if condition is not None:
-            condition_column = split_condition(condition)[0]
+
+            condition_column = condition.split()[0]
+
         else:
             condition_column = ''
 
@@ -351,7 +404,7 @@ class Database:
             bt = self._load_idx(index_name)
             table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k)
         else:
-            table = self.tables[table_name]._select_where(columns, condition, order_by, desc, top_k)
+            table = self.tables[table_name]._select_where(columns, condition, select, group_by, having, order_by, desc, count, max_k, min_k, sum_k, avg_k, top_k)
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as

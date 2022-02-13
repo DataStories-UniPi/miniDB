@@ -1,4 +1,5 @@
 import operator
+from shutil import register_unpack_format
 
 def get_op(op, a, b):
     '''
@@ -17,6 +18,9 @@ def get_op(op, a, b):
 
 def split_condition(condition):
     condition = condition.replace(' ','') # remove all whitespaces
+    condition = condition.replace('(','')
+    condition = condition.replace(')','')
+    
     ops = {'>=': operator.ge,
            '<=': operator.le,
            '=': operator.eq,

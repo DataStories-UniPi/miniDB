@@ -77,6 +77,55 @@ def create_query_plan(query, keywords, action):
         else:
             dic['desc'] = None
 
+        # group by
+        if dic['group by'] is not None: 
+            dic['from'] = dic['from'].removesuffix(' group') #removes group
+            if 'count (' in dic['select']:
+                dic['count'] = True
+                dic['max_k'] = False
+                dic['min_k'] = False
+                dic['avg_k'] = False
+                dic['sum_k'] = False
+            elif 'max (' in dic['select']:
+                dic['count'] = False
+                dic['max_k'] = True
+                dic['min_k'] = False
+                dic['avg_k'] = False
+                dic['sum_k'] = False
+            elif 'min (' in dic['select']:
+                dic['count'] = False
+                dic['max_k'] = False
+                dic['min_k'] = True
+                dic['avg_k'] = False
+                dic['sum_k'] = False
+            elif 'sum (' in dic['select']:
+                dic['count'] = False
+                dic['max_k'] = False
+                dic['min_k'] = False
+                dic['sum_k'] = True
+                dic['avg_k'] = False
+            elif 'avg (' in dic['select']:
+                dic['count'] = False
+                dic['max_k'] = False 
+                dic['min_k'] = False
+                dic['sum_k'] = False
+                dic['avg_k'] = True
+   
+            else:
+                dic['count'] = False
+                dic['max_k'] = False
+                dic['min_k'] = False
+                dic['avg_k'] = False
+                dic['sum_k'] = False
+
+
+        else:
+            dic['max_k'] = None
+            dic['min_k'] = None
+            dic['avg_k'] = None
+            dic['sum_k'] = None
+            dic['count'] = None
+            
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
@@ -94,8 +143,20 @@ def create_query_plan(query, keywords, action):
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
     if action=='insert into':
-        if dic['values'][0] == '(' and dic['values'][-1] == ')':
-            dic['values'] = dic['values'][1:-1]
+
+        if dic['values'] is not None:
+            dic['select'] = None
+            if dic['values'][0] == '(' and dic['values'][-1] == ')':
+                dic['values'] = dic['values'][1:-1]
+
+        # insert into select
+        elif dic['values'] == None:
+            if dic['select'] is not None:
+                #dic['select'] = dic['select'][0:-1]
+                dic['select'] = dic['select']
+            else:
+                dic['select'] = None
+
         else:
             raise ValueError('Your parens are not right m8')
     
@@ -153,8 +214,8 @@ def interpret(query):
                      'cast': ['cast', 'from', 'to'],
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
-                     'insert into': ['insert into', 'values'],
-                     'select': ['select', 'from', 'where', 'order by', 'top'],
+                     'insert into': ['insert into', 'values', 'select'],
+                     'select': ['select', 'from', 'where', 'group by', 'having', 'order by', 'top'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
