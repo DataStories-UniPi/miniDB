@@ -22,6 +22,8 @@ class Database:
     Main Database class, containing tables.
     '''
 
+    temp_views = []
+
     def __init__(self, name, load=True):
         self.tables = {}
         self._name = name
@@ -51,7 +53,6 @@ class Database:
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
         self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
-        self.create_table('meta_views', 'query,view_name', 'str,str')
         self.create_table('meta_triggers', 'trigger_name, condition, action, trigger_table', 'str, str, str, str')
         self.save_database()
 
@@ -248,8 +249,6 @@ class Database:
             lock_load_save: boolean. If False, user needs to load, lock and save the states of the database (CAUTION). Useful for bulk-loading.
         '''
         
-        #if table_name != "meta_triggers":
-
         # searching for triggers with condition 'BEFORE' and action 'INSERT'.
         bfr_insert = self.count_trigger(table_name, "before", "insert")
         
@@ -304,31 +303,29 @@ class Database:
 
                 Operatores supported: (<,<=,==,>=,>)
         '''
-        if table_name != "meta_triggers":
+        # searching for triggers with condition 'BEFORE' and action 'UPDATE'.
+        bfr_update = self.count_trigger(table_name, "before", "update")
 
-            # searching for triggers with condition 'BEFORE' and action 'UPDATE'.
-            bfr_update = self.count_trigger(table_name, "before", "update")
+        for i in range(bfr_update):
+            self.do_something("before", "update")
 
-            for i in range(bfr_update):
-                self.do_something("before", "update")
+        set_column, set_value = set_args.replace(' ','').split('=')
+        self.load_database()
 
-            set_column, set_value = set_args.replace(' ','').split('=')
-            self.load_database()
+        lock_ownership = self.lock_table(table_name, mode='x')
+        table_changed = self.tables[table_name]._update_rows(set_value, set_column, condition)
+        
+        if table_changed:
+            # searching for triggers with condition 'AFTER' and action 'UPDATE'.
+            after_update = self.count_trigger(table_name, "after", "update")
 
-            lock_ownership = self.lock_table(table_name, mode='x')
-            table_changed = self.tables[table_name]._update_rows(set_value, set_column, condition)
-            
-            if table_changed:
-                # searching for triggers with condition 'AFTER' and action 'UPDATE'.
-                after_update = self.count_trigger(table_name, "after", "update")
+            for i in range(after_update):
+                self.do_something("after", "update")
 
-                for i in range(after_update):
-                    self.do_something("after", "update")
-
-            if lock_ownership:
-                self.unlock_table(table_name)
-            self._update()
-            self.save_database()
+        if lock_ownership:
+            self.unlock_table(table_name)
+        self._update()
+        self.save_database()
 
         
 
@@ -346,30 +343,29 @@ class Database:
         '''
         # searching for triggers with condition 'BEFORE' and action 'DELETE'.
 
-        if table_name != "meta_triggers":
-            bfr_delete = self.count_trigger(table_name, "before", "delete")
+        bfr_delete = self.count_trigger(table_name, "before", "delete")
 
-            for i in range(bfr_delete):
-                self.do_something("before", "delete")
+        for i in range(bfr_delete):
+            self.do_something("before", "delete")
 
-            self.load_database()
+        self.load_database()
 
-            lock_ownership = self.lock_table(table_name, mode='x')
-            deleted = self.tables[table_name]._delete_where(condition)
-            if lock_ownership:
-                self.unlock_table(table_name)
-            self._update()
-            self.save_database()
-            # we need the save above to avoid loading the old database that still contains the deleted elements
-            if table_name[:4]!='meta':
-                self._add_to_insert_stack(table_name, deleted)
-            self.save_database()
+        lock_ownership = self.lock_table(table_name, mode='x')
+        deleted = self.tables[table_name]._delete_where(condition)
+        if lock_ownership:
+            self.unlock_table(table_name)
+        self._update()
+        self.save_database()
+        # we need the save above to avoid loading the old database that still contains the deleted elements
+        if table_name[:4]!='meta':
+            self._add_to_insert_stack(table_name, deleted)
+        self.save_database()
 
-            if deleted == True:
-                # searching for triggers with condition 'AFTER' and action 'DELETE'.
-                after_delete = self.count_trigger(table_name, "after", "delete")
-                for i in range(after_delete):
-                    self.do_something("after", "delete")
+        if deleted == True:
+            # searching for triggers with condition 'AFTER' and action 'DELETE'.
+            after_delete = self.count_trigger(table_name, "after", "delete")
+            for i in range(after_delete):
+                self.do_something("after", "delete")
             
 
     def select(self, columns, table_name, condition, order_by=None, top_k=True,\
@@ -521,6 +517,7 @@ class Database:
         return True
         # print(f'Locking table "{table_name}"')
 
+
     def unlock_table(self, table_name, force=False):
         '''
         Unlocks the specified table that is exclusively locked (X).
@@ -542,6 +539,7 @@ class Database:
         self.tables['meta_locks']._delete_where(f'table_name={table_name}')
         self._save_locks()
         # print(f'Unlocking table "{table_name}"')
+
 
     def is_locked(self, table_name):
         '''
@@ -565,6 +563,7 @@ class Database:
             pass
         return False
 
+
     def journal(idx = None):
         if idx != None:
             cache_list = '\n'.join([str(readline.get_history_item(i + 1)) for i in range(readline.get_current_history_length())]).split('\n')[int(idx)]
@@ -575,71 +574,86 @@ class Database:
         print('journal:', out)
         #return out
 
-    def create_view(self, view_name, query, view_type):
+    def create_view(self, name, columns, table_name, condition, order_by=None, top_k=True, desc=None):
+
         '''
-        Creates a view of a specified table with a given name.
+        Selects and outputs a view's data where condtion is met.
 
         Args:
-            table_name: string. Table name (must be part of database).
-            view_name: string. Name of the created view.
-            view_type: string. Type of view (temporary / materialised).
-        '''
-        if view_name not in self.tables['meta_views'].column_by_name('view_name'):
-            if view_type == 'temp':
-                # currently only btree is supported. This can be changed by adding another if.
-                logging.info('Creating temp view.')
-                # from the create view query, we isolate the select query.
-                query = query[query.find("(")+1:query.find(")")]
-                # insert a record with the name of the view and the table on which it's created to the meta_views table
-                self.tables['meta_views']._insert([query, view_name])
-                # create the actual index
-                self._construct_view(query, view_name)
-                self.save_database()
+            name: string. Name of table (view).
+            columns: list. The columns that will be part of the output table (view) (use '*' to select all available columns).
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
 
-            else: 
-                raise Exception('Cannot create view. Another view already exists.')
-
-    def _construct_view(self, view, view_name):
+                Operatores supported: (<,<=,==,>=,>)
+            order_by: string. A column name that signals that the resulting table (view) should be ordered based on it (no order if None).
+            top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
+            desc: boolean. If True, order_by will return results in descending order (True by default).
         '''
-        Construct a btree on a table and save.
+    
+        print(f'\n View `{name}` has been created!\n')
+        # Using the select query accordingly so it can be added to the table.
+        select = self.select(columns, table_name, condition, order_by, top_k, return_object=True)
+
+        # Printing the new 'view' that was created as a table.
+        self.select(columns, table_name, condition, order_by, top_k, return_object=False)
+
+        # Updating and saving to database
+        self.tables.update({name: select})
+        self._update()
+        self.save_database()
+
+    def create_tempview(self, name, columns, table_name, condition, order_by=None, top_k=True, desc=None):
+
+        '''
+        Selects and outputs a temporary view's data where condtion is met.
 
         Args:
-            view: string. view (select string).
-            view_name: string. Name of the created view.
+            name: string. Name of table (temporary view).
+            columns: list. The columns that will be part of the output table (temporary view) (use '*' to select all available columns).
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+
+                Operatores supported: (<,<=,==,>=,>)
+            order_by: string. A column name that signals that the resulting table (temporary view) should be ordered based on it (no order if None).
+            top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
+            desc: boolean. If True, order_by will return results in descending order (True by default).
         '''
-        # Still need to implement it.
 
-    def _has_view(self, view_name):
-        return view_name in self.tables['meta_views'].column_by_name('table_name')
+        # The temporary view's name is added to the 'temp_views' list.
+        self.temp_views.append(name)
+        print(f'\n A temporary View `{name}` has been created! \n')
+        # Using the select query accordingly so it can be added to the table.
+        select = self.select(columns, table_name, condition, order_by, top_k, return_object=True)
 
-    def _save_view(self, view_name, view):
+        # Printing the new 'temporary view' that was created as a table.
+        self.select(columns, table_name, condition, order_by, top_k, return_object=False)
+
+        # Updating and saving to database
+        self.tables.update({name: select})
+        self._update()
+        self.save_database()
+
+    def drop_view(self, table_name):
         '''
-        Save the view object.
-
-        Args:
-            view_name: string. Name of the created view.
-            view: obj. The actual view object.
+        This function is used in order to drop a view or temporary view.
         '''
-        try:
-            os.mkdir(f'{self.savedir}/views')
-        except:
-            pass
+        if table_name in self.temp_views:
+            print(f'Temporary View `{table_name}` has been deleted!')
+            self.drop_table(table_name)
+        else:
+            print(f'View `{table_name}` has been deleted!')
+            self.drop_table(table_name)
 
-        with open(f'{self.savedir}/views/meta_{view_name}_view.pkl', 'wb') as f:
-            pickle.dump(view, f)
-
-    def _load_view(self, view_name):
+    def clear_tempviews(self):
         '''
-        Load and return the specified view.
-
-        Args:
-            view_name: string. Name of created view.
+        This function is used in order to delete the temporary views.
         '''
-        f = open(f'{self.savedir}/views/meta_{view_name}_view.pkl', 'rb')
-        view = pickle.load(f)
-        f.close()
-
-        return view
+        if(len(self.temp_views) > 0):
+            for i in self.temp_views:
+                self.drop_table(i) 
 
 
     # Triggers

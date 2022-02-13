@@ -77,6 +77,34 @@ def create_query_plan(query, keywords, action):
         else:
             dic['desc'] = None
 
+    if action == 'create view':
+        dic = evaluate_from_clause(dic)
+
+        if dic['order by'] is not None:
+            dic['from'] = dic['from'].removesuffix(' order')
+            if 'desc' in dic['order by']:
+                dic['desc'] = True
+            else:
+                dic['desc'] = False
+            dic['order by'] = dic['order by'].removesuffix(' asc').removesuffix(' desc')
+
+        else:
+            dic['desc'] = None
+
+    if action == 'create tempview':
+        dic = evaluate_from_clause(dic)
+
+        if dic['order by'] is not None:
+            dic['from'] = dic['from'].removesuffix(' order')
+            if 'desc' in dic['order by']:
+                dic['desc'] = True
+            else:
+                dic['desc'] = False
+            dic['order by'] = dic['order by'].removesuffix(' asc').removesuffix(' desc')
+
+        else:
+            dic['desc'] = None
+
     if action == 'create trigger':
         args = dic['create trigger'].split(" ", 1)[-1]
         dic['create trigger'] = dic['create trigger'].removesuffix(args).strip()
@@ -168,7 +196,8 @@ def interpret(query):
                      'update table': ['update table', 'set', 'where'],
                      'create index': ['create index', 'on', 'using'],
                      'drop index' : ['drop index'],
-                     'create view' : ['create view', 'on'],
+                     'create view': ['create view', 'select', 'from', 'where', 'order by', 'top'],
+                     'create tempview': ['create tempview', 'select', 'from', 'where', 'order by', 'top'],
                      'drop view' : ['drop view'],
                      'create trigger' : ['create trigger'],
                      'drop trigger' : ['drop trigger']
@@ -261,10 +290,14 @@ if __name__ == "__main__":
                 if line[-1]!=';':
                     line+=';'
             except (KeyboardInterrupt, EOFError):
+                # When the app gets interrupted, then the temporary view gets deleted.
+                Database.clear_tempviews(db) 
                 print('\nbye!')
                 break
             try:
                 if line=='exit':
+                    # When the user exits, then the temporary view gets deleted.
+                    Database.clear_tempviews(db)
                     break
                 if line.startswith('.'):
                     interpret_meta(line)
