@@ -198,6 +198,11 @@ class Table:
 
 
     def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None):
+        #oso to distinct ine false den kanei kati an iparxei sto string eisodou to kanei true
+        distinct = False
+        if 'distinct' in return_columns:
+            return_columns = return_columns.split(' ')[1]
+            distinct = True
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -218,7 +223,7 @@ class Table:
             return_cols = [i for i in range(len(self.column_names))]
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
-
+        
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
@@ -227,6 +232,25 @@ class Table:
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
+        if distinct:
+            #tha xreiastei 3 pinakes enan gia to id tis grammis | 1 gia to poses grammes ikanopoioun thn sinthiki | 1 gia to periexomno tis grammis
+            idtisgrammis=[]
+            arithmosgrammwn =[]
+            pliroforiakategrammis=[]
+
+            # Dimiougia listas me ta periexomena pou tha ektipwsoume apo ton pinaka
+            for row in rows:
+                pliroforiakategrammis.append([row,[]])
+                for colID in return_cols:
+                    pliroforiakategrammis[-1][1].append(self.data[row][colID]) 
+
+            # Diagrafontai i stiles pou emfanizontai polles fores
+            for idx, row in pliroforiakategrammis:
+                if row not in arithmosgrammwn:
+                    arithmosgrammwn.append(row)
+                    idtisgrammis.append(idx)
+            rows = idtisgrammis
+
 
         # top k rows
         # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
