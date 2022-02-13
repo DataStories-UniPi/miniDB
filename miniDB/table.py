@@ -241,6 +241,14 @@ class Table:
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
 
+        
+        #If "select distinct" in query
+        distinct = False
+        if 'distinct' in return_columns:
+            return_columns = return_columns.split(' ')[1]
+            distinct = True
+            
+        
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
@@ -256,6 +264,27 @@ class Table:
         else:
             rows = [i for i in range(len(self.data))]
 
+            
+        #If "select distinct" in query
+        if distinct:
+            index_of_rows = []
+            new_rows = []
+            data_of_rows = []
+
+            # List with displayed data
+            for row in rows:
+                data_of_rows.append([row,[]])
+                for col in return_cols:
+                    data_of_rows[-1][1].append(self.data[row][col]) 
+
+            # Dublicates
+            for index, row in data_of_rows:
+                if row not in new_rows:
+                    new_rows.append(row)
+                    index_of_rows.append(index)
+            rows = index_of_rows
+   
+            
         # top k rows
         # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
