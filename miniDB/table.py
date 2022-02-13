@@ -63,8 +63,8 @@ class Table:
             # if primary key is set, keep its index as an attribute
             if primary_key is not None:
                 self.pk_idx = self.column_names.index(primary_key)
-                print(f"Primary key is {primary_key}")
-                print(f"Primary key index is {self.pk_idx}")
+                #print(f"Primary key is {primary_key}")
+                #print(f"Primary key index is {self.pk_idx}")
             else:
                 self.pk_idx = None
 
