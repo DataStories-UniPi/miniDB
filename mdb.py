@@ -107,25 +107,25 @@ def create_query_plan(query, keywords, action):
                         dic['not_nulls']+='None'
                     else:
                         dic['not_nulls']+='None'
-            else:dic['not nulls']+=',None'
+            else:dic['not_nulls']+=',None'
 
         unique_counter=-1
         for val in arglist:
             unique_counter+=1
             loop_counter=0
             if len(val)>=3:
-            word=2
-            for word in range (len(val)):
-                if val[word]=="unique":
+                word=2
+                for word in range (len(val)):
+                    if val[word]=="unique":
+                        if unique_counter==0:
+                            dic['uniques']+=(val[0])
+                        else:dic['uniques']+=','+(val[0])
+                        loop_counter+=1
+                if loop_counter==0:
                     if unique_counter==0:
-                        dic['uniques']+=(val[0])
-                    else:dic['uniques']+=','+(val[0])
-                    loop_counter+=1
-            if loop_counter==0:
-                if unique_counter==0:
-                    dic['uniques']+='None'
+                        dic['uniques']+='None'
+                    else:dic['uniques']+='None'
                 else:dic['uniques']+='None'
-            else:dic['uniques']+='None'
 
 
 
