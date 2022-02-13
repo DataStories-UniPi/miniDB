@@ -133,13 +133,15 @@ class Table:
         if len(row) != len(self.column_names):
             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
 
+        print(self.column_types)
         for i in range(len(row)):
             # for each value, cast and replace it in row unless it's an int.
             # try:
             #if self.column_types == str:
             self.__check_constraints(self.column_names[i], row[i])
-
-            row[i] = self.column_types[i](row[i])
+            
+            if (row[i] == 'none' or row[i] == 'null') and self.column_types[i] is not int:
+                row[i] = self.column_types[i](row[i])
 
             # if value is to be appended to the primary_key column, check that it doesnt already exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
