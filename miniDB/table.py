@@ -72,7 +72,7 @@ class Table:
                 for i in range(len(foreign_key)):
 
                     self.fk_idx.append(foreign_key[i])
-                                        
+
             else:
                 self.fk_idx = None
 
@@ -390,6 +390,11 @@ class Table:
         if self.pk_idx is not None:
             # table has a primary key, add PK next to the appropriate column
             headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
+
+        if self.fk_idx != None:
+            for i in range(len(self.fk_idx)):
+                headers[i] = headers[i] +' #FK#'
+        
         # detect the rows that are no tfull of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]
