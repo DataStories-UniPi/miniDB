@@ -634,9 +634,6 @@ class Database:
 
         if mode=='inner':
             
-            print(f'type(left_table): {type(left_table)}')
-            print(f'type(right_table): {type(right_table)}')
-            print(f'type(right_table): {type(condition)}')
             method = self.evaluate_join_method(left_table, right_table, condition)
             if method == 'SMJ':
                 print(f'Using SMJ')
