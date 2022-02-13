@@ -22,7 +22,10 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+
+    not_nulls = []
+    uniques = []
+    def __init__(self, name=None, column_names=None, column_types=None, not_nulls=None, uniques=None, primary_key=None, load=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -56,6 +59,8 @@ class Table:
 
             self.column_types = [eval(ct) if not isinstance(ct, type) else ct for ct in column_types]
             self.data = [] # data is a list of lists, a list of rows that is.
+            self.not_nulls = not_nulls
+            self.uniques = uniques
 
             # if primary key is set, keep its index as an attribute
             if primary_key is not None:
@@ -113,6 +118,20 @@ class Table:
             # for each value, cast and replace it in row.
             # try:
             row[i] = self.column_types[i](row[i])
+
+            #Check if the given value is null
+            if len(self.not_nulls) != 0 and self.not_nulls[i] != 'None' and row[i] == '':
+                print(f'## ERROR -> Column {self.column_names[i]} cannot accept null value.')
+                raise ValueError(f'## ERROR -> Column {self.column_names[i]} cannot accept null value.')
+
+            #Check if the given value is already exists
+            if len(self.uniques) != 0 and self.uniques[i] != 'None':
+                #Searching the entire table for the value using loop
+                for val in self.column_by_name(self.column_names[i]):
+                    #Comparing
+                    if row[i] == val:
+                        print(f'## ERROR -> Value {row[i]} is already exists in the table.')
+                        raise ValueError(f'## ERROR -> Value {row[i]} is already exists in the table.')
             # except:
             #     raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
 

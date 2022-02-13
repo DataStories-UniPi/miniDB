@@ -84,6 +84,51 @@ def create_query_plan(query, keywords, action):
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+        dic['not_nulls']='' #init
+        dic['uniques']=''#init
+
+        count=-1 #counter for 1st obj
+        #for every val in arglist >3
+        #check if word + next word are not null and we add the val[0] to those cols
+
+        for val in arglist:
+            count+=1
+            loop_counter=0
+            if len(val)>=3:
+                word=2
+                for word in range(len(val-1)):
+                    if val[word] == "not" and val [word+1] == "null":
+                        if count ==0:
+                            dic['not_nulls']+=(val[0])
+                        else:dic['not_nulls']+=','+(val[0])
+                        loop_counter+=1
+                if loop_counter==0:
+                    if count ==0:
+                        dic['not_nulls']+='None'
+                    else:
+                        dic['not_nulls']+='None'
+            else:dic['not nulls']+=',None'
+
+        unique_counter=-1
+        for val in arglist:
+            unique_counter+=1
+            loop_counter=0
+            if len(val)>=3:
+            word=2
+            for word in range (len(val)):
+                if val[word]=="unique":
+                    if unique_counter==0:
+                        dic['uniques']+=(val[0])
+                    else:dic['uniques']+=','+(val[0])
+                    loop_counter+=1
+            if loop_counter==0:
+                if unique_counter==0:
+                    dic['uniques']+='None'
+                else:dic['uniques']+='None'
+            else:dic['uniques']+='None'
+
+
+
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]
