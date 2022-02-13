@@ -204,7 +204,7 @@ class Table:
             desc: boolean. If True, order_by will return results in descending order (False by default).
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
-        # Select DISTINCT/distinct
+        # Select distinct
 
         distinct = False
         # des an uparxei to distinct sto return_columns
@@ -249,7 +249,7 @@ class Table:
         s_table = Table(load=dict) 
         if order_by:
             s_table.order_by(order_by, desc)
-        # Select DISTINCT
+        # Select distinct
         if distinct:
             tmp_list = []
             tmp_tbl = s_table

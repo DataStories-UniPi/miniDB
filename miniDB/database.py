@@ -140,6 +140,28 @@ class Database:
 
         # self._update()
         self.save_database()
+    
+    def drop_view(self, table_name):
+        '''
+        Drop view from current database.
+        Args:
+            table_name: string. Name of table.
+        '''
+        self.load_database()
+        self.lock_table(table_name)
+
+        self.tables.pop(table_name)
+        if os.path.isfile(f'{self.savedir}/{table_name}.pkl'):
+            os.remove(f'{self.savedir}/{table_name}.pkl')
+        else:
+            warnings.warn(f'"{self.savedir}/{table_name}.pkl" not found.')
+        self.delete_from('meta_locks', f'table_name={table_name}')
+        self.delete_from('meta_length', f'table_name={table_name}')
+        self.delete_from('meta_insert_stack', f'table_name={table_name}')
+
+        # self._update()
+        self.save_database()
+
 
 
     def import_table(self, table_name, filename, column_types=None, primary_key=None):
