@@ -2,7 +2,7 @@ from __future__ import annotations
 import pickle
 from table import Table
 from time import sleep, localtime, strftime
-import os,sys
+from os import sys
 from btree import Btree
 import shutil
 from misc import split_condition
@@ -414,13 +414,53 @@ class Database:
             return
 
         left_table = left_table if isinstance(left_table, Table) else self.tables[left_table] 
-        right_table = right_table if isinstance(right_table, Table) else self.tables[right_table] 
+        right_table = right_table if isinstance(right_table, Table) else self.tables[right_table]
+
+        def spinner (t1,t2):
+           itsright = t1 # this is right table
+            right_table = t2 # left  table
+            left_table = wasRight
+
 
 
         if mode=='inner':
             res = left_table._inner_join(right_table, condition)
-        else:
-            raise NotImplementedError
+        elif mode   == 'inlj':
+            if (right_table.pk and left_table) is None:
+                res = left_table._inner_join(right_table, condition)
+            else:
+                # we need left table to be right and right table to be left
+                spin = false
+                if right_table.pk == None:
+                    spinner(right_table, left_table)
+                    spin = true
+                else :
+                    spin = false
+                    if right_table.pk == None:
+                        spinner(right_table, left_table)
+                        spin = true
+
+                    index = Btree()
+                    x = 0
+                    adder = enumerate(right_table.column_by_name(right_table.pk))
+                    # we insert very record of the primary into the btree as well as its index
+                    while (x < adder): chosen_index.insert(key.idx)
+
+                column_name_left, operator, column_name_right = self._parse_condition(condition, join=True)
+                # columns find try
+                try:
+                    column_index_left = self.column_names.index(column_name_left)
+                except:
+                    raise Exception(
+                        f'Column "{column_name_left}" dont exist in left table. Valid columns: {self.column_names}.')
+
+                try:
+                    column_index_right = table_right.column_names.index(column_name_right)
+                except:
+                    raise Exception(
+                        f'Column "{column_name_right}" dont exist in right table. Valid columns: {table_right.column_names}.')
+        #else:
+            #raise NotImplementedError
 
         if save_as is not None:
             res._name = save_as

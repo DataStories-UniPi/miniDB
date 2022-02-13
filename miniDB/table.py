@@ -3,7 +3,7 @@ from tabulate import tabulate
 import pickle
 import os
 from misc import get_op, split_condition
-from database import Database
+##from database import Database
 
 class Table:
     '''
