@@ -253,6 +253,11 @@ class Table:
         '''
 
         def _groupby_sum(column):
+            '''
+            Function that calculates the sum of the given column.
+
+            Args: column, the column which sum we want to calculate.
+            '''
             # Check if column items are numeric
             if not any([ self.column_types[self.column_names.index(column)] is x for x in [int, float]  ]): raise ValueError(f"{column} is not numeric")
             
@@ -263,6 +268,11 @@ class Table:
                     dict2[x].append( y[self.column_names.index(column)] )
 
         def _groupby_avg(column):
+            '''
+            Function that calculates the average of the given column.
+
+            Args: column, the column which average we want to calculate.
+            '''
             if not any([ self.column_types[self.column_names.index(column)] is x for x in [int, float]  ]): raise ValueError(f"{column} is not numeric")
             
             for x, y in dict.items():
@@ -272,6 +282,11 @@ class Table:
                     dict2[x].append( y[self.column_names.index(column)] )
             
         def _groupby_min(column):
+            '''
+            Function that calculates the minimum of the given column.
+
+            Args: column, the column which minimum we want to calculate.
+            '''
             for x, y in dict.items():
                 if any(isinstance(i, list) for i in y):
                     dict2[x].append( min( list(filter( ('').__ne__,[ z[self.column_names.index(column)] for z in y ] ))) )
@@ -279,6 +294,11 @@ class Table:
                     dict2[x].append( y[self.column_names.index(column)] )
 
         def _groupby_max(column):
+            '''
+            Function that calculates the maximum of the given column.
+
+            Args: column, the column which maximum we want to calculate.
+            '''
             for x, y in dict.items():
                 if any(isinstance(i, list) for i in y):
                     dict2[x].append( max( list(filter( ('').__ne__,[ z[self.column_names.index(column)] for z in y ] ))) )
@@ -286,6 +306,11 @@ class Table:
                     dict2[x].append( y[self.column_names.index(column)] )
 
         def _groupby_count(column):
+            '''
+            Function that calculates the count of the given column.
+
+            Args: column, the column which count we want to calculate.
+            '''
             if column == "*":
                 for x, y in dict.items():
                     dict2[x].append(len(y))
@@ -299,6 +324,11 @@ class Table:
                     dict2[x].append( dict_lengths[x] )
 
         def _groupby_having_condition_exec(condition):
+            '''
+            Function that implements the having operator for the group by procedure.
+
+            Args: condition, the condition of the select method.
+            '''
             # gets all the variables of the condition
             con_list = re.split('\s*>=\s*|\s*<=\s*|\s*>\s*|\s*<\s*|\s*=\s*',condition)
             # get all operators of the condition
@@ -351,6 +381,11 @@ class Table:
         agg_funcs = {'sum': _groupby_sum, 'avg':_groupby_avg, 'min':_groupby_min, 'max':_groupby_max, 'count':_groupby_count}
 
         def _groupby_agg_func_input(column):
+            '''
+            Function that checks if the column given is an aggregate function.
+
+            Args: column, the column we use in group by.
+            '''
             # If column is agg func
             try:
                 if column.split(' (')[0] in agg_funcs.keys():
@@ -711,7 +746,12 @@ class Table:
 
         self.__dict__.update(tmp_dict)
 
+    
     class ExternalMergeSort:
+        '''
+        Class that executes the external sorting of the files, used in Sort-merge join.
+        Saves data to temporary files that after being used are deleted to keep the directory clean.
+        '''
         #Total number of split files
         numFiles = 0
         #Total number of numbers in the first file
@@ -719,8 +759,12 @@ class Table:
         #File name, so as to recognize the sorted file
         startingFileName = ''
 
-        # Sort the given array with the merge sort algorithm
         def mergeSort(self,arr):
+            '''
+            Merge sort function for the External Sorting.
+
+            Args: arr, the array we want to sort with the merge sort algorithm.
+            '''
             if len(arr) > 1:
                 mid = len(arr)//2
                 L = arr[:mid]
@@ -751,8 +795,13 @@ class Table:
                     j += 1
                     k += 1
 
-        # function to split the big file into smaller chunks of size specified by the user
         def splitFile(self,largefile,chunkSize:int):
+            '''
+            Function to split the big file into smaller chunks of size specified by the user.
+            Args: largefile, the name of the file we want to split
+                  chunkSize, the amount of bytes of data in every split file
+            '''
+
             self.startingFileName = largefile
             self.numFiles = 1
             with open('miniDB/externalSortFolder/' + largefile) as f:
@@ -766,8 +815,12 @@ class Table:
                     self.numFiles += 1
             return self.numFiles
 
-        # function to sort a chunk of the starting file using merge sort
         def sortSmallFile(self,fileToBeSorted):
+            '''
+            Function to sort a chunk of the starting file using merge sort.
+
+            Args: fileToBeSorted, the name of the file we want to sort using Merge Sort
+            '''
             arr = []
             with open(f'miniDB/externalSortFolder/tempSplitFiles {self.startingFileName}/' + str(fileToBeSorted),'r') as fts:
                 # If the contents of the file are integers
@@ -787,6 +840,12 @@ class Table:
 
         #K-Way Merge with priority queue implementation
         def k_wayMerge(self,number):
+            '''
+            K-Way Merge for the Merge Sort with priority queue implementation.
+
+            Args: number, the number of files we want to merge (k)
+            '''
+
             #Create dictionary of files opened. Open all the files
             #That will be merged
             fileNames = {}
@@ -827,6 +886,11 @@ class Table:
             return output
 
         def runExternalSort(self, filename):
+            '''
+            Driver code for the External Sorting of the Files
+
+            Args: filename, the name of the file we want to externally sort.
+            '''
             self.splitFile(filename,30)
             for i in range(1,self.numFiles):
                 self.sortSmallFile(i)
