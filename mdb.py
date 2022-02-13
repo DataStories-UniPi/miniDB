@@ -84,12 +84,44 @@ def create_query_plan(query, keywords, action):
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+        
+        #for each argument check all words.If "notnull" is contained then join the names from each args that contain 
+        #the word and put it in the dictionary not_nulls.
+        dic['not_nulls'] = []
+        for val in arglist:
+             for str in val:
+                 if str == 'notnull':
+                     dic['not_nulls'].append(val[0])
+        
+        #for each argument check all words.If "unique" is contained then join the names from each args that contain 
+        #the word and put it in the dictionary uniques.
+        dic['uniques'] = []
+        for val in arglist:
+             for str in val:
+                 if str == "unique":
+                     dic['uniques'].append(val[0])
+
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
     
+    if action=='create view':
+      
+
+        if dic['order by'] is not None:
+            dic['from'] = dic['from'].removesuffix(' order')
+            if dic['where'] is not None:
+                dic['where'] = dic['where'].removesuffix(' order')
+            if 'desc' in dic['order by']:
+                dic['desc'] = True
+            else:
+                dic['desc'] = False
+            dic['order by'] = dic['order by'].removesuffix(' asc').removesuffix(' desc')
+            
+        else:
+            dic['desc'] = None
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
@@ -149,6 +181,9 @@ def interpret(query):
     Interpret the query.
     '''
     kw_per_action = {'create table': ['create table'],
+                     'create view': ['create view','select','from','where','order by','top'],
+                     'drop view' : ['drop view'],
+                     'create tempview': ['create tempview', 'select', 'from', 'where', 'order by', 'top'],
                      'drop table': ['drop table'],
                      'cast': ['cast', 'from', 'to'],
                      'import': ['import', 'from'],

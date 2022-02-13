@@ -1,5 +1,8 @@
 from __future__ import annotations
 import pickle
+from re import X
+from select import select
+from venv import create
 from table import Table
 from time import sleep, localtime, strftime
 import os,sys
@@ -21,10 +24,20 @@ class Database:
     '''
     Main Database class, containing tables.
     '''
+    #here we instantiate the list of the tempviews.From We will each time add our tempview table here and 
+    #if number of temp views become 1(length of tempviews[])
+    list_of_tempviews = []
 
-    def __init__(self, name, load=True):
+    #the list that we instantiated in the beginning is used here to drop the tempview asap we add a new one 
+    #and the length of our list is 1
+    def clear_list_of_tempviews(self):
+        if(len(self.list_of_tempviews)>0):
+            for tv in self.list_of_tempviews:
+                self.drop_table(tv)
+
+    def __init__(self, name, load=True):    
         self.tables = {}
-        self._name = name
+        self._name = name        
 
         self.savedir = f'dbdata/{name}_db'
 
@@ -97,7 +110,7 @@ class Database:
         self._update_meta_insert_stack()
 
 
-    def create_table(self, name, column_names, column_types, primary_key=None, load=None):
+    def create_table(self, name, column_names, column_types, not_nulls =None , uniques = None, primary_key=None, load=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
 
@@ -105,19 +118,69 @@ class Database:
             name: string. Name of table.
             column_names: list. Names of columns.
             column_types: list. Types of columns.
+            not_nulls: list. Names of not null values columns
+            uniques: List. Names of unique values columns
             primary_key: string. The primary key (if it exists).
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
         # print('here -> ', column_names.split(','))
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)})
+        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','),not_nulls=not_nulls,uniques=uniques, primary_key=primary_key, load=load)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
         self._update()
         self.save_database()
         # (self.tables[name])
-        print(f'Created table "{name}".')
 
+        print(f'Created table "{name}".')
+    
+    def create_view(self, name, columns, table_name, condition,order_by=None, top_k=True,desc=None):
+        #we save the result of the query in a variable so we can print it in a new table
+        slct = self.select(columns,table_name,condition,order_by, top_k,desc, return_object= True)
+        # if we want to print the selected items in the view table after creating it
+        # self.select(columns=columns,table_name=table_name,condition=condition,order_by=None, top_k=True,desc=None, return_object= False)
+        #print create
+        print(f'Created view: "{name}".') 
+
+        #we update the tables and the database
+        self.tables.update({name: slct}) 
+        self._update()
+        #we save the database
+        self.save_database()
+        
+        
+
+        #view is a table so we will use the default drop_table for the view
+    def drop_view(self, table_name):  
+        #if the view(table) is temp(in the temp list), then print this 
+        if(table_name in self.list_of_tempviews):
+            print(f'Temp View `{table_name}` was dropped!')
+            self.drop_table(table_name)
+        else:
+        #here is the other option which is dropping a non temp view table
+            print(f'View `{table_name}` was dropped!')
+            self.drop_table(table_name)
+
+            
+    def create_tempview(self, name, columns, table_name, condition, order_by=None, top_k=True, desc=None):
+        #we save the result of the query in a variable so we can print it in a new table
+        slct = self.select(columns, table_name, condition, order_by, top_k, return_object=True)
+
+        #Printing what is selected in the new table (view) we have created(now we print it because this view is temporary)
+        self.select(columns, table_name, condition, order_by, top_k, return_object=False)
+
+        #we add the name of the temp view list in the temp_view_list which was blank
+        self.tempviews.append(name)
+        
+        #update tables and database
+        self.tables.update({name: slct})
+        self._update()
+        #save database
+        self.save_database()
+        #print message
+        print(f'Created Temp View "{name}".')
+
+    
 
     def drop_table(self, table_name):
         '''
@@ -128,7 +191,6 @@ class Database:
         '''
         self.load_database()
         self.lock_table(table_name)
-
         self.tables.pop(table_name)
         if os.path.isfile(f'{self.savedir}/{table_name}.pkl'):
             os.remove(f'{self.savedir}/{table_name}.pkl')
@@ -140,6 +202,8 @@ class Database:
 
         # self._update()
         self.save_database()
+        print ("The view table" + {table_name} + "was dropped!")
+
 
 
     def import_table(self, table_name, filename, column_types=None, primary_key=None):
@@ -188,6 +252,7 @@ class Database:
 
         with open(filename, 'w') as file:
            file.write(res)
+
 
     def table_from_object(self, new_table):
         '''
@@ -287,6 +352,7 @@ class Database:
             self.unlock_table(table_name)
         self._update()
         self.save_database()
+
 
     def delete_from(self, table_name, condition):
         '''

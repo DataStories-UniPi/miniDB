@@ -6,6 +6,7 @@ from misc import get_op, split_condition
 
 
 class Table:
+    
     '''
     Table object represents a table inside a database
 
@@ -22,7 +23,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+    def __init__(self, name=None, column_names=None, column_types=None, not_nulls=None, uniques=None ,primary_key=None, load=None):   
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -42,8 +43,13 @@ class Table:
                 raise ValueError('Need same number of column names and types.')
 
             self.column_names = column_names
-
             self.columns = []
+            
+            #not_nulls becomes attribute of table
+            self.not_nulls = not_nulls
+            #unique becomes attribute of table
+            self.uniques = uniques 
+            
 
             for col in self.column_names:
                 if col not in self.__dir__():
@@ -72,7 +78,8 @@ class Table:
         return [row[self.column_names.index(column_name)] for row in self.data]
 
 
-    def _update(self):
+    def _update(self): 
+        
         '''
         Update all the available columns with the appended rows.
         '''
@@ -99,6 +106,10 @@ class Table:
 
 
     def _insert(self, row, insert_stack=[]):
+        self.not_nulls = []
+        self.uniques = []
+
+        
         '''
         Insert row to table.
 
@@ -108,6 +119,28 @@ class Table:
         '''
         if len(row)!=len(self.column_names):
             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
+        
+
+        #for not null values 
+        counter_for_null_values = 0
+
+#something goes wrong in my for so it doesnt work !!
+        for null in self.not_nulls:
+            # print("Geia")
+            counter_for_null_values = 0
+            for name in self.column_names:
+                if str(null) == str(name) and bool(str(row[counter_for_null_values]).strip()) == False:     
+                    print(f"The value in "+str(name)+" can't be null")      
+                    # raise ValueError(f"ERROR -> The value in "+str(name)+"can't be null")
+     
+                counter_for_null_values += 1
+
+#i tried to make a loop for checking if w
+            # counter_for_unique_values =0
+            # for name in self.column_names:
+            #     if self.uniques.__contains__(self.name):
+            #      print("CANT BE ADDED AGAIN")
+            # counter_for_null_values += 1     
 
         for i in range(len(row)):
             # for each value, cast and replace it in row.
