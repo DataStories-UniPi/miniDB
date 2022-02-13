@@ -110,11 +110,12 @@ class Table:
             col_name: The name of the column to check
             value: The value to check against the constraints
         '''
-        value = str(value)
 
         if (hasattr(self, 'column_constraints')):
             # Check for a null value in a not null column
-            if (not value or "null" in value) and col_name in self.column_constraints["not_null"]:
+            val_stripped = value.strip()
+
+            if (not val_stripped or val_stripped=="null") and col_name in self.column_constraints["not_null"]:
                 raise ValueError("Tried to add a null value into a not null column ")
 
             # Check for duplicate value in a unique column
@@ -139,8 +140,8 @@ class Table:
 
             self.__check_constraints(self.column_names[i], row[i])
 
-            if self.column_types == str:
-                row[i] = self.column_types[i](row[i])
+            #if self.column_types == str:
+            row[i] = self.column_types[i](row[i])
 
             # if value is to be appended to the primary_key column, check that it doesnt already exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
