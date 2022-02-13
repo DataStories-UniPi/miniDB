@@ -10,6 +10,7 @@ import logging
 import warnings
 import readline
 from tabulate import tabulate
+import ast
 
 
 # sys.setrecursionlimit(100)
@@ -97,7 +98,7 @@ class Database:
         self._update_meta_insert_stack()
 
 
-    def create_table(self, name, column_names, column_types, primary_key=None, load=None):
+    def create_table(self, name, column_names, column_types, not_null_columns=None, unique_columns=None, primary_key=None, load=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
 
@@ -105,11 +106,13 @@ class Database:
             name: string. Name of table.
             column_names: list. Names of columns.
             column_types: list. Types of columns.
+            not_null_columns: list. Names of columns that cannot be null.
+            unique_columns: list. Names of columns whose values are unique.
             primary_key: string. The primary key (if it exists).
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
         # print('here -> ', column_names.split(','))
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)})
+        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load, not_null_columns=not_null_columns.split(',') if not_null_columns is not None else None, unique_columns=unique_columns.split(',') if unique_columns is not None else None)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
@@ -313,8 +316,8 @@ class Database:
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
 
-    def select(self, columns, table_name, condition, order_by=None, top_k=True,\
-               desc=None, save_as=None, return_object=True):
+    def select(self, columns, table_name, condition, group_by=None, having=None, order_by=None, top_k=True,\
+               desc=None, save_as=None, return_object=True, distinct=False):
         '''
         Selects and outputs a table's data where condtion is met.
 
@@ -331,14 +334,30 @@ class Database:
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
             save_as: string. The name that will be used to save the resulting table into the database (no save if None).
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
+            distinct: boolean. If True, the resulting table will contain only unique rows.
         '''
+
+        # if the keyword 'distinct' is detected in columns,
+        #   - we remove it and 
+        #   - set the distinct flag to True.
+        if 'distinct' in columns:
+            columns = columns.replace('distinct ','')
+            distinct = True
+
         # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
-            return table_name._select_where(columns, condition, order_by, desc, top_k)
+            return table_name._select_where(columns, condition, group_by, having, order_by, desc, top_k, distinct)
 
         if condition is not None:
-            condition_column = split_condition(condition)[0]
+            if "IN" in condition.split() or "in" in condition.split():
+                condition_column = condition.split(" ")[0]
+            elif "BETWEEN" in condition.split() or "between" in condition.split():
+                condition_column = condition.split(" ")[0]
+            elif "LIKE" in condition.split() or "like" in condition.split():
+                condition_column = condition.split(" ")[0]
+            else:
+                condition_column = split_condition(condition)[0]
         else:
             condition_column = ''
 
@@ -349,9 +368,9 @@ class Database:
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k)
+            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, group_by, having, order_by, desc, top_k, distinct)
         else:
-            table = self.tables[table_name]._select_where(columns, condition, order_by, desc, top_k)
+            table = self.tables[table_name]._select_where(columns, condition, group_by, having, order_by, desc, top_k, distinct)
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as
@@ -419,6 +438,134 @@ class Database:
 
         if mode=='inner':
             res = left_table._inner_join(right_table, condition)
+        elif mode=='inlj':
+            column_name_left, operator, column_name_right = Table()._parse_condition(condition, join=True)
+            #if both the tables cannot be indexed, then do a simple inner join
+            if (left_table.pk is None and right_table.pk is None) or (column_name_left != left_table.pk and column_name_right != right_table.pk):
+                print("Index-nested-loop join cannot be executed. Using inner join instead.\n")
+                res = left_table._inner_join(right_table,condition)
+            else:
+                reversed = False
+                
+                #if the right table cannot be indexed and the left can, we reverse them
+                if(column_name_left == left_table.pk):
+                    right_table, left_table = left_table, right_table
+                    reversed = True
+
+                #Create the index of the second table
+                index = Btree(3) # 3 is arbitrary
+                # for each record in the primary key of the table, insert its value and index to the btree
+                for idx, key in enumerate(right_table.column_by_name(right_table.pk)):
+                    index.insert(key, idx)
+                
+                left_names = [f'{left_table._name}.{colname}' if left_table._name!='' else colname for colname in left_table.column_names]
+                right_names = [f'{right_table._name}.{colname}' if right_table._name!='' else colname for colname in right_table.column_names]
+                
+                # get columns and operator
+                column_name_left, operator, column_name_right = Table()._parse_condition(condition, join=True)
+                # try to find both columns, if you fail raise error
+                try:
+                    column_index_left = left_table.column_names.index(column_name_left)
+                except:
+                    raise Exception(f'Column "{column_name_left}" dont exist in left table. Valid columns: {left_table.column_names}.')
+
+                try:
+                    column_index_right = right_table.column_names.index(column_name_right)
+                except:
+                    raise Exception(f'Column "{column_name_right}" dont exist in right table. Valid columns: {right_table.column_names}.')
+
+                join_table_name = ''
+                join_table_colnames = left_names + right_names if not reversed else right_names + left_names
+                join_table_coltypes = left_table.column_types + right_table.column_types if not reversed else right_table.column_types + left_table.column_types
+                join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
+
+                #implementation of the index-nested-loop join
+                #if the tables had been reversed in the beginning, then the joined table appears
+                #with the tables shown in the order they appeared in the query
+                if(not reversed):
+                    for row_left in left_table.data:
+                        left_value = row_left[column_index_left]
+                        results = index.find(operator,left_value)
+                        if(len(results)>0):
+                            for _ in results:
+                                join_table._insert(row_left + right_table.data[_])
+                else:
+                    for row_left in left_table.data:
+                        left_value = row_left[column_index_right]
+                        results = index.find(operator,left_value)
+                        if(len(results)>0):
+                            for _ in results:
+                                join_table._insert(right_table.data[_] + row_left)
+                
+                res = join_table
+
+        elif mode=='smj':
+            left_names = [f'{left_table._name}.{colname}' if left_table._name!='' else colname for colname in left_table.column_names]
+            right_names = [f'{right_table._name}.{colname}' if right_table._name!='' else colname for colname in right_table.column_names]
+
+            column_name_left, operator, column_name_right = Table()._parse_condition(condition, join=True)
+
+            with open("miniDB/externalSortFolder/rightTableFile",'w+') as rt:
+                for row in right_table.data:
+                    rt.write(str(row[right_table.column_names.index(column_name_right)])+ " " + str(row).replace(" ","") +"\n")
+            
+            with open("miniDB/externalSortFolder/leftTableFile",'w+') as lt:
+                for row in left_table.data:
+                    lt.write(str(row[left_table.column_names.index(column_name_left)])+ " " + str(row).replace(" ","") +"\n")
+            
+            ems = Table.ExternalMergeSort()
+            ems.runExternalSort('rightTableFile')
+            # Initialization of all values
+            ems = Table.ExternalMergeSort()
+            ems.runExternalSort('leftTableFile')
+
+            os.remove('miniDB/externalSortFolder/rightTableFile')
+            os.remove('miniDB/externalSortFolder/leftTableFile')
+
+            # This does the final merge on sort-merge join
+            with open('miniDB/externalSortFolder/sorting of rightTableFile','r') as right, open('miniDB/externalSortFolder/sorting of leftTableFile','r') as left,open('miniDB/externalSortFolder/final','w+') as final:
+                mark = None #Used to return to previous values of the file
+                l = None
+                r = None
+                while l != '':
+                    try:
+                        if mark is None:
+                            mark = right.tell()
+                            l = left.readline()
+                            r = right.readline()
+                            while l.split()[0] < r.split()[0]:
+                                l = left.readline()
+                            while l.split()[0] > r.split()[0]:
+                                mark = right.tell()
+                                r = right.readline()
+                            
+                        if l.split()[0] == r.split()[0]:
+                            final.write(l.replace("\n","")[l.index("['"):] + " " + r.replace("\n","")[r.index("['"):] + '\n')
+                            r = right.readline()
+                        else:
+                            right.seek(mark)
+                            mark = None
+                    except IndexError:
+                        right.seek(mark)
+                        mark = None
+            
+            os.remove('miniDB/externalSortFolder/sorting of rightTableFile')
+            os.remove('miniDB/externalSortFolder/sorting of leftTableFile')
+
+            join_table_name = ''
+            join_table_colnames = left_names + right_names
+            join_table_coltypes = left_table.column_types + right_table.column_types
+            join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
+
+            # Save merged file first. The hypothesis is that the RAM cannot fit the file, thus we have it saved
+            # However we load the file to display it like this, might need to be changed in the future
+            with open('miniDB/externalSortFolder/final','r') as f:
+                for line in f:
+                    records = line.split()
+                    join_table._insert(ast.literal_eval(records[0]) + ast.literal_eval(records[1]))
+            
+            res = join_table
+            os.remove('miniDB/externalSortFolder/final')
         else:
             raise NotImplementedError
 

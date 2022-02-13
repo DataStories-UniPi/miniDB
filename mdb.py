@@ -77,6 +77,12 @@ def create_query_plan(query, keywords, action):
         else:
             dic['desc'] = None
 
+        if dic['group by'] is not None:
+            dic['from'] = dic['from'].removesuffix(' group')
+        else:
+            if dic['having'] is not None:
+                raise ValueError("HAVING clause should be used with GROUP BY.")
+
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
@@ -84,12 +90,14 @@ def create_query_plan(query, keywords, action):
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+        dic['not_null_columns'] = ','.join([val[0] for val in arglist if 'not' in val and val.index('not') == val.index('null') - 1]) if 'not null' in args else None
+        dic['unique_columns'] = ','.join([val[0] for val in arglist if 'unique' in val]) if 'unique' in args else None
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
-    
+
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
@@ -98,7 +106,7 @@ def create_query_plan(query, keywords, action):
             dic['values'] = dic['values'][1:-1]
         else:
             raise ValueError('Your parens are not right m8')
-    
+
     if action=='unlock table':
         if dic['force'] is not None:
             dic['force'] = True
@@ -113,7 +121,7 @@ def evaluate_from_clause(dic):
     '''
     Evaluate the part of the query (argument or subquery) that is supplied as the 'from' argument
     '''
-    join_types = ['inner', 'left', 'right', 'full']
+    join_types = ['inner', 'left', 'right', 'full','inlj','smj']
     from_split = dic['from'].split(' ')
     if from_split[0] == '(' and from_split[-1] == ')':
         subquery = ' '.join(from_split[1:-1])
@@ -154,7 +162,7 @@ def interpret(query):
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
-                     'select': ['select', 'from', 'where', 'order by', 'top'],
+                     'select': ['select', 'from', 'where', 'group by', 'having', 'order by', 'top'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
