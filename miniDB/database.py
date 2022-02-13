@@ -108,27 +108,35 @@ class Database:
             primary_key: string. The primary key (if it exists).
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
-        print(f'\nforeign key: {foreign_key}\n')
 
-        print(f'\nref[0]: {ref[0]}\n')
+        if foreign_key != None and ref != None:
 
-        if ref != None:
+            for i in range(len(ref)):
 
-            if not ref[0] in self.tables:
-                print(f'ERROR: Cannot create table {name}\n')
-                print(f'Referenced table {ref[0]} does not exist! \n')
-                return
+                # check if index of loop is an even number
+                # we need that cause in ref in each "even" index
+                # we have stored the referenced table
+                # and in each "odd" index we have stored
+                # each refernced column of that table
+                if i % 2 == 0:
 
-            # check if column names are part of a table
-            if not ref[1][0:-1] in self.tables.get(ref[0]).column_names:
-                print(f'ERROR: Column {ref[1]} doesn\'t exist in table {ref[0]}') 
-                return
+                    if not ref[i] in self.tables:
+                        print(f'ERROR: Cannot create table {name}\n')
+                        print(f'Referenced table {ref[i]} does not exist! \n')
+                        return
 
-            # check if given referenced column is the pk of the given referenced table
-            if self.tables.get(ref[0]).pk != ref[1][0:-1]:
-                print(f'{self.tables.get(ref[0]).pk}')
-                print(f'{ref[1][0:-1]}')
-            
+                else:
+
+                    # check if column names are part of a table
+                    if not ref[i] in self.tables.get(ref[i-1]).column_names:
+                        print(f'ERROR: Column {ref[i]} doesn\'t exist in table {ref[i-1]}')
+                        return
+
+                    # check if given referenced column is the pk (in the future we should also check if the column is unique)
+                    # of the given referenced table
+                    if self.tables.get(ref[i-1]).pk != ref[i]:
+                        print(f'ERROR: Column {ref[i]} is not a pk of table {ref[i-1]}')
+                        return
 
         # print('here -> ', column_names.split(','))
         self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, foreign_key=foreign_key, ref=ref, load=load)})
