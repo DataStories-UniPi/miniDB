@@ -110,8 +110,6 @@ def create_query_plan(query, keywords, action):
             #
             referenced_things = referenced_table.split('.')
             referenced_things.append(referencing_column)
-            # referenced_things = ['parent_table', 'parent_column', 'name_of_child_column']
-
 
             #
             # In the dictionary i will also pass the name of the
@@ -123,6 +121,17 @@ def create_query_plan(query, keywords, action):
 
         else:
             dic['references'] = None
+
+        if 'unique' in args:
+            unique_column_list = []
+            for i in arglist:
+                for j in i:
+                    if j == 'unique':
+                        unique_column = i[0]
+                        unique_column_list.append(unique_column)
+            dic['unique'] = unique_column_list
+        else:
+            dic['unique'] = None
 
     if action=='import':
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
