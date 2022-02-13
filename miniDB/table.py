@@ -200,11 +200,28 @@ class Table:
         # for each value in column, if condition, replace it with set_value
         for row_ind, column_value in enumerate(column):
             if get_op(operator, column_value, value):
-                self.data[row_ind][set_column_idx] = set_value
+                if len(self.not_null_columns) != 0 and self.not_null_columns[set_column_idx] != 'None' and set_value == '':
+                    print(f'## ERROR -> Column {set_value} is a not null column.')
+                    raise ValueError(f'## ERROR -> Column {set_value} is a not null column.')
+                elif len(self.unique_columns) != 0 and self.unique_columns[set_column_idx] != 'None':
+                    # loop to check the values of the table
+                    for val in self.column_by_name(self.column_names[set_column_idx]):
+                        # compare them with the insert
+                        if set_value == val:
+                            print(f'## ERROR -> Column {set_value} is a unique column.')
+                            raise ValueError(f'## ERROR -> Column {set_value} is a unique column.')
+                else:
+                    self.data[row_ind][set_column_idx] = set_value
 
         # self._update()
                 # print(f"Updated {len(indexes_to_del)} rows")
 
+
+
+
+
+
+        ##
 
     def _delete_where(self, condition):
         '''
