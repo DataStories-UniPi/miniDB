@@ -5,10 +5,12 @@ import sys
 import readline
 import traceback
 import shutil
+
 sys.path.append('miniDB')
 
 from database import Database
 from table import Table
+
 # art font is "big"
 art = '''
              _         _  _____   ____  
@@ -17,7 +19,7 @@ art = '''
  | '_ ` _ \ | || '_ \ | || |  | ||  _ < 
  | | | | | || || | | || || |__| || |_) |
  |_| |_| |_||_||_| |_||_||_____/ |____/   2021 - v3.2                               
-'''   
+'''
 
 
 def search_between(s, first, last):
@@ -25,17 +27,18 @@ def search_between(s, first, last):
     Search in 's' for the substring that is between 'first' and 'last'
     '''
     try:
-        start = s.index( first ) + len( first )
-        end = s.index( last, start )
+        start = s.index(first) + len(first)
+        end = s.index(last, start)
     except:
         return
     return s[start:end].strip()
+
 
 def in_paren(qsplit, ind):
     '''
     Split string on space and return whether the item in index 'ind' is inside a parentheses
     '''
-    return qsplit[:ind].count('(')>qsplit[:ind].count(')')
+    return qsplit[:ind].count('(') > qsplit[:ind].count(')')
 
 
 def create_query_plan(query, keywords, action):
@@ -45,9 +48,9 @@ def create_query_plan(query, keywords, action):
     This can and will be used recursively
     '''
 
-    dic = {val: None for val in keywords if val!=';'}
+    dic = {val: None for val in keywords if val != ';'}
 
-    ql = [val for val in query.split(' ') if val !='']
+    ql = [val for val in query.split(' ') if val != '']
 
     kw_in_query = []
     kw_positions = []
@@ -55,17 +58,16 @@ def create_query_plan(query, keywords, action):
         if ql[i] in keywords and not in_paren(ql, i):
             kw_in_query.append(ql[i])
             kw_positions.append(i)
-        elif i!=len(ql)-1 and f'{ql[i]} {ql[i+1]}' in keywords and not in_paren(ql, i):
-            kw_in_query.append(f'{ql[i]} {ql[i+1]}')
-            kw_positions.append(i+1)
+        elif i != len(ql) - 1 and f'{ql[i]} {ql[i + 1]}' in keywords and not in_paren(ql, i):
+            kw_in_query.append(f'{ql[i]} {ql[i + 1]}')
+            kw_positions.append(i + 1)
 
+    for i in range(len(kw_in_query) - 1):
+        dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i] + 1:kw_positions[i + 1]])
 
-    for i in range(len(kw_in_query)-1):
-        dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
-
-    if action=='select':
+    if action == 'select':
         dic = evaluate_from_clause(dic)
-        
+
         if dic['order by'] is not None:
             dic['from'] = dic['from'].removesuffix(' order')
             if 'desc' in dic['order by']:
@@ -73,12 +75,12 @@ def create_query_plan(query, keywords, action):
             else:
                 dic['desc'] = False
             dic['order by'] = dic['order by'].removesuffix(' asc').removesuffix(' desc')
-            
+
         else:
             dic['desc'] = None
 
-    if action=='create table':
-        args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
+    if action == 'create table':
+        args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')') + 1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
         arg_nopk = args.replace('primary key', '')[1:-1]
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
@@ -86,27 +88,26 @@ def create_query_plan(query, keywords, action):
         dic['column_types'] = ','.join([val[1] for val in arglist])
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
-            dic['primary key'] = arglist[arglist.index('primary')-2]
+            dic['primary key'] = arglist[arglist.index('primary') - 2]
         else:
             dic['primary key'] = None
-    
-    if action=='import': 
-        dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
-    if action=='insert into':
+    if action == 'import':
+        dic = {'import table' if key == 'import' else key: val for key, val in dic.items()}
+
+    if action == 'insert into':
         if dic['values'][0] == '(' and dic['values'][-1] == ')':
             dic['values'] = dic['values'][1:-1]
         else:
             raise ValueError('Your parens are not right m8')
-    
-    if action=='unlock table':
+
+    if action == 'unlock table':
         if dic['force'] is not None:
             dic['force'] = True
         else:
             dic['force'] = False
 
     return dic
-
 
 
 def evaluate_from_clause(dic):
@@ -119,20 +120,20 @@ def evaluate_from_clause(dic):
         subquery = ' '.join(from_split[1:-1])
         dic['from'] = interpret(subquery)
 
-    join_idx = [i for i,word in enumerate(from_split) if word=='join' and not in_paren(from_split,i)]
-    on_idx = [i for i,word in enumerate(from_split) if word=='on' and not in_paren(from_split,i)]
+    join_idx = [i for i, word in enumerate(from_split) if word == 'join' and not in_paren(from_split, i)]
+    on_idx = [i for i, word in enumerate(from_split) if word == 'on' and not in_paren(from_split, i)]
     if join_idx:
         join_idx = join_idx[0]
         on_idx = on_idx[0]
         join_dic = {}
-        if from_split[join_idx-1] in join_types:
-            join_dic['join'] = from_split[join_idx-1]
-            join_dic['left'] = ' '.join(from_split[:join_idx-1])
+        if from_split[join_idx - 1] in join_types:
+            join_dic['join'] = from_split[join_idx - 1]
+            join_dic['left'] = ' '.join(from_split[:join_idx - 1])
         else:
             join_dic['join'] = 'inner'
             join_dic['left'] = ' '.join(from_split[:join_idx])
-        join_dic['right'] = ' '.join(from_split[join_idx+1:on_idx])
-        join_dic['on'] = ''.join(from_split[on_idx+1:])
+        join_dic['right'] = ' '.join(from_split[join_idx + 1:on_idx])
+        join_dic['on'] = ''.join(from_split[on_idx + 1:])
 
         if join_dic['left'].startswith('(') and join_dic['left'].endswith(')'):
             join_dic['left'] = interpret(join_dic['left'][1:-1].strip())
@@ -141,8 +142,9 @@ def evaluate_from_clause(dic):
             join_dic['right'] = interpret(join_dic['right'][1:-1].strip())
 
         dic['from'] = join_dic
-        
+
     return dic
+
 
 def interpret(query):
     '''
@@ -160,30 +162,33 @@ def interpret(query):
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
                      'create index': ['create index', 'on', 'using'],
-                     'drop index': ['drop index']
+                     'drop index': ['drop index'],
+                     'create trigger': ['create trigger', 'after insert on',  'execute delete from', 'where']
                      }
 
-    if query[-1]!=';':
-        query+=';'
-    
+    if query[-1] != ';':
+        query += ';'
+
     query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip()
 
     for kw in kw_per_action.keys():
         if query.startswith(kw):
             action = kw
 
-    return create_query_plan(query, kw_per_action[action]+[';'], action)
+    return create_query_plan(query, kw_per_action[action] + [';'], action)
+
 
 def execute_dic(dic):
     '''
     Execute the given dictionary
     '''
     for key in dic.keys():
-        if isinstance(dic[key],dict):
+        if isinstance(dic[key], dict):
             dic[key] = execute_dic(dic[key])
-    
-    action = list(dic.keys())[0].replace(' ','_')
+
+    action = list(dic.keys())[0].replace(' ', '_')
     return getattr(db, action)(*dic.values())
+
 
 def interpret_meta(command):
     """
@@ -198,19 +203,19 @@ def interpret_meta(command):
     """
     action = command[1:].split(' ')[0].removesuffix(';')
 
-    db_name = db._name if search_between(command, action,';')=='' else search_between(command, action,';')
+    db_name = db._name if search_between(command, action, ';') == '' else search_between(command, action, ';')
 
     def list_databases(db_name):
         [print(fold.removesuffix('_db')) for fold in os.listdir('dbdata')]
-    
+
     def list_tables(db_name):
-        [print(pklf.removesuffix('.pkl')) for pklf in os.listdir(f'dbdata/{db_name}_db') if pklf.endswith('.pkl')\
-            and not pklf.startswith('meta')]
+        [print(pklf.removesuffix('.pkl')) for pklf in os.listdir(f'dbdata/{db_name}_db') if pklf.endswith('.pkl') \
+         and not pklf.startswith('meta')]
 
     def change_db(db_name):
         global db
         db = Database(db_name, load=True)
-    
+
     def remove_db(db_name):
         shutil.rmtree(f'dbdata/{db_name}_db')
 
@@ -235,7 +240,7 @@ if __name__ == "__main__":
             if line.startswith('--'): continue
             dic = interpret(line.lower())
             result = execute_dic(dic)
-            if isinstance(result,Table):
+            if isinstance(result, Table):
                 result.show()
     else:
         from prompt_toolkit import PromptSession
@@ -247,13 +252,13 @@ if __name__ == "__main__":
         while 1:
             try:
                 line = session.prompt(f'({db._name})> ', auto_suggest=AutoSuggestFromHistory()).lower()
-                if line[-1]!=';':
-                    line+=';'
+                if line[-1] != ';':
+                    line += ';'
             except (KeyboardInterrupt, EOFError):
                 print('\nbye!')
                 break
             try:
-                if line=='exit':
+                if line == 'exit':
                     break
                 if line.startswith('.'):
                     interpret_meta(line)
@@ -263,7 +268,7 @@ if __name__ == "__main__":
                 else:
                     dic = interpret(line)
                     result = execute_dic(dic)
-                    if isinstance(result,Table):
+                    if isinstance(result, Table):
                         result.show()
             except Exception:
                 print(traceback.format_exc())
