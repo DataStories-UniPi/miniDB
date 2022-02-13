@@ -1,5 +1,7 @@
 from __future__ import annotations
 import pickle
+
+from miniDB.hash import HashTable
 from table import Table
 from time import sleep, localtime, strftime
 import os, sys
@@ -626,26 +628,24 @@ class Database:
                 self.tables['meta_indexes']._insert([table_name, index_name, column_names])
                 # create the actual index
                 if selected_columns_names != self.tables[table_name].pk:
-                    print('hello mirto')
                     self.tables[table_name].duplicate_column = [i for i in range(len(self.tables[table_name].data))]
-                    self._construct_index(table_name, index_name, selected_columns_names, True)
+                    self._construct_index(table_name, index_name, index_type, selected_columns_names, True)
                 else:
-                    print('hello everyone')
-                    self._construct_index(table_name, index_name, selected_columns_names, False)
+                    self._construct_index(table_name, index_name, index_type, selected_columns_names, False)
                 self.save_database()
                 print("Btree index created")
             if index_type=='hash':
                 logging.info('Creating Hash index.')
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
-                self.tables['meta_indexes']._insert([table_name, index_name])
+                self.tables['meta_indexes']._insert([table_name, index_name, selected_columns_names])
                 # create the actual index
-                self._construct_index(table_name, index_name, index_type)
+                self._construct_index(table_name, index_name, index_type, selected_columns_names)
                 self.save_database()
                 print("Hash index created")
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
-    def _construct_index(self, table_name, index_name, selected_columns_names, is_duplicate= False):
+    def _construct_index(self, table_name, index_name, index_type='btree', selected_columns_names = None, is_duplicate= False):
         if index_type=='btree':
             '''
             Construct a btree on a table and save.
@@ -685,12 +685,14 @@ class Database:
             '''
             h = HashTable() 
 
-            # for each record in the primary key of the table, insert its value and index to the hash 
-            for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
-                h.insert(key,idx)
-            # save the hash
-            self._save_index(index_name, h)
-            #rint(h.__repr__)
+            # for each record in the primary key of the table, insert its value and index to the hash
+            if selected_columns_names[0] == self.tables[table_name].pk[0]:
+                for idx, key in enumerate(self.tables[table_name].column_by_name(selected_columns_names[0])):
+                    h.insert(key,idx)
+                # save the hash
+                self._save_index(index_name, h)
+            else:
+                raise Exception('Selected column is not primary key')
 
     # TODO def _delete_index(self, index_name):
 
