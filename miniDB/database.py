@@ -282,7 +282,27 @@ class Database:
         lock_ownership = self.lock_table(table_name, mode='x')
         insert_stack = self._get_insert_stack_for_table(table_name)
         try:
-            self.tables[table_name]._insert(row, insert_stack)
+
+            # case where we are trying to insert values in a table that has a foreign key
+            if self.tables[table_name].fk_idx != None:
+
+                found = False # flag that indicates if we found the value that going to be inserted on the parent table pk
+
+                parent_table = self.tables[table_name].ref_table # get the parent table of the current one
+                for j in range(len(self.tables[parent_table].data)):
+
+                    if int(row[self.tables[parent_table].pk_idx]) == int(self.tables[parent_table].data[j][0]):
+                        found = True
+
+                if found:
+                    self.tables[table_name]._insert(row, insert_stack)
+                else:
+                    print(f'ERROR: Cannot add row: a foreign key constraint fails')
+                    print(f'Value {int(row[self.tables[parent_table].pk_idx])} not found in the referenced column of parent table {parent_table}')
+
+            else:
+                self.tables[table_name]._insert(row, insert_stack)
+
         except Exception as e:
             logging.info(e)
             logging.info('ABORTED')

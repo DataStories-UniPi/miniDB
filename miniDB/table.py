@@ -67,6 +67,7 @@ class Table:
 
             if foreign_key != None and ref != None:
                 self.fk_idx =[] # a list with all the foreign key columns
+                self.ref_table = ref[0] # store the parent table
 
                 #populate that list
                 for i in range(len(foreign_key)):
@@ -75,6 +76,7 @@ class Table:
 
             else:
                 self.fk_idx = None
+                self.ref_table = None
 
             # self._update()
 
