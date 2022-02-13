@@ -2,7 +2,7 @@ from __future__ import annotations
 import pickle
 from table import Table
 from time import sleep, localtime, strftime
-import os,sys
+from os import sys
 from btree import Btree
 import shutil
 from misc import split_condition
@@ -414,22 +414,132 @@ class Database:
             return
 
         left_table = left_table if isinstance(left_table, Table) else self.tables[left_table] 
-        right_table = right_table if isinstance(right_table, Table) else self.tables[right_table] 
+        right_table = right_table if isinstance(right_table, Table) else self.tables[right_table]
+
+        def spinner (t1,t2):
+            itsright = t1 # this is right table
+            right_table = t2 # left  table
+            left_table = wasRight
+
 
 
         if mode=='inner':
             res = left_table._inner_join(right_table, condition)
-        else:
-            raise NotImplementedError
-
-        if save_as is not None:
-            res._name = save_as
-            self.table_from_object(res)
-        else:
-            if return_object:
-                return res
+        elif mode   == 'inlj':
+            if (right_table.pk and left_table) is None:
+                res = left_table._inner_join(right_table, condition)
             else:
-                res.show()
+                # we need left table to be right and right table to be left
+                spin = false
+                if right_table.pk == None:
+                    spinner(right_table, left_table)
+                    spin = true
+                else :
+                    spin = false
+                    if right_table.pk == None:
+                        spinner(right_table, left_table)
+                        spin = true
+
+                    index = Btree()
+                    x = 0
+                    adder = enumerate(right_table.column_by_name(right_table.pk))
+                    # we insert very record of the primary into the btree as well as its index
+                    while (x < adder): chosen_index.insert(key.idx)
+
+                column_name_left, operator, column_name_right = self._parse_condition(condition, join=True)
+                # columns find try
+                try:
+                    column_index_left = self.column_names.index(column_name_left)
+                except:
+                    raise Exception(
+                        f'Column "{column_name_left}" dont exist in left table. Valid columns: {self.column_names}.')
+
+                try:
+                    column_index_right = table_right.column_names.index(column_name_right)
+                except:
+                    raise Exception(
+                        f'Column "{column_name_right}" dont exist in right table. Valid columns: {table_right.column_names}.')
+
+
+        #else:
+            #raise NotImplementedError
+
+        #if save_as is not None:
+            #res._name = save_as
+           # self.table_from_object(res)
+       # else:
+            #if return_object:
+                #return res
+            #else:
+                #res.show()
+
+
+
+
+            left_names = [f'{left_table._name}.{colname}' if table_right._name != '' else colname for colname in left_table.column_names]
+            right_names = [f'{table_right._name}.{colname}' if table_right._name != '' else colname for colname in table_right.column_names]
+
+            join_table_name = ''
+            #we need to make take action if we have 'spined' or not
+            if(spin==true):
+                join_table_colnames =right_names+left_names
+                join_table_coltypes=right_table.column_types + left_table.column_types
+
+
+            else:
+                join_table_colnames = left_names + right_names
+                join_table_coltypes=left_table.column_types+right_table.column_types
+
+            join_table = Table(name=join_table_name, column_names=join_table_colnames,
+                                   column_types=join_table_coltypes)
+
+            #now we need the index-nested-join to be in a loop so we can make the table appear(if the spin==1)
+
+            if(spin==0):
+                for row_left in left_table.data:
+                    left_value = row_left[column_index_left]
+                    #finding position of operator starting at the left value
+                    position=index.find(operator,left_value)
+                    under
+                    for i in range(0,len(position)):
+                        if position[i]=="_":
+                            under+=1
+                    y=0
+                    while(y<under):
+                        join_table._insert(row_left + right_table.data[_])
+                else:
+                    for row_left in left_table.data:
+                        left_value = row_left[column_index_left]
+                    # finding position of operator starting at the left value
+                        position = index.find(operator, left_value)
+                        under
+                        for i in range(0, len(position)):
+                            if position[i] == "_":
+                                under += 1
+                        y = 0
+                        while (y < under):
+                            join_table._insert(right_table.data[_]+row_left)
+
+                res=join_table
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     def lock_table(self, table_name, mode='x'):
         '''
@@ -512,9 +622,43 @@ class Database:
             out = tabulate({"Command": cache_list.split('\n')}, headers=["Command"])
         else:
             cache_list = '\n'.join([str(readline.get_history_item(i + 1)) for i in range(readline.get_current_history_length())])
-            out = tabulate({"Command": cache_list.split('\n')}, headers=["Index","Command"], showindex="always")
+            out = tabulate({"Command": cache_list.split('\n')}, headers=["Index", "Command"], showindex="always")
         print('journal:', out)
         #return out
+
+    global views
+    views=[]
+    #instead of list we can create a view table
+
+    def create_view(self, table_name):
+        views += table_name
+        self.view() is True
+        return table_name
+
+    def view(self):
+        return False
+
+    def drop_view(self,table_name):
+
+        #checking if the given table is a view
+        if table_name in views:
+            self.load_database()
+            self.lock_table(table_name)
+
+            self.tables.pop(table_name)
+            if os.path.isfile(f'{self.savedir}/{table_name}.pkl'):
+                os.remove(f'{self.savedir}/{table_name}.pkl')
+            else:
+                warnings.warn(f'"{self.savedir}/{table_name}.pkl" not found.')
+            self.delete_from('meta_locks', f'table_name={table_name}')
+            self.delete_from('meta_length', f'table_name={table_name}')
+            self.delete_from('meta_insert_stack', f'table_name={table_name}')
+
+            self.save_database()
+        else:
+            print("the table name that you have entered is not a view!")
+
+
 
 
     #### META ####
