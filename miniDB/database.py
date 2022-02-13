@@ -133,7 +133,14 @@ class Database:
         ref = str(references)
         ref = ref.split(',')
         if references is not None:
-            self._update_meta_parent_child_tables(ref[0], ref[1], name, ref[2])
+            #
+            # If the foreign key does not reference the primary key of that other table
+            # Then an error message will be popped
+            #
+            if ref[1] == self.tables[ref[0]].pk:
+                self._update_meta_parent_child_tables(ref[0], ref[1], name, ref[2])
+            else:
+                raise Exception("Error!!\n***************************************************\nThe foreign key you try to initiate, does not match \nany primary key in the table " + ref[0] + "\nPlease try again\n***************************************************")
         self._update()
         self.save_database()
         # (self.tables[name])
