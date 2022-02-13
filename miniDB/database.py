@@ -1,4 +1,5 @@
 from __future__ import annotations
+from contextlib import nullcontext
 import pickle
 from table import Table
 from time import sleep, localtime, strftime
@@ -51,6 +52,7 @@ class Database:
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
         self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
+        self.create_table('triggers','trigger_name,when,action,on_table','str,str,str,str')#triggers table contains all the triggers in the database
         self.save_database()
 
     def save_database(self):
@@ -244,13 +246,14 @@ class Database:
             table_name: string. Name of table (must be part of database).
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             lock_load_save: boolean. If False, user needs to load, lock and save the states of the database (CAUTION). Useful for bulk-loading.
-        '''
-        #check if trigger
+        ''' 
         row = row_str.strip().split(',')
         self.load_database()
         # fetch the insert_stack. For more info on the insert_stack
         # check the insert_stack meta table
         lock_ownership = self.lock_table(table_name, mode='x')
+
+        #check if before trigger exists for table
         insert_stack = self._get_insert_stack_for_table(table_name)
         try:
             self.tables[table_name]._insert(row, insert_stack)
@@ -258,6 +261,8 @@ class Database:
             logging.info(e)
             logging.info('ABORTED')
         self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
+
+        #check if after trigger exists for table
 
         if lock_ownership:
             self.unlock_table(table_name)
@@ -278,12 +283,20 @@ class Database:
                 'value[<,<=,==,>=,>]column'.
                 
                 Operatores supported: (<,<=,==,>=,>)
-        '''
+        ''' 
+
         set_column, set_value = set_args.replace(' ','').split('=')
         self.load_database()
         
         lock_ownership = self.lock_table(table_name, mode='x')
+
+        #check if before trigger exists for table
+
         self.tables[table_name]._update_rows(set_value, set_column, condition)
+
+        #check if after trigger exists for table
+
+
         if lock_ownership:
             self.unlock_table(table_name)
         self._update()
@@ -310,8 +323,13 @@ class Database:
         self._update()
         self.save_database()
         # we need the save above to avoid loading the old database that still contains the deleted elements
+
+        #check if after trigger exists for table
+
         if table_name[:4]!='meta':
             self._add_to_insert_stack(table_name, deleted)
+        
+        #check if after trigger exists on table
         self.save_database()
 
     def select(self, columns, table_name, condition, order_by=None, top_k=True,\
@@ -675,9 +693,20 @@ class Database:
         return index
     
     trigger_functions = {}
-    def create_trigger(self,name,when,action,table_name,function):
+    
+    def create_trigger(self,name,when,action,on_table,function):
         self.load_database()
+        #check if trigger with the same  name exists
+        self.tables['triggers']._insert([name,when,action,on_table])
 
         self.trigger_functions[name] = function
+        
+
         self._update
         self.save_database() 
+
+    def delete_trigger(self,name):
+        #self.tables['triggers']._delete_where(trigger_name == name)
+        self.trigger_functions.pop(name)
+        #print trigger "name" deleted
+        return 
