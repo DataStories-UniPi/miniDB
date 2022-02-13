@@ -64,6 +64,18 @@ class Table:
                 self.pk_idx = None
 
             self.pk = primary_key
+
+            if foreign_key != None and ref != None:
+                self.fk_idx =[] # a list with all the foreign key columns
+
+                #populate that list
+                for i in range(len(foreign_key)):
+
+                    self.fk_idx.append(foreign_key[i])
+                                        
+            else:
+                self.fk_idx = None
+
             # self._update()
 
     # if any of the name, columns_names and column types are none. return an empty table object
