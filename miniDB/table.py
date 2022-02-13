@@ -242,7 +242,7 @@ class Table:
         dic['column_types'] = [self.column_types[i] for i in return_cols]
 
         # sorts list and removes duplicates
-        if distinct_flag and len(dic['data']) != 0:
+        if distinct_flag is True and len(dic['data']) != 0:
             dic['data'] = self.get_distinct(dic['data'])
 
         if group_by is not None and len(select_aggregate_dic.keys()) != (len(return_cols) - 1):
