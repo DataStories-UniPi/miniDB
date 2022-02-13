@@ -444,12 +444,16 @@ class Database:
         self._update()
         self.save_database()
 
-    def evaluate_join_method(self, left_table, right_table):
-        if(left_table.pk == None and right_table.pk == None):
-            return False
+    def evaluate_join_method(self, left_table, right_table, condition):
+        if (condition=='=' and left_table.pk==None and right_table.pk==None):
+            return 'SMJ'
+
+        if(left_table.pk==None and right_table.pk!=None):
+            return 'INLJ'
         else:
-            return True
-            
+            return 'NLJ'
+
+
     def inlj(self, left_table, table_right, condition):
         
         if (table_right.pk != None):
@@ -491,8 +495,6 @@ class Database:
                 if len(res) > 0: #if there is a common value, the length will be > 0
                     for i in res:
                         join_table._insert(row + table_right.data[i]) #populate the join_table with the results
-
-            print(f'Using INLJ')
 
             return join_table
 
@@ -593,8 +595,16 @@ class Database:
 
                 # added just for testing
                 # res = self.smj(left_table, right_table, condition)
-                res = self.inlj(left_table, right_table, condition)
-                # res = left_table._inner_join(right_table, condition)
+                method = self.evaluate_join_method(left_table, right_table, condition)
+                if method == 'SMJ':
+                    print(f'Using SMJ')
+                    res = self.smj(left_table, right_table, condition)
+                elif method == 'INLJ':
+                    print(f'Using INLJ')
+                    res = self.inlj(left_table, right_table, condition)
+                else:
+                    res = left_table._inner_join(right_table, condition)
+
 
         else:
             raise NotImplementedError
