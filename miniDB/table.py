@@ -213,6 +213,14 @@ class Table:
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
 
+
+        #AFAIROUME TO DISTINCT
+        distinct = False
+        if 'distinct' in return_columns:
+            return_columns = return_columns.split(' ')[1]
+            distinct = True
+
+
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
@@ -227,6 +235,28 @@ class Table:
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
+
+            
+
+        if distinct:
+            newRowsID=[]
+            newRows =[]
+            rowsData=[]
+
+            # Make a list that contains the data that is going to be dislayed and its index.
+            for row in rows:
+                rowsData.append([row,[]])
+                for colID in return_cols:
+                    rowsData[-1][1].append(self.data[row][colID]) 
+     
+            # Filter duplicates
+            for idx, row in rowsData:
+                if row not in newRows:
+                    newRows.append(row)
+                    newRowsID.append(idx)
+            rows = newRowsID
+
+            
 
         # top k rows
         # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
