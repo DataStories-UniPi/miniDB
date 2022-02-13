@@ -355,9 +355,15 @@ class Database:
                 Operatores supported: (<,<=,==,>=,>)
         '''
         self.load_database()
-
+        #
+        # Calling a function to check if we should delete all other records that
+        # are maybe referencing a value from a parent column that is being deleted
+        # If not...then nothing happens
+        #
+        self._delete_all_children(table_name,condition)
         lock_ownership = self.lock_table(table_name, mode='x')
         deleted = self.tables[table_name]._delete_where(condition)
+
         if lock_ownership:
             self.unlock_table(table_name)
         self._update()
@@ -366,6 +372,9 @@ class Database:
         if table_name[:4]!='meta':
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
+
+        # Confirmation message
+        print("Rows deleted successfully!")
 
     def select(self, columns, table_name, condition, order_by=None, top_k=True,\
                desc=None, save_as=None, return_object=True):
@@ -629,14 +638,12 @@ class Database:
 
     def _check_meta_parent_child_tables_for_insert(self,row_values,table_name,function_executed):
         '''
-        This specific function will be called every time in 4  occasions:
-            1) When i insert a new row in a child table
-            2) When i update a value in a child table
-            3) When i update a value in a parent table
-            4) When i delete a value in a parent table
+        This specific function will be called every time when i insert a new row
+        in a child table
 
-        The job of this function is to check in each of these 4 occasions if the
-        current query is inserting/updating/deleting a value in a child/parent table
+        When we insert a new value in a child column, then we will be
+        checking if this column has always a value that already exists
+        in the parent column
 
         If that is true, then i will take care of the referential constraints
         If that is not true, an error message will be popped!
@@ -918,7 +925,102 @@ class Database:
 
 
 
+    def _delete_all_children(self,table_name,condition):
+        '''
+        In This function we are checking to see if the user deletes a value from a
+        parent table. If he does so, we make sure that the parent value that is beeing
+        deleted, gets deleted in every other child table that references it aswell
 
+        The sql deeded goes something like that:
+        delete from ship_parking where parking_number=11
+
+        and the arguments of the function will be the following:
+        table_name = ship_parking
+        condition = parking_number=11
+        '''
+        real_condition = condition
+        condition = condition.split('=')
+        #
+        # a list that contains the data of the meta_parent_child_tables table
+        # in 2D list
+        #
+        parent_child_data = self.tables['meta_parent_child_tables'].data
+
+        # a list that will contain all the child column names of the database
+        child_columns_list = []
+
+        # a list that will contain all the parent column names of the database
+        parent_columns_list = []
+
+        # a list that contains the column names of the current table
+        current_table_columns = self.tables[table_name].column_names
+
+        # a list that will contain all the child table names of the database
+        child_tables_list = []
+
+        # a list that will contain all the parent table names of the database
+        parent_tables_list = []
+
+
+        #
+        # Putting into a list all the names of the parent tables and columns, and
+        # also putting into a list all the names of the child tables and columns
+        #
+        for i in range(len(parent_child_data)):
+            for j in range(len(parent_child_data[i])):
+                if j == 0:
+                    parent_tables_list.append(parent_child_data[i][j])
+                if j == 1:
+                    parent_columns_list.append(parent_child_data[i][j])
+                if j == 2:
+                    child_tables_list.append(parent_child_data[i][j])
+                if j == 3:
+                    child_columns_list.append(parent_child_data[i][j])
+        if table_name in parent_tables_list:
+            # Here i am going to delete everything that references the deleted parent column value
+            # But there are 2 ways an expression like that can occur
+            #   1) The delete condition is directly referncing the parent column
+            #   2) The delete condition is indirectly referencing the parent column
+            # NOTE: We desided that by default when a foreign key is being created on a table,
+            #       then it will automatically have the "ON DELETE CASCADE" effect on it
+
+            #
+            # Deleting every referenced child record when the first type of expression occurs.
+            # Meaning that the condition is directly referencing the parent column
+            #
+            if condition[0] in parent_columns_list:
+                print("-----------------------------------------------------------------")
+                print("!!!ATTENTION!!!")
+                print("The value you are about to delete, is being referenced by other columns in the DB too")
+                print("Deleting all the records that reference the value you are now deleting..")
+                print("-----------------------------------------------------------------")
+                child_table_to_delete = child_tables_list[parent_tables_list.index(table_name)]
+                child_column_to_delete = child_columns_list[parent_tables_list.index(table_name)]
+                new_condition = child_column_to_delete + "=" + condition[1]
+                self.delete_from(child_table_to_delete,new_condition)
+            else:
+                #
+                # Deleting every referenced child record when the second type of expression occurs.
+                # Meaning that the condition is indirectly referencing the parent column
+                #
+                print("-----------------------------------------------------------------")
+                print("!!!ATTENTION!!!")
+                print("The value you are about to delete, will be deleted together with a value,")
+                print("that is being referenced by other columns in the DB too")
+                print("Deleting all the records that reference the value you are now deleting..")
+                print("-----------------------------------------------------------------")
+
+                current_table_data = self.tables[table_name].data
+                current_table_parent_column = parent_columns_list[parent_tables_list.index(table_name)]
+                for i in range(len(current_table_data)):
+                    for j in range(len(current_table_data[i])):
+                        if current_table_data[i][j] == condition[1]:
+                            deleted_parent_value = current_table_data[i][current_table_columns.index(current_table_parent_column)]
+                            child_table_to_delete = child_tables_list[parent_tables_list.index(table_name)]
+                            child_column_to_delete = child_columns_list[parent_tables_list.index(table_name)]
+                            new_condition = child_column_to_delete + "=" + deleted_parent_value
+                            print("new condition:",new_condition)
+                            self.delete_from(child_table_to_delete,new_condition)
 
 
     def _add_to_insert_stack(self, table_name, indexes):
