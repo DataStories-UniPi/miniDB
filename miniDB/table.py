@@ -25,8 +25,7 @@ class Table:
 
     '''
 
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
-
+    def __init__(self, name=None, column_names=None, column_types=None, column_extras = None, primary_key=None, load=None):
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
             if isinstance(load, dict):
@@ -67,6 +66,11 @@ class Table:
                 self.pk_idx = None
 
             self.pk = primary_key
+            for val in column_extras: #we check to see what args came for the split
+                if not (val == 'unique' or val == 'not null') and val != 'None' and val != '':
+                    raise ValueError(f'{val}\' is not a valid keyword!')
+            print(column_extras) #if we remove this the whole project doent work
+            self.column_extras = column_extras #column extras has to be initialised
             # self._update()
 
     # if any of the name, columns_names and column types are none. return an empty table object
@@ -107,19 +111,31 @@ class Table:
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             insert_stack: list. The insert stack (empty by default).
         '''
+
         if len(row) != len(self.column_names):
             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
 
         for i in range(len(row)):
             # for each value, cast and replace it in row.
             # try:
-            row[i] = self.column_types[i](row[i])
+            if row[i] != 'null': # case sensitive value,not actually NULL
+                row[i] = self.column_types[i](row[i])
             # except:
             #     raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
 
             # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
             if i == self.pk_idx and row[i] in self.column_by_name(self.pk):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
+            if len(self.column_extras) == len(row):   #for not nul
+                if self.column_extras[i] == 'not null' and row[i] == 'null':
+                    raise ValueError(f'Value {row[i]} can not be NULL.')
+                if self.column_extras[i] == 'unique': # Search unique using btree
+                    if len(self.column_by_name(self.column_names[i]))>0:
+                        btree = Btree(2)
+                        for btree_ptr_index, record_value in enumerate(self.column_by_name(self.column_names[i])):
+                            btree.insert(str(record_value),btree_ptr_index)
+                        if btree.find("=",row[i]) != []:
+                            raise ValueError(f'This Value {row[i]} already exists.')
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
@@ -340,9 +356,13 @@ class Table:
 
         # define the new tables name, its column names and types
         join_table_name = ''
+        join_table_colextras = self.column_extras + table_right.column_extras
         join_table_colnames = left_names + right_names
         join_table_coltypes = self.column_types + table_right.column_types
-        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types=join_table_coltypes)
+        # new version of the updated table
+        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes, column_extras=join_table_colextras)
+        #the updated table has more arguments
+
 
         # count the number of operations (<,> etc)
         no_of_ops = 0
@@ -378,7 +398,13 @@ class Table:
         if self.pk_idx is not None:
             # table has a primary key, add PK next to the appropriate column
             headers[self.pk_idx] = headers[self.pk_idx] + ' #PK#'
-        # detect the rows that are no tfull of nones (these rows have been deleted)
+            for i in range(0,len(self.column_extras)):
+                if self.column_extras[i] == 'unique':
+                     headers[i] = headers[i] + ' #UN#'
+                if self.column_extras[i] == 'not null':
+                     headers[i] = headers[i] + ' #NN#'
+
+        # detect the rows that are not full of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]
         # print using tabulate
@@ -405,7 +431,8 @@ class Table:
         if left not in self.column_names:
             raise ValueError(f'Condition is not valid (cant find column name)')
         coltype = self.column_types[self.column_names.index(left)]
-
+        if right == 'null':  # ignore null
+            return left, op, right
         return left, op, coltype(right)
 
     def _load_from_file(self, filename):
@@ -432,8 +459,8 @@ class Table:
                 Operators supported: (<,<=,==,>=,>)
 
                  queries to run:
-                 select * from department inlj join instructor on dept_name=dept_name   failed message
-                 select * from instructor inlj join department on dept_name=dept_name
+                 select * from department join instructor on dept_name=dept_name   failed message
+                 select * from instructor join department on dept_name=dept_name
                  select * from instructor inlj join course on dept_name=dept_name
                  select * from prereq inlj join course on course_id=course_id   pk on the second table
                  select * from prereq inlj join course on course_id>course_id  could be inlj if =
@@ -492,9 +519,11 @@ class Table:
 
         # creating a new temporary table with its values and types
         join_table_name = ''
+        join_table_colextras = self.column_extras + right_table.column_extras
         join_table_colnames = left_names + right_names
         join_table_coltypes = self.column_types + right_table.column_types
-        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types=join_table_coltypes)
+        #new version of the updated table
+        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes, column_extras=join_table_colextras)
 
         # INLJ with a cost of blocks in the left_table + left_record records * the records in the right's table index
         for outer_record in self.data:  # going through the first table(with the fewer records)
@@ -540,9 +569,11 @@ class Table:
 
         # define the new tables name, its column names and types
         join_table_name = ''
+        join_table_colextras = self.column_extras + table_right.column_extras
         join_table_colnames = left_names+right_names
         join_table_coltypes = self.column_types+table_right.column_types
-        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
+        # new version of the updated table
+        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes, column_extras=join_table_colextras)
         #Smj
         self.order_by(column_name_left,False) #sort the left table(self) by pk
         table_right.order_by(column_name_right,False) #sorting the right table by pk
