@@ -22,7 +22,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):#not null ,unique
+    def __init__(self, name=None, column_names=None, column_types=None, notnull_or_unique=None, primary_key=None, load=None):#not null ,unique
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -64,6 +64,9 @@ class Table:
                 self.pk_idx = None
 
             self.pk = primary_key
+
+            self.notnull_or_unique=notnull_or_unique
+
             # self._update()
 
     # if any of the name, columns_names and column types are none. return an empty table object
@@ -108,6 +111,17 @@ class Table:
         '''
         if len(row)!=len(self.column_names):
             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
+
+        if(len(self.notnull_or_unique) == len(row)):
+            if self.notnull_or_unique[i] == 'NOTNULL' and row[i] == None:
+                raise ValueError(f'ERROR -> {column_name[i]} is a not null area.')
+
+        if(len(self.notnull_or_unique)== len(row)):
+            if self.notnull_or_unique[i] == 'UNIQUE':
+                for val in self.column_by_name(self.column_names[i]):
+                    if row[i] == val:
+                        raise ValueError(f'ERROR -> {self.column_names[i]} is a unique column.')
+
 
         for i in range(len(row)):
             # for each value, cast and replace it in row.

@@ -97,7 +97,7 @@ class Database:
         self._update_meta_insert_stack()
 
 
-    def create_table(self, name, column_names, column_types, primary_key=None, load=None):#not null,unique
+    def create_table(self, name, column_names, column_types, notnull_or_unique ,primary_key=None, load=None):#not null,unique
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
 
@@ -109,7 +109,13 @@ class Database:
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
         # print('here -> ', column_names.split(','))
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)})
+        
+        if notnull_or_unique is None:
+            notnull_or_unique=notnull_or_unique
+        else:
+            notnull_or_unique=notnull_or_unique.split(',')
+
+        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','),notnull_or_unique=notnull_or_unique ,primary_key=primary_key, load=load)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
@@ -673,11 +679,3 @@ class Database:
         index = pickle.load(f)
         f.close()
         return index
-    
-    trigger_functions = {}
-    def create_trigger(self,name,when,action,table_name,function):
-        self.load_database()
-
-        self.trigger_functions[name] = function
-        self._update
-        self.save_database() 
