@@ -30,7 +30,6 @@ class ColumnConstraints:
         dic = dict()
         dic["not_null"] = self.not_null
         dic["unique"] = self.unique
-        print(dic)
         return dic
 
     def __str__(self):
