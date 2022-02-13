@@ -81,13 +81,24 @@ def create_query_plan(query, keywords, action):
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
+        # remove primary key
         arg_nopk = args.replace('primary key', '')[1:-1]
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+        # handle primary key
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]
+        else:
+            dic['primary key'] = None
+        # handle foreign key
+        if 'foreign key' in args:
+            #replace , with ' ' and split
+            arglist = args[1:-1].replace(',',' ').split(' ')
+            indexfk = arglist.index('foreign')
+            #save parameters (column_table1,table2,column_table2)
+            dic['foreign key'] = arglist[indexfk-2]+","+arglist[indexfk+2]+","+arglist[indexfk+3]
         else:
             dic['primary key'] = None
     

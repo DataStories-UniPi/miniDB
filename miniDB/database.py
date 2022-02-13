@@ -97,7 +97,7 @@ class Database:
         self._update_meta_insert_stack()
 
 
-    def create_table(self, name, column_names, column_types, primary_key=None, load=None):
+    def create_table(self, name, column_names, column_types, primary_key=None, foreign_key=None, load=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
 
@@ -109,7 +109,16 @@ class Database:
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
         # print('here -> ', column_names.split(','))
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)})
+        fklist = None
+        if foreign_key is not None:
+            foreign_key=foreign_key.split(',')
+            #elegxos ean uparxei adistixos pinakas me adistixo column_name
+            if foreign_key[1] in self.tables.keys() and foreign_key[2] in self.tables.get(foreign_key[1]).column_names:
+                fklist =[foreign_key[0], foreign_key[2], self.tables.get(foreign_key[1])]
+            else:
+                print('ERROR: There is no table with name: ' + foreign_key[1] + ' or there is not a column with name: ' + foreign_key[2])
+                print('The table is created without the foreign key')
+        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key,foreign_key=fklist, load=load)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
