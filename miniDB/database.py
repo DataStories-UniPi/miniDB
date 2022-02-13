@@ -104,7 +104,7 @@ class Database:
         self._update_meta_insert_stack()
 
     #
-    # added references=None at the end of the function's parameters
+    # added references=None, unique_list=None at the end of the function's parameters
     # removed load=None,
     #
     def create_table(self, name, column_names, column_types, primary_key=None, references=None, unique_list=None):
@@ -119,9 +119,7 @@ class Database:
             load: boolean. Defines table object parameters as the name of the table and the column names.
             references: Defines the foreign key of this table, and shows the primary key of another table
         '''
-        print(primary_key)
-        print(references)
-        print(unique_list)
+
         # print('here -> ', column_names.split(','))
         #
         # added references=references at the end
@@ -129,7 +127,7 @@ class Database:
         #
         #print("Database.references = ", references)
         self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, references=references, unique_list=unique_list)})
-        # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
+
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
 
@@ -158,6 +156,15 @@ class Database:
             table_name: string. Name of table.
         '''
         self.load_database()
+        #
+        # Deleting the table name also from the meta table that keeps
+        # the referential constraints
+        #
+        # NOTE: Right now does not work....sometimes....but i really do not think it is my fault (hehehe)
+        #       When i delete a table (with or without my new function) its says that another process
+        #       has locked that specific table...Maybe it needs some debuging elsewhere
+        #EXAMPLE ERROR MESSAGE: "Exception: Table "person" is locked by process with pid=13909"
+        self._delete_row_from_meta_parent_child_tables(table_name)
 
         self.lock_table(table_name)
 
@@ -169,15 +176,6 @@ class Database:
         self.delete_from('meta_locks', f'table_name={table_name}')
         self.delete_from('meta_length', f'table_name={table_name}')
         self.delete_from('meta_insert_stack', f'table_name={table_name}')
-        #
-        # Deleting the table name also from the meta table that keeps
-        # the referential constraints
-        #
-        # NOTE: Right now does not work....but i really do not think it is my fault (hehehe)
-        #       When i delete a table (with or without my new function) its says that another process
-        #       has locked that specific table...Maybe it needs some debuging elsewhere
-        #EXAMPLE ERROR MESSAGE: "Exception: Table "person" is locked by process with pid=13909"
-        self._delete_row_from_meta_parent_child_tables(table_name)
 
         # self._update()
         self.save_database()
@@ -296,7 +294,6 @@ class Database:
         # This contains all the row values that are being inserted
         row = row_str.strip().split(',')
 
-        #x = self.tables.column_names
         #
         # Here i will call the function _check_meta_parent_child_tables_for_insert
         # to see if we insert something on a parent or child table
@@ -357,10 +354,13 @@ class Database:
         self._update()
         self.save_database()
         if updating_a_parent_table == True:
+            print("------------------------------------------------------------------------------------")
             print("!!!!ATTENTION!!!!")
-            print("You just updated a value of a column that other column values are linked to it.")
-            print("The system will now automatically change every value that references the old value,")
-            print("and it will be converted to the current new value")
+            print("You just updated a value from the primary key column. Other column values are")
+            print("linked to this column as foreign keys.")
+            print("The system will now automatically change every foreign key that references the old")
+            print("value, to the current new updated value (If it is needed)")
+            print("------------------------------------------------------------------------------------")
             self._change_referencing_values_everywhere(table_name,for_function_set_args,for_function_condition)
         # Confirmation message
         print("Table updated successfully!")
@@ -418,7 +418,6 @@ class Database:
             save_as: string. The name that will be used to save the resulting table into the database (no save if None).
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
         '''
-        # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, order_by, desc, top_k)
@@ -659,6 +658,9 @@ class Database:
 
         self.tables['meta_parent_child_tables']._insert([parent_table, parent_column, child_table, child_column])
 
+    #---------------------------------------------------------------------------------------------------------------------------
+    #   Begining of our new functions
+
     def _check_meta_parent_child_tables_for_insert(self,row_values,table_name,function_executed):
         '''
         This specific function will be called every time when i insert a new row
@@ -716,7 +718,6 @@ class Database:
             if table._name[:4]=='meta': #skip meta tables
                 continue
             if table_name in self.tables['meta_parent_child_tables'].column_by_name('parent_table'):
-                #print(table_name,"is in parent_table column")
                 #
                 # In this part of the function i will take care of the executed query
                 # when it belongs in the column "parent_table" in the table "meta_parent_child_tables"
@@ -1042,7 +1043,6 @@ class Database:
                             child_table_to_delete = child_tables_list[parent_tables_list.index(table_name)]
                             child_column_to_delete = child_columns_list[parent_tables_list.index(table_name)]
                             new_condition = child_column_to_delete + "=" + deleted_parent_value
-                            print("new condition:",new_condition)
                             self.delete_from(child_table_to_delete,new_condition)
 
     def _delete_row_from_meta_parent_child_tables(self,table_name):
@@ -1096,18 +1096,11 @@ class Database:
     def _check_for_unique_columns(self,row,table_name):
         '''
         '''
-        # print(row)
-        # print(table_name)
-        # print(self.tables[table_name].column_names)
-        # print(self.tables[table_name].unique_column_list)
 
         current_table_columns = self.tables[table_name].column_names
         unique_columns_in_this_table = self.tables[table_name].unique_column_list
         current_table_data = self.tables[table_name].data
 
-        # print(current_table_data)
-        # print(current_table_columns)
-        # print(unique_columns_in_this_table)
         for i in range(len(current_table_columns)):
             if unique_columns_in_this_table is not None:
                 if current_table_columns[i] in unique_columns_in_this_table:
@@ -1116,8 +1109,8 @@ class Database:
                             if row[i] == current_table_data[j][k]:
                                 raise Exception("Error!!!\n***************************************************** \nThe value you try to insert, already exist \nin this table in one of the unique columns\nPlease try again\n*****************************************************")
 
-
-
+    #   End of our new functions
+    #---------------------------------------------------------------------------------------------------------------------------
 
 
     def _add_to_insert_stack(self, table_name, indexes):

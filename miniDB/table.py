@@ -23,7 +23,7 @@ class Table:
 
     '''
     #
-    # added references=references at the end
+    # added references=references, unique_list=None at the end of the arguments
     #
     def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None, references=None, unique_list=None):
 
@@ -446,9 +446,3 @@ class Table:
         f.close()
 
         self.__dict__.update(tmp_dict)
-
-    def _insert_in_child_table(self):
-        '''
-        Here is a function that will do all thw work about referential constraints
-        when a row is being inserted in a child_table
-        '''

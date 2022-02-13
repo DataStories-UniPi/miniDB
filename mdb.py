@@ -93,7 +93,7 @@ def create_query_plan(query, keywords, action):
         else:
             dic['primary key'] = None
         #
-        # adding functionality for the references keyword
+        # adding functionality for the "references" keyword
         #
         if 'references' in args:
             for i in arglist:
@@ -122,6 +122,9 @@ def create_query_plan(query, keywords, action):
         else:
             dic['references'] = None
 
+        #
+        # adding functionality for the "unique" keyword
+        #
         if 'unique' in args:
             unique_column_list = []
             for i in arglist:
