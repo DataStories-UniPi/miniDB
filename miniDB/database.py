@@ -97,7 +97,7 @@ class Database:
         self._update_meta_insert_stack()
 
 
-    def create_table(self, name, column_names, column_types, primary_keys=None, load=None):
+    def create_table(self, name, column_names, column_types, primary_key=None, load=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
 
@@ -105,17 +105,17 @@ class Database:
             name: string. Name of table.
             column_names: list. Names of columns.
             column_types: list. Types of columns.
-            primary_keys: string. The primary key(s) (if it exists).
+            primary_key: string. The primary key(s) (if it exists).
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
-        def check_pr_key(primary_keys):
-            if primary_keys is None:
+        def check_pr_key(primary_key):
+            if primary_key is None:
                 return 0
-        ch = check_pr_key(primary_keys)
+        ch = check_pr_key(primary_key)
         if (ch==0):
-            self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_keys=primary_keys, load=load)})
+            self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)})
         else:
-            self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_keys=primary_keys.split(','), load=load)})
+            self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key.split(','), load=load)})
         # print('here -> ', column_names.split(','))
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
@@ -149,14 +149,14 @@ class Database:
         self.save_database()
 
 
-    def import_table(self, table_name, filename, column_types=None, primary_keys=None):
+    def import_table(self, table_name, filename, column_types=None, primary_key=None):
         '''
         Creates table from CSV file.
 
         Args:
             filename: string. CSV filename. If not specified, filename's name will be used.
             column_types: list. Types of columns. If not specified, all will be set to type str.
-            primary_keys: string. The primary key(s) (if it exists).
+            primary_key: string. The primary key(s) (if it exists).
         '''
         file = open(filename, 'r')
 
@@ -166,7 +166,7 @@ class Database:
                 colnames = line.strip('\n')
                 if column_types is None:
                     column_types = ",".join(['str' for _ in colnames.split(',')])
-                self.create_table(name=table_name, column_names=colnames, column_types=column_types, primary_keys=primary_keys)
+                self.create_table(name=table_name, column_names=colnames, column_types=column_types, primary_key=primary_key)
                 lock_ownership = self.lock_table(table_name, mode='x')
                 first_line = False
                 continue
@@ -445,7 +445,7 @@ class Database:
         Args:
             table_name: string. Table name (must be part of database).
         '''
-        if table_name[:4]=='meta' or table_name not in self.tables.keys() or isinstance(table_name,Table):
+        if table_name[:4]=='meta' or table_name not in self.tables.key() or isinstance(table_name,Table):
             return
 
         with open(f'{self.savedir}/meta_locks.pkl', 'rb') as f:
