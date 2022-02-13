@@ -119,6 +119,9 @@ class Database:
             load: boolean. Defines table object parameters as the name of the table and the column names.
             references: Defines the foreign key of this table, and shows the primary key of another table
         '''
+        print(primary_key)
+        print(references)
+        print(unique_list)
         # print('here -> ', column_names.split(','))
         #
         # added references=references at the end
@@ -1103,12 +1106,15 @@ class Database:
         current_table_data = self.tables[table_name].data
 
         # print(current_table_data)
+        # print(current_table_columns)
+        # print(unique_columns_in_this_table)
         for i in range(len(current_table_columns)):
-            if current_table_columns[i] in unique_columns_in_this_table:
-                for j in range(len(current_table_data)):
-                    for k in range(len(current_table_data[j])):
-                        if row[i] == current_table_data[j][k]:
-                            raise Exception("Error!!!\n***************************************************** \nThe value you try to insert, already exist \nin this table in one of the unique columns\nPlease try again\n*****************************************************")
+            if unique_columns_in_this_table is not None:
+                if current_table_columns[i] in unique_columns_in_this_table:
+                    for j in range(len(current_table_data)):
+                        for k in range(len(current_table_data[j])):
+                            if row[i] == current_table_data[j][k]:
+                                raise Exception("Error!!!\n***************************************************** \nThe value you try to insert, already exist \nin this table in one of the unique columns\nPlease try again\n*****************************************************")
 
 
 
