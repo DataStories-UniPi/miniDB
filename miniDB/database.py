@@ -107,7 +107,7 @@ class Database:
     # added references=None at the end of the function's parameters
     # removed load=None,
     #
-    def create_table(self, name, column_names, column_types, primary_key=None, references=None):
+    def create_table(self, name, column_names, column_types, primary_key=None, references=None, unique_list=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
 
@@ -125,7 +125,7 @@ class Database:
         # removed load=load,
         #
         #print("Database.references = ", references)
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, references=references)})
+        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, references=references, unique_list=unique_list)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
@@ -148,6 +148,7 @@ class Database:
             table_name: string. Name of table.
         '''
         self.load_database()
+
         self.lock_table(table_name)
 
         self.tables.pop(table_name)
@@ -158,9 +159,20 @@ class Database:
         self.delete_from('meta_locks', f'table_name={table_name}')
         self.delete_from('meta_length', f'table_name={table_name}')
         self.delete_from('meta_insert_stack', f'table_name={table_name}')
+        #
+        # Deleting the table name also from the meta table that keeps
+        # the referential constraints
+        #
+        # NOTE: Right now does not work....but i really do not think it is my fault (hehehe)
+        #       When i delete a table (with or without my new function) its says that another process
+        #       has locked that specific table...Maybe it needs some debuging elsewhere
+        #EXAMPLE ERROR MESSAGE: "Exception: Table "person" is locked by process with pid=13909"
+        self._delete_row_from_meta_parent_child_tables(table_name)
 
         # self._update()
         self.save_database()
+
+
 
     #
     # added references=None at the end of the function's parameters
@@ -280,6 +292,7 @@ class Database:
         # to see if we insert something on a parent or child table
         #
         self._check_meta_parent_child_tables_for_insert(row,table_name,"insert")
+        self._check_for_unique_columns(row,table_name)
 
         self.load_database()
         # fetch the insert_stack. For more info on the insert_stack
@@ -1021,6 +1034,77 @@ class Database:
                             new_condition = child_column_to_delete + "=" + deleted_parent_value
                             print("new condition:",new_condition)
                             self.delete_from(child_table_to_delete,new_condition)
+
+    def _delete_row_from_meta_parent_child_tables(self,table_name):
+        '''
+        The purpose of this function is when the user drops a table that is being
+        referenced by other tables, then we delete the row from the meta table
+        that keeps the referential constraints, so that there are no more constrains
+        for the child tables no more.
+
+        '''
+        #
+        # a list that contains the data of the meta_parent_child_tables table
+        # in 2D list
+        #
+        parent_child_data = self.tables['meta_parent_child_tables'].data
+
+        # a list that will contain all the child column names of the database
+        child_columns_list = []
+
+        # a list that will contain all the parent column names of the database
+        parent_columns_list = []
+
+        # a list that contains the column names of the current table
+        current_table_columns = self.tables[table_name].column_names
+
+        # a list that will contain all the child table names of the database
+        child_tables_list = []
+
+        # a list that will contain all the parent table names of the database
+        parent_tables_list = []
+
+
+        #
+        # Putting into a list all the names of the parent tables and columns, and
+        # also putting into a list all the names of the child tables and columns
+        #
+        for i in range(len(parent_child_data)):
+            for j in range(len(parent_child_data[i])):
+                if j == 0:
+                    parent_tables_list.append(parent_child_data[i][j])
+                if j == 1:
+                    parent_columns_list.append(parent_child_data[i][j])
+                if j == 2:
+                    child_tables_list.append(parent_child_data[i][j])
+                if j == 3:
+                    child_columns_list.append(parent_child_data[i][j])
+        if table_name in parent_tables_list:
+            condtion_to_del = "parent_table=" + table_name
+            self.delete_from('meta_parent_child_tables',condtion_to_del)
+
+    def _check_for_unique_columns(self,row,table_name):
+        '''
+        '''
+        # print(row)
+        # print(table_name)
+        # print(self.tables[table_name].column_names)
+        # print(self.tables[table_name].unique_column_list)
+
+        current_table_columns = self.tables[table_name].column_names
+        unique_columns_in_this_table = self.tables[table_name].unique_column_list
+        current_table_data = self.tables[table_name].data
+
+        # print(current_table_data)
+        for i in range(len(current_table_columns)):
+            if current_table_columns[i] in unique_columns_in_this_table:
+                for j in range(len(current_table_data)):
+                    for k in range(len(current_table_data[j])):
+                        if row[i] == current_table_data[j][k]:
+                            raise Exception("Error!!!\n***************************************************** \nThe value you try to insert, already exist \nin this table in one of the unique columns\nPlease try again\n*****************************************************")
+
+
+
 
 
     def _add_to_insert_stack(self, table_name, indexes):
