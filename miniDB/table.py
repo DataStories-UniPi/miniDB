@@ -421,13 +421,14 @@ class Table:
             join_table_coltypes = table_left.column_types+table_right.column_types
             join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
 
-            # INDEX NESTED LOOP ALGORITHM 
+           # INDEX NESTED LOOP ALGORITHM 
             for row_left in table_left.data:
                 left_value = row_left[column_index_left]
                 results = index.find(operator,left_value)
                 if(len(results)>0):
                     for i in results:
-                        join_table._insert(row_left + table_right.data[i])
+                        if get_op(operator, left_value, table_right.data[i][column_index_right]):
+                            join_table._insert(row_left + table_right.data[i])
 
             return join_table
     
