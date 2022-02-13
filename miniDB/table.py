@@ -145,7 +145,7 @@ class Table:
         # parse the condition
         column_name, operator, value = self._parse_condition(condition)
 
-        # get the condition and the set column
+        # get the condition and the set column  
         column = self.column_by_name(column_name)
         set_column_idx = self.column_names.index(set_column)
 
@@ -233,6 +233,7 @@ class Table:
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
+
 
         # top k rows
         # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
