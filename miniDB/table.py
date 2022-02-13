@@ -113,17 +113,13 @@ class Table:
 
         if (hasattr(self, 'column_constraints')):
             # Check for a null value in a not null column
-            if type(value) is str:
-                val_stripped = value.strip()
-            else:
-                val_stripped = value
-
-            if (not val_stripped or val_stripped=="null") and col_name in self.column_constraints["not_null"]:
+            val_stripped = str(value).strip()
+            if (not val_stripped or val_stripped=="null" or val_stripped=="none") and col_name in self.column_constraints["not_null"]:
                 raise ValueError("Tried to add a null value into a not null column ")
 
             # Check for duplicate value in a unique column
             if col_name in self.column_constraints["unique"]:
-                if value in (str(element) for element in self.column_by_name(col_name)):
+                if val_stripped in (str(element) for element in self.column_by_name(col_name)):
                     raise ValueError("Tried to add a duplicate value into a unique column")
 
     def _insert(self, row, insert_stack=[]):
