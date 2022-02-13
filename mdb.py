@@ -106,14 +106,18 @@ def create_query_plan(query, keywords, action):
         dic['create view'] = dic['create view'].removesuffix(args).strip()
         arg_nopk = args.replace('primary key', '')[1:-1]
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
-        dic['column_names'] = ','.join([val[0] for val in arglist])
-        dic['column_types'] = ','.join([val[1] for val in arglist])
+        #perittes prakseis katwhs columns kai rows tha parouem apo new pinaka
+        #dic['column_names'] = ','.join([val[0] for val in arglist])
+        #dic['column_types'] = ','.join([val[1] for val in arglist])
         #Apla gia safeguard feature ,logika einai axreiasto alla kalutera na pernaei elegxo ki apla na to pernaei
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
+        ## efoson theloume apo allo pinaka  isws na na xreiastei h from edw 
+        if dic['order by'] is not None:
+            dic['from'] = dic['from'].removesuffix(' order')
     
         
     
@@ -180,7 +184,7 @@ def evaluate_from_clause(dic):
 def interpret(query):
     '''
     Interpret the query.
-    Added create temp view and dropp temp view sta xreate kai create tables
+    Added create temp view and dropp temp view san kainourgia actions
     '''
     kw_per_action = {'create table': ['create table'],
                      'drop table': ['drop table'],
