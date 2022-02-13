@@ -23,7 +23,7 @@ class Node:
         If it is a leaf (we have found the appropriate node), nothing is returned.
 
         Args:
-            value: float. The value being searched for.
+            value: str(ing). The value being searched for.
             return_ops: boolean. Set to True if you want to use the number of operations (for benchmarking).
         '''
         ops = 0 # number of operations (<>= etc). Used for benchmarking
@@ -33,6 +33,7 @@ class Node:
         # for each value in the node, if the user supplied value is smaller, return the btrees value index
         # else (no value in the node is larger) return the last ptr
         for index, existing_val in enumerate(self.values):
+            clean = existing_val.replace(",","")
             ops+=1
             if value<existing_val:
                 if return_ops:
