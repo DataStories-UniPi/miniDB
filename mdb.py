@@ -84,6 +84,29 @@ def create_query_plan(query, keywords, action):
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+        
+        
+        # Code for columns with constraints
+        dic['column_constraints'] = ""
+        for i in range(len(arglist)):
+
+            # For 3 fields in create table statement
+            if len(arglist[i]) == 3:
+                if i == 0:
+                    dic['column_constraints'] += (arglist[i][2])
+                else:
+                    dic['column_constraints'] += ','
+                    dic['column_constraints'] += (arglist[i][2])
+
+            # For 2 fields in create table statement
+            else:
+                if i == 0:
+                    dic['column_constraints'] += 'None'
+                else:
+                    dic['column_constraints'] += ','
+                    dic['column_constraints'] += 'None'
+        
+        
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]
