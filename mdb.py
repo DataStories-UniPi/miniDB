@@ -98,17 +98,23 @@ def create_query_plan(query, keywords, action):
             
             arglist = args[1:-1].split(' ')
 
-            print(f'\narglist: {arglist}\n')
-
-            # foreign key will eventually become a list cause we can have 
-            # more than one foreign key in a table
-            dic['foreign key'] = arglist[arglist.index('foreign')-2]
-
+            dic['foreign key'] = []
             dic['ref'] = []
-            dic['ref'].append(arglist[arglist.index('ref')+1])
-            dic['ref'].append(arglist[arglist.index('ref')+2])
+
+            # find all the columns that will be used for the foreign key
+            # and all referenced data (tables and columns)
+            for i in range(len(arglist)):
+                if arglist[i] == 'foreign':
+                    dic['foreign key'].append(arglist[i-2])
+
+                if arglist[i] == 'ref':
+                    dic['ref'].append(arglist[i+1].replace(',', '')) # need the replace method cause for some reason ',' is passed when included
+                    dic['ref'].append(arglist[i+2].replace(',', ''))
+
 
             print(f'dic[\'foreign key\']: {dic["foreign key"]}')
+
+            print(f'dic[\'ref\']: {dic["ref"]}')
     
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
