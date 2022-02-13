@@ -96,7 +96,7 @@ def create_query_plan(query, keywords, action):
             loop_counter=0
             if len(val)>=3:
                 word=2
-                for word in range(len(val-1)):
+                for word in range(len(val)-1):
                     if val[word] == "not" and val [word+1] == "null":
                         if count ==0:
                             dic['not_nulls']+=(val[0])
