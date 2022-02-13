@@ -283,11 +283,10 @@ class Database:
         # target_cols = The table from where the data will be fethed.
 
         # Get the requested data from the tables using a select query
-        target_table = self.select(target_cols, target_table_name, condition, None, None)
-        home_table = self.select(home_cols, home_table_name, None, None, None)
+        target_table = self.select(target_cols, target_table_name, condition)
         
         #C heck the number of cols of each table
-        if len(target_table.column_names) > len(home_table.column_names):
+        if len(target_table.column_names) > len(self.tables[target_table_name].column_names):
             raise ValueError("Number of home cols must be less or equal than the number of target cols")
         
         if target_cols is '*':
@@ -295,9 +294,9 @@ class Database:
         else:
             target_cols = target_cols.split(',')
 
-        # It creates a temp list, that expresses the position of each col of home table's cols as given by the user.
-        # For example, the target_cols list [name, id] based on home_cols [id, name, salary, duration] is translated 
-        # to temp = [1, 0, null, null]
+        # It creates a temp list, that expresses the position of each target col on home table's cols list.
+        # For example, the target_cols list [y, z] based on home_cols [x, y, z, k] is translated 
+        # to temp = [null, 0, 1, null], where 1 is the position of z in target table and 0 the position y in target table
         temp = []
         for i in range(len(self.tables[home_table_name].column_names)):
             if self.tables[home_table_name].column_names[i] not in target_cols:
@@ -307,8 +306,8 @@ class Database:
                     if self.tables[home_table_name].column_names[i] == target_cols[j]:
                         temp.insert(i, j)
 
+        # For each data of target table it creates a ready for insertion row by using the temp list
         for data in target_table.data:
-            print(data)
             row = []
             for i in range(len(temp)):
                 if temp[i] is 'null':

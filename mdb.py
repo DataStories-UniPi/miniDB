@@ -139,7 +139,7 @@ def create_query_plan(query, keywords, action):
 
     if action=='insert into select':
         if(dic['from'] is None):
-            raise ValueError('HEY, EMPTY FROM BRO')
+            raise ValueError('Specify table in "from"')
         try:
             args = dic['insert into'][dic['insert into'].index('('):dic['insert into'].index(')')+1]
             dic['insert into'] = dic['insert into'].replace(args, "").replace(" ","")

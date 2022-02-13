@@ -113,7 +113,10 @@ class Table:
 
         if (hasattr(self, 'column_constraints')):
             # Check for a null value in a not null column
-            val_stripped = value.strip()
+            if type(value) is str:
+                val_stripped = value.strip()
+            else:
+                val_stripped = value
 
             if (not val_stripped or val_stripped=="null") and col_name in self.column_constraints["not_null"]:
                 raise ValueError("Tried to add a null value into a not null column ")
@@ -137,10 +140,9 @@ class Table:
         for i in range(len(row)):
             # for each value, cast and replace it in row unless it's an int.
             # try:
-
+            #if self.column_types == str:
             self.__check_constraints(self.column_names[i], row[i])
 
-            #if self.column_types == str:
             row[i] = self.column_types[i](row[i])
 
             # if value is to be appended to the primary_key column, check that it doesnt already exist (no duplicate primary keys)
