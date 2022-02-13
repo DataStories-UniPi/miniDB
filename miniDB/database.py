@@ -394,6 +394,12 @@ class Database:
         self._update()
         self.save_database()
 
+    def evaluate_join_method(self, left_table, right_table):
+        if(left_table.pk == None and right_table.pk == None):
+            return False
+        else:
+            return True
+
     def join(self, mode, left_table, right_table, condition, save_as=None, return_object=True):
         '''
         Join two tables that are part of the database where condition is met.
@@ -418,7 +424,11 @@ class Database:
 
 
         if mode=='inner':
+            #This is just for testing, remove one line of comments at a time to make it work!
+
             res = left_table._inner_join(right_table, condition)
+            # res = self.inlj(left_table, right_table, condition)
+            # res = self.smj(left_table, right_table, condition)
         else:
             raise NotImplementedError
 
@@ -430,6 +440,130 @@ class Database:
                 return res
             else:
                 res.show()
+        
+    def inlj(self, left_table, right_table, condition):
+        '''
+        Index Nested Loop Join (INLJ)
+        '''
+
+        # self.load_database()
+        # if self.is_locked(left_table) or self.is_locked(right_table):
+        #     return
+
+        # left_table = left_table if isinstance(left_table, Table) else self.tables[left_table] 
+        # right_table = right_table if isinstance(right_table, Table) else self.tables[right_table] 
+
+        if (right_table.pk != None):
+            # get columns and operator
+            column_name_left, operator, column_name_right = left_table._parse_condition(condition, join=True)
+            # try to find both columns, if you fail raise error
+            try:
+                column_index_left = left_table.column_names.index(column_name_left)
+            except:
+                raise Exception(f'Column "{column_name_left}" dont exist in left table. Valid columns: {left_table.column_names}.')
+
+            try:
+                column_index_right = right_table.column_names.index(column_name_right)
+            except:
+                raise Exception(f'Column "{column_name_right}" dont exist in right table. Valid columns: {right_table.column_names}.')
+
+            # get the column names of both tables with the table name in front
+            # ex. for left -> name becomes left_table_name_name etc
+            left_names = [f'{left_table._name}.{colname}' if left_table._name!='' else colname for colname in left_table.column_names]
+            right_names = [f'{right_table._name}.{colname}' if right_table._name!='' else colname for colname in right_table.column_names]
+
+            # define the new tables name, its column names and types
+            inlj_table_name = left_table._name, ' ', right_table._name
+            inlj_table_colnames = left_names+right_names
+            inlj_table_coltypes = left_table.column_types+right_table.column_types
+            inlj_table = Table(name=inlj_table_name, column_names=inlj_table_colnames, column_types= inlj_table_coltypes)
+
+            if not(self._has_index(right_table._name)): #if it does not have an index:
+                #create index
+                self.create_index(right_table._name, right_table._name)
+                pass
+
+            idx = self._load_idx(right_table._name)
+           
+            #INLJ algorithm
+            for row in left_table.data:
+                left_value = row[column_index_left]
+                res = idx.find('=',left_value)
+                if len(res) > 0: #if there is a common value, the length will be > 0
+                    for i in res:
+                        inlj_table._insert(row + right_table.data[i]) #populate the join_table with the results
+
+            return inlj_table
+
+    def smj(self, left_table, right_table, condition):
+        '''
+        Sort-Merge Join (SMJ)
+        '''
+
+        # get columns and operator
+        column_name_left, operator, column_name_right = left_table._parse_condition(condition, join=True)
+        # try to find both columns, if you fail raise error
+        try:
+            column_index_left = left_table.column_names.index(column_name_left)
+        except:
+            raise Exception(f'Column "{column_name_left}" dont exist in left table. Valid columns: {left_table.column_names}.')
+
+        try:
+            column_index_right = right_table.column_names.index(column_name_right)
+        except:
+            raise Exception(f'Column "{column_name_right}" dont exist in right table. Valid columns: {right_table.column_names}.')
+
+        # get the column names of both tables with the table name in front
+        # ex. for left -> name becomes left_table_name_name etc
+        left_names = [f'{left_table._name}.{colname}' if left_table._name!='' else colname for colname in left_table.column_names]
+        right_names = [f'{right_table._name}.{colname}' if right_table._name!='' else colname for colname in right_table.column_names]
+
+        # define the new tables name, its column names and types
+        smj_table_name = ''
+        smj_table_coltypes = left_table.column_types+right_table.column_types
+        smj_table_colnames = left_names+right_names
+        smj_table = Table(name=smj_table_name, column_names=smj_table_colnames, column_types= smj_table_coltypes)
+
+        # check if both tables are sorted
+        if not left_table.is_sorted():
+            # left_table.e_merge_sort()
+            pass
+
+        if not left_table.is_sorted():
+            # right_table.e_merge_sort()
+            pass
+
+        left_length = len(left_table.data)
+        right_length = len(right_table.data)
+
+        i = 0
+        j = 0
+        first_occurrence = 0
+
+
+        # SMJ algorithm
+        while (i < left_length and j < right_length):
+            if (left_table.data[i][column_index_left] < right_table.data[j][column_index_right]):
+                i += 1
+                
+
+            elif (left_table.data[i][column_index_left] > right_table.data[j][column_index_right]):
+                j += 1
+
+            else:
+
+                smj_table._insert(left_table.data[i] + right_table.data[j])
+
+                if(right_table.data[j - 1][column_index_right] != right_table.data[j][column_index_right]):
+                    first_occurrence = j
+                
+                if(j + 1 > right_length):
+                    i += 1
+                    j = first_occurrence
+                else:
+                    j += 1
+        
+        return smj_table
 
     def lock_table(self, table_name, mode='x'):
         '''
