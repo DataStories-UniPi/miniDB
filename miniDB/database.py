@@ -444,22 +444,26 @@ class Database:
         self._update()
         self.save_database()
 
-    def evaluate_join_method(self, left_table, right_table):
-        if(left_table.pk == None and right_table.pk == None):
-            return False
+    def evaluate_join_method(self, left_table, right_table, condition):
+        if (condition=='=' and left_table.pk==None and right_table.pk==None):
+            return 'SMJ'
+
+        if(left_table.pk==None and right_table.pk!=None):
+            return 'INLJ'
         else:
-            return True
-            
-    def inlj(self, left_table, right_table):
+            return 'NLJ'
+
+
+    def inlj(self, left_table, table_right, condition):
         
-        if (right_table.pk != None):
+        if (table_right.pk != None):
             # get columns and operator
-            column_name_left, operator, column_name_right = self._parse_condition(condition, join=True)
+            column_name_left, operator, column_name_right = left_table._parse_condition(condition, join=True)
             # try to find both columns, if you fail raise error
             try:
-                column_index_left = self.column_names.index(column_name_left)
+                column_index_left = left_table.column_names.index(column_name_left)
             except:
-                raise Exception(f'Column "{column_name_left}" dont exist in left table. Valid columns: {self.column_names}.')
+                raise Exception(f'Column "{column_name_left}" dont exist in left table. Valid columns: {left_table.column_names}.')
 
             try:
                 column_index_right = table_right.column_names.index(column_name_right)
@@ -468,21 +472,21 @@ class Database:
 
             # get the column names of both tables with the table name in front
             # ex. for left -> name becomes left_table_name_name etc
-            left_names = [f'{self._name}.{colname}' if self._name!='' else colname for colname in self.column_names]
+            left_names = [f'{left_table._name}.{colname}' if left_table._name!='' else colname for colname in left_table.column_names]
             right_names = [f'{table_right._name}.{colname}' if table_right._name!='' else colname for colname in table_right.column_names]
 
             # define the new tables name, its column names and types
             join_table_name = ''
             join_table_colnames = left_names+right_names
-            join_table_coltypes = self.column_types+table_right.column_types
+            join_table_coltypes = left_table.column_types+table_right.column_types
             join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
 
-            if(self._has_index(right_table)): #if it does not have an index:
+            if not(self._has_index(table_right._name)): #if it does not have an index:
                 #create index
-                self.create_index(right_table + 'Indx' ,right_table)
+                self.create_index(table_right._name, table_right._name)
                 pass
 
-            idx = self._load_idx(right_table + 'Indx')
+            idx = self._load_idx(table_right._name)
            
             #inlj algorithm
             for row in left_table.data:
@@ -490,7 +494,7 @@ class Database:
                 res = idx.find('=',value)
                 if len(res) > 0: #if there is a common value, the length will be > 0
                     for i in res:
-                        join_table._insert(row + right_table.data[i]) #populate the join_table with the results
+                        join_table._insert(row + table_right.data[i]) #populate the join_table with the results
 
             return join_table
 
@@ -590,9 +594,17 @@ class Database:
             # else:
 
                 # added just for testing
-                res = self.smj(left_table, right_table, condition)
+                # res = self.smj(left_table, right_table, condition)
+                method = self.evaluate_join_method(left_table, right_table, condition)
+                if method == 'SMJ':
+                    print(f'Using SMJ')
+                    res = self.smj(left_table, right_table, condition)
+                elif method == 'INLJ':
+                    print(f'Using INLJ')
+                    res = self.inlj(left_table, right_table, condition)
+                else:
+                    res = left_table._inner_join(right_table, condition)
 
-                # res = left_table._inner_join(right_table, condition)
 
         else:
             raise NotImplementedError
