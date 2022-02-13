@@ -90,11 +90,29 @@ def create_query_plan(query, keywords, action):
         else:
             dic['primary key'] = None
     
+    
+    if action=='create view':
+        args = dic['create view'][dic['create view'].index('('):dic['create view'].index(')')+1]
+        dic['create view'] = dic['create view'].removesuffix(args).strip()
+        arg_noprimarykey = args.replace('primary key', '')[1:-1]
+        arglist = [val.strip().split(' ') for val in arg_noprimarykey.split(',')]
+        if 'primary key' in args:
+            arglist = args[1:-1].split(' ')
+            dic['primary key'] = arglist[arglist.index('primary')-2]
+        else:
+            dic['primary key'] = None
+        if dic['order by'] is not None:
+            dic['from'] = dic['from'].removesuffix(' order')
+
+    
+    
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
     if action=='insert into':
-        if dic['values'][0] == '(' and dic['values'][-1] == ')':
+        if dic['select'] is not None:  
+            dic = evaluate_from_clause(dic) 
+        elif dic['values'][0] == '(' and dic['values'][-1] == ')':
             dic['values'] = dic['values'][1:-1]
         else:
             raise ValueError('Your parens are not right m8')

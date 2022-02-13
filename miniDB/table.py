@@ -212,12 +212,26 @@ class Table:
             desc: boolean. If True, order_by will return results in descending order (False by default).
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
+        # Select distinct
 
-        # if * return all columns, else find the column indexes for the columns specified
-        if return_columns == '*':
-            return_cols = [i for i in range(len(self.column_names))]
+
+        distinct = False
+        if 'disticnt' in return_columns:
+            distinct = True 
+            return_columns_temp = return_columns.split('distinct')[1].strip().split(',')
+
+            if '*' in return_columns_temp:
+                return_cols = [i for i in range (len(self.column_names))]
+
+            else:
+                return_cols = [self.column_names.index(col.strip()) for col in return_columns_temp]
         else:
-            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+            if return_columns == '*':
+                return_cols = [i for i in range(len(self.column_names))]
+            
+            else:
+                return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]        
+        
 
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
@@ -242,7 +256,23 @@ class Table:
         if order_by:
             s_table.order_by(order_by, desc)
 
-        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
+        # Select distinct
+        if distinct:
+            temp_list = []
+            temp_table = s_table
+            index = 0
+
+            for i in range (len(s_table.data)):
+                if s_table.data[index] not in temp_list:
+                    temp_list.append(s_table.data[index])
+                    index += 1
+                else:
+                    temp_table.data.pop(index)
+
+                s_table = temp_table
+        # Basic select
+        else:
+            s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
 
         return s_table
 
