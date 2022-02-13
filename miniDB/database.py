@@ -417,7 +417,7 @@ class Database:
         right_table = right_table if isinstance(right_table, Table) else self.tables[right_table]
 
         def spinner (t1,t2):
-           itsright = t1 # this is right table
+            itsright = t1 # this is right table
             right_table = t2 # left  table
             left_table = wasRight
 
@@ -459,17 +459,87 @@ class Database:
                 except:
                     raise Exception(
                         f'Column "{column_name_right}" dont exist in right table. Valid columns: {table_right.column_names}.')
+
+
         #else:
             #raise NotImplementedError
 
-        if save_as is not None:
-            res._name = save_as
-            self.table_from_object(res)
-        else:
-            if return_object:
-                return res
+        #if save_as is not None:
+            #res._name = save_as
+           # self.table_from_object(res)
+       # else:
+            #if return_object:
+                #return res
+            #else:
+                #res.show()
+
+
+
+
+            left_names = [f'{left_table._name}.{colname}' if table_right._name != '' else colname for colname in left_table.column_names]
+            right_names = [f'{table_right._name}.{colname}' if table_right._name != '' else colname for colname in table_right.column_names]
+
+            join_table_name = ''
+            #we need to make take action if we have 'spined' or not
+            if(spin==true):
+                join_table_colnames =right_names+left_names
+                join_table_coltypes=right_table.column_types + left_table.column_types
+
+
             else:
-                res.show()
+                join_table_colnames = left_names + right_names
+                join_table_coltypes=left_table.column_types+right_table.column_types
+
+            join_table = Table(name=join_table_name, column_names=join_table_colnames,
+                                   column_types=join_table_coltypes)
+
+            #now we need the index-nested-join to be in a loop so we can make the table appear(if the spin==1)
+
+            if(spin==0):
+                for row_left in left_table.data:
+                    left_value = row_left[column_index_left]
+                    #finding position of operator starting at the left value
+                    position=index.find(operator,left_value)
+                    under
+                    for i in range(0,len(position)):
+                        if position[i]=="_":
+                            under+=1
+                    y=0
+                    while(y<under):
+                        join_table._insert(row_left + right_table.data[_])
+                else:
+                    for row_left in left_table.data:
+                        left_value = row_left[column_index_left]
+                    # finding position of operator starting at the left value
+                        position = index.find(operator, left_value)
+                        under
+                        for i in range(0, len(position)):
+                            if position[i] == "_":
+                                under += 1
+                        y = 0
+                        while (y < under):
+                            join_table._insert(right_table.data[_]+row_left)
+
+                res=join_table
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     def lock_table(self, table_name, mode='x'):
         '''
