@@ -282,9 +282,11 @@ class Database:
         # target_table_name = The table's name from where the data will be fethed
         # target_cols = The table from where the data will be fethed.
 
+        # Get the requested data from the tables using a select query
         target_table = self.select(target_cols, target_table_name, condition, None, None)
         home_table = self.select(home_cols, home_table_name, None, None, None)
         
+        #C heck the number of cols of each table
         if len(target_table.column_names) > len(home_table.column_names):
             raise ValueError("Number of home cols must be less or equal than the number of target cols")
         
@@ -293,10 +295,13 @@ class Database:
         else:
             target_cols = target_cols.split(',')
 
+        # It creates a temp list, that expresses the position of each col of home table's cols as given by the user.
+        # For example, the target_cols list [name, id] based on home_cols [id, name, salary, duration] is translated 
+        # to temp = [1, 0, null, null]
         temp = []
         for i in range(len(self.tables[home_table_name].column_names)):
             if self.tables[home_table_name].column_names[i] not in target_cols:
-                temp.insert(i, 'Not Null')
+                temp.insert(i, 'null')
             else:
                 for j in range(len(target_cols)):
                     if self.tables[home_table_name].column_names[i] == target_cols[j]:
@@ -306,8 +311,8 @@ class Database:
             print(data)
             row = []
             for i in range(len(temp)):
-                if temp[i] is 'Not Null':
-                    row.insert(i, 'Not Null')
+                if temp[i] is 'null':
+                    row.insert(i, 'null')
                 else:
                     row.insert(i, data[temp[i]])
             row = row = ', '.join([str(elem) for elem in row])

@@ -110,6 +110,7 @@ class Table:
             col_name: The name of the column to check
             value: The value to check against the constraints
         '''
+        print(value)
         value = str(value)
 
         if (hasattr(self, 'column_constraints')):
