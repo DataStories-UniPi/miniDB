@@ -10,12 +10,12 @@ sys.path.append('miniDB')
 from database import Database
 # art font is "big"
 art = '''
-             _         _  _____   ____  
-            (_)       (_)|  __ \ |  _ \     
+             _         _  _____   ____
+            (_)       (_)|  __ \ |  _ \
   _ __ ___   _  _ __   _ | |  | || |_) |
- | '_ ` _ \ | || '_ \ | || |  | ||  _ < 
+ | '_ ` _ \ | || '_ \ | || |  | ||  _ <
  | | | | | || || | | || || |__| || |_) |
- |_| |_| |_||_||_| |_||_||_____/ |____/   2021 - v3.2                               
+ |_| |_| |_||_||_| |_||_||_____/ |____/   2021 - v3.2
 '''
 
 
@@ -82,16 +82,9 @@ def create_query_plan(query, keywords, action):
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
-        #added 2 more args for not null and unique
-        dic['column_extras'] = ','.join([" ".join(val[2:]) if len(val) > 2 else 'None' for val in arglist])
-        #print(arglist)
         if 'primary key' in args:
-            arglist = args[1:-1].strip().split(' ')
-
-            # check if theres also a pk in the arguments
-            for i in arglist[:arglist.index('primary')]:
-                if i in dic['column_names']:
-                    dic['primary key'] = i
+            arglist = args[1:-1].split(' ')
+            dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
 

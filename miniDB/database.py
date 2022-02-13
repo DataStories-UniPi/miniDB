@@ -48,7 +48,7 @@ class Database:
 
         # create all the meta tables with added arguments
         self.create_table('meta_length', 'table_name,no_of_rows', 'str,int', '')
-        self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str', '')
+        self.create_table('meta_locks', 'table_name,locked', 'str,int,bool', '')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list', '')
         self.create_table('meta_indexes', 'table_name,index_name', 'str,str', '')
         self.save_database()
@@ -258,7 +258,6 @@ class Database:
         try:
             self.tables[table_name]._insert(row, insert_stack)
         except Exception as e:
-            print(e)
             logging.info(e)
             logging.info('ABORTED')
         # sleep(2)
