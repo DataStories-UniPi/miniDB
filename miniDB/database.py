@@ -17,7 +17,7 @@ from misc import split_condition
 # Clear command cache (journal)
 readline.clear_history()
 
-
+#team name fr
 class Database:
     '''
     Main Database class, containing tables.
