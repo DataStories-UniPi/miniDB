@@ -25,7 +25,7 @@ class Table:
     #
     # added references=references at the end
     #
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None, references=None):
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None, references=None, unique_list=None):
 
         if load is not None:
 
@@ -80,6 +80,14 @@ class Table:
                     referenced_things.append(ref)
             else:
                 self.references = None
+
+            #
+            # trying things with unique key
+            #
+            if unique_list is not None:
+                self.unique_column_list = str(unique_list)
+            else:
+                self.unique_column_list = None
 
 
     # if any of the name, columns_names and column types are none. return an empty table object
@@ -444,4 +452,3 @@ class Table:
         Here is a function that will do all thw work about referential constraints
         when a row is being inserted in a child_table
         '''
-        
