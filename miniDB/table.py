@@ -112,9 +112,7 @@ class Table:
         '''
         if (hasattr(self, 'column_constraints')):
             # Check for a null value in a not null column
-            val_stripped = value.strip()
-
-            if (not val_stripped or val_stripped=="null") and col_name in self.column_constraints["not_null"]:
+            if (not value or "null" in value) and col_name in self.column_constraints["not_null"]:
                 raise ValueError("Tried to add a null value into a not null column ")
 
             # Check for duplicate value in a unique column
