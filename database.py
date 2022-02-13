@@ -43,7 +43,35 @@ class Database:
         self.create_table('meta_indexes',  ['table_name', 'index_name'], [str, str])
         self.save()
 
+    #############################################################################################################
+    '''
+    Issue 78
+        massive_insert() = massive insert method
 
+        Input:
+        db_object.massive_insert('table_name', select_query, lock_load_save)
+
+        Example: db.massive_insert('classroom', "db.select('table_name', '*', return_object=True)")
+
+        It's very important to always add the 'return_object=True'.
+    '''
+
+    def massive_insert(self, table_name, select_query, lock_load_save=True):
+        try:
+            db = Database(self._name, load=True)
+            select_query = select_query.replace(' ', '')  # remove all whitespaces
+            a = '''insert_data = db''' + select_query[len(select_query.split('.')[0]):] + '''.data'''
+            loc = {}
+            exec(a, {'db.select': db.select, 'db': db}, loc)
+            insert_data = loc['insert_data']
+            print('rows: ', insert_data)
+            for row in insert_data:
+                self.insert(table_name, row, lock_load_save)
+        except Exception as e:
+            print(e)
+            print('ABORTED')
+
+    ############################################################################################################
 
     def save(self):
         '''

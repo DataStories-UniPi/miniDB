@@ -2,6 +2,7 @@ from __future__ import annotations
 from tabulate import tabulate
 import pickle
 import os
+import ast
 from misc import get_op, split_condition
 
 class Table:
@@ -364,6 +365,15 @@ class Table:
         if left not in self.column_names:
             raise ValueError(f'Condition is not valid (cant find column name)')
         coltype = self.column_types[self.column_names.index(left)]
+
+#############################################################################################################
+        # if we have between or like operator just return "right" as str
+        if op == ',between,' or op == ',like,':
+            return left, op, right
+        #else if we have in operator return "right" as a list, with same type as "left"
+        elif op == ',in,':
+            return left, op, ast.literal_eval(right)
+#############################################################################################################
 
         return left, op, coltype(right)
 
