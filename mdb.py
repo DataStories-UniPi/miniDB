@@ -92,29 +92,33 @@ def create_query_plan(query, keywords, action):
         
         if 'foreign key' in args:
 
+            # if user didn't reference anything, print error and do nothing
             if not 'ref' in args:
                 print(f'Error: Didn\'t provide a reference table and column for the foreign key.')
                 return
             
             arglist = args[1:-1].split(' ')
 
+            # create a list for both foreign key and ref cause 
+            # there might be more than one foreign key
             dic['foreign key'] = []
             dic['ref'] = []
 
             # find all the columns that will be used for the foreign key
             # and all referenced data (tables and columns)
             for i in range(len(arglist)):
-                if arglist[i] == 'foreign':
-                    dic['foreign key'].append(arglist[i-2])
 
+                # append the foreign key column of the soon to be created table
+                if arglist[i] == 'foreign':
+                    dic['foreign key'].append(arglist[i-2]) # we know that it will always be 2 indexes before the word foreign
+
+                # append the referenced table name and the table column to the list
                 if arglist[i] == 'ref':
+                    # we know that the first value after the word ref is going to be the referenced table
+                    # and after it the referenced column of that table
                     dic['ref'].append(arglist[i+1].replace(',', '')) # need the replace method cause for some reason ',' is passed when included
                     dic['ref'].append(arglist[i+2].replace(',', ''))
 
-
-            print(f'dic[\'foreign key\']: {dic["foreign key"]}')
-
-            print(f'dic[\'ref\']: {dic["ref"]}')
     
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}

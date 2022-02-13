@@ -106,11 +106,12 @@ class Database:
             column_names: list. Names of columns.
             column_types: list. Types of columns.
             primary_key: string. The primary key (if it exists).
+            foreign_key: list. Name of foreign key columns (or foreign key cause there might be only one).
+            ref: list. Contains name of parent table followed by the primary key column of the parent table.
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
 
         if foreign_key != None and ref != None:
-
             for i in range(len(ref)):
 
                 # check if index of loop is an even number
@@ -119,7 +120,8 @@ class Database:
                 # and in each "odd" index we have stored
                 # each refernced column of that table
                 if i % 2 == 0:
-
+                    
+                    # check if the referenced tables exist
                     if not ref[i] in self.tables:
                         print(f'ERROR: Cannot create table {name}\n')
                         print(f'Referenced table {ref[i]} does not exist! \n')
@@ -291,8 +293,9 @@ class Database:
                 parent_table = self.tables[table_name].ref_table # get the parent table of the current one
                 for j in range(len(self.tables[parent_table].data)):
 
+                    # check if the row contains a value that is not in the primary key column of the parent table
                     if int(row[self.tables[parent_table].pk_idx]) == int(self.tables[parent_table].data[j][0]):
-                        found = True
+                        found = True # if there is update the flag
 
                 if found:
                     self.tables[table_name]._insert(row, insert_stack)
@@ -301,6 +304,7 @@ class Database:
                     print(f'Value {int(row[self.tables[parent_table].pk_idx])} not found in the referenced column of parent table {parent_table}')
 
             else:
+                # this is the base case in which there are no foreign keys
                 self.tables[table_name]._insert(row, insert_stack)
 
         except Exception as e:
@@ -445,6 +449,17 @@ class Database:
         self.save_database()
 
     def evaluate_join_method(self, left_table, right_table, condition):
+        '''
+        Based on some varius factors return the proper Join method to be used.
+
+        Args:
+            left_table: Table. Table object supplied in the querry before the different join types.
+            right_table: Table. Table object supplied in the querry after the different join types.
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+        '''
+
         if (condition=='=' and left_table.pk==None and right_table.pk==None):
             return 'SMJ'
 
@@ -455,7 +470,18 @@ class Database:
 
 
     def inlj(self, left_table, table_right, condition):
-        
+        '''
+        Implementation of the Index Nested Loop Join algorithm. For this to work we need the right table 
+        to have an index (and for that we need to have a primary key).
+
+        Args:
+            left_table: Table. Table object supplied in the querry before the different join types.
+            right_table: Table. Table object supplied in the querry after the different join types.
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+        '''
+
         if (table_right.pk != None):
             # get columns and operator
             column_name_left, operator, column_name_right = left_table._parse_condition(condition, join=True)
@@ -482,10 +508,11 @@ class Database:
             join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
 
             if not(self._has_index(table_right._name)): #if it does not have an index:
-                #create index
+                #create index using the name of the right table
                 self.create_index(table_right._name, table_right._name)
                 pass
-
+            
+            # get that index
             idx = self._load_idx(table_right._name)
            
             #inlj algorithm
@@ -499,7 +526,18 @@ class Database:
             return join_table
 
     def smj(self, left_table, right_table, condition):
-        
+        '''
+        Implementation of the Sort-Merge Join algorithm. Merges two sorted tables into one and returns it.
+
+        Args:
+            left_table: Table. Table object supplied in the querry before the different join types.
+            right_table: Table. Table object supplied in the querry after the different join types.
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+        '''
+
+
         # get columns and operator
         column_name_left, operator, column_name_right = left_table._parse_condition(condition, join=True)
         # try to find both columns, if you fail raise error
@@ -525,36 +563,44 @@ class Database:
         join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
 
         # check if both tables are sorted
-        if not left_table.is_sorted():
-            # left_table.e_merge_sort()
-            pass
+        # if not left_table.is_sorted():
+        #     # left_table.e_merge_sort()
+        #     pass
 
-        if not left_table.is_sorted():
-            # right_table.e_merge_sort()
-            pass
+        # if not left_table.is_sorted():
+        #     # right_table.e_merge_sort()
+        #     pass
 
         left_table_length = len(left_table.data)
         right_table_length = len(right_table.data)
 
         i = 0
         j = 0
-        first_occurrence = 0
+        first_occurrence = 0 # track the first occurrence of a value
 
         while (i < left_table_length and j < right_table_length):
+            
+            # when the value of the left table is smaller then just go to the next values
+            # there is no point checking the rest of the right table cause they are sorted
+            # so we will never encounter a smaller value again
             if (left_table.data[i][column_index_left] < right_table.data[j][column_index_right]):
                 i += 1
                 
-
+            # the same logic applies when the right value of is smaller than the left one
             elif (left_table.data[i][column_index_left] > right_table.data[j][column_index_right]):
                 j += 1
 
             else:
-
+                # if they are equal merge that data and insert it to the table
                 join_table._insert(left_table.data[i] + right_table.data[j])
 
+                # when the current element is different than the previus element then 
+                # this is the first time we find it, thus we save it in 'first_occurrence'
                 if(right_table.data[j - 1][column_index_right] != right_table.data[j][column_index_right]):
                     first_occurrence = j
                 
+                # if the current index + 1 is out of bounds of the right table's length, then reset the index to the first occurrence of that element.
+                # else continue normally
                 if(j + 1 > right_table_length):
                     i += 1
                     j = first_occurrence
@@ -588,22 +634,18 @@ class Database:
 
         if mode=='inner':
             
-            # if self.evaluate_join_method(left_table, right_table):
-
-            #     pass
-            # else:
-
-                # added just for testing
-                # res = self.smj(left_table, right_table, condition)
-                method = self.evaluate_join_method(left_table, right_table, condition)
-                if method == 'SMJ':
-                    print(f'Using SMJ')
-                    res = self.smj(left_table, right_table, condition)
-                elif method == 'INLJ':
-                    print(f'Using INLJ')
-                    res = self.inlj(left_table, right_table, condition)
-                else:
-                    res = left_table._inner_join(right_table, condition)
+            print(f'type(left_table): {type(left_table)}')
+            print(f'type(right_table): {type(right_table)}')
+            print(f'type(right_table): {type(condition)}')
+            method = self.evaluate_join_method(left_table, right_table, condition)
+            if method == 'SMJ':
+                print(f'Using SMJ')
+                res = self.smj(left_table, right_table, condition)
+            elif method == 'INLJ':
+                print(f'Using INLJ')
+                res = self.inlj(left_table, right_table, condition)
+            else:
+                res = left_table._inner_join(right_table, condition)
 
 
         else:

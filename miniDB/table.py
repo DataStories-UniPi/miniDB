@@ -14,6 +14,8 @@ class Table:
         - column names (list of strings)
         - column types (list of functions like str/int etc)
         - primary (name of the primary key column)
+        - foreign_key: list. Name of foreign key columns (or foreign key cause there might be only one).
+        - ref: list. Contains name of parent table followed by the primary key column of the parent table.
 
     OR
 
@@ -69,7 +71,7 @@ class Table:
                 self.fk_idx =[] # a list with all the foreign key columns
                 self.ref_table = ref[0] # store the parent table
 
-                #populate that list
+                # populate fk_idx list with every column name
                 for i in range(len(foreign_key)):
 
                     self.fk_idx.append(foreign_key[i])
@@ -393,7 +395,9 @@ class Table:
             # table has a primary key, add PK next to the appropriate column
             headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
 
+        # if table has foreign keys
         if self.fk_idx != None:
+            # add the #FK# tag next to each column in the list fk_idx
             for i in range(len(self.fk_idx)):
                 headers[i] = headers[i] +' #FK#'
         
