@@ -440,17 +440,17 @@ class Database:
         if mode=='inner':
             res = left_table._inner_join(right_table, condition)
         elif mode=='inlj':
+            column_name_left, operator, column_name_right = Table()._parse_condition(condition, join=True)
             #if both the tables cannot be indexed, then do a simple inner join
-            if left_table.pk is None and right_table.pk is None:
+            if (left_table.pk is None and right_table.pk is None) or (column_name_left != left_table.pk and column_name_right != right_table.pk):
                 print("Index-nested-loop join cannot be executed. Using inner join instead.\n")
                 res = left_table._inner_join(right_table,condition)
             else:
                 reversed = False
+                
                 #if the right table cannot be indexed and the left can, we reverse them
-                if(right_table.pk is None):
-                    temp = right_table
-                    right_table = left_table
-                    left_table = temp
+                if(column_name_left == left_table.pk):
+                    right_table, left_table = left_table, right_table
                     reversed = True
 
                 #Create the index of the second table
@@ -492,7 +492,7 @@ class Database:
                                 join_table._insert(row_left + right_table.data[_])
                 else:
                     for row_left in left_table.data:
-                        left_value = row_left[column_index_left]
+                        left_value = row_left[column_index_right]
                         results = index.find(operator,left_value)
                         if(len(results)>0):
                             for _ in results:
