@@ -10,6 +10,7 @@ import logging
 import warnings
 import readline
 from tabulate import tabulate
+import ast
 
 
 # sys.setrecursionlimit(100)
@@ -502,48 +503,70 @@ class Database:
         elif mode=='smj':
             left_names = [f'{left_table._name}.{colname}' if left_table._name!='' else colname for colname in left_table.column_names]
             right_names = [f'{right_table._name}.{colname}' if right_table._name!='' else colname for colname in right_table.column_names]
-            
-            # the rows are grouped by the value we want to sort by which is the key of the
-            # dictionary. The value of each key is a list with all the rows with the given value
-            dicR = {}
-            dicL = {}
 
             column_name_left, operator, column_name_right = Table()._parse_condition(condition, join=True)
 
             with open("miniDB/externalSortFolder/rightTableFile",'w+') as rt:
-                # Creating the grouping of the rows based on the column name we specified
-                values = set(map(lambda x:x[right_table.column_names.index(column_name_right)], right_table.data))
-                groupRows = [[row for row in right_table.data if row[right_table.column_names.index(column_name_right)]==x] for x in values]
-                
-                for g in groupRows:
-                    dicR[g[0][right_table.column_names.index(column_name_right)]] = g
-
-                for el in dicR:
-                    rt.write(str(el)+"\n")
+                for row in right_table.data:
+                    rt.write(str(row[right_table.column_names.index(column_name_right)])+ " " + str(row).replace(" ","") +"\n")
             
             with open("miniDB/externalSortFolder/leftTableFile",'w+') as lt:
-                values = set(map(lambda x:x[left_table.column_names.index(column_name_left)], left_table.data))
-                groupRows = [[row for row in left_table.data if row[left_table.column_names.index(column_name_left)]==x] for x in values]
-                
-                for g in groupRows:
-                    dicL[g[0][left_table.column_names.index(column_name_left)]] = g
-
-                for el in dicL:
-                    lt.write(str(el)+"\n")
+                for row in left_table.data:
+                    lt.write(str(row[left_table.column_names.index(column_name_left)])+ " " + str(row).replace(" ","") +"\n")
             
-            try:
-                ems = Table.ExternalMergeSort()
-                ems.runExternalSort('rightTableFile')
-                # Initialization of all values
-                ems = Table.ExternalMergeSort()
-                ems.runExternalSort('leftTableFile')
+            ems = Table.ExternalMergeSort()
+            ems.runExternalSort('rightTableFile')
+            # Initialization of all values
+            ems = Table.ExternalMergeSort()
+            ems.runExternalSort('leftTableFile')
 
-                os.remove('miniDB/externalSortFolder/rightTableFile')
-                os.remove('miniDB/externalSortFolder/leftTableFile')
-            except:
-                print('Something went wrong with the sorting of the Tables for the SMJ.')
+            os.remove('miniDB/externalSortFolder/rightTableFile')
+            os.remove('miniDB/externalSortFolder/leftTableFile')
 
-                
+            # This does the final merge on sort-merge join
+            with open('miniDB/externalSortFolder/sorting of rightTableFile','r') as right, open('miniDB/externalSortFolder/sorting of leftTableFile','r') as left,open('miniDB/externalSortFolder/final','w+') as final:
+                mark = None #Used to return to previous values of the file
+                l = None
+                r = None
+                while l != '':
+                    try:
+                        if mark is None:
+                            mark = right.tell()
+                            l = left.readline()
+                            r = right.readline()
+                            while l.split()[0] < r.split()[0]:
+                                l = left.readline()
+                            while l.split()[0] > r.split()[0]:
+                                mark = right.tell()
+                                r = right.readline()
+                            
+                        if l.split()[0] == r.split()[0]:
+                            final.write(l.replace("\n","")[l.index("['"):] + " " + r.replace("\n","")[r.index("['"):] + '\n')
+                            r = right.readline()
+                        else:
+                            right.seek(mark)
+                            mark = None
+                    except IndexError:
+                        right.seek(mark)
+                        mark = None
+            
+            os.remove('miniDB/externalSortFolder/sorting of rightTableFile')
+            os.remove('miniDB/externalSortFolder/sorting of leftTableFile')
+
+            join_table_name = ''
+            join_table_colnames = left_names + right_names
+            join_table_coltypes = left_table.column_types + right_table.column_types
+            join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
+
+            # Save merged file first. The hypothesis is that the RAM cannot fit the file, thus we have it saved
+            # However we load the file to display it like this, might need to be changed in the future
+            with open('miniDB/externalSortFolder/final','r') as f:
+                for line in f:
+                    records = line.split()
+                    join_table._insert(ast.literal_eval(records[0]) + ast.literal_eval(records[1]))
+            
+            res = join_table
+            os.remove('miniDB/externalSortFolder/final')
         else:
             raise NotImplementedError
 

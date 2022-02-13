@@ -757,7 +757,6 @@ class Table:
             self.numFiles = 1
             with open('miniDB/externalSortFolder/' + largefile) as f:
                 chunk = f.readlines(chunkSize)
-                print(chunk)
                 while chunk:
                     os.makedirs(os.path.dirname('miniDB/externalSortFolder/tempSplitFiles ' + self.startingFileName +'/'+str(self.numFiles)),exist_ok=True)
                     with open("miniDB/externalSortFolder/tempSplitFiles " + self.startingFileName +'/' + str(self.numFiles),'w+') as chunk_file:
@@ -771,7 +770,15 @@ class Table:
         def sortSmallFile(self,fileToBeSorted):
             arr = []
             with open(f'miniDB/externalSortFolder/tempSplitFiles {self.startingFileName}/' + str(fileToBeSorted),'r') as fts:
-                arr = list(map(int,fts.read().splitlines()))
+                # If the contents of the file are integers
+                try:
+                    with open(f'miniDB/externalSortFolder/tempSplitFiles {self.startingFileName}/' + str(fileToBeSorted),'r') as fts:
+                        arr = list(map(int,fts.read().splitlines()))
+                # If the contents are alphanumeric values
+                except:
+                    with open(f'miniDB/externalSortFolder/tempSplitFiles {self.startingFileName}/' + str(fileToBeSorted),'r') as fts:
+                        arr = list(map(str,fts.read().splitlines()))
+                
                 self.sumFiles += len(arr)
                 self.mergeSort(arr)
             with open(f'miniDB/externalSortFolder/tempSplitFiles {self.startingFileName}/' + str(fileToBeSorted),'w') as fts:
@@ -791,7 +798,12 @@ class Table:
             output = []
             #(X,Y) where X is the value of the element,
             # Y is the key of the file in fileName
-            pq = [(int(fileNames[i].readline().replace('\n','')), i) for i in range(1,k+1)]
+            try:
+                pq = [(int(fileNames[i].readline().replace('\n','')), i) for i in range(1,k+1)]
+            except:
+                for i in range(1,k+1):
+                    fileNames[i].seek(0)
+                pq = [(fileNames[i].readline().replace('\n',''), i) for i in range(1,k+1)]
 
             #Create heap for the external merge sort
             heapq.heapify(pq)
@@ -804,7 +816,10 @@ class Table:
                 #So if the value is not an empty string, add the
                 #integer to the heap
                 if next != '':
-                    heapq.heappush(pq,(int(next),file_key))
+                    try:
+                        heapq.heappush(pq,(int(next),file_key))
+                    except:
+                        heapq.heappush(pq,(next,file_key))
 
             with open(f"miniDB/externalSortFolder/sorting of {self.startingFileName}",'w+') as sf:
                 for el in output:
@@ -812,7 +827,7 @@ class Table:
             return output
 
         def runExternalSort(self, filename):
-            self.splitFile(filename,7)
+            self.splitFile(filename,30)
             for i in range(1,self.numFiles):
                 self.sortSmallFile(i)
             self.k_wayMerge(self.numFiles)
