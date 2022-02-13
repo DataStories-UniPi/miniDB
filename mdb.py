@@ -99,6 +99,21 @@ def create_query_plan(query, keywords, action):
         #kai emfanise
     #if drop view
         #delete temp view
+    if action=='create view':
+        #if create view select from table those columns and show
+        #isxws xreiastei kainourgia def gia na ektelei authn thn leitourgia 
+        args = dic['create view'][dic['create view'].index('('):dic['create view'].index(')')+1]
+        dic['create view'] = dic['create view'].removesuffix(args).strip()
+        arg_nopk = args.replace('primary key', '')[1:-1]
+        arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
+        dic['column_names'] = ','.join([val[0] for val in arglist])
+        dic['column_types'] = ','.join([val[1] for val in arglist])
+        #Apla gia safeguard feature ,logika einai axreiasto alla kalutera na pernaei elegxo ki apla na to pernaei
+        if 'primary key' in args:
+            arglist = args[1:-1].split(' ')
+            dic['primary key'] = arglist[arglist.index('primary')-2]
+        else:
+            dic['primary key'] = None
     
         
     
@@ -165,7 +180,7 @@ def evaluate_from_clause(dic):
 def interpret(query):
     '''
     Interpret the query.
-    Added create temp view and dropp temp view
+    Added create temp view and dropp temp view sta xreate kai create tables
     '''
     kw_per_action = {'create table': ['create table'],
                      'drop table': ['drop table'],
@@ -180,8 +195,9 @@ def interpret(query):
                      'update table': ['update table', 'set', 'where'],
                      'create index': ['create index', 'on', 'using'],
                      'drop index': ['drop index'],
-                     'create view':['çreate view'],
-                     'drop view':['drop view']
+                     'create view': ['create view'],
+                     'drop view': ['drop view']
+
                      }
 
     if query[-1]!=';':
