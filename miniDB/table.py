@@ -23,8 +23,8 @@ class Table:
 
     '''
 
-    not_nulls = []
-    uniques = []
+    not_nulls = {}
+    uniques = {}
     def __init__(self, name=None, column_names=None, column_types=None, not_nulls=None, uniques=None, primary_key=None, load=None):
 
         if load is not None:
@@ -120,18 +120,23 @@ class Table:
             row[i] = self.column_types[i](row[i])
 
             #Check if the given value is null
-            if len(self.not_nulls) != 0 and self.not_nulls[i] != 'None' and row[i] == '':
-                print(f'## ERROR -> Column {self.column_names[i]} cannot accept null value.')
-                raise ValueError(f'## ERROR -> Column {self.column_names[i]} cannot accept null value.')
-
+            counterNull = 0
+            for null in self.not_nulls:
+                counterNull = 0
+                for name in self.column_names:
+                    if str(null) == str(name) and bool(str(row[counterNull]).strip()) == False:
+                        print('The value in column ' + str(name) + " can not be null")
+                    counterNull += 1
             #Check if the given value is already exists
-            if len(self.uniques) != 0 and self.uniques[i] != 'None':
+            counterUnique = 0
+            for unique_col in self.uniques:
+                counterUnique = 0
                 #Searching the entire table for the value using loop
-                for val in self.column_by_name(self.column_names[i]):
-                    #Comparing
-                    if row[i] == val:
-                        print(f'## ERROR -> Value {row[i]} is already exists in the table.')
-                        raise ValueError(f'## ERROR -> Value {row[i]} is already exists in the table.')
+                for col_name in self.column_names:
+                #Comparing
+                    if unique_col == col_name and self._is_unique(counterUnique, row[counterUnique]) == False:
+                        print('The values in column ' + str(col_name) + " must be unique")
+                    counterUnique += 1
             # except:
             #     raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
 
