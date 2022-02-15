@@ -77,6 +77,17 @@ def create_query_plan(query, keywords, action):
             
         else:
             dic['desc'] = None
+            
+        if dic['group by'] is not None:
+            dic['from'] = dic['from'].removesuffix(' group')
+            if 'desc' in dic['group by']:
+                dic['desc'] = True
+            else:
+                dic['desc'] = False
+            dic['group by'] = dic['group by'].removesuffix(' asc').removesuffix(' desc')
+            
+        else:
+            dic['desc'] = None
 
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
@@ -155,7 +166,7 @@ def interpret(query):
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
-                     'select': ['select', 'from', 'where', 'order by', 'top'],
+                     'select': ['select', 'from', 'where', 'order by', 'group by', 'having', 'top'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
