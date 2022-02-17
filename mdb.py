@@ -84,18 +84,23 @@ def create_query_plan(query, keywords, action):
             print("Here")
             if 'count' in dic['select']:
                 dic['agfu'] = 'count'
+                dic['select'] = dic['select'].removesuffix(' count')
             elif 'max' in dic['select']:
                 dic['agfu'] = 'max'
+                dic['select'] = dic['select'].removesuffix(' max')
             elif 'min' in dic['select']:
                 dic['agfu'] = 'min'
+                dic['select'] = dic['select'].removesuffix(' min')
             elif 'sum' in dic['select']:
                 dic['agfu'] = 'sum'
+                dic['select'] = dic['select'].removesuffix(' sum')
             elif 'avg' in dic['select']:
                 dic['agfu'] = 'avg'
+                dic['select'] = dic['select'].removesuffix(' avg')
             else:
                 dic['agfu'] = ''
             if(dic['agfu'] != ''):
-                dic['select'] = dic['select'].removesuffix(' max').removesuffix(' min').removesuffix('count').removesuffix('sum').removesuffix('avg').removesuffix('(').removesuffix(')')
+                dic['select'] = dic['select'].removeprefix('(').removesuffix(')')
             print(dic)
 
     if action=='create table':
