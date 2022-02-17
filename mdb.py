@@ -63,6 +63,8 @@ def create_query_plan(query, keywords, action):
 
     for i in range(len(kw_in_query)-1):
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
+    
+     print(dic)    
 
     if action=='select':
         dic = evaluate_from_clause(dic)
@@ -80,19 +82,22 @@ def create_query_plan(query, keywords, action):
             
         if dic['group by'] is not None:
             dic['from'] = dic['from'].removesuffix(' group')
-            print(dic)
-            # if 'count' in dic['group by']:
-                # dic['count'] = True
-            # else if 'max' in dic['group by']:
-                # dic['max'] = True
-            # else if 'min' in dic['group by']:
-                # dic['min'] = True
-            # else:
-                # dic['sum'] = True
-            # dic['group by'] = dic['group by'].removesuffix(' max').removesuffix(' min').removesuffix('count').removesuffix('sum')
-            
-        else:
-            dic['desc'] = None
+            print("Here")
+            if 'count' in dic['select']:
+                dic['agfu'] = 'count'
+            else if 'max' in dic['select']:
+                dic['agfu'] = 'max'
+            else if 'min' in dic['select']:
+                dic['agfu'] = 'min'
+            else if 'sum' in dic['select']:
+                dic['agfu'] = 'sum'
+            else if 'avg' in dic['select']:
+                dic['agfu'] = 'avg'
+            else:
+                dic['agfu'] = ''    
+            if(dic['agfu'] !== ''):    
+                dic['select'] = dic['select'].removesuffix(' max').removesuffix(' min').removesuffix('count').removesuffix('sum').removesuffix('avg').removesuffix('(').removesuffix(')')
+    print(dic)    
 
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
@@ -171,7 +176,7 @@ def interpret(query):
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
-                     'select': ['select', 'from', 'where', 'order by', 'group by', 'having', 'top'],
+                     'select': ['select', 'from', 'where', 'order by', 'group by','top'],  #'having',
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
