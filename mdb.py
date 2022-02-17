@@ -82,6 +82,7 @@ def create_query_plan(query, keywords, action):
             
         if dic['group by'] is not None:
             dic['from'] = dic['from'].removesuffix(' group')
+<<<<<<< HEAD
             print("Here")
             if 'count' in dic['select']:
                 dic['agfu'] = 'count'
@@ -97,7 +98,7 @@ def create_query_plan(query, keywords, action):
                 dic['agfu'] = ''    
             if(dic['agfu'] !== ''):    
                 dic['select'] = dic['select'].removesuffix(' max').removesuffix(' min').removesuffix('count').removesuffix('sum').removesuffix('avg').removesuffix('(').removesuffix(')')
-    print(dic)    
+    print(dic) 
 
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
