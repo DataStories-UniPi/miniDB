@@ -80,11 +80,16 @@ def create_query_plan(query, keywords, action):
             
         if dic['group by'] is not None:
             dic['from'] = dic['from'].removesuffix(' group')
-            if 'desc' in dic['group by']:
-                dic['desc'] = True
-            else:
-                dic['desc'] = False
-            dic['group by'] = dic['group by'].removesuffix(' asc').removesuffix(' desc')
+            print(dic)
+            # if 'count' in dic['group by']:
+                # dic['count'] = True
+            # else if 'max' in dic['group by']:
+                # dic['max'] = True
+            # else if 'min' in dic['group by']:
+                # dic['min'] = True
+            # else:
+                # dic['sum'] = True
+            # dic['group by'] = dic['group by'].removesuffix(' max').removesuffix(' min').removesuffix('count').removesuffix('sum')
             
         else:
             dic['desc'] = None

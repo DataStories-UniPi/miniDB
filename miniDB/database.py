@@ -335,7 +335,7 @@ class Database:
         # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
-            return table_name._select_where(columns, condition, group_by, having_condition, order_by, desc, top_k)
+            return table_name._select_where(columns, condition, group_by, having, order_by, desc, top_k)
 
         if condition is not None:
             condition_column = split_condition(condition)[0]
@@ -351,7 +351,7 @@ class Database:
             bt = self._load_idx(index_name)
             table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k)
         else:
-            table = self.tables[table_name]._select_where(columns, condition, group_by, having_condition, order_by, desc, top_k)
+            table = self.tables[table_name]._select_where(columns, condition, group_by, having, order_by, desc, top_k)
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as
