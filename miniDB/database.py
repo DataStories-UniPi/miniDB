@@ -313,7 +313,7 @@ class Database:
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
 
-    def select(self, columns, table_name, condition, group_by, order_by=None, top_k=True,\
+    def select(self, columns, table_name, condition, group_by, order_by=None, top_k=True, is_here,\
                desc=None, save_as=None, return_object=True):
         '''
         Selects and outputs a table's data where condtion is met.
@@ -333,6 +333,7 @@ class Database:
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
         '''
         # print(table_name)
+        print('Here firtst')
         self.load_database()
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, group_by, order_by, desc, top_k)

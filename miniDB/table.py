@@ -197,7 +197,7 @@ class Table:
         return indexes_to_del
 
 
-    def _select_where(self, return_columns, condition=None, order_by=None, group_by=None, desc=True, top_k=None):
+    def _select_where(self, return_columns, condition=None, order_by=None, group_by=None, desc=True, top_k=None, is_here):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -214,6 +214,7 @@ class Table:
         '''
 
         # if * return all columns, else find the column indexes for the columns specified
+        print('HEREE I AMA')
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
         else:
@@ -243,6 +244,9 @@ class Table:
             s_table.order_by(order_by, desc)
 
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
+        
+        if group_by is not None:
+            print(here)
 
         return s_table
 
