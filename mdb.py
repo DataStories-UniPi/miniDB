@@ -94,8 +94,8 @@ def create_query_plan(query, keywords, action):
                 dic['agfu'] = 'avg'
             else:
                 dic['agfu'] = ''
-            if(dic['agfu'] != ''):
-                dic['select'] = dic['select'].replace(dic['agfu'],'').replace('(','').replace(')','').replace(' ','')
+            # if(dic['agfu'] != ''):
+                # dic['select'] = dic['select'].replace(dic['agfu'],'').replace('(','').replace(')','').replace(' ','')
             print(dic)
 
     if action=='create table':
