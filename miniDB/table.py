@@ -195,7 +195,7 @@ class Table:
         # self._update()
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
-
+    
 
     def _select_where(self, return_columns, condition=None, order_by=None, group_by=None, desc=True, top_k=None, is_here):
         '''
@@ -215,6 +215,7 @@ class Table:
 
         # if * return all columns, else find the column indexes for the columns specified
         print('HEREE I AMA')
+        print(return_columns,condition,order_by,group_by,desc,top_k)
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
         else:
