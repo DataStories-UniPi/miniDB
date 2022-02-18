@@ -216,6 +216,23 @@ class Table:
         # if * return all columns, else find the column indexes for the columns specified
         print('HEREE I AMA')
         print(return_columns,condition,order_by,group_by,desc,top_k)
+        var aggr_function
+        if group_by is not None:
+            if 'count' in return_columns:
+                aggr_function = 'count'
+            elif 'max' in return_columns:
+                aggr_function = 'max'
+            elif 'min' in return_columns:
+                aggr_function = 'min'
+            elif 'sum' in return_columns:
+                aggr_function = 'sum'
+            elif 'avg' in return_columns:
+                aggr_function = 'avg'
+            else:
+                aggr_function = ''
+            print(aggr_function)
+            if(aggr_function != ''):
+                return_columns = return_columns.replace('(','').replace(')','').replace(' ','')
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
         else:

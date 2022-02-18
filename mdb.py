@@ -79,20 +79,20 @@ def create_query_plan(query, keywords, action):
         else:
             dic['desc'] = None
             
-        if dic['group by'] is not None:
-            dic['from'] = dic['from'].removesuffix(' group')
-            print("Here")
-            if 'count' in dic['select']:
-                dic['agfu'] = 'count'
-            elif 'max' in dic['select']:
-                dic['agfu'] = 'max'
-            elif 'min' in dic['select']:
-                dic['agfu'] = 'min'
-            elif 'sum' in dic['select']:
-                dic['agfu'] = 'sum'
-            elif 'avg' in dic['select']:
-                dic['agfu'] = 'avg'
-            else:
+        # if dic['group by'] is not None:
+            # dic['from'] = dic['from'].removesuffix(' group')
+            # print("Here")
+            # if 'count' in dic['select']:
+                # dic['agfu'] = 'count'
+            # elif 'max' in dic['select']:
+                # dic['agfu'] = 'max'
+            # elif 'min' in dic['select']:
+                # dic['agfu'] = 'min'
+            # elif 'sum' in dic['select']:
+                # dic['agfu'] = 'sum'
+            # elif 'avg' in dic['select']:
+                # dic['agfu'] = 'avg'
+            # else:
                 dic['agfu'] = ''
             # if(dic['agfu'] != ''):
                 # dic['select'] = dic['select'].replace(dic['agfu'],'').replace('(','').replace(')','').replace(' ','')
