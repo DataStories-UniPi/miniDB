@@ -313,7 +313,8 @@ class Database:
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
 
-    def select(self, columns, table_name, condition, group_by=None, order_by=None, top_k=True, is_here, desc=None, save_as=None, return_object=True):
+    def select(self, columns, table_name, condition, group_by=None, order_by=None, top_k=True, is_here,\
+               desc=None, save_as=None, return_object=True):
         '''
         Selects and outputs a table's data where condtion is met.
 
