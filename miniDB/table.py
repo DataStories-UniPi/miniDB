@@ -197,7 +197,7 @@ class Table:
         return indexes_to_del
 
 
-    def _select_where(self, return_columns, condition=None, order_by=None, group_by=None desc=True, top_k=None):
+    def _select_where(self, return_columns, condition=None, order_by=None, group_by=None, desc=True, top_k=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
