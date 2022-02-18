@@ -152,18 +152,19 @@ class SqlInterpreter:
                 condition = None
 
             top = query_array[query_array.index("TOP") + 1] if re.search("TOP", query) else None
-            order_by = query_array[query_array.index("BY") + 1] if re.search("ORDER BY", query) else None
-            if re.search ("GROUP BY",query) :
-                if re.search("HAVING",query :
-                    group_by_col_list = [col for col in query_array[query_array.index("GROUP BY") :
-                    query_array.index("HAVING")]]
-                    having = query_array[query_array.index("HAVING" + 1] if re.search("HAVING",query)
-                else 
-                    group_by_col_list = [ col for col in query_array[query_array.index("GROUP BY"):]]
-                    having = None
-            else
-                group_by_col_list = None
-            print(group_by_col_list)
+            order_by = query_array[query_array.index("BY") + 1] if re.search(" BY", query) else None
+            # order_by = query_array[query_array.index("BY") + 1] if re.search("ORDER BY", query) else None
+            # if re.search ("GROUP BY",query) :
+                # if re.search("HAVING",query :
+                    # group_by_col_list = [col for col in query_array[query_array.index("GROUP BY") :
+                    # query_array.index("HAVING")]]
+                    # having = query_array[query_array.index("HAVING" + 1] if re.search("HAVING",query)
+                # else 
+                    # group_by_col_list = [ col for col in query_array[query_array.index("GROUP BY"):]]
+                    # having = None
+            # else
+                # group_by_col_list = None
+            # print(group_by_col_list)
                 
             asc = True if re.search("ASC", query) else False
             save_as = query_array[query_array.index("AS") + 1] if "AS" in query_array else None
