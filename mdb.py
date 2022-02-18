@@ -93,7 +93,7 @@ def create_query_plan(query, keywords, action):
             # elif 'avg' in dic['select']:
                 # dic['agfu'] = 'avg'
             # else:
-                dic['agfu'] = ''
+                # dic['agfu'] = ''
             # if(dic['agfu'] != ''):
                 # dic['select'] = dic['select'].replace(dic['agfu'],'').replace('(','').replace(')','').replace(' ','')
             print(dic)
