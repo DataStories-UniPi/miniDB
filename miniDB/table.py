@@ -216,7 +216,6 @@ class Table:
         # if * return all columns, else find the column indexes for the columns specified
         print('HEREE I AMA')
         print(return_columns,condition,order_by,group_by,desc,top_k)
-        var aggr_function
         if group_by is not None:
             if 'count' in return_columns:
                 aggr_function = 'count'
