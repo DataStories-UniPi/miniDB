@@ -197,7 +197,7 @@ class Table:
         return indexes_to_del
     
 
-    def _select_where(self, return_columns, condition=None, order_by=None, group_by=None, desc=True, top_k=None):
+    def _select_where(self, return_columns, condition=None, order_by=None, group_by=None, having=None, desc=True, top_k=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -214,29 +214,36 @@ class Table:
         '''
 
         # if * return all columns, else find the column indexes for the columns specified
-        print('HEREE I AMA')
-        print(return_columns,condition,order_by,group_by,desc,top_k)
-        if group_by is not None:
-            if 'count' in return_columns:
-                aggr_function = 'count'
-            elif 'max' in return_columns:
-                aggr_function = 'max'
-            elif 'min' in return_columns:
-                aggr_function = 'min'
-            elif 'sum' in return_columns:
-                aggr_function = 'sum'
-            elif 'avg' in return_columns:
-                aggr_function = 'avg'
-            else:
-                aggr_function = ''
-            print(aggr_function)
-            if(aggr_function != ''):
-                return_columns = return_columns.replace('(','').replace(')','').replace(' ','')
+        #print('HEREE I AMA')
+        print(return_columns,condition,order_by,group_by,desc,top_k,having)
+        print(having)
+        print(group_by)
+        print(desc)
+
+        if 'count' in return_columns:
+            aggr_function = 'count'
+        elif 'max' in return_columns:
+            aggr_function = 'max'
+        elif 'min' in return_columns:
+            aggr_function = 'min'
+        elif 'sum' in return_columns:
+            aggr_function = 'sum'
+        elif 'avg' in return_columns:
+            aggr_function = 'avg'
+        else:
+            aggr_function = None
+        #print(aggr_function)
+        if aggr_function != None:
+            col_aggr = return_columns[return_columns.find("(")+1:return_columns.find(")")].replace(' ','')
+            #print(return_columns)
+            #print(col_aggr)
+            return_columns = return_columns.replace('(', '').replace(')', '').replace(aggr_function, '').replace(' ','')
+        print(return_columns)
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
-
+        print(return_cols)
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
@@ -245,7 +252,9 @@ class Table:
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
-
+        print('Rows')
+        print(rows)
+        print(rows[0])
         # top k rows
         # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
@@ -256,14 +265,22 @@ class Table:
         dict['column_names'] = [self.column_names[i] for i in return_cols]
         dict['column_types']   = [self.column_types[i] for i in return_cols]
 
-        s_table = Table(load=dict) 
+        s_table = Table(load=dict)
+        print('Table')
+        print(s_table.data[0])
+        if aggr_function and group_by==None:
+            s_table.set_aggr_function(aggr_function, col_aggr)
+
+        if aggr_function and group_by:
+            s_table.set_aggr_group_function(aggr_function, col_aggr, group_by, having)
+ 
         if order_by:
             s_table.order_by(order_by, desc)
+        
+        if group_by and aggr_function==None:
+            s_table.group_by(group_by)
 
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
-        
-        if group_by is not None:
-            print(here)
 
         return s_table
 
@@ -328,6 +345,176 @@ class Table:
         self.data = [self.data[i] for i in idx]
         # self._update()
 
+    def set_aggr_group_function(self,aggr_funct,col_aggr,col_group,having):
+        '''
+          Join table (left) with a supplied table (right) where condition is met.
+
+          Args:
+              condition: string. A condition using the following format:
+                  'column[<,<=,==,>=,>]value' or
+                  'value[<,<=,==,>=,>]column'.
+
+                  Operatores supported: (<,<=,==,>=,>)
+          '''
+        column_aggr = self.column_by_name(col_aggr)
+        column_group = self.column_by_name(col_group)
+        result = []
+        group_array = []
+        group_array_temp=[]
+        result_temp=[]
+        if 'count' == aggr_funct:
+            for count, value in enumerate(column_group):
+                if value in group_array:
+                    index = group_array.index(value)
+                    result[index] += 1
+                else:
+                    group_array.append(value)
+                    result.append(1)
+        elif 'max' == aggr_funct:
+            for count, value in enumerate(column_group):
+                if value in group_array_temp:
+                    index = group_array_temp.index(value)
+                    if result_temp[index] < column_aggr[count]:
+                        result_temp[index] = column_aggr[count]
+                else:
+                    group_array_temp.append(value)
+                    result_temp.append(column_aggr[count])
+            #table = sorted(range(len(result_temp)), key=lambda k: result_temp[k], reverse=False)
+            #print(table)
+            #for value in table:
+            group_array = group_array_temp
+            result = result_temp
+        elif 'min' == aggr_funct:
+            for count, value in enumerate(column_group):
+                if value in group_array_temp:
+                    index = group_array_temp.index(value)
+                    if result_temp[index] > column_aggr[count]:
+                        result_temp[index] = column_aggr[count]
+                else:
+                    group_array_temp.append(value)
+                    result_temp.append(column_aggr[count])
+            #table = sorted(range(len(result_temp)), key=lambda k: result_temp[k], reverse=True)
+            #for value in table:
+            group_array = group_array_temp
+            result = result_temp
+        elif 'sum' == aggr_funct:
+            for count, value in enumerate(column_group):
+                if value in group_array:
+                    index = group_array.index(value)
+                    result[index] += column_aggr[count]
+                else:
+                    group_array.append(value)
+                    result.append(column_aggr[count])
+        elif 'avg' == aggr_funct:
+            len_array=[]
+            for count, value in enumerate(column_group):
+                if value in group_array:
+                    index = group_array.index(value)
+                    result[index] += column_aggr[count]
+                    len_array[index] += 1
+                else:
+                    group_array.append(value)
+                    result.append(column_aggr[count])
+                    len_array.append(1)
+            for index in range(len(group_array)):
+                result[index] = result[index]/len_array[index]
+
+        size = []
+        for index in range(len(group_array)):
+            size.append(index)
+
+        self.data = [size]
+        print(self.data)
+        print(result)
+        print(group_array)
+
+        if having:
+            if '>' in having:
+                number = int(having.split(">", 1)[1])
+                for count, value in enumerate(result):
+                    if value < number:
+                        del result[count]
+                        del group_array[count]
+            elif '=' in having:
+                number = int(having.split("=", 1)[1])
+                for count, value in enumerate(result):
+                    if value != number:
+                        del result[count]
+                        del group_array[count]
+            elif '<' in having:
+                number = int(having.split("<", 1)[1])
+                for count, value in enumerate(result):
+                    if value > number:
+                        del result[count]
+                        del group_array[count]
+        table = sorted(range(len(group_array)), key=lambda k: group_array[k], reverse=False)
+        final_group = []
+        final_result = []
+        for x in table:
+            final_group.append(group_array[x])
+            final_result.append(result[x])
+        print(table)
+        for index in range(len(final_group)):
+            self.data.append([final_result[index],final_group[index]])
+
+    def group_by(self, column_name, aggr_func=None):
+        '''
+        Group by table based on column.
+
+        Args:
+            column_name: string. Name of column.
+            aggr_func:
+        '''
+        column = self.column_by_name(column_name)
+        print(column)
+        if aggr_func==None:
+           unique_table = []
+           temp_table= []
+           table = sorted(range(len(column)), key=lambda k: column[k], reverse= False)
+           print(table)
+           for value in (table):
+               if column[value] not in temp_table:
+                   temp_table.append(column[value])
+                   unique_table.append(value)
+           print(unique_table)
+           self.data = [self.data[i] for i in unique_table]
+    
+    def set_aggr_function(self,aggr_funct,column_name):
+        '''
+          Join table (left) with a supplied table (right) where condition is met.
+
+          Args:
+              condition: string. A condition using the following format:
+                  'column[<,<=,==,>=,>]value' or
+                  'value[<,<=,==,>=,>]column'.
+
+                  Operatores supported: (<,<=,==,>=,>)
+          '''
+
+        column = self.column_by_name(column_name)
+        print(column)
+
+        if 'count' == aggr_funct:
+            result = len(column)
+            index = 0
+        elif 'max' == aggr_funct:
+            result = max(column)
+            index = column.index(result)
+        elif 'min' == aggr_funct:
+            result = min(column)
+            index = column.index(result)
+        elif 'sum' == aggr_funct:
+            result = sum(column)
+            index = 0
+        elif 'avg' == aggr_funct:
+            result = sum(column)/len(column)
+            index = 0
+        print(result,index)
+        iter = [index]
+        print(iter)
+        self.data = [self.data[i] for i in iter]
+        print(self.data)
+        self.data[0][0] = result
 
     def _inner_join(self, table_right: Table, condition):
         '''
