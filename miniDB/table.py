@@ -213,12 +213,7 @@ class Table:
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
 
-        # if * return all columns, else find the column indexes for the columns specified
-        #print('HEREE I AMA')
-        print(return_columns,condition,order_by,group_by,desc,top_k,having)
-        print(having)
-        print(group_by)
-        print(desc)
+        #Passing a string the select aggregation function
 
         if 'count' in return_columns:
             aggr_function = 'count'
@@ -232,18 +227,14 @@ class Table:
             aggr_function = 'avg'
         else:
             aggr_function = None
-        #print(aggr_function)
+
         if aggr_function != None:
             col_aggr = return_columns[return_columns.find("(")+1:return_columns.find(")")].replace(' ','')
-            #print(return_columns)
-            #print(col_aggr)
             return_columns = return_columns.replace('(', '').replace(')', '').replace(aggr_function, '').replace(' ','')
-        print(return_columns)
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
-        print(return_cols)
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
@@ -252,9 +243,7 @@ class Table:
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
-        print('Rows')
-        print(rows)
-        print(rows[0])
+
         # top k rows
         # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
@@ -266,17 +255,19 @@ class Table:
         dict['column_types']   = [self.column_types[i] for i in return_cols]
 
         s_table = Table(load=dict)
-        print('Table')
-        print(s_table.data[0])
+
+        #Call function if its only aggregation function
         if aggr_function and group_by==None:
             s_table.set_aggr_function(aggr_function, col_aggr)
-
+        
+         #Call function if its both aggregation function & group by
         if aggr_function and group_by:
             s_table.set_aggr_group_function(aggr_function, col_aggr, group_by, having)
  
         if order_by:
             s_table.order_by(order_by, desc)
-        
+           
+        #Call function if only group by
         if group_by and aggr_function==None:
             s_table.group_by(group_by)
 
@@ -347,14 +338,13 @@ class Table:
 
     def set_aggr_group_function(self,aggr_funct,col_aggr,col_group,having):
         '''
-          Join table (left) with a supplied table (right) where condition is met.
+          Group based on the given aggregation function
 
           Args:
-              condition: string. A condition using the following format:
-                  'column[<,<=,==,>=,>]value' or
-                  'value[<,<=,==,>=,>]column'.
-
-                  Operatores supported: (<,<=,==,>=,>)
+             aggr_funct: string to select aggregation function (ie. min, max etc.)
+             col_aggr: string | column on which aggregation function is used
+             col_group: string | column that group by is applied
+             having: string | used if having clause is asked, accepts numeric values and have conditions <,>,=
           '''
         column_aggr = self.column_by_name(col_aggr)
         column_group = self.column_by_name(col_group)
@@ -362,6 +352,7 @@ class Table:
         group_array = []
         group_array_temp=[]
         result_temp=[]
+        #Checks which aggregation function is asked
         if 'count' == aggr_funct:
             for count, value in enumerate(column_group):
                 if value in group_array:
@@ -379,9 +370,6 @@ class Table:
                 else:
                     group_array_temp.append(value)
                     result_temp.append(column_aggr[count])
-            #table = sorted(range(len(result_temp)), key=lambda k: result_temp[k], reverse=False)
-            #print(table)
-            #for value in table:
             group_array = group_array_temp
             result = result_temp
         elif 'min' == aggr_funct:
@@ -393,8 +381,6 @@ class Table:
                 else:
                     group_array_temp.append(value)
                     result_temp.append(column_aggr[count])
-            #table = sorted(range(len(result_temp)), key=lambda k: result_temp[k], reverse=True)
-            #for value in table:
             group_array = group_array_temp
             result = result_temp
         elif 'sum' == aggr_funct:
@@ -424,10 +410,8 @@ class Table:
             size.append(index)
 
         self.data = [size]
-        print(self.data)
-        print(result)
-        print(group_array)
 
+        #Checks if having clause is asked 
         if having:
             if '>' in having:
                 number = int(having.split(">", 1)[1])
@@ -453,47 +437,39 @@ class Table:
         for x in table:
             final_group.append(group_array[x])
             final_result.append(result[x])
-        print(table)
         for index in range(len(final_group)):
             self.data.append([final_result[index],final_group[index]])
 
-    def group_by(self, column_name, aggr_func=None):
+    def group_by(self, column_name):
         '''
         Group by table based on column.
 
         Args:
             column_name: string. Name of column.
-            aggr_func:
         '''
         column = self.column_by_name(column_name)
-        print(column)
-        if aggr_func==None:
-           unique_table = []
-           temp_table= []
-           table = sorted(range(len(column)), key=lambda k: column[k], reverse= False)
-           print(table)
-           for value in (table):
-               if column[value] not in temp_table:
-                   temp_table.append(column[value])
-                   unique_table.append(value)
-           print(unique_table)
-           self.data = [self.data[i] for i in unique_table]
+    
+        unique_table = []
+        temp_table= []
+        table = sorted(range(len(column)), key=lambda k: column[k], reverse= False)
+        for value in (table):
+            if column[value] not in temp_table:
+                temp_table.append(column[value])
+                unique_table.append(value)
+        self.data = [self.data[i] for i in unique_table]
     
     def set_aggr_function(self,aggr_funct,column_name):
         '''
-          Join table (left) with a supplied table (right) where condition is met.
-
-          Args:
-              condition: string. A condition using the following format:
-                  'column[<,<=,==,>=,>]value' or
-                  'value[<,<=,==,>=,>]column'.
-
-                  Operatores supported: (<,<=,==,>=,>)
+          Function for aggregation function without group by
+          
+          Args: 
+          aggr_funct: string to select aggregation function (ie. min, max etc.)
+          column_name:string. Name of column.
           '''
 
         column = self.column_by_name(column_name)
-        print(column)
 
+        #Calculate each aggregation function
         if 'count' == aggr_funct:
             result = len(column)
             index = 0
@@ -509,11 +485,8 @@ class Table:
         elif 'avg' == aggr_funct:
             result = sum(column)/len(column)
             index = 0
-        print(result,index)
         iter = [index]
-        print(iter)
         self.data = [self.data[i] for i in iter]
-        print(self.data)
         self.data[0][0] = result
 
     def _inner_join(self, table_right: Table, condition):
