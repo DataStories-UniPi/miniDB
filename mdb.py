@@ -63,7 +63,7 @@ def create_query_plan(query, keywords, action):
 
     for i in range(len(kw_in_query)-1):
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
-    print(dic)
+    
 
     if action=='select':
         dic = evaluate_from_clause(dic)
