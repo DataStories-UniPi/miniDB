@@ -978,8 +978,10 @@ def max(original,grouped,target_column,column_names):
 
     This way, the 'original' table is sorted based on the groups and then with the target column.
 
-    This means that the fist element in 'original' has the in 'column3' maximum for its class.
-    The maximum element is appended in an array
+    Now initialize an array of size N (N is the number of the classes).
+    Since the 'original' table is sorted, the fist element in 'original' has
+    the in 'column3' maximum for the first class. We store the maximum in max[0]
+
 
     Now we need to loop thought the 'original' table and do the following:
 
@@ -1010,6 +1012,8 @@ def max(original,grouped,target_column,column_names):
 
     # index of the target column (column inside max's parenthesis) in the original table
     target = original.column_names.index(input_target_column)
+    # take the indexes of the columns that are in the GROUP BY clause
+    groups = [original.column_names.index(elem) for elem in column_names]
 
     # orders: list of the column names that will be sorted
     orders = column_names.copy()
@@ -1022,27 +1026,30 @@ def max(original,grouped,target_column,column_names):
     # sort the table object by using order_by function
     original.order_by(orders)
 
+    # array that will have the maximum of each class
+    max = [None] * len(grouped.data)
+
+    max[0] = original.data[0][target]
     prev = original.data[0]
 
-    prev = getTuple(original,column_names,0) # take only the columns of the group
+    index = 1
 
-    # array that will have the maximum of each class
-    max = []
-    max.append(original.data[0][target])
+    for elem in list(original.data[1:]):
 
+        # we must check whether the two rows are of the same group.
+        # to achieve this, we add the values of each column that takes part in the group
+        # in a list for both the current, and the previous row.
+        tprev = [prev[groups[i]] for i in range(len(groups))]
+        telem = [elem[groups[i]] for i in range(len(groups))]
 
-    for i in range(len(original.data)):
+        if(tprev != telem):
+            max[index] = elem[target]
 
-        if(prev != getTuple(original,column_names,i)): # compare only the columns of the group
+            prev = elem
+            index +=1
 
-            max.append(original.data[i][target])
-
-            prev = getTuple(original,column_names,i)
-
-
-        elif(prev == getTuple(original,column_names,i) and i == len(original.data)):
-            max.append(original.data[i][target])
-
+        elif(tprev == telem and index == len(original.data)):
+            max[index] = elem[target]
 
 
     c_names = grouped.column_names
