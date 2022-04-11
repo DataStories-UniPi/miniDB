@@ -1194,12 +1194,15 @@ def sum(original, grouped, target_column, column_names):
     '''
     Arguements:
 
-    -> original: this is a reference to the original table - containing all the columns and rows.
-    -> grouped: this is the table returned from group by and modified by the aggregate functions.
-    -> target_column: this is the string inside the sql statement of the aggregate function, it
+    -> original: Table object. this is a reference to the original table, meaning the table returnedd by FROM .. WHERE -
+    containing all the columns and rows.
+    -> grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
+    It contains the columns of GROUP BY clause as well as extra columns from aggregate functions
+    that have already been applied
+    -> target_column: string. this is the string inside the sql statement of the aggregate function, it
     basically contains the name of the target column and/or the 'distinct' statement.
-    -> column_names: this is a list containing all the column names of the columns that make up
-    the groups created due to group by.
+    -> column_names: list. this is a list containing all the column names of the columns that make up
+    the groups, meaning the columns in GROUP BY clause.
 
 
     Returns:
@@ -1327,12 +1330,15 @@ def count(original, grouped, target_column, column_names):
     '''
     Arguements:
 
-    -> original: this is a reference to the original table - containing all the columns and rows.
-    -> grouped: this is the table returned from group by and modified by the aggregate functions.
-    -> target_column: this is the string inside the sql statement of the aggregate function, it
+    -> original: Table object. this is a reference to the original table, meaning the table returnedd by FROM .. WHERE -
+    containing all the columns and rows.
+    -> grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
+    It contains the columns of GROUP BY clause as well as extra columns from aggregate functions
+    that have already been applied
+    -> target_column: string. this is the string inside the sql statement of the aggregate function, it
     basically contains the name of the target column and/or the 'distinct' statement.
-    -> column_names: this is a list containing all the column names of the columns that make up
-    the groups created due to group by.
+    -> column_names: list. this is a list containing all the column names of the columns that make up
+    the groups, meaning the columns in GROUP BY clause.
 
 
     Returns:
@@ -1443,12 +1449,15 @@ def avg(original, grouped, target_column, column_names):
     '''
     Arguements:
 
-    -> original: this is a reference to the original table - containing all the columns and rows.
-    -> grouped: this is the table returned from group by and modified by the aggregate functions.
-    -> target_column: this is the string inside the sql statement of the aggregate function, it
+    -> original: Table object. this is a reference to the original table, meaning the table returnedd by FROM .. WHERE -
+    containing all the columns and rows.
+    -> grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
+    It contains the columns of GROUP BY clause as well as extra columns from aggregate functions
+    that have already been applied
+    -> target_column: string. this is the string inside the sql statement of the aggregate function, it
     basically contains the name of the target column and/or the 'distinct' statement.
-    -> column_names: this is a list containing all the column names of the columns that make up
-    the groups created due to group by.
+    -> column_names: list. this is a list containing all the column names of the columns that make up
+    the groups, meaning the columns in GROUP BY clause.
 
 
     Returns:
