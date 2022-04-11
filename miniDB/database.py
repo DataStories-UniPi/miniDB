@@ -22,29 +22,60 @@ class Database:
     Main Database class, containing tables.
     '''
 
-    def __init__(self, name, load=True):
-        self.tables = {}
-        self._name = name
+    from __future__ import annotations
+    import pickle
+    from table import Table
+    from time import sleep, localtime, strftime
+    import os, sys
+    from btree import Btree
+    import shutil
+    from misc import split_condition
+    import logging
+    import warnings
+    import readline
+    from tabulate import tabulate
 
-        self.savedir = f'dbdata/{name}_db'
+    # sys.setrecursionlimit(100)
 
-        if load:
+    # Clear command cache (journal)
+    readline.clear_history()
+
+    class Database:
+        '''
+        Main Database class, containing tables.
+        '''
+
+        def __init__(self, name, load=True):
+            self.tables = {}
+            self._name = name
+            # flag for when transaction initiation starts
+            self.save_state = False
+            self.savedir = f'dbdata/{name}_db'
+            # to keep locked tables allowing us to unlock them at the end of the transaction
+            self.transaction_locks = []
+            if load:
+                try:
+                    self.load_database()
+                    logging.info(f'Loaded "{name}".')
+                    for i in self.tables.keys():
+                        if not self.is_locked(i):
+                            self.unlock_table(i, True)
+                    return
+                except pickle.PickleError:
+                    warnings.warn(f'Database "{name}" does not exist. Creating new.')
+                except:
+                    warnings.warn('a table is locked')
+                    return
+
+            # create dbdata directory if it doesnt exist
+            if not os.path.exists('dbdata'):
+                os.mkdir('dbdata')
+
+            # create new dbs save directory
             try:
-                self.load_database()
-                logging.info(f'Loaded "{name}".')
-                return
+                os.mkdir(self.savedir)
             except:
-                warnings.warn(f'Database "{name}" does not exist. Creating new.')
-
-        # create dbdata directory if it doesnt exist
-        if not os.path.exists('dbdata'):
-            os.mkdir('dbdata')
-
-        # create new dbs save directory
-        try:
-            os.mkdir(self.savedir)
-        except:
-            pass
+                pass
 
         # create all the meta tables
         self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
@@ -57,9 +88,10 @@ class Database:
         '''
         Save database as a pkl file. This method saves the database object, including all tables and attributes.
         '''
-        for name, table in self.tables.items():
-            with open(f'{self.savedir}/{name}.pkl', 'wb') as f:
-                pickle.dump(table, f)
+        if not self.save_state:
+            for name, table in self.tables.items():
+                with open(f'{self.savedir}/{name}.pkl', 'wb') as f:
+                    pickle.dump(table, f)
 
     def _save_locks(self):
         '''
@@ -71,21 +103,20 @@ class Database:
     def load_database(self):
         '''
         Load all tables that are part of the database (indices noted here are loaded).
-
         Args:
             path: string. Directory (path) of the database on the system.
         '''
-        path = f'dbdata/{self._name}_db'
-        for file in os.listdir(path):
-
-            if file[-3:]!='pkl': # if used to load only pkl files
-                continue
-            f = open(path+'/'+file, 'rb')
-            tmp_dict = pickle.load(f)
-            f.close()
-            name = f'{file.split(".")[0]}'
-            self.tables.update({name: tmp_dict})
-            # setattr(self, name, self.tables[name])
+        if not self.save_state:
+            path = f'dbdata/{self._name}_db'
+            for file in os.listdir(path):
+                if file[-3:] != 'pkl':  # if used to load only pkl files
+                    continue
+                f = open(path + '/' + file, 'rb')
+                tmp_dict = pickle.load(f)
+                f.close()
+                name = f'{file.split(".")[0]}'
+                self.tables.update({name: tmp_dict})
+                # setattr(self, name, self.tables[name])
 
     #### IO ####
 
@@ -258,8 +289,10 @@ class Database:
             logging.info('ABORTED')
         self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
 
-        if lock_ownership:
+        if lock_ownership and not self.save_state:
             self.unlock_table(table_name)
+        else:
+            self.transaction_locks += table_name
         self._update()
         self.save_database()
 
@@ -283,8 +316,10 @@ class Database:
         
         lock_ownership = self.lock_table(table_name, mode='x')
         self.tables[table_name]._update_rows(set_value, set_column, condition)
-        if lock_ownership:
+        if lock_ownership and not self.save_state:
             self.unlock_table(table_name)
+        else:
+            self.transaction_locks += table_name
         self._update()
         self.save_database()
 
@@ -304,8 +339,11 @@ class Database:
         
         lock_ownership = self.lock_table(table_name, mode='x')
         deleted = self.tables[table_name]._delete_where(condition)
-        if lock_ownership:
+        if lock_ownership and not self.save_state:
             self.unlock_table(table_name)
+            # if transaction has begun add to list with tables to be unlocked
+        else:
+            self.transaction_locks.append(table_name)
         self._update()
         self.save_database()
         # we need the save above to avoid loading the old database that still contains the deleted elements
@@ -389,8 +427,10 @@ class Database:
         
         lock_ownership = self.lock_table(table_name, mode='x')
         self.tables[table_name]._sort(column_name, asc=asc)
-        if lock_ownership:
+        if lock_ownership and not self.save_state:
             self.unlock_table(table_name)
+        else:
+            self.transaction_locks += table_name
         self._update()
         self.save_database()
 
@@ -491,15 +531,18 @@ class Database:
         Args:
             table_name: string. Table name (must be part of database).
         '''
-        if isinstance(table_name,Table) or table_name[:4]=='meta':  # meta tables will never be locked (they are internal)
+        if isinstance(table_name, Table) or table_name[
+                                            :4] == 'meta':  # meta tables will never be locked (they are internal)
             return False
 
         with open(f'{self.savedir}/meta_locks.pkl', 'rb') as f:
             self.tables.update({'meta_locks': pickle.load(f)})
 
         try:
-            pid = self.tables['meta_locks']._select_where('pid',f'table_name={table_name}').data[0][0]
-            if pid!=os.getpid():
+            pid = self.tables['meta_locks']._select_where('pid', f'table_name={table_name}').data[0][0]
+            if pid != os.getpid():
+                if not (os.path.isdir('/proc/{}'.format(pid))):
+                    return False
                 raise Exception(f'Table "{table_name}" is locked by the process with pid={pid}')
 
         except IndexError:
@@ -672,3 +715,47 @@ class Database:
         index = pickle.load(f)
         f.close()
         return index
+
+        # starts transaction #82
+        # anything run after this moment shall not be saved unless
+        # commit command is run and saves it or
+        # rollback in with phase we will roll to the last save
+
+    def start_transaction(self, action):
+        # you cannot start a transaction whilst in a transaction is already running
+        if self.save_state:
+            raise ValueError("Transaction already started")
+        else:
+            self.save_state = True
+
+        # if transation begins and user want to undo what he has done( dont we all )
+        # we turn savestate into false we call the unlocking phase well doing what its named
+        # and we load the last save of players
+
+    def rollback(self, action):
+
+        if self.save_state:
+            self.save_state = False
+            self.unlocking_phase()
+            self.load_database()
+        # if a transaction has not started you cant really roll back can you
+        else:
+            raise ValueError("Transaction not started, nothing to rollback to")
+        # if we wish to save the aformentioned transation via commit
+        # we turn save state to False we unlock the locked tables and instead of loading last save
+        # we save the altered (or perhaps not) DB as the now last save
+
+    def commit(self, action):
+        if self.save_state:
+            self.save_state = False
+            self.unlocking_phase()
+            self.save_database()
+        # if a transaction has not started you cant really commit can you
+        else:
+            raise ValueError("Transaction not started, nothing to rollback to")
+
+        # well it unlocks the locked tables
+
+    def unlocking_phase(self):
+        for table in self.transaction_locks:
+            self.unlock_table(table)
