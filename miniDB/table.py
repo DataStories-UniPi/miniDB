@@ -911,28 +911,6 @@ class Table:
 
 # The following are the aggregate functions
 
-def getTuple(original,column_names,index):
-    '''
-    Args:
-
-    original: Table object.
-    column_names: list.
-    index: int.
-
-    Returns:
-
-    a tuple that contains the data of a single row of Table 'original'.
-    The row's possision is indicated by the 'index'.
-    The tuple contains only the columns whos names are specified in the list 'column_names'
-
-    '''
-    tup = ()
-
-    for col in column_names:
-        tup = tup + (original.data[index][original.column_names.index(col)],)
-
-    return tup
-
 def max(original,grouped,target_column,column_names):
     '''
     Arguements:
