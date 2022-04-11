@@ -74,17 +74,18 @@ def create_query_plan(query, keywords, action):
         elif(dic['distinct'] is None):
             dic['distinct'] = False
 
+        # if 'group by' was given clean up the dict's 'from' and 'where'
         if dic['group by'] is not None:
             dic['from'] = dic['from'].removesuffix(' group')
-        #
+
             if dic['where'] is not None:
                 dic['where'] = dic['where'].removesuffix( 'group')
 
+        # similarly, if 'order by' was given clean up the dict's 'group by' and 'where'
+        # and 'having'
         if dic['order by'] is not None:
             dic['from'] = dic['from'].removesuffix(' order')
             
-            #
-
             if dic['group by'] is not None:
                 dic['group by'] = dic['group by'].removesuffix(' order')
 

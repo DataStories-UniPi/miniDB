@@ -981,16 +981,15 @@ def max(original,grouped,target_column,column_names):
     This means that the fist element in 'original' has the in 'column3' maximum for its class.
     The maximum element is appended in an array
 
-    Now need to loop thought the 'original' table and do:
+    Now we need to loop thought the 'original' table and do the following:
 
-        if the columns 'column1', 'column2' (columns of groups) of the previous element
-        are the same with the current element, this means that we are in the same group. So
+        -> if the columns 'column1', 'column2' (columns of groups) of the previous element
+        are the same with the current element, this means that we are in the same group.
+        We move on to the next element.
 
-        else if the columns 'column1', 'column2' are different, this means that we have reached
+        -> else if the columns 'column1', 'column2' are different, this means that we have reached
         a new group, so the current element contains the maximum element of the new group
-        in 'column3'
-
-        The maximum element is appended in an array
+        in 'column3'. The maximum element is appended in an array
 
     When the loop ends we have all the maximum elements of each list in the array mentioned
 
@@ -1113,13 +1112,12 @@ def min(original,grouped,target_column,column_names):
     Now need to loop thought the 'original' table and do:
 
         if the columns 'column1', 'column2' (columns of groups) of the previous element
-        are the same with the current element, this means that we are in the same group. So
+        are the same with the current element, this means that we are in the same group.
+        We move on to the next element.
 
         else if the columns 'column1', 'column2' are different, this means that we have reached
         a new group, so the current element contains the minimum element of the new group
-        in 'column3'
-
-        The minimum element is appended in an array
+        in 'column3'. The minimum element is appended in an array
 
     When the loop ends we have all the minimum elements of each list in the array mentioned
 
