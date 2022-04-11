@@ -22,60 +22,37 @@ class Database:
     Main Database class, containing tables.
     '''
 
-    from __future__ import annotations
-    import pickle
-    from table import Table
-    from time import sleep, localtime, strftime
-    import os, sys
-    from btree import Btree
-    import shutil
-    from misc import split_condition
-    import logging
-    import warnings
-    import readline
-    from tabulate import tabulate
-
-    # sys.setrecursionlimit(100)
-
-    # Clear command cache (journal)
-    readline.clear_history()
-
-    class Database:
-        '''
-        Main Database class, containing tables.
-        '''
-
-        def __init__(self, name, load=True):
-            self.tables = {}
-            self._name = name
-            # flag for when transaction initiation starts
-            self.save_state = False
-            self.savedir = f'dbdata/{name}_db'
-            # to keep locked tables allowing us to unlock them at the end of the transaction
-            self.transaction_locks = []
-            if load:
-                try:
-                    self.load_database()
-                    logging.info(f'Loaded "{name}".')
-                    for i in self.tables.keys():
-                        if not self.is_locked(i):
-                            self.unlock_table(i, True)
-                    return
-                except pickle.PickleError:
-                    warnings.warn(f'Database "{name}" does not exist. Creating new.')
-                except:
-                    warnings.warn('a table is locked')
-                    return
+    def __init__(self, name, load=True):
+        self.tables = {}
+        self._name = name
+        # flag for when transaction initiation starts
+        self.save_state = False
+        self.savedir = f'dbdata/{name}_db'
+        # to keep locked tables allowing us to unlock them at the end of the transaction
+        self.transaction_locks = []
+        if load:
+            try:
+                self.load_database()
+                logging.info(f'Loaded "{name}".')
+                for i in self.tables.keys():
+                    if not self.is_locked(i):
+                        self.unlock_table(i, True)
+                return
+            except pickle.PickleError:
+                warnings.warn(f'Database "{name}" does not exist. Creating new.')
+            except:
+                warnings.warn('a table is locked')
+                return
 
             # create dbdata directory if it doesnt exist
-            if not os.path.exists('dbdata'):
-                os.mkdir('dbdata')
+        if not os.path.exists('dbdata'):
+            os.mkdir('dbdata')
 
-            # create new dbs save directory
-            try:
-                os.mkdir(self.savedir)
-            except:
-                pass
+        # create new dbs save directory
+        try:
+            os.mkdir(self.savedir)
+        except:
+            pass
 
         # create all the meta tables
         self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
