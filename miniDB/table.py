@@ -978,9 +978,9 @@ def max(original,grouped,target_column,column_names):
 
     This way, the 'original' table is sorted based on the groups and then with the target column.
 
-    Now initialize an array of size N (N is the number of the classes).
+    Now initialize an array of size N called max (N is the number of the classes).
     Since the 'original' table is sorted, the fist element in 'original' has
-    the in 'column3' maximum for the first class. We store the maximum in max[0]
+    the in 'column3' the maximum for the first class. We store the maximum in max[0]
 
 
     Now we need to loop thought the 'original' table and do the following:
@@ -1113,8 +1113,10 @@ def min(original,grouped,target_column,column_names):
 
     This way, the 'original' table is sorted based on the groups and then with the target column.
 
-    This means that the fist element in 'original' has the in 'column3' minimum for its class.
-    The minimum element is appended in an array
+    Now initialize an array called min of size N (N is the number of the classes).
+    Since the 'original' table is sorted, the fist element in 'original' has
+    the in 'column3' the minimum for the first class. We store the minimum in min[0]
+
 
     Now need to loop thought the 'original' table and do:
 
@@ -1144,6 +1146,8 @@ def min(original,grouped,target_column,column_names):
 
     # add the target column if needed
     target = original.column_names.index(input_target_column)
+    # take the indexes of the columns that are in the GROUP BY clause
+    groups = [original.column_names.index(elem) for elem in column_names]
 
     # orders: list of the column names that will be sorted
     orders = column_names.copy()
@@ -1155,25 +1159,30 @@ def min(original,grouped,target_column,column_names):
     # sort the table object by using order_by function
     original.order_by(orders)
 
+    # array that will have the minimum of each class
+    min = [None] * len(grouped.data)
+
+    min[0] = original.data[0][target]
     prev = original.data[0]
 
-    prev = getTuple(original,column_names,0)
+    index = 1
 
-    min = []
-    min.append(original.data[0][target])
+    for elem in list(original.data[1:]):
 
+        # we must check whether the two rows are of the same group.
+        # to achieve this, we add the values of each column that takes part in the group
+        # in a list for both the current, and the previous row.
+        tprev = [prev[groups[i]] for i in range(len(groups))]
+        telem = [elem[groups[i]] for i in range(len(groups))]
 
-    for i in range(len(original.data)):
+        if(tprev != telem):
+            min[index] = elem[target]
 
-        if(prev != getTuple(original,column_names,i)):
+            prev = elem
+            index +=1
 
-            min.append(original.data[i][target])
-
-            prev = getTuple(original,column_names,i)
-
-
-        elif(prev == getTuple(original,column_names,i) and i == len(original.data)):
-            min.append(original.data[i][target])
+        elif(tprev == telem and index == len(original.data)):
+            min[index] = elem[target]
 
 
     # create table object with the data and columns of grouped table object
