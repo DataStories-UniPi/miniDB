@@ -197,7 +197,7 @@ class Table:
         return indexes_to_del
 
 
-    def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None, distinct=False):
+    def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, top_k=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -208,10 +208,10 @@ class Table:
                 'value[<,<=,==,>=,>]column'.
                 
                 Operatores supported: (<,<=,==,>=,>)
+            distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (False by default).
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
-            distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
         '''
 
         # if * return all columns, else find the column indexes for the columns specified
@@ -239,19 +239,19 @@ class Table:
         dict['column_names'] = [self.column_names[i] for i in return_cols]
         dict['column_types']   = [self.column_types[i] for i in return_cols]
 
-        s_table = Table(load=dict) 
+        s_table = Table(load=dict)
+
+        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+
         if order_by:
             s_table.order_by(order_by, desc)
 
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
 
-        # If distinct is True, we remove duplicate rows from the resulting table
-        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
-
         return s_table
 
 
-    def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, desc=True, top_k=None, distinct=False):
+    def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, top_k=None):
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
@@ -289,14 +289,14 @@ class Table:
         dict['column_names'] = [self.column_names[i] for i in return_cols]
         dict['column_types']   = [self.column_types[i] for i in return_cols]
 
-        s_table = Table(load=dict) 
+        s_table = Table(load=dict)
+
+        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+
         if order_by:
             s_table.order_by(order_by, desc)
 
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
-
-        # If distinct is True, we remove duplicate rows from the resulting table
-        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
 
         return s_table
 
