@@ -1010,7 +1010,7 @@ def max(original,grouped,target_column,column_names):
     max[0] = original.data[0][target]
     prev = original.data[0]
 
-    index = 1
+    interval = 1
 
     for elem in list(original.data[1:]):
 
@@ -1021,13 +1021,13 @@ def max(original,grouped,target_column,column_names):
         telem = [elem[groups[i]] for i in range(len(groups))]
 
         if(tprev != telem):
-            max[index] = elem[target]
+            max[interval] = elem[target]
 
             prev = elem
-            index +=1
+            interval +=1
 
-        elif(tprev == telem and index == len(original.data)):
-            max[index] = elem[target]
+        elif(tprev == telem and interval == len(original.data)):
+            max[interval] = elem[target]
 
 
     c_names = grouped.column_names
@@ -1143,7 +1143,7 @@ def min(original,grouped,target_column,column_names):
     min[0] = original.data[0][target]
     prev = original.data[0]
 
-    index = 1
+    interval = 1
 
     for elem in list(original.data[1:]):
 
@@ -1154,13 +1154,13 @@ def min(original,grouped,target_column,column_names):
         telem = [elem[groups[i]] for i in range(len(groups))]
 
         if(tprev != telem):
-            min[index] = elem[target]
+            min[interval] = elem[target]
 
             prev = elem
-            index +=1
+            interval +=1
 
-        elif(tprev == telem and index == len(original.data)):
-            min[index] = elem[target]
+        elif(tprev == telem and interval == len(original.data)):
+            min[interval] = elem[target]
 
 
     # create table object with the data and columns of grouped table object
