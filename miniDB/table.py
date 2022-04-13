@@ -198,7 +198,9 @@ class Table:
         return indexes_to_del
 
 
+
     def _select_where(self, return_columns, condition=None, group_by=None, having=None, order_by=None, top_k=None, distinct=False):
+
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -209,11 +211,13 @@ class Table:
                 'value[<,<=,==,>=,>]column'.
 
                 Operatores supported: (<,<=,==,>=,>)
+
             group_by: string. The given GROUP BY clause, containig the columns names in which the table will be grouped
             having: string. The condition given in the HAVING clause. The condition has the following format:
                 'column[<,<=,==,>=,>]value' or
                 'aggregate function (column)[<,<=,==,>=,>]value'
             order_by: list. The columns that signal that the resulting table should be ordered based on them (no order if None).
+
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
             distinct: boolean. If it is 'True' it indicates that the query is "select distinct" and a new function is called to remove duplicate rows
 
@@ -484,6 +488,7 @@ class Table:
 
             all_columns = [i for i in range(len(self.column_names))]
 
+
             # if condition is None, return all rows
             # if not, return the rows with values where condition is met for value
             if condition is not None:
@@ -492,6 +497,7 @@ class Table:
                 rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
             else:
                 rows = [i for i in range(len(self.data))]
+
 
 
             # copy the old dict, but only the rows of data
@@ -543,7 +549,7 @@ class Table:
             return s_table
 
 
-    def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, desc=True, top_k=None):
+    def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, top_k=None):
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
@@ -582,8 +588,12 @@ class Table:
         dict['column_types']   = [self.column_types[i] for i in return_cols]
 
         s_table = Table(load=dict)
-        if order_by:
-            s_table.order_by(order_by, desc)
+
+        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+
+        if order_by and not(distinct):
+            order_cols = order_by.split(',')
+            s_table.order_by(order_cols)
 
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
 

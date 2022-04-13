@@ -313,6 +313,7 @@ class Database:
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
 
+
     def select(self, columns, distinct, table_name, condition, group_by, having, order_by=None, top_k=True,\
                save_as=None, return_object=True):
         '''
@@ -332,7 +333,9 @@ class Database:
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
             save_as: string. The name that will be used to save the resulting table into the database (no save if None).
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
+            distinct: boolean. If True, the resulting table will contain only unique rows.
         '''
+
 
 
         # print(table_name)
@@ -352,9 +355,11 @@ class Database:
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k)
+            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, top_k)
         else:
+
             table = self.tables[table_name]._select_where(columns, condition, group_by, having, order_by, top_k, distinct)
+
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as
