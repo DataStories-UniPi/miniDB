@@ -434,7 +434,7 @@ class Database:
                 # If the right table cannot be indexed and the left can, we reverse them
                 if(column_name_left == left_table.pk):
                     right_table, left_table = left_table, right_table
-                    column_name_left,column_name_right = column_name_right,column_name_left
+                    column_name_left, column_name_right = column_name_right, column_name_left
                     reversed = True
 
                 # Create the index of the second table
@@ -456,7 +456,7 @@ class Database:
 
                 join_table_colnames = left_names + right_names if not reversed else right_names + left_names
                 join_table_coltypes = left_table.column_types + right_table.column_types if not reversed else right_table.column_types + left_table.column_types
-                join_table = Table(name='', column_names=join_table_colnames, column_types= join_table_coltypes)
+                join_table = Table(name='', column_names=join_table_colnames, column_types=join_table_coltypes)
 
                 # Implementation of the index-nested-loop join
                 # If the tables had been reversed in the beginning, then the joined table appears
@@ -464,10 +464,10 @@ class Database:
                 for row_left in left_table.data:
                     # The value that will be searched for in the index
                     left_value = row_left[column_index_left]
-                    results = index.find(operator,left_value)
-                    if(len(results)>0):
-                        for _ in results:
-                            join_table._insert(row_left + right_table.data[_] if not reversed else right_table.data[_] + row_left)
+                    results = index.find(operator, left_value)
+                    if len(results) > 0:
+                        for element in results:
+                            join_table._insert(row_left + right_table.data[element] if not reversed else right_table.data[element] + row_left)
 
                 res = join_table
         else:
