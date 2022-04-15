@@ -515,11 +515,6 @@ class Table:
                 order_cols = order_by.split(',')
                 s_table.order_by(order_cols)
 
-            # this check is done to prevent a mistake : new_dict raises exception when the meta_insert_stack is called
-            # TODO check why this happens
-            if(s_table._name.startswith("meta_insert_stack")):
-                return s_table
-
             # create new dict from the s_table object that has only the columns that will be displayed
             # (only the columns in SELECT)
             new_dict = {(key):([[s_table.data[i][j] for j in return_cols] for i in range(len(s_table.data))] if key=="data" else value) for key,value in s_table.__dict__.items()}
@@ -651,23 +646,23 @@ class Table:
                 target_cols_order.append(False)
 
         # function will sort the given self.data
-        self.hyper_sort(self.data,target_cols,0,len(self.data),target_cols_order)
+        self._hyper_sort(self.data,target_cols,0,len(self.data),target_cols_order)
 
         # return
 
 
-    def hyper_sort(self,input_list,columns,indexStart,indexEnd,reverses):
+    def _hyper_sort(self,input_list,columns,indexStart,indexEnd,reverses):
         '''
-        Arguements:
+        Args:
 
-        -> inpur_list: the list that will be sorted
-        -> columns: a list with the indexes of the columns that will be sorted.
+        input_list: the list that will be sorted
+        columns: a list with the indexes of the columns that will be sorted.
         The indexes are given in the order the columns will be sorted (meaning
         in the order they are given in the 'ORDER BY')
         Columns can begiven in any desired order.
-        -> indexStart: int - the index of an element of the inpur_list (see Procedure)
-        -> indexEnd: int - the index of an element of the inpur_list (see Procedure)
-        -> reverses list of booleans - contains the desired orders in which each column
+        indexStart: int - the index of an element of the inpur_list (see Procedure)
+        indexEnd: int - the index of an element of the inpur_list (see Procedure)
+        reverses list of booleans - contains the desired orders in which each column
         given in 'columns' will be sorted. True = desc and False = asc
 
         Returns:
@@ -734,7 +729,7 @@ class Table:
                     # The duplicates are [initial,i]
 
                     if(len(columns)>1):
-                        input_list_copy = self.hyper_sort(input_list_copy,columns[1:],initial,i,reverses[1:])
+                        input_list_copy = self._hyper_sort(input_list_copy,columns[1:],initial,i,reverses[1:])
 
             else:
                 #print(f" found {prev} from {initial} till {i-1}")
@@ -742,7 +737,7 @@ class Table:
                 # The duplicates are [initial,i-1]
 
                 if(len(columns)>1):
-                    input_list_copy = self.hyper_sort(input_list_copy,columns[1:],initial,i-1,reverses[1:])
+                    input_list_copy = self._hyper_sort(input_list_copy,columns[1:],initial,i-1,reverses[1:])
 
                 prev = input_list_copy[i][columns[0]]
                 initial = i
@@ -923,16 +918,16 @@ class Table:
 
 def max(original,grouped,target_column,column_names):
     '''
-    Arguements:
+    Args:
 
-    -> original: Table object. this is a reference to the original table, meaning the table returnedd by FROM .. WHERE -
+    original: Table object. this is a reference to the original table, meaning the table returnedd by FROM .. WHERE -
     containing all the columns and rows.
-    -> grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
+    grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
     It contains the columns of GROUP BY clause as well as extra columns from aggregate functions
     that have already been applied
-    -> target_column: string. this is the string inside the sql statement of the aggregate function, it
+    target_column: string. this is the string inside the sql statement of the aggregate function, it
     basically contains the name of the target column and/or the 'distinct' statement.
-    -> column_names: list. this is a list containing all the column names of the columns that make up
+    column_names: list. this is a list containing all the column names of the columns that make up
     the groups, meaning the columns in GROUP BY clause.
 
 
@@ -1058,16 +1053,16 @@ def max(original,grouped,target_column,column_names):
 
 def min(original,grouped,target_column,column_names):
     '''
-    Arguements:
+    Args:
 
-    -> original: Table object. this is a reference to the original table, meaning the table returnedd by FROM .. WHERE -
+    original: Table object. this is a reference to the original table, meaning the table returnedd by FROM .. WHERE -
     containing all the columns and rows.
-    -> grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
+    grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
     It contains the columns of GROUP BY clause as well as extra columns from aggregate functions
     that have already been applied
-    -> target_column: string. this is the string inside the sql statement of the aggregate function, it
+    target_column: string. this is the string inside the sql statement of the aggregate function, it
     basically contains the name of the target column and/or the 'distinct' statement.
-    -> column_names: list. this is a list containing all the column names of the columns that make up
+    column_names: list. this is a list containing all the column names of the columns that make up
     the groups, meaning the columns in GROUP BY clause.
 
 
@@ -1194,16 +1189,16 @@ def min(original,grouped,target_column,column_names):
 
 def sum(original, grouped, target_column, column_names):
     '''
-    Arguements:
+    Args:
 
-    -> original: Table object. this is a reference to the original table, meaning the table returnedd by FROM .. WHERE -
+    original: Table object. this is a reference to the original table, meaning the table returnedd by FROM .. WHERE -
     containing all the columns and rows.
-    -> grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
+    grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
     It contains the columns of GROUP BY clause as well as extra columns from aggregate functions
     that have already been applied
-    -> target_column: string. this is the string inside the sql statement of the aggregate function, it
+    target_column: string. this is the string inside the sql statement of the aggregate function, it
     basically contains the name of the target column and/or the 'distinct' statement.
-    -> column_names: list. this is a list containing all the column names of the columns that make up
+    column_names: list. this is a list containing all the column names of the columns that make up
     the groups, meaning the columns in GROUP BY clause.
 
 
@@ -1330,16 +1325,16 @@ def sum(original, grouped, target_column, column_names):
 
 def count(original, grouped, target_column, column_names):
     '''
-    Arguements:
+    Args:
 
-    -> original: Table object. this is a reference to the original table, meaning the table returnedd by FROM .. WHERE -
+    original: Table object. this is a reference to the original table, meaning the table returnedd by FROM .. WHERE -
     containing all the columns and rows.
-    -> grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
+    grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
     It contains the columns of GROUP BY clause as well as extra columns from aggregate functions
     that have already been applied
-    -> target_column: string. this is the string inside the sql statement of the aggregate function, it
+    target_column: string. this is the string inside the sql statement of the aggregate function, it
     basically contains the name of the target column and/or the 'distinct' statement.
-    -> column_names: list. this is a list containing all the column names of the columns that make up
+    column_names: list. this is a list containing all the column names of the columns that make up
     the groups, meaning the columns in GROUP BY clause.
 
 
@@ -1449,16 +1444,16 @@ def count(original, grouped, target_column, column_names):
 
 def avg(original, grouped, target_column, column_names):
     '''
-    Arguements:
+    Args:
 
-    -> original: Table object. this is a reference to the original table, meaning the table returnedd by FROM .. WHERE -
+    original: Table object. this is a reference to the original table, meaning the table returnedd by FROM .. WHERE -
     containing all the columns and rows.
-    -> grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
+    grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
     It contains the columns of GROUP BY clause as well as extra columns from aggregate functions
     that have already been applied
-    -> target_column: string. this is the string inside the sql statement of the aggregate function, it
+    target_column: string. this is the string inside the sql statement of the aggregate function, it
     basically contains the name of the target column and/or the 'distinct' statement.
-    -> column_names: list. this is a list containing all the column names of the columns that make up
+    column_names: list. this is a list containing all the column names of the columns that make up
     the groups, meaning the columns in GROUP BY clause.
 
 
