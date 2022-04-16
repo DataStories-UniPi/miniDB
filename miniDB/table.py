@@ -305,11 +305,9 @@ class Table:
 
                     elif(col.strip().startswith('max ')):
 
-                        target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
+                        max(original=s_table,grouped=grouped,input_paren= _get_text_in_paren(col),groupby_list=column_names)
 
-                        grouped = max(original=s_table,grouped=grouped,target_column=target_column.strip(),column_names=column_names)
-                        return_cols.append(grouped.column_names.index('agg_max_' + target_column.strip().replace(' ', '_')))
-
+                        return_cols.append(len(grouped.column_names)-1)
 
                     elif(col.strip().startswith('avg ')):
 
@@ -638,10 +636,10 @@ class Table:
                 target_cols_order.append(False)
 
         # function will sort the given self.data
-        self._hyper_sort(self.data,target_cols,0,len(self.data),target_cols_order)
+        self._hyper_sort(self.data,0,len(self.data),target_cols,target_cols_order)
 
 
-    def _hyper_sort(self,input_list,columns,indexStart,indexEnd,reverses):
+    def _hyper_sort(self,input_list,indexStart,indexEnd,columns,reverses):
         '''
         Args:
 
@@ -713,25 +711,23 @@ class Table:
             if input_list_copy[i][columns[0]] == prev:
 
                 if(i== len(input_list_copy)-1):
-                    #print(f" found {prev} from {initial} till {i}")
+                    # print(f" found {prev} from {initial} till {i}")
 
                     # The duplicates are [initial,i], rec call _hyper_sort for the next column
                     if(len(columns)>1):
-                        input_list_copy = self._hyper_sort(input_list_copy,columns[1:],initial,i,reverses[1:])
+                        input_list_copy = self._hyper_sort(input_list_copy,initial,i,columns[1:],reverses[1:])
 
             else:
-                #print(f" found {prev} from {initial} till {i-1}")
+                # print(f" found {prev} from {initial} till {i-1}")
 
                 # The duplicates are [initial,i-1], rec call _hyper_sort again
                 if(len(columns)>1):
-                    input_list_copy = self._hyper_sort(input_list_copy,columns[1:],initial,i-1,reverses[1:])
+                    input_list_copy = self._hyper_sort(input_list_copy,initial,i-1,columns[1:],reverses[1:])
 
                 prev = input_list_copy[i][columns[0]]
                 initial = i
 
-
         input_list[indexStart:indexEnd+1] = input_list_copy
-
 
         return input_list
 
@@ -757,19 +753,16 @@ class Table:
 
     def distinct(self):
         '''
-        Remove duplicate rows in the table
+        Remove duplicate rows in the table object
 
-        This function does the following steps:
-        First checks if the PK is in the columns. If so, it immediately stops,
+        The function first checks if the PK is in the columns. If so, it immediately stops,
         since the rows are guaranted to be distinct if the PK column is present
 
-        If the PK is not in the columns, the function sorts the entire table by calling the 'order_by' function and giving it
-        all the columns. Desc or asc doesn't matter
-
-        Then it does a simple loop to remove duplicates (since it is sorted, duplicates will be together)
+        If the PK is not in the columns, the function sorts the entire table
+        by calling the 'order_by' function and giving it all the columns.
+        Then it does a simple loop to remove duplicates (since it is sorted, duplicates will be neighbouring).
         '''
         if(self.pk in self.column_names):
-            #print("no action required")
             return
 
         self.order_by(self.column_names)
@@ -939,139 +932,60 @@ def _sort_based_on_groupby(original,grouped,groupby_list,target_column_name,orde
 
 # The following are the aggregate functions
 
-def max(original,grouped,target_column,column_names):
+def max(original,grouped,input_paren,groupby_list):
     '''
     Args:
 
-    original: Table object. this is a reference to the original table, meaning the table returnedd by FROM .. WHERE -
-    containing all the columns and rows.
+    original: Table object. this is a reference to the original table containing all the columns and rows.
     grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
-    It contains the columns of GROUP BY clause as well as extra columns from aggregate functions
-    that have already been applied
-    target_column: string. this is the string inside the sql statement of the aggregate function, it
-    basically contains the name of the target column and/or the 'distinct' statement.
-    column_names: list. this is a list containing all the column names of the columns that make up
-    the groups, meaning the columns in GROUP BY clause.
+    input_paren: string. The string inside the parenthesis of the agg function (without extra SPACES).
+    groupby_list: list of strings. Contains all the column names in GROUP BY clause.
+    order_type: string. Indicates the sorting order (asc or desc) that will be used
 
-
-
-    Returns:
-
-    A new table that consists of all the data of table grouped and the appended column of the aggregate function.
-
-
-    Procedure:
-
-    First check if the string target_column contains the keyword 'distinct'. If yes just ignore
-    it and take the second word which is the column inside the agg function's parenthesis.
-    (distinct doesnt make a difference in min/max agg functions when they are used with group by)
-
-    The function sorts the 'original' table object on the columns specified in the group by clause.
-    These columns are specified in the 'column_names' list.
-
-
-
-    If the target column (column inside max's parenthesis) is NOT one of
-    the 'column_names' (columns specified in the group by clause)
-    the table 'original' is sorted with it as well.
-
-    The sorting is done by the order_by function
-
-    Let column_names be : column_names = ['column1', 'column2']
-    and target column : 'column3'
-
-    we essentialy sort by calling: ORDER BY column1, column1, column3 desc
-
-    This way, the 'original' table is sorted based on the groups and then with the target column.
-
-    Now initialize an array of size N called max (N is the number of the classes).
-    Since the 'original' table is sorted, the fist element in 'original' has
-    the in 'column3' the maximum for the first class. We store the maximum in max[0]
-
-
-    Now we need to loop thought the 'original' table and do the following:
-
-        -> if the columns 'column1', 'column2' (columns of groups) of the previous element
-        are the same with the current element, this means that we are in the same group.
-        We move on to the next element.
-
-        -> else if the columns 'column1', 'column2' are different, this means that we have reached
-        a new group, so the current element contains the maximum element of the new group
-        in 'column3'. The maximum element is appended in an array
-
-    When the loop ends we have all the maximum elements of each list in the array mentioned
-
-    We know that the order of the maximum elements mathes the order of the groups in the
-    Table 'grouped' since it is also a sort table (with the same order), so we just need
-    to create a copy of the Table grouped that contains a new row: the maximum elements that were
-    found
-
+    The function ignores if the keyword DISTINCT was given in the parenthesis
+    (distinct doesn't make a difference in min/max agg functions when they are used with group by)
+    The original table is sorted (by using helper function) based on the columns of GROUP BY clause
+    and the column in parenthesis.
+    This way, the 'groups' of the table (duplicates) will be neighbouring and because of the
+    sorting, we save the first element (of the column in parenthesis) of each group in the array max.
+    Then we simply append this array to the 'grouped' Table object
     '''
 
-    # check for 'distinct'
-    input_target = target_column.split(' ')
-    input_target_column = input_target[0]
-
-    if(input_target[0]=='distinct'):
-        input_target_column = input_target[1]
-
-
-    # index of the target column (column inside max's parenthesis) in the original table
-    target = original.column_names.index(input_target_column)
+    # get the name and index of column in parenthesis
+    target_column_name = input_paren.removeprefix('distinct ')
+    target_column_index = original.column_names.index(target_column_name)
     # take the indexes of the columns that are in the GROUP BY clause
-    groups = [original.column_names.index(elem) for elem in column_names]
+    group_indexes = [original.column_names.index(elem) for elem in groupby_list]
+    # sort original table
+    _sort_based_on_groupby(original=original,grouped=grouped,
+    groupby_list=groupby_list,target_column_name=target_column_name,order_type=" desc")
 
-    # orders: list of the column names that will be sorted
-    orders = column_names.copy()
-
-    # add the target column if needed
-    if(input_target_column not in grouped.column_names):
-
-        orders.append(input_target_column+" desc")
-
-    # sort the table object by using order_by function
-    original.order_by(orders)
-
-    # array that will have the maximum of each class
+    # initialize array that will have the maximum of each class
     max = [None] * len(grouped.data)
-
-    max[0] = original.data[0][target]
-    prev = original.data[0]
-
-    interval = 1
+    # initialize variables for the loop
+    max[0] = original.data[0][target_column_index]
+    prev = original.data[0] # this is only updated when we find a row of a new group
+    index = 1
 
     for elem in list(original.data[1:]):
+        # add the values of each column that takes part in the group
+        # for the previous and the current
+        tprev = [prev[group_indexes[i]] for i in range(len(group_indexes))]
+        telem = [elem[group_indexes[i]] for i in range(len(group_indexes))]
 
-        # we must check whether the two rows are of the same group.
-        # to achieve this, we add the values of each column that takes part in the group
-        # in a list for both the current, and the previous row.
-        tprev = [prev[groups[i]] for i in range(len(groups))]
-        telem = [elem[groups[i]] for i in range(len(groups))]
-
+        # if previous group is different than current, we reached a new group
         if(tprev != telem):
-            max[interval] = elem[target]
+            # append value to max
+            max[index] = elem[target_column_index]
+            prev = elem # save current group as previous
+            index +=1
 
-            prev = elem
-            interval +=1
-
-        elif(tprev == telem and interval == len(original.data)):
-            max[interval] = elem[target]
-
-
-    c_names = grouped.column_names
-    c_names.append("agg_max_" +target_column.replace(' ', '_'))
-    c_types = grouped.column_types
-    c_types.append(original.column_types[target])
-    n_table = Table("temp", c_names, c_types)
-    n_table.data = []
+    # append the max array to a new column on 'grouped' table
+    grouped.column_names.append("agg_max_"+  input_paren.replace(' ', '_'))
+    grouped.column_types.append(original.column_types[target_column_index])
 
     for i in range(len(grouped.data)):
-
         (grouped.data[i]).append(max[i])
-        n_table.data.append(grouped.data[i])
-
-
-    return n_table
 
 
 def min(original,grouped,input_paren,groupby_list):
@@ -1099,7 +1013,8 @@ def min(original,grouped,input_paren,groupby_list):
     # take the indexes of the columns that are in the GROUP BY clause
     group_indexes = [original.column_names.index(elem) for elem in groupby_list]
     # sort original table
-    _sort_based_on_groupby(original=original,grouped=grouped,groupby_list=groupby_list,target_column_name=target_column_name)
+    _sort_based_on_groupby(original=original,grouped=grouped,
+    groupby_list=groupby_list,target_column_name=target_column_name)
 
     # initialize array that will have the minimum of each class
     min = [None] * len(grouped.data)
