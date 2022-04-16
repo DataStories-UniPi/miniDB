@@ -212,7 +212,7 @@ class Table:
 
                 Operatores supported: (<,<=,==,>=,>)
 
-            group_by: string. The given GROUP BY clause, containig the columns names in which the table will be grouped
+            group_by: string. The given GROUP BY clause, containing the columns names in which the table will be grouped
             having: string. The condition given in the HAVING clause. The condition has the following format:
                 'column[<,<=,==,>=,>]value' or
                 'aggregate function (column)[<,<=,==,>=,>]value'
@@ -221,12 +221,9 @@ class Table:
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
             distinct: boolean. If it is 'True' it indicates that the query is "select distinct" and a new function is called to remove duplicate rows
 
-        The function behaves differntly if group_by is None or not.
+        The function behaves differently if group_by is None or not.
         If group_by is None the procedure is almost vanilla.
-
-
         '''
-
 
         if group_by is not None:
 
@@ -286,11 +283,9 @@ class Table:
 
                     elif(col.strip().startswith('min ')):
 
-                        target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
+                        min(original=s_table,grouped=grouped,input_paren= _get_text_in_paren(col),groupby_list=column_names)
 
-                        grouped = min(original=s_table,grouped=grouped,target_column=target_column.strip(),column_names=column_names)
-                        return_cols.append(grouped.column_names.index('agg_min_' + target_column.strip().replace(' ', '_')))
-
+                        return_cols.append(len(grouped.column_names)-1)
 
                     elif(col.strip().startswith('count ')):
 
@@ -594,6 +589,7 @@ class Table:
 
         return s_table
 
+
     def order_by(self, column_names):
         '''
         Order table based on column.
@@ -604,13 +600,10 @@ class Table:
 
         This function works just like SQL's ORDER BY
 
-        e.g.:
-
-        ORDER BY column1 ASC|DESC , column2 ASC|DESC
+        e.g.:  ORDER BY column1 ASC|DESC , column2 ASC|DESC
 
         so you can have a query like this:
-
-        ORDER BY Country ASC, CustomerName DESC
+        ...ORDER BY Country ASC, CustomerName DESC
 
         This means that the returning table is sorted first with the 'Country' with Ascending order
         and if there are rows with the same 'Country', they are sorted according to 'CustomerName'
@@ -623,7 +616,6 @@ class Table:
 
         target_cols_order = []  # will append True or False for each column to indicate ASC or DESC
                                 # default is False
-
 
         for col in column_names:
 
@@ -641,14 +633,12 @@ class Table:
                 elif(input_col[1]=='asc'):
                     target_cols_order.append(False)
 
-            # the query didnt have ASC|DESC, default is False
+            # the query didn't have ASC|DESC, default is False
             else:
                 target_cols_order.append(False)
 
         # function will sort the given self.data
         self._hyper_sort(self.data,target_cols,0,len(self.data),target_cols_order)
-
-        # return
 
 
     def _hyper_sort(self,input_list,columns,indexStart,indexEnd,reverses):
@@ -659,10 +649,10 @@ class Table:
         columns: a list with the indexes of the columns that will be sorted.
         The indexes are given in the order the columns will be sorted (meaning
         in the order they are given in the 'ORDER BY')
-        Columns can begiven in any desired order.
-        indexStart: int - the index of an element of the inpur_list (see Procedure)
-        indexEnd: int - the index of an element of the inpur_list (see Procedure)
-        reverses list of booleans - contains the desired orders in which each column
+        Columns can be given in any desired order.
+        indexStart: int - the index of an element of the input_list (see Procedure)
+        indexEnd: int - the index of an element of the input_list (see Procedure)
+        reverses: list of booleans - contains the desired orders in which each column
         given in 'columns' will be sorted. True = desc and False = asc
 
         Returns:
@@ -712,9 +702,8 @@ class Table:
         if(indexStart == indexEnd):
             return input_list
 
+        # 
         input_list_copy = sorted(input_list[indexStart:indexEnd+1],key=lambda x: (x[columns[0]]),reverse=reverses[0])
-
-        #print(input_list_copy)
 
         prev = input_list_copy[0][columns[0]]
         initial = 0
@@ -726,16 +715,14 @@ class Table:
                 if(i== len(input_list_copy)-1):
                     #print(f" found {prev} from {initial} till {i}")
 
-                    # The duplicates are [initial,i]
-
+                    # The duplicates are [initial,i], rec call _hyper_sort for the next column
                     if(len(columns)>1):
                         input_list_copy = self._hyper_sort(input_list_copy,columns[1:],initial,i,reverses[1:])
 
             else:
                 #print(f" found {prev} from {initial} till {i-1}")
 
-                # The duplicates are [initial,i-1]
-
+                # The duplicates are [initial,i-1], rec call _hyper_sort again
                 if(len(columns)>1):
                     input_list_copy = self._hyper_sort(input_list_copy,columns[1:],initial,i-1,reverses[1:])
 
@@ -773,13 +760,13 @@ class Table:
         Remove duplicate rows in the table
 
         This function does the following steps:
-        ->The function first checks if the PK is in the columns. If so, it immediatly stops,
+        First checks if the PK is in the columns. If so, it immediately stops,
         since the rows are guaranted to be distinct if the PK column is present
 
-        ->If the PK is not in the columns, the function sorts the entire table by calling the 'order_by' function and giving it
-        all the columns. Desc or asc doesnt matter
+        If the PK is not in the columns, the function sorts the entire table by calling the 'order_by' function and giving it
+        all the columns. Desc or asc doesn't matter
 
-        ->Then it does a simple loop to remove duplicates (since it is sorted, duplicates will be together)
+        Then it does a simple loop to remove duplicates (since it is sorted, duplicates will be together)
         '''
         if(self.pk in self.column_names):
             #print("no action required")
@@ -794,7 +781,6 @@ class Table:
                 self.data.remove(elem)
             else:
                 prev = elem
-
 
 
     def _inner_join(self, table_right: Table, condition):
@@ -912,6 +898,18 @@ class Table:
 
         self.__dict__.update(tmp_dict)
 
+# the following are helping functions for the aggregates
+
+def _get_text_in_paren(text):
+    temp = text.strip()[text.strip().find('(')+1:text.strip().find(')')]
+    return temp.strip()
+
+def _sort_based_on_groupby(original,grouped,groupby_list,target_column_name,order_type=" asc"):
+    #we sort the original table.
+    orders = groupby_list.copy()
+    if(target_column_name not in grouped.column_names):
+        orders.append(target_column_name + order_type)
+    original.order_by(orders)
 
 
 # The following are the aggregate functions
@@ -1051,7 +1049,7 @@ def max(original,grouped,target_column,column_names):
     return n_table
 
 
-def min(original,grouped,target_column,column_names):
+def min(original,grouped,input_paren,groupby_list):
     '''
     Args:
 
@@ -1120,35 +1118,20 @@ def min(original,grouped,target_column,column_names):
 
     '''
 
-    # check for 'distinct'
-    input_target = target_column.split(' ')
-    input_target_column = input_target[0]
-
-    if(input_target[0]=='distinct'):
-        input_target_column = input_target[1]
-
     # add the target column if needed
-    target = original.column_names.index(input_target_column)
+    target_column_name = input_paren.removeprefix('distinct ')
+    target_column_index = original.column_names.index(target_column_name)
     # take the indexes of the columns that are in the GROUP BY clause
-    groups = [original.column_names.index(elem) for elem in column_names]
+    groups = [original.column_names.index(elem) for elem in groupby_list]
+    # sort
+    _sort_based_on_groupby(original=original,grouped=grouped,groupby_list=groupby_list,target_column_name=target_column_name)
 
-    # orders: list of the column names that will be sorted
-    orders = column_names.copy()
-
-
-    if(input_target_column not in grouped.column_names):
-        orders.append(input_target_column)
-
-    # sort the table object by using order_by function
-    original.order_by(orders)
-
-    # array that will have the minimum of each class
+    # initialize array that will have the minimum of each class
     min = [None] * len(grouped.data)
-
-    min[0] = original.data[0][target]
+    # initialize 
+    min[0] = original.data[0][target_column_index]
     prev = original.data[0]
-
-    interval = 1
+    index = 1
 
     for elem in list(original.data[1:]):
 
@@ -1159,32 +1142,20 @@ def min(original,grouped,target_column,column_names):
         telem = [elem[groups[i]] for i in range(len(groups))]
 
         if(tprev != telem):
-            min[interval] = elem[target]
+            min[index] = elem[target_column_index]
 
             prev = elem
-            interval +=1
+            index +=1
 
-        elif(tprev == telem and interval == len(original.data)):
-            min[interval] = elem[target]
+        elif(tprev == telem and index == len(original.data)):
+            min[index] = elem[target_column_index]
 
+    # append the min values to a new column on 'grouped' table
+    grouped.column_names.append("agg_min_"+  input_paren.replace(' ', '_'))
+    grouped.column_types.append(original.column_types[target_column_index])
 
-    # create table object with the data and columns of grouped table object
-    # as well as a new column with the min values
-    c_names = grouped.column_names
-    c_names.append("agg_min_"+  target_column.replace(' ', '_'))
-    c_types = grouped.column_types
-    c_types.append(original.column_types[target])
-    n_table = Table("temp", c_names, c_types)
-    n_table.data = []
-
-    # append the min values to a new column
     for i in range(len(grouped.data)):
         (grouped.data[i]).append(min[i])
-        n_table.data.append(grouped.data[i])
-
-
-    return n_table
-
 
 
 def sum(original, grouped, target_column, column_names):
