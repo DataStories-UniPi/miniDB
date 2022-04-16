@@ -901,14 +901,39 @@ class Table:
 # the following are helping functions for the aggregates
 
 def _get_text_in_paren(text):
+    '''
+    Args:
+    text: string with parenthesis
+    
+    Removes whitespace and returns the string
+    '''
     temp = text.strip()[text.strip().find('(')+1:text.strip().find(')')]
     return temp.strip()
 
 def _sort_based_on_groupby(original,grouped,groupby_list,target_column_name,order_type=" asc"):
-    #we sort the original table.
+    '''
+    Args:
+
+    original: Table object. this is a reference to the original table containing all the columns and rows.
+    grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
+    input_paren: string. The string inside the parenthesis of the agg function (without extra SPACES).
+    groupby_list: list of strings. Contains all the column names in GROUP BY clause.
+    order_type: string. Indicates the sorting order (asc or desc) that will be used
+
+    Function called by the agg functions to sort the original table based on the groupby_list
+    and the column in the parenthesis of the agg fun
+
+    EXAMPLE:
+    Let column_names be : groupby_list = ['column1', 'column2']
+    and target_column_name: 'column3'
+    we essentially sort by calling: ORDER BY column1, column1, column3 asc|desc
+    '''
     orders = groupby_list.copy()
     if(target_column_name not in grouped.column_names):
+        # asc and desc only matters on column3 depending if we want the max or the min to be
+        # first in the groups of the original table
         orders.append(target_column_name + order_type)
+    # sort by calling order_by on original
     original.order_by(orders)
 
 
@@ -1053,104 +1078,50 @@ def min(original,grouped,input_paren,groupby_list):
     '''
     Args:
 
-    original: Table object. this is a reference to the original table, meaning the table returnedd by FROM .. WHERE -
-    containing all the columns and rows.
+    original: Table object. this is a reference to the original table containing all the columns and rows.
     grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
-    It contains the columns of GROUP BY clause as well as extra columns from aggregate functions
-    that have already been applied
-    target_column: string. this is the string inside the sql statement of the aggregate function, it
-    basically contains the name of the target column and/or the 'distinct' statement.
-    column_names: list. this is a list containing all the column names of the columns that make up
-    the groups, meaning the columns in GROUP BY clause.
+    input_paren: string. The string inside the parenthesis of the agg function (without extra SPACES).
+    groupby_list: list of strings. Contains all the column names in GROUP BY clause.
+    order_type: string. Indicates the sorting order (asc or desc) that will be used
 
-
-
-    Returns:
-
-    A new table that consists of all the data of table grouped and the appended column of the aggregate function.
-
-
-    Procedure:
-
-    First check if the string target_column contains the keyword 'distinct'. If yes just ignore
-    it and take the second word which is the column inside the agg function's parenthesis.
-    (distinct doesnt make a difference in min/max agg functions when they are used with group by)
-
-    The function sorts the 'original' table object on the columns specified in the group by clause.
-    These columns are specified in the 'column_names' list.
-
-
-
-    If the target column (column inside max's parenthesis) is NOT one of
-    the 'column_names' (columns specified in the group by clause)
-    the table 'original' is sorted with it as well.
-
-    The sorting is done by the order_by function
-
-    Let column_names be : column_names = ['column1', 'column2']
-    and target column : 'column3'
-
-    we essentialy sort by calling: ORDER BY column1, column1, column3 (all asc)
-
-    This way, the 'original' table is sorted based on the groups and then with the target column.
-
-    Now initialize an array called min of size N (N is the number of the classes).
-    Since the 'original' table is sorted, the fist element in 'original' has
-    the in 'column3' the minimum for the first class. We store the minimum in min[0]
-
-
-    Now need to loop thought the 'original' table and do:
-
-        if the columns 'column1', 'column2' (columns of groups) of the previous element
-        are the same with the current element, this means that we are in the same group.
-        We move on to the next element.
-
-        else if the columns 'column1', 'column2' are different, this means that we have reached
-        a new group, so the current element contains the minimum element of the new group
-        in 'column3'. The minimum element is appended in an array
-
-    When the loop ends we have all the minimum elements of each list in the array mentioned
-
-    We know that the order of the minimum elements mathes the order of the groups in the
-    Table 'grouped' since it is also a sort table (with the same order), so we just need
-    to create a copy of the Table grouped that contains a new row: the minimum elements that were
-    found
-
+    The function ignores if the keyword DISTINCT was given in the parenthesis
+    (distinct doesn't make a difference in min/max agg functions when they are used with group by)
+    The original table is sorted (by using helper function) based on the columns of GROUP BY clause
+    and the column in parenthesis.
+    This way, the 'groups' of the table (duplicates) will be neighbouring and because of the
+    sorting, we save the first element (of the column in parenthesis) of each group in the array min.
+    Then we simply append this array to the 'grouped' Table object
     '''
 
-    # add the target column if needed
+    # get the name and index of column in parenthesis
     target_column_name = input_paren.removeprefix('distinct ')
     target_column_index = original.column_names.index(target_column_name)
     # take the indexes of the columns that are in the GROUP BY clause
-    groups = [original.column_names.index(elem) for elem in groupby_list]
-    # sort
+    group_indexes = [original.column_names.index(elem) for elem in groupby_list]
+    # sort original table
     _sort_based_on_groupby(original=original,grouped=grouped,groupby_list=groupby_list,target_column_name=target_column_name)
 
     # initialize array that will have the minimum of each class
     min = [None] * len(grouped.data)
-    # initialize 
+    # initialize variables for the loop
     min[0] = original.data[0][target_column_index]
-    prev = original.data[0]
+    prev = original.data[0] # this is only updated when we find a row of a new group
     index = 1
 
     for elem in list(original.data[1:]):
+        # add the values of each column that takes part in the group
+        # for the previous and the current
+        tprev = [prev[group_indexes[i]] for i in range(len(group_indexes))]
+        telem = [elem[group_indexes[i]] for i in range(len(group_indexes))]
 
-        # we must check whether the two rows are of the same group.
-        # to achieve this, we add the values of each column that takes part in the group
-        # in a list for both the current, and the previous row.
-        tprev = [prev[groups[i]] for i in range(len(groups))]
-        telem = [elem[groups[i]] for i in range(len(groups))]
-
+        # if previous group is different than current, we reached a new group
         if(tprev != telem):
+            # append value to min
             min[index] = elem[target_column_index]
-
-            prev = elem
+            prev = elem # save current group as previous
             index +=1
 
-        elif(tprev == telem and index == len(original.data)):
-            min[index] = elem[target_column_index]
-
-    # append the min values to a new column on 'grouped' table
+    # append the min array to a new column on 'grouped' table
     grouped.column_names.append("agg_min_"+  input_paren.replace(' ', '_'))
     grouped.column_types.append(original.column_types[target_column_index])
 
