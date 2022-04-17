@@ -608,7 +608,6 @@ class Table:
         with descending order. The same is done if there are more than 2 columns in the 'ORDER BY'.
 
         '''
-
         target_cols = []        # will append here the indexes of the columns that will be sorted
                                 # in the order given in ORDER BY
 
@@ -643,66 +642,33 @@ class Table:
         '''
         Args:
 
-        input_list: the list that will be sorted
-        columns: a list with the indexes of the columns that will be sorted.
-        The indexes are given in the order the columns will be sorted (meaning
-        in the order they are given in the 'ORDER BY')
-        Columns can be given in any desired order.
-        indexStart: int - the index of an element of the input_list (see Procedure)
-        indexEnd: int - the index of an element of the input_list (see Procedure)
+        input_list: list. the list that will be sorted.
+        indexStart: int. The index of an element of the input_list (see below).
+        indexEnd: int. The index of an element of the input_list (see below).
+        columns: list of ints. Contains the indexes of the columns that will be sorted.
         reverses: list of booleans - contains the desired orders in which each column
-        given in 'columns' will be sorted. True = desc and False = asc
+        given in 'columns' will be sorted (True = desc and False = asc).
+
+        Important: The indexes in 'columns' are given in the order the columns will 
+        be sorted (in the same order they are given in the ORDER BY clause).
+
+        A sublist is created from 'indexStart' till 'indexEnd' and is sorted.
+        Then it is checked for duplicates. For each 'block' of duplicates do a recursive
+        call to sort it according to the next column. This is done by passing in the arguments columns[1:]
+        and reverses[1:], in order for the function to sort on the next column.
 
         Returns:
         input_list with elements between the indexes 'indexStart' 'indexEnd' sorted
-
-
-        Procedure:
-
-        This function first makes a list (input_list_copy) with elements
-        of 'input_list' from index 'indexStart' till 'indexEnd' (indexEnd is
-        also included, thats why we write 'indexEnd+1').
-
-        This 'sublist' is sorted according to the first column given in the 'columns' list,
-        with asc/desc boolean also from the first element of the 'reverses' list.
-
-        After sorting, the function checks the 'sublist' with a for loop if
-        there are duplicates in the first column given in the 'columns'.
-
-        Since the table has been sorted, duplicates will be neighbouring. This means that
-        in order to find the duplicate elements we do the following:
-
-        -> store the first element ('prev') of the desired column (first column given in the 'columns')
-        -> initialize the variable 'initial' with 0 - this variable holds the position in which
-        the examined element is first spotted (the examined element is initialy the first
-        so thats why it is 0)
-        -> start a loop
-        -> if the stored element is equal to the current element of the loop,
-        check if the current element is the last. If NO, continue.
-        If YES, call recursively function 'hyper_sort' to sort according
-        to the next column. This is done by passing in the
-        arguements columns[1:] and reverses[1:], in order for the function to
-        sort on the next column.
-        -> if the stored element is NOT equal to the current element of the loop,
-        do a recursive call of 'hyper_sort' with indexStart = first and indexEnd = i-1
-        and columns[1:], reverses[1:] as before. Then reset 'prev' and 'init' in order
-        to have the i-element(current)
-
-        To sum up,
-
-        A sublist is created from indexStart (initial value == 0) till indexEnd (initial value == len(input_list)) and is sorted.
-        Then it is checked for duplicates. For each 'block' of duplicates do a recursive
-        call to sort it according to the next column
-
         '''
-
-
         if(indexStart == indexEnd):
             return input_list
 
-        # 
+        # make copy of 'input_list' from index 'indexStart' till 'indexEnd'
+        # sort according to the first column given in the 'columns' list,
+        # with asc/desc boolean also from the first element of the 'reverses' list
         input_list_copy = sorted(input_list[indexStart:indexEnd+1],key=lambda x: (x[columns[0]]),reverse=reverses[0])
 
+        # initialize variables for the loop
         prev = input_list_copy[0][columns[0]]
         initial = 0
 
@@ -898,7 +864,7 @@ def _get_text_in_paren(text):
     Args:
     text: string with parenthesis
     
-    Removes whitespace and returns the string
+    Removes whitespace and returns the string without parenthesis
     '''
     temp = text.strip()[text.strip().find('(')+1:text.strip().find(')')]
     return temp.strip()
