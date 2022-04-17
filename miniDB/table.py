@@ -276,47 +276,25 @@ class Table:
 
                 '''
 
+                agg_funs = {'min':min,
+                            'max':max,
+                            'avg':avg,
+                            'count':count,
+                            'sum':sum}
+
                 for col in return_columns.split(','):
 
                     if(col.strip() in grouped.column_names):
                         return_cols.append(grouped.column_names.index(col.strip()))
 
-                    elif(col.strip().startswith('min ')):
-
-                        min(original=s_table,grouped=grouped,input_paren= _get_text_in_paren(col),groupby_list=column_names)
-
-                        return_cols.append(len(grouped.column_names)-1)
-
-                    elif(col.strip().startswith('count ')):
-
-                        count(original=s_table,grouped=grouped,input_paren= _get_text_in_paren(col),groupby_list=column_names)
-
-                        return_cols.append(len(grouped.column_names)-1)
-
-                    elif(col.strip().startswith('sum ')):
-
-                        sum(original=s_table,grouped=grouped,input_paren= _get_text_in_paren(col),groupby_list=column_names)
-
-                        return_cols.append(len(grouped.column_names)-1)
-
-                    elif(col.strip().startswith('max ')):
-
-                        max(original=s_table,grouped=grouped,input_paren= _get_text_in_paren(col),groupby_list=column_names)
-
-                        return_cols.append(len(grouped.column_names)-1)
-
-                    elif(col.strip().startswith('avg ')):
-
-                        avg(original=s_table,grouped=grouped,input_paren= _get_text_in_paren(col),groupby_list=column_names)
-
-                        return_cols.append(len(grouped.column_names)-1)
-
-
                     else:
-                        raise Exception("given select list not in GROUP BY")
+                        temp = col.strip()
+                        if("(" in temp):
+                            agg_funs[temp[:temp.index("(")-1]](s_table,grouped,_get_text_in_paren(col),column_names)
 
-
-
+                            return_cols.append(len(grouped.column_names)-1)
+                        else:
+                            raise Exception("Given select list is INVALID")
 
 
             if(having is not None):
@@ -330,7 +308,7 @@ class Table:
 
                 If the left side is an agg function:
 
-                    check if the agg function with the given arguement is already in the
+                    check if the agg function with the given argument is already in the
                     'grouped' table.
 
                     if yes then, it just needs to examine the condition with the
@@ -343,9 +321,9 @@ class Table:
                     'retrun_cols' list
 
                 '''
-
+                #print(having)
                 if(having.startswith('max ')):
-                    # get the table in the parentheisis
+                    # get the table in the parenthesis
                     table_in_agg = having.strip()[having.strip().find('(')+1:having.strip().find(')')]
                     table_in_agg = table_in_agg.strip()
 
@@ -1223,7 +1201,7 @@ def avg(original,grouped,input_paren,groupby_list):
         sums[-1] = prev[target_column_index]
 
     # append the min array to a new column on 'grouped' table
-    grouped.column_names.append("agg_sum_"+  input_paren.replace(' ', '_'))
+    grouped.column_names.append("agg_avg_"+  input_paren.replace(' ', '_'))
     grouped.column_types.append(original.column_types[target_column_index])
 
     for i in range(len(grouped.data)):
