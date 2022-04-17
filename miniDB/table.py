@@ -297,11 +297,9 @@ class Table:
 
                     elif(col.strip().startswith('sum ')):
 
-                        target_column = col.strip()[col.strip().find('(')+1:col.strip().find(')')]
+                        sum(original=s_table,grouped=grouped,input_paren= _get_text_in_paren(col),groupby_list=column_names)
 
-                        grouped = sum(original=s_table,grouped=grouped,target_column=target_column.strip(),column_names=column_names)
-                        return_cols.append(grouped.column_names.index('agg_sum_' + target_column.strip().replace(' ', '_')))
-
+                        return_cols.append(len(grouped.column_names)-1)
 
                     elif(col.strip().startswith('max ')):
 
@@ -1010,141 +1008,83 @@ def min(original,grouped,input_paren,groupby_list):
         (grouped.data[i]).append(min[i])
 
 
-def sum(original, grouped, target_column, column_names):
+def sum(original,grouped,input_paren,groupby_list):
     '''
     Args:
 
-    original: Table object. this is a reference to the original table, meaning the table returnedd by FROM .. WHERE -
-    containing all the columns and rows.
+    original: Table object. this is a reference to the original table containing all the columns and rows.
     grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
-    It contains the columns of GROUP BY clause as well as extra columns from aggregate functions
-    that have already been applied
-    target_column: string. this is the string inside the sql statement of the aggregate function, it
-    basically contains the name of the target column and/or the 'distinct' statement.
-    column_names: list. this is a list containing all the column names of the columns that make up
-    the groups, meaning the columns in GROUP BY clause.
+    input_paren: string. The string inside the parenthesis of the agg function (without extra SPACES).
+    groupby_list: list of strings. Contains all the column names in GROUP BY clause.
+    order_type: string. Indicates the sorting order (asc or desc) that will be used
 
-
-    Returns:
-
-    A new table that consists of all the data of table grouped and the appended column of the aggregate function.
-
-
-    Raises Exception:
-
-    Custom exception raised if the target_column is not numeric.
-
-
-    Procedure:
-
-    The function creates a variable target containing the index of target_column in the original table.
-    It also creates a list of the indexes of the column_names in the original table.
-    Then, it orders the reference of the original table by the group columns (column_names) and
-    the target column - this helps the function distinguish between groups as well as deal with the distinct case.
-
-    Afterwards, it creates a list of sums, which is going to contain the summed values of each group.
-    At this point, the function starts a loop, searching through every single row of the original table, while also
-    remembering the previous iteration's row in a variable 'prev'.
-    On each iteration: the loop checks whether the previous row is of the same group as the current row by checking for equality
-    between the group-by column names (the indexes of which, are stored in the list 'groups') and, if so, adds
-    the target-th value of the row to the sums list.
-
-    If the functions was asked to sum only distinct values, then on each iteration: the function also checks wether the target-th
-    vaule is equal between the two rows, and only adds to sums if the two values are unequal.
-
-    To finish off, the function creates a new table, containing all the rows (and their data) of table grouped, plus a new
-    row of the appropriate aggregate function name containing the sums of each group.
-
-
-    To sum up:
-
-    The function sums up the data of the target_column for each group in column_names
-    (if distinct was specidied, it ignores duplicate values while iterating through the data).
+    The function behaves differently if the keyword DISTINCT was
+    given in the parenthesis (see how sum(distinct column) works).
+    The original table is sorted (by using helper function) based on the columns of GROUP BY clause
+    and the column in parenthesis.
+    This way, the 'groups' of the table (duplicates) will be neighbouring and
+    we use a loop to calculate the sum.
+    Then we simply append this array to the 'grouped' Table object
     '''
+    distinct=False
+    if(input_paren.startswith('distinct ')):
+        distinct=True
 
-    #we check wether 'distinct' was specified.
-    distinct = False
-    input_target = target_column.split(' ')
-    input_target_column = input_target[0]
+    # get the name and index of column in parenthesis
+    target_column_name = input_paren.removeprefix('distinct ')
+    target_column_index = original.column_names.index(target_column_name)
+    # take the indexes of the columns that are in the GROUP BY clause
+    group_indexes = [original.column_names.index(elem) for elem in groupby_list]
+    # sort original table
+    _sort_based_on_groupby(original=original,grouped=grouped,
+    groupby_list=groupby_list,target_column_name=target_column_name)
 
-    if(input_target[0]=='distinct'):
-        distinct = True
-        input_target_column = input_target[1]
-
-
-    target = original.column_names.index(input_target_column)
-    groups = [original.column_names.index(elem) for elem in column_names]
-    if not(str(original.column_types[target]) == "<class 'int'>"):
-            raise Exception("The aggregate functions sum, avg are valid on numeric columns only!")
-
-    #we sort the original table.
-    orders = column_names.copy()
-    if(input_target_column not in grouped.column_names):
-        orders.append(input_target_column)
-    original.order_by(orders)
-
-
+    # initialize array that will have the sum of each class
     sums = [None] * len(grouped.data)
+    # initialize variables for the loop
     interval = 0
+    prev = original.data[0]
 
-    if(distinct):
+    for elem in list(original.data[1:]):
+        if(sums[interval] is None):
+            sums[interval] = prev[target_column_index]
 
-        prev = original.data[0]
+        #we must check whether the two rows are of the same group.
+        #to achieve this, we add the values of each column that takes part in the group
+        #in a list for both the current, and the previous row.
+        tprev = [prev[group_indexes[i]] for i in range(len(group_indexes))]
+        telem = [elem[group_indexes[i]] for i in range(len(group_indexes))]
 
-        for elem in list(original.data[1:]):
-            if(sums[interval] is None):
-                sums[interval] = prev[target]
+        if(distinct):
 
-            #we must check whether the two rows are of the same group.
-            #to achieve this, we add the values of each column that takes part in the group
-            #in a list for both the current, and the previous row.
-            tlist1 = [prev[groups[i]] for i in range(len(groups))]
-            tlist2 = [elem[groups[i]] for i in range(len(groups))]
-
-            if(tlist1 == tlist2 and elem[target] != prev[target]):
-                sums[interval] += elem[target]
-            elif(tlist1 == tlist2 and elem[target] == prev[target]):
+            if(tprev == telem and elem[target_column_index] != prev[target_column_index]):
+                sums[interval] += elem[target_column_index]
+            elif(tprev == telem and elem[target_column_index] == prev[target_column_index]):
                 pass
             else:
                 interval += 1
-            prev = elem
 
-        #if the last row is its own group, the above loop does not update the sums list
-        #and leaves it empty. Thus, in such case, we update it manually.
-        if(sums[-1] is None):
-            sums[-1] = prev[target]
-    else:
+        else:
 
-        prev = original.data[0]
-
-        for elem in list(original.data[1:]):
-            if(sums[interval] is None):
-                sums[interval] = prev[target]
-
-            tlist1 = [prev[groups[i]] for i in range(len(groups))]
-            tlist2 = [elem[groups[i]] for i in range(len(groups))]
-            if(tlist1 == tlist2):
-                sums[interval] += elem[target]
+            if(tprev == telem):
+                sums[interval] += elem[target_column_index]
             else:
                 interval += 1
-            prev = elem
-        if(sums[-1] is None):
-            sums[-1] = prev[target]
 
-    c_names = grouped.column_names
-    c_names.append("agg_sum_" + target_column.replace(' ', '_'))
-    c_types = grouped.column_types
-    c_types.append(original.column_types[target])
-    n_table = Table("temp", c_names, c_types)
-    n_table.data = []
+        prev = elem
 
-    interval = 0
-    for d in grouped.data:
-        d.append(sums[interval])
-        n_table.data.append(d)
-        interval += 1
+    #if the last row is its own group, the above loop does not update the sums list
+    #and leaves it empty. Thus, in such case, we update it manually.
+    if(sums[-1] is None):
+        sums[-1] = prev[target_column_index]
 
-    return n_table
+    # append the min array to a new column on 'grouped' table
+    grouped.column_names.append("agg_sum_"+  input_paren.replace(' ', '_'))
+    grouped.column_types.append(original.column_types[target_column_index])
+
+    for i in range(len(grouped.data)):
+        (grouped.data[i]).append(sums[i])
+
 
 def count(original, grouped, target_column, column_names):
     '''
