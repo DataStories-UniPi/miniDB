@@ -252,6 +252,13 @@ class Table:
 
             return_cols = []
 
+            # helping dict
+            agg_funs = {'min':min,
+                        'max':max,
+                        'avg':avg,
+                        'count':count,
+                        'sum':sum}
+
             if return_columns == '*':
                 raise Exception("Syntax error: cannot have '*' in select list when using GROUP BY")
             else:
@@ -275,26 +282,20 @@ class Table:
                 agg_[min|max|avg|count|sum]_[distinct]_[column_name]
 
                 '''
-
-                agg_funs = {'min':min,
-                            'max':max,
-                            'avg':avg,
-                            'count':count,
-                            'sum':sum}
-
                 for col in return_columns.split(','):
 
                     if(col.strip() in grouped.column_names):
                         return_cols.append(grouped.column_names.index(col.strip()))
 
                     else:
-                        temp = col.strip()
-                        if("(" in temp):
-                            agg_funs[temp[:temp.index("(")-1]](s_table,grouped,_get_text_in_paren(col),column_names)
+                        aggname = col.strip().split(" ")[0]
 
-                            return_cols.append(len(grouped.column_names)-1)
-                        else:
+                        try:
+                            agg_funs[aggname](s_table,grouped,_get_text_in_paren(col),column_names)
+                        except KeyError:
                             raise Exception("Given select list is INVALID")
+                        
+                        return_cols.append(len(grouped.column_names)-1)
 
 
             if(having is not None):
@@ -321,80 +322,28 @@ class Table:
                     'retrun_cols' list
 
                 '''
-                #print(having)
-                if(having.startswith('max ')):
+
+                if("(" in having):
+                    aggname = having.split(" ")[0]
+
                     # get the table in the parenthesis
                     table_in_agg = having.strip()[having.strip().find('(')+1:having.strip().find(')')]
                     table_in_agg = table_in_agg.strip()
 
                     # if the cooresponding column is already in the 'grouped' table
-                    if(('agg_max_'+table_in_agg.replace(' ', '_')) in grouped.column_names):
+                    if(('agg_'+aggname+'_'+table_in_agg.replace(' ', '_')) in grouped.column_names):
                         # remove the "agg_function ( column name ) " from the condition
                         # and replace it with the name of the cooresponding column (agg_max_[column_name])
                         having = having[(having.index(')')+1):]
-                        having = 'agg_max_'+table_in_agg.replace(' ', '_') + having
+                        having = 'agg_'+aggname+'_'+table_in_agg.replace(' ', '_') + having
 
                     else:
                         # run the cooresponding function to add the new column
-                        grouped = max(original=self,grouped=grouped,target_column=table_in_agg.strip(),column_names=column_names)
+                        agg_funs[aggname](self,grouped,_get_text_in_paren("("+table_in_agg+")"),column_names)
                         # remove the "agg_function ( column name ) " from the condition
                         having = having[(having.index(')')+1):]
                         # and replace it with the name of the cooresponding column (agg_max_[column_name])
-                        having = 'agg_max_'+table_in_agg.replace(' ', '_') + having
-
-                # the rest agg function cases have the same procedure
-
-                if(having.startswith('min ')):
-                    table_in_agg = having.strip()[having.strip().find('(')+1:having.strip().find(')')]
-                    table_in_agg = table_in_agg.strip()
-
-                    if(('agg_min_'+table_in_agg.replace(' ', '_')) in grouped.column_names):
-                        having = having[(having.index(')')+1):]
-                        having = 'agg_min_'+table_in_agg.replace(' ', '_') + having
-
-                    else:
-                        grouped = min(original=self,grouped=grouped,target_column=table_in_agg.strip(),column_names=column_names)
-                        having = having[(having.index(')')+1):]
-                        having = 'agg_min_'+table_in_agg.replace(' ', '_') + having
-
-                if(having.startswith('count ')):
-                    table_in_agg = having.strip()[having.strip().find('(')+1:having.strip().find(')')]
-                    table_in_agg = table_in_agg.strip()
-
-                    if(('agg_count_'+table_in_agg.replace(' ', '_')) in grouped.column_names):
-                        having = having[(having.index(')')+1):]
-                        having = 'agg_count_'+table_in_agg.replace(' ', '_') + having
-
-                    else:
-                        grouped = count(original=self,grouped=grouped,target_column=table_in_agg.strip(),column_names=column_names)
-                        having = having[(having.index(')')+1):]
-                        having = 'agg_count_'+table_in_agg.replace(' ', '_') + having
-
-                if(having.startswith('sum ')):
-                    table_in_agg = having.strip()[having.strip().find('(')+1:having.strip().find(')')]
-                    table_in_agg = table_in_agg.strip()
-
-                    if(('agg_sum_'+table_in_agg.replace(' ', '_')) in grouped.column_names):
-                        having = having[(having.index(')')+1):]
-                        having = 'agg_sum_'+table_in_agg.replace(' ', '_') + having
-
-                    else:
-                        grouped = sum(original=self,grouped=grouped,target_column=table_in_agg.strip(),column_names=column_names)
-                        having = having[(having.index(')')+1):]
-                        having = 'agg_sum_'+table_in_agg.replace(' ', '_') + having
-
-                if(having.startswith('avg ')):
-                    table_in_agg = having.strip()[having.strip().find('(')+1:having.strip().find(')')]
-                    table_in_agg = table_in_agg.strip()
-
-                    if(('agg_avg_'+table_in_agg.replace(' ', '_')) in grouped.column_names):
-                        having = having[(having.index(')')+1):]
-                        having = 'agg_avg_'+table_in_agg.replace(' ', '_') + having
-
-                    else:
-                        grouped = avg(original=self,grouped=grouped,target_column=table_in_agg.strip(),column_names=column_names)
-                        having = having[(having.index(')')+1):]
-                        having = 'agg_avg_'+table_in_agg.replace(' ', '_') + having
+                        having = 'agg_'+aggname+'_'+table_in_agg.replace(' ', '_') + having
 
 
                 # do the same as WHERE only now with the string 'having'
