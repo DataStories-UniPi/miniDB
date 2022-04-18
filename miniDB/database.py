@@ -38,12 +38,10 @@ class Database:
                     if not self.is_locked(i):
                         self.unlock_table(i, True)
                 return
-            except pickle.PickleError:
+            except (OSError):
                 warnings.warn(f'Database "{name}" does not exist. Creating new.')
             except:
-                warnings.warn('a table is locked')
-                return
-
+                warnings.warn('A table is locked')
             # create dbdata directory if it doesnt exist
         if not os.path.exists('dbdata'):
             os.mkdir('dbdata')
@@ -494,7 +492,7 @@ class Database:
                 # pid = self.select('*','meta_locks',  f'table_name={table_name}', return_object=True).data[0][1]
                 pid = self.tables['meta_locks']._select_where('pid',f'table_name={table_name}').data[0][0]
                 if pid!=os.getpid():
-                    raise Exception(f'Table "{table_name}" is locked by the process with pid={pid}')
+                    raise TableException(f'Table "{table_name}" is locked by the process with pid={pid}')
             except IndexError:
                 pass
         self.tables['meta_locks']._delete_where(f'table_name={table_name}')
@@ -504,22 +502,20 @@ class Database:
     def is_locked(self, table_name):
         '''
         Check whether the specified table is exclusively locked (X).
-
         Args:
             table_name: string. Table name (must be part of database).
         '''
-        if isinstance(table_name, Table) or table_name[
-                                            :4] == 'meta':  # meta tables will never be locked (they are internal)
+        if isinstance(table_name,Table) or table_name[:4]=='meta':  # meta tables will never be locked (they are internal)
             return False
 
         with open(f'{self.savedir}/meta_locks.pkl', 'rb') as f:
             self.tables.update({'meta_locks': pickle.load(f)})
 
         try:
-            pid = self.tables['meta_locks']._select_where('pid', f'table_name={table_name}').data[0][0]
-            if pid != os.getpid():
+            pid = self.tables['meta_locks']._select_where('pid',f'table_name={table_name}').data[0][0]
+            if pid!=os.getpid():
                 if not (os.path.isdir('/proc/{}'.format(pid))):
-                    return False
+                     return False
                 raise Exception(f'Table "{table_name}" is locked by the process with pid={pid}')
 
         except IndexError:
