@@ -200,7 +200,7 @@ def interpret_meta(command):
     cdb - change/create database
     rmdb - delete database
     """
-    action = command[1:].split(' ')[0].removesuffix(';')
+    action = command.split(' ')[0].removesuffix(';')
 
     db_name = db._name if search_between(command, action,';')=='' else search_between(command, action,';')
 
@@ -259,7 +259,7 @@ if __name__ == "__main__":
             try:
                 if line=='exit':
                     break
-                if line.startswith('.'):
+                if line.split(' ')[0].removesuffix(';') in ['lsdb', 'lstb', 'cdb', 'rmdb']:
                     interpret_meta(line)
                 elif line.startswith('explain'):
                     dic = interpret(line.removeprefix('explain '))
