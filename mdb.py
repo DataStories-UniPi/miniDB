@@ -78,6 +78,18 @@ def create_query_plan(query, keywords, action):
         if dic['group by'] is not None:
             dic['from'] = dic['from'].removesuffix(' group')
 
+            select_list = dic['select'].split(",")
+            new_select_list = ""
+
+            for elem in select_list:
+                if("(" in elem and ")" in elem):
+                    elem = elem.replace("(","")
+                    elem = elem.replace(")","")
+                    elem = elem.replace("  "," ")
+                new_select_list +=elem.strip() +","
+
+            dic['select'] = new_select_list[:-1]
+
             if dic['where'] is not None:
                 dic['where'] = dic['where'].removesuffix( 'group')
 
@@ -94,6 +106,12 @@ def create_query_plan(query, keywords, action):
 
             if dic['having'] is not None:
                 dic['having'] = dic['having'].removesuffix(' order')
+
+        if dic['having'] is not None:
+            if("(" in dic['having'] and ")" in dic['having']):
+                dic['having'] = dic['having'].replace("(","")
+                dic['having'] = dic['having'].replace(")","")
+                dic['having'] = dic['having'].replace("  "," ")
 
 
 

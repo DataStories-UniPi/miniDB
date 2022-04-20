@@ -270,7 +270,7 @@ class Table:
 
                 If the select list contains an agg function:
 
-                - get the column that is specified inside the agg finction's parenthesis
+                - get the column that is specified inside the agg function's parenthesis
 
                 - run the cooresponding function by passing the 's_table', the 'grouped', the target_column
                 and the column_names. The function will append a column to the 'grouped' table
@@ -291,7 +291,7 @@ class Table:
                         aggname = col.strip().split(" ")[0]
 
                         try:
-                            agg_funs[aggname](s_table,grouped,_get_text_in_paren(col),column_names)
+                            agg_funs[aggname](s_table,grouped,col.split(" "),column_names)
                         except KeyError:
                             raise Exception("Given select list is INVALID")
                         
@@ -323,27 +323,42 @@ class Table:
 
                 '''
 
-                if("(" in having):
+                if(having.split(" ")[0] in ["min","max","count","sum","avg"]):
                     aggname = having.split(" ")[0]
 
                     # get the table in the parenthesis
-                    table_in_agg = having.strip()[having.strip().find('(')+1:having.strip().find(')')]
-                    table_in_agg = table_in_agg.strip()
+                    if(having.split(" ")[1]=="distinct"):
+                        table_in_agg = having.split(" ")[1] +"_" + having.split(" ")[2]
+                    else:
+                        table_in_agg = having.split(" ")[1]
 
                     # if the cooresponding column is already in the 'grouped' table
-                    if(('agg_'+aggname+'_'+table_in_agg.replace(' ', '_')) in grouped.column_names):
+                    if(('agg_'+aggname+'_'+table_in_agg) in grouped.column_names):
                         # remove the "agg_function ( column name ) " from the condition
                         # and replace it with the name of the cooresponding column (agg_max_[column_name])
-                        having = having[(having.index(')')+1):]
-                        having = 'agg_'+aggname+'_'+table_in_agg.replace(' ', '_') + having
+                        ops = [">=", "<=", "=", ">", "<"]
+                        
+                        for op in ops:
+                            splt = having.split(op)
+                            if(len(splt)>1):
+                                break
+
+                        having = "agg_"+splt[0].strip().replace(' ', '_')+ op + splt[1]
+                        print(having)
+
 
                     else:
                         # run the cooresponding function to add the new column
-                        agg_funs[aggname](self,grouped,_get_text_in_paren("("+table_in_agg+")"),column_names)
-                        # remove the "agg_function ( column name ) " from the condition
-                        having = having[(having.index(')')+1):]
-                        # and replace it with the name of the cooresponding column (agg_max_[column_name])
-                        having = 'agg_'+aggname+'_'+table_in_agg.replace(' ', '_') + having
+                        ops = [">=", "<=", "=", ">", "<"]
+                        
+                        for op in ops:
+                            splt = having.split(op)
+                            if(len(splt)>1):
+                                break
+                        
+                        agg_funs[aggname](self,grouped,splt[0].strip().split(" "),column_names)
+
+                        having = "agg_"+splt[0].strip().replace(' ', '_')+ op + splt[1]
 
 
                 # do the same as WHERE only now with the string 'having'
@@ -778,17 +793,7 @@ class Table:
 
         self.__dict__.update(tmp_dict)
 
-# the following are helping functions for the aggregates
-
-def _get_text_in_paren(text):
-    '''
-    Args:
-    text: string with parenthesis
-    
-    Removes whitespace and returns the string without parenthesis
-    '''
-    temp = text.strip()[text.strip().find('(')+1:text.strip().find(')')]
-    return temp.strip()
+# the following is helping function for the aggregates
 
 def _sort_based_on_groupby(original,grouped,groupby_list,target_column_name,order_type=" asc"):
     '''
@@ -838,7 +843,13 @@ def max(original,grouped,input_paren,groupby_list):
     '''
 
     # get the name and index of column in parenthesis
-    target_column_name = input_paren.removeprefix('distinct ')
+    distinct=False
+    # get the name and index of column in parenthesis
+    if(input_paren[1]=="distinct"):
+        target_column_name = input_paren[2]
+        distinct=True
+    else:
+        target_column_name = input_paren[1]
     target_column_index = original.column_names.index(target_column_name)
     # take the indexes of the columns that are in the GROUP BY clause
     group_indexes = [original.column_names.index(elem) for elem in groupby_list]
@@ -866,8 +877,12 @@ def max(original,grouped,input_paren,groupby_list):
             prev = elem # save current group as previous
             index +=1
 
-    # append the max array to a new column on 'grouped' table
-    grouped.column_names.append("agg_max_"+  input_paren.replace(' ', '_'))
+    # append the min array to a new column on 'grouped' table
+    if(distinct):
+        new_column_name = "agg_max_distinct_" + target_column_name
+    else:
+        new_column_name = "agg_max_" + target_column_name
+    grouped.column_names.append(new_column_name)
     grouped.column_types.append(original.column_types[target_column_index])
 
     for i in range(len(grouped.data)):
@@ -880,7 +895,7 @@ def min(original,grouped,input_paren,groupby_list):
 
     original: Table object. this is a reference to the original table containing all the columns and rows.
     grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
-    input_paren: string. The string inside the parenthesis of the agg function (without extra SPACES).
+    input_paren: list. list containing the words inside the parenthesis of the agg function.
     groupby_list: list of strings. Contains all the column names in GROUP BY clause.
     order_type: string. Indicates the sorting order (asc or desc) that will be used
 
@@ -893,8 +908,13 @@ def min(original,grouped,input_paren,groupby_list):
     Then we simply append this array to the 'grouped' Table object
     '''
 
+    distinct=False
     # get the name and index of column in parenthesis
-    target_column_name = input_paren.removeprefix('distinct ')
+    if(input_paren[1]=="distinct"):
+        target_column_name = input_paren[2]
+        distinct=True
+    else:
+        target_column_name = input_paren[1]
     target_column_index = original.column_names.index(target_column_name)
     # take the indexes of the columns that are in the GROUP BY clause
     group_indexes = [original.column_names.index(elem) for elem in groupby_list]
@@ -923,7 +943,11 @@ def min(original,grouped,input_paren,groupby_list):
             index +=1
 
     # append the min array to a new column on 'grouped' table
-    grouped.column_names.append("agg_min_"+  input_paren.replace(' ', '_'))
+    if(distinct):
+        new_column_name = "agg_min_distinct_" + target_column_name
+    else:
+        new_column_name = "agg_min_" + target_column_name
+    grouped.column_names.append(new_column_name)
     grouped.column_types.append(original.column_types[target_column_index])
 
     for i in range(len(grouped.data)):
@@ -948,11 +972,12 @@ def sum(original,grouped,input_paren,groupby_list):
     Then we simply append this array to the 'grouped' Table object
     '''
     distinct=False
-    if(input_paren.startswith('distinct ')):
-        distinct=True
-
     # get the name and index of column in parenthesis
-    target_column_name = input_paren.removeprefix('distinct ')
+    if(input_paren[1]=="distinct"):
+        target_column_name = input_paren[2]
+        distinct=True
+    else:
+        target_column_name = input_paren[1]
     target_column_index = original.column_names.index(target_column_name)
     # take the indexes of the columns that are in the GROUP BY clause
     group_indexes = [original.column_names.index(elem) for elem in groupby_list]
@@ -1000,7 +1025,11 @@ def sum(original,grouped,input_paren,groupby_list):
         sums[-1] = prev[target_column_index]
 
     # append the min array to a new column on 'grouped' table
-    grouped.column_names.append("agg_sum_"+  input_paren.replace(' ', '_'))
+    if(distinct):
+        new_column_name = "agg_sum_distinct_" + target_column_name
+    else:
+        new_column_name = "agg_sum_" + target_column_name
+    grouped.column_names.append(new_column_name)
     grouped.column_types.append(original.column_types[target_column_index])
 
     for i in range(len(grouped.data)):
@@ -1025,11 +1054,12 @@ def count(original,grouped,input_paren,groupby_list):
     Then we simply append this array to the 'grouped' Table object
     '''
     distinct=False
-    if(input_paren.startswith('distinct ')):
-        distinct=True
-
     # get the name and index of column in parenthesis
-    target_column_name = input_paren.removeprefix('distinct ')
+    if(input_paren[1]=="distinct"):
+        target_column_name = input_paren[2]
+        distinct=True
+    else:
+        target_column_name = input_paren[1]
     target_column_index = original.column_names.index(target_column_name)
     # take the indexes of the columns that are in the GROUP BY clause
     group_indexes = [original.column_names.index(elem) for elem in groupby_list]
@@ -1070,8 +1100,12 @@ def count(original,grouped,input_paren,groupby_list):
         prev = elem
 
     # append the min array to a new column on 'grouped' table
-    grouped.column_names.append("agg_count_"+  input_paren.replace(' ', '_'))
-    grouped.column_types.append(original.column_types[target_column_index])
+    if(distinct):
+        new_column_name = "agg_count_distinct_" + target_column_name
+    else:
+        new_column_name = "agg_count_" + target_column_name
+    grouped.column_names.append(new_column_name)
+    grouped.column_types.append(type(6))
 
     for i in range(len(grouped.data)):
         (grouped.data[i]).append(counts[i])
@@ -1095,11 +1129,12 @@ def avg(original,grouped,input_paren,groupby_list):
     Then we simply calculate the avgs and add them 'grouped' Table object
     '''
     distinct=False
-    if(input_paren.startswith('distinct ')):
-        distinct=True
-
     # get the name and index of column in parenthesis
-    target_column_name = input_paren.removeprefix('distinct ')
+    if(input_paren[1]=="distinct"):
+        target_column_name = input_paren[2]
+        distinct=True
+    else:
+        target_column_name = input_paren[1]
     target_column_index = original.column_names.index(target_column_name)
     # take the indexes of the columns that are in the GROUP BY clause
     group_indexes = [original.column_names.index(elem) for elem in groupby_list]
@@ -1150,7 +1185,11 @@ def avg(original,grouped,input_paren,groupby_list):
         sums[-1] = prev[target_column_index]
 
     # append the min array to a new column on 'grouped' table
-    grouped.column_names.append("agg_avg_"+  input_paren.replace(' ', '_'))
+    if(distinct):
+        new_column_name = "agg_avg_distinct_" + target_column_name
+    else:
+        new_column_name = "agg_avg_" + target_column_name
+    grouped.column_names.append(new_column_name)
     grouped.column_types.append(original.column_types[target_column_index])
 
     for i in range(len(grouped.data)):
