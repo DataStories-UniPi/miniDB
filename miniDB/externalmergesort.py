@@ -47,6 +47,7 @@ class ExternalMergeSort:
         self.startingFileName = largeFile
         self.numFiles = 1
 
+        # Split the file in chunks of chunkSize bytes
         with open(f'miniDB/externalSortFolder/{largeFile}') as f:
             chunk = f.readlines(chunkSize)
             while chunk:
@@ -131,4 +132,6 @@ class ExternalMergeSort:
             self.sortSmallFile(i)
 
         self.k_wayMerge(self.numFiles)
+        
+        # After the k-way Merge is completed, remove the folder containing the temporary split files
         shutil.rmtree(f'miniDB/externalSortFolder/tempSplitFiles {self.startingFileName}/')
