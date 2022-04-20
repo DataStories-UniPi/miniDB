@@ -284,11 +284,11 @@ class Table:
                 '''
                 for col in return_columns.split(','):
 
-                    if(col.strip() in grouped.column_names):
+                    if(col in grouped.column_names):
                         return_cols.append(grouped.column_names.index(col.strip()))
 
                     else:
-                        aggname = col.strip().split(" ")[0]
+                        aggname = col.split(" ")[0]
 
                         try:
                             agg_funs[aggname](s_table,grouped,col.split(" "),column_names)
@@ -310,30 +310,27 @@ class Table:
                 If the left side is an agg function:
 
                     check if the agg function with the given argument is already in the
-                    'grouped' table.
+                    'grouped' table. If yes then, it just needs to examine the condition with the
+                    cooresponding column.
 
-                    if yes then, it just needs to examine the condition with the
-                    cooresponding column
-
-                    if no, call the cooresponding function to append a new column to the
-                    'grouped' table and then check the condition with that column
-
-                    The newly added column will not be displayed since it is not in the
-                    'retrun_cols' list
-
+                    If no, call the cooresponding function to append a new column to the
+                    'grouped' table and then check the condition with that column. The newly added
+                    column will not be displayed since it is not in the 'retrun_cols' list
                 '''
 
+                # if agg function was given it will like this:
+                # min distinct column1 < 400 or min column1 <400 (see mdb.py)
                 if(having.split(" ")[0] in ["min","max","count","sum","avg"]):
                     aggname = having.split(" ")[0]
 
-                    # get the table in the parenthesis
+                    # get the name of column in the the agg function
                     if(having.split(" ")[1]=="distinct"):
-                        table_in_agg = having.split(" ")[1] +"_" + having.split(" ")[2]
+                        column_in_agg = having.split(" ")[1] +"_" + having.split(" ")[2]
                     else:
-                        table_in_agg = having.split(" ")[1]
+                        column_in_agg = having.split(" ")[1]
 
                     # if the cooresponding column is already in the 'grouped' table
-                    if(('agg_'+aggname+'_'+table_in_agg) in grouped.column_names):
+                    if(('agg_'+aggname+'_'+column_in_agg) in grouped.column_names):
                         # remove the "agg_function ( column name ) " from the condition
                         # and replace it with the name of the cooresponding column (agg_max_[column_name])
                         ops = [">=", "<=", "=", ">", "<"]
@@ -344,7 +341,7 @@ class Table:
                                 break
 
                         having = "agg_"+splt[0].strip().replace(' ', '_')+ op + splt[1]
-                        print(having)
+                        # print(having)
 
 
                     else:
@@ -829,7 +826,7 @@ def max(original,grouped,input_paren,groupby_list):
 
     original: Table object. this is a reference to the original table containing all the columns and rows.
     grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
-    input_paren: string. The string inside the parenthesis of the agg function (without extra SPACES).
+    input_paren: list containing the agg name, DISTINCT (if it was given) and the column (see mdb.py).
     groupby_list: list of strings. Contains all the column names in GROUP BY clause.
     order_type: string. Indicates the sorting order (asc or desc) that will be used
 
@@ -895,7 +892,7 @@ def min(original,grouped,input_paren,groupby_list):
 
     original: Table object. this is a reference to the original table containing all the columns and rows.
     grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
-    input_paren: list. list containing the words inside the parenthesis of the agg function.
+    input_paren: list. list containing the agg name, DISTINCT (if it was given) and the column (see mdb.py).
     groupby_list: list of strings. Contains all the column names in GROUP BY clause.
     order_type: string. Indicates the sorting order (asc or desc) that will be used
 
@@ -960,7 +957,7 @@ def sum(original,grouped,input_paren,groupby_list):
 
     original: Table object. this is a reference to the original table containing all the columns and rows.
     grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
-    input_paren: string. The string inside the parenthesis of the agg function (without extra SPACES).
+    input_paren: list containing the agg name, DISTINCT (if it was given) and the column (see mdb.py).
     groupby_list: list of strings. Contains all the column names in GROUP BY clause.
     order_type: string. Indicates the sorting order (asc or desc) that will be used
 
@@ -1042,7 +1039,7 @@ def count(original,grouped,input_paren,groupby_list):
 
     original: Table object. this is a reference to the original table containing all the columns and rows.
     grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
-    input_paren: string. The string inside the parenthesis of the agg function (without extra SPACES).
+    input_paren: list containing the agg name, DISTINCT (if it was given) and the column (see mdb.py).
     groupby_list: list of strings. Contains all the column names in GROUP BY clause.
     order_type: string. Indicates the sorting order (asc or desc) that will be used
 
@@ -1117,7 +1114,7 @@ def avg(original,grouped,input_paren,groupby_list):
 
     original: Table object. this is a reference to the original table containing all the columns and rows.
     grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
-    input_paren: string. The string inside the parenthesis of the agg function (without extra SPACES).
+    input_paren: list containing the agg name, DISTINCT (if it was given) and the column (see mdb.py).
     groupby_list: list of strings. Contains all the column names in GROUP BY clause.
     order_type: string. Indicates the sorting order (asc or desc) that will be used
 

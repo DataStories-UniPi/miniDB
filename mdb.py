@@ -78,6 +78,11 @@ def create_query_plan(query, keywords, action):
         if dic['group by'] is not None:
             dic['from'] = dic['from'].removesuffix(' group')
 
+            if dic['where'] is not None:
+                dic['where'] = dic['where'].removesuffix( 'group')
+
+            # if agg function was given do the following:
+            # max ( column ) -> max column
             select_list = dic['select'].split(",")
             new_select_list = ""
 
@@ -90,8 +95,7 @@ def create_query_plan(query, keywords, action):
 
             dic['select'] = new_select_list[:-1]
 
-            if dic['where'] is not None:
-                dic['where'] = dic['where'].removesuffix( 'group')
+
 
         # similarly, if 'order by' was given clean up the dict's 'group by' and 'where'
         # and 'having'
@@ -108,6 +112,8 @@ def create_query_plan(query, keywords, action):
                 dic['having'] = dic['having'].removesuffix(' order')
 
         if dic['having'] is not None:
+            # if agg function was given do the following:
+            # max ( column ) -> max column
             if("(" in dic['having'] and ")" in dic['having']):
                 dic['having'] = dic['having'].replace("(","")
                 dic['having'] = dic['having'].replace(")","")
