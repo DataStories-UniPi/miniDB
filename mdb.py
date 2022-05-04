@@ -161,7 +161,7 @@ def interpret(query):
                      'update table': ['update table', 'set', 'where'],
                      'create index': ['create index', 'on', 'using'],
                      'drop index': ['drop index'],
-                     'start transaction': ['start transaction'],
+                     'begin': ['begin'],
                      'commit': ['commit'],
                      'rollback': ['rollback']
                      }
