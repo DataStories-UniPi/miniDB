@@ -29,7 +29,6 @@ class Database:
         self.save_state = False
         self.savedir = f'dbdata/{name}_db'
         # to keep locked tables allowing us to unlock them at the end of the transaction
-        self.transaction_locks = []
         if load:
             try:
                 self.load_database()
@@ -266,8 +265,6 @@ class Database:
 
         if lock_ownership and not self.save_state:
             self.unlock_table(table_name)
-        else:
-            self.transaction_locks += table_name
         self._update()
         self.save_database()
 
@@ -293,8 +290,6 @@ class Database:
         self.tables[table_name]._update_rows(set_value, set_column, condition)
         if lock_ownership and not self.save_state:
             self.unlock_table(table_name)
-        else:
-            self.transaction_locks += table_name
         self._update()
         self.save_database()
 
@@ -316,9 +311,6 @@ class Database:
         deleted = self.tables[table_name]._delete_where(condition)
         if lock_ownership and not self.save_state:
             self.unlock_table(table_name)
-            # if transaction has begun add to list with tables to be unlocked
-        else:
-            self.transaction_locks.append(table_name)
         self._update()
         self.save_database()
         # we need the save above to avoid loading the old database that still contains the deleted elements
@@ -730,5 +722,7 @@ class Database:
         # well it unlocks the locked tables
 
     def unlocking_phase(self):
-        for table in self.transaction_locks:
-            self.unlock_table(table)
+        here=os.getpid()  #Get pid of current process
+        transaction_locks=self.tables['meta_locks']._select_where('table_name', f'pid={here}')#Find all tables with pid of the current process
+        for table in transaction_locks.data:#Iterate through all the tables
+            self.unlock_table(table[0],True)#And unlock them
