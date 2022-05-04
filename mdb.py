@@ -87,7 +87,7 @@ def create_query_plan(query, keywords, action):
             new_select_list = ""
 
             for elem in select_list:
-                if("(" in elem and ")" in elem):
+                if(all(k in elem for k in ["(", ")"])):
                     elem = elem.replace("(","")
                     elem = elem.replace(")","")
                     elem = elem.replace("  "," ")
@@ -114,7 +114,8 @@ def create_query_plan(query, keywords, action):
         if dic['having'] is not None:
             # if agg function was given do the following:
             # max ( column ) -> max column
-            if("(" in dic['having'] and ")" in dic['having']):
+                
+            if(all(k in dic['having'] for k in ["(", ")"])):
                 dic['having'] = dic['having'].replace("(","")
                 dic['having'] = dic['having'].replace(")","")
                 dic['having'] = dic['having'].replace("  "," ")
