@@ -12,6 +12,7 @@ import logging
 import warnings
 import readline
 from tabulate import tabulate
+from joins import Inlj, Smj
 
 
 # sys.setrecursionlimit(100)
@@ -425,148 +426,10 @@ class Database:
             res = left_table._inner_join(right_table, condition)
 
         elif mode=='inlj':
-            # Get the column of the left and right tables and the operator, from the condition of the join
-            column_name_left, operator, column_name_right = Table()._parse_condition(condition, join=True)
-            # If both the tables cannot be indexed, then do a simple inner join
-            if (left_table.pk is None and right_table.pk is None) or (column_name_left != left_table.pk and column_name_right != right_table.pk):
-                print('Index-nested-loop join cannot be executed. Using inner join instead.\n')
-                res = left_table._inner_join(right_table,condition)
-            else:
-                reversed = False
-                
-                # If the right table cannot be indexed and the left can, we reverse them
-                if(column_name_left == left_table.pk):
-                    right_table, left_table = left_table, right_table
-                    column_name_left, column_name_right = column_name_right, column_name_left
-                    reversed = True
-
-                # Create the index of the second table
-                index = Btree(3) # 3 is arbitrary
-                # For each record in the primary key of the table, insert its value and index to the btree
-                for idx, key in enumerate(right_table.column_by_name(right_table.pk)):
-                    index.insert(key, idx)
-                
-                # Try to find the left column, as even during the reverse, it is the only one needed
-                # If it fails, raise exception
-                try:
-                    column_index_left = left_table.column_names.index(column_name_left)
-                except:
-                    raise Exception(f'Column "{column_name_left}" doesn\'t exist in the left table. Valid columns: {left_table.column_names}.')
-
-                # Create the names that appear over the tables when the final joined table is presented to the user
-                left_names = [f'{left_table._name}.{colname}' if left_table._name!='' else colname for colname in left_table.column_names]
-                right_names = [f'{right_table._name}.{colname}' if right_table._name!='' else colname for colname in right_table.column_names]
-
-                join_table_colnames = left_names + right_names if not reversed else right_names + left_names
-                join_table_coltypes = left_table.column_types + right_table.column_types if not reversed else right_table.column_types + left_table.column_types
-                join_table = Table(name='', column_names=join_table_colnames, column_types=join_table_coltypes)
-
-                # Implementation of the index-nested-loop join
-                # If the tables had been reversed in the beginning, then the joined table appears
-                # with the tables shown in the order they appeared in the query
-                for row_left in left_table.data:
-                    # The value that will be searched for in the index
-                    left_value = row_left[column_index_left]
-                    results = index.find(operator, left_value)
-                    if len(results) > 0:
-                        for element in results:
-                            join_table._insert(row_left + right_table.data[element] if not reversed else right_table.data[element] + row_left)
-
-                res = join_table
+            res = Inlj(condition, left_table, right_table).runner()
 
         elif mode=='smj':
-            # Create a temporary folder for the external sort to happen. The folder will be deleted in the end
-            os.makedirs('miniDB/externalSortFolder', exist_ok=True)
-
-            # Create the names that appear over the tables when the final joined table is presented to the user
-            left_names = [f'{left_table._name}.{colname}' if left_table._name!='' else colname for colname in left_table.column_names]
-            right_names = [f'{right_table._name}.{colname}' if right_table._name!='' else colname for colname in right_table.column_names]
-
-            # Get the column of the left and right tables and the operator, from the condition of the join
-            column_name_left, operator, column_name_right = Table()._parse_condition(condition, join=True)
-
-            # Write all the records of the right table to a local file in the following format:
-            # 'column_name_value [whole record]'
-            with open('miniDB/externalSortFolder/rightTableFile', 'w+') as rt:
-                for row in right_table.data:
-                    rt.write(f'{row[right_table.column_names.index(column_name_right)]} {str(row).replace(" ","")}\n')
-            
-            # Same for the left lable
-            with open('miniDB/externalSortFolder/leftTableFile', 'w+') as lt:
-                for row in left_table.data:
-                    lt.write(f'{row[left_table.column_names.index(column_name_left)]} {str(row).replace(" ","")}\n')
-            
-            # Create an ExternalMergeSort object and sort both right table and left table local files
-            ems = ExternalMergeSort()
-            ems.runExternalSort('rightTableFile')
-            # Re-initialization of all values
-            ems = ExternalMergeSort()
-            ems.runExternalSort('leftTableFile')
-
-            # Now there are sorted versions of the local files, so the initial ones can be removed
-            os.remove('miniDB/externalSortFolder/rightTableFile')
-            os.remove('miniDB/externalSortFolder/leftTableFile')
-
-            # This does the final merge on sort-merge join
-            with open('miniDB/externalSortFolder/sorting of rightTableFile', 'r') as right, open('miniDB/externalSortFolder/sorting of leftTableFile', 'r') as left, open('miniDB/externalSortFolder/final', 'w+') as final:
-                mark = None #Used to return to previous values of the file
-                l = None
-                r = None
-
-                # The algorithm runs until EOF of the left table file
-                while l != '':
-                    try:
-                        # If the mark is non-existent, set it equal to the current line of the right table sorted file
-                        # While both files' column_values aren't equal, progress the current lines
-                        if mark is None:
-                            mark = right.tell()
-                            l = left.readline()
-                            r = right.readline()
-                            while l.split()[0] < r.split()[0]:
-                                l = left.readline()
-                            while l.split()[0] > r.split()[0]:
-                                mark = right.tell()
-                                r = right.readline()
-                        
-                        # Now that the column_values are equal save both records to the final, joined_tables local file
-                        # Then progress the right table's current line and continue with the procedure
-                        if l.split()[0] == r.split()[0]:
-                            final.write(l.replace("\n","")[l.index("['"):] + " " + r.replace("\n","")[r.index("['"):] + '\n')
-                            r = right.readline()
-                        
-                        # Else, if left_value isn't equal to right_value after having found at least one equality of column_values
-                        # return right table's current line to the mark, as the algorithm dictates
-                        else:
-                            right.seek(mark)
-                            mark = None
-                    # Finally, if the right file reaches EOF and IndexError happens, return right table's current line to the mark
-                    except IndexError:
-                        right.seek(mark)
-                        mark = None
-            
-            # Now that the final joined file exists, the sorted files are not needed and are thus deleted
-            os.remove('miniDB/externalSortFolder/sorting of rightTableFile')
-            os.remove('miniDB/externalSortFolder/sorting of leftTableFile')
-
-            join_table_name = ''
-            join_table_colnames = left_names + right_names
-            join_table_coltypes = left_table.column_types + right_table.column_types
-            join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
-
-            # Save merged file first. The hypothesis is that the RAM cannot fit the file, thus we have it saved
-            # However we load the file to display it like this, might need to be changed in the future
-            with open('miniDB/externalSortFolder/final', 'r') as f:
-                for line in f:
-                    records = line.split()
-                    # ast.literal_eval creates the list [a,b,c] from the string '[a,b,c]'
-                    join_table._insert(ast.literal_eval(records[0]) + ast.literal_eval(records[1]))
-            
-            res = join_table
-
-            # Finally, the final file and the externalSortFolder are not needed, as the joined table
-            # exists in a variable and can be presented to the user
-            os.remove('miniDB/externalSortFolder/final')
-            os.rmdir('miniDB/externalSortFolder')
+            res = Smj(condition, left_table, right_table).runner()
 
         else:
             raise NotImplementedError
