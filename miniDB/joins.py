@@ -14,7 +14,8 @@ class Inlj:
         self.results = None
 
     def runner(self):
-        os.rmdir('miniDB/externalSortFolder')
+        if os.path.exists('miniDB/externalSortFolder'):
+            os.rmdir('miniDB/externalSortFolder')
         # Get the column of the left and right tables and the operator, from the condition of the join
         column_name_left, operator, column_name_right = Table()._parse_condition(self.condition, join=True)
         # If both the tables cannot be indexed, then do a simple inner join
@@ -25,7 +26,7 @@ class Inlj:
             reversed = False
             
             # If the right table cannot be indexed and the left can, we reverse them
-            if(column_name_left == self.left_table.pk):
+            if(column_name_left == self.left_table.pk and (self.right_table.pk is None or column_name_right != self.right_table.pk)):
                 self.right_table, self.left_table = self.left_table, self.right_table
                 column_name_left, column_name_right = column_name_right, column_name_left
                 reversed = True
@@ -59,7 +60,6 @@ class Inlj:
                 left_value = row_left[self.column_index_left]
                 self.results = None
                 self.results = self.index.find(operator, left_value)
-                print(len(self.results))
                 if len(self.results) > 0:
                     for element in self.results:
                         self.join_table._insert(row_left + self.right_table.data[element] if not reversed else self.right_table.data[element] + row_left)
