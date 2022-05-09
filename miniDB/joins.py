@@ -14,8 +14,10 @@ class Inlj:
         self.results = None
 
     def runner(self):
+        # If we execute INLJ when SMJ is not possible, delete the folder we may have created
         if os.path.exists('miniDB/externalSortFolder'):
             os.rmdir('miniDB/externalSortFolder')
+
         # Get the column of the left and right tables and the operator, from the condition of the join
         column_name_left, operator, column_name_right = Table()._parse_condition(self.condition, join=True)
         # If both the tables cannot be indexed, then do a simple inner join
@@ -33,10 +35,11 @@ class Inlj:
 
             # Create the index of the second table
             self.index = Btree(3) # 3 is arbitrary
-            
+
             # For each record in the primary key of the table, insert its value and index to the btree
             for idx, key in enumerate(self.right_table.column_by_name(self.right_table.pk)):
                 self.index.insert(key, idx)
+            
             # Try to find the left column, as even during the reverse, it is the only one needed
             # If it fails, raise exception
             try:
@@ -58,7 +61,6 @@ class Inlj:
             for row_left in self.left_table.data:
                 # The value that will be searched for in the index
                 left_value = row_left[self.column_index_left]
-                self.results = None
                 self.results = self.index.find(operator, left_value)
                 if len(self.results) > 0:
                     for element in self.results:
@@ -83,7 +85,6 @@ class Smj:
             print("Sort-Merge Join is used when the condition operator is '='. Using INLJ instead.")
             return Inlj(self.condition, self.left_table, self.right_table).runner()
 
-        print('X')
         # Create the names that appear over the tables when the final joined table is presented to the user
         left_names = [f'{self.left_table._name}.{colname}' if self.left_table._name!='' else colname for colname in self.left_table.column_names]
         right_names = [f'{self.right_table._name}.{colname}' if self.right_table._name!='' else colname for colname in self.right_table.column_names]

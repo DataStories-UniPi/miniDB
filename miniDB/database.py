@@ -1,12 +1,9 @@
 from __future__ import annotations
-import ast
 import pickle
-from externalmergesort import ExternalMergeSort
 from table import Table
 from time import sleep, localtime, strftime
 import os,sys
 from btree import Btree
-import shutil
 from misc import split_condition
 import logging
 import warnings
