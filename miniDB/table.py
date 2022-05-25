@@ -210,7 +210,7 @@ class Table:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
 
-                Operatores supported: (<,<=,==,>=,>)
+                Operators supported: (<,<=,==,>=,>)
 
             group_by: string. The given GROUP BY clause, containing the columns names in which the table will be grouped
             having: string. The condition given in the HAVING clause. The condition has the following format:
@@ -252,12 +252,6 @@ class Table:
 
             return_cols = []
 
-            # helping dict
-            agg_funs = {'min':min2,
-                        'max':max2,
-                        'avg':avg2,
-                        'count':count2,
-                        'sum':sum2}
 
             if return_columns == '*':
                 raise Exception("Syntax error: cannot have '*' in select list when using GROUP BY")
@@ -272,7 +266,7 @@ class Table:
 
                 - get the column that is specified inside the agg function's parenthesis
 
-                - run the cooresponding function by passing the 's_table', the 'grouped', the target_column
+                - run the corresponding function by passing the 's_table', the 'grouped', the target_column
                 and the column_names. The function will append a column to the 'grouped' table
 
                 - add the index of the column that was just added by the agg function to return_cols.
@@ -291,9 +285,6 @@ class Table:
                         aggname = col.split(" ")[0]
 
                         try:
-                            
-                            #agg_funs[aggname](s_table,grouped,col.split(" "),column_names)
-                            #print("aggname",aggname)
                             call_agg_fun(s_table,grouped,col.split(" "),column_names,aggname)
                         except KeyError:
                             raise Exception("Given select list is INVALID")
@@ -314,9 +305,9 @@ class Table:
 
                     check if the agg function with the given argument is already in the
                     'grouped' table. If yes then, it just needs to examine the condition with the
-                    cooresponding column.
+                    corresponding column.
 
-                    If no, call the cooresponding function to append a new column to the
+                    If no, call the corresponding function to append a new column to the
                     'grouped' table and then check the condition with that column. The newly added
                     column will not be displayed since it is not in the 'retrun_cols' list
                 '''
@@ -332,10 +323,10 @@ class Table:
                     else:
                         column_in_agg = having.split(" ")[1]
 
-                    # if the cooresponding column is already in the 'grouped' table
+                    # if the corresponding column is already in the 'grouped' table
                     if(('agg_'+aggname+'_'+column_in_agg) in grouped.column_names):
                         # remove the "agg_function ( column name ) " from the condition
-                        # and replace it with the name of the cooresponding column (agg_max_[column_name])
+                        # and replace it with the name of the corresponding column (agg_max_[column_name])
                         ops = [">=", "<=", "=", ">", "<"]
                         
                         for op in ops:
@@ -344,11 +335,9 @@ class Table:
                                 break
 
                         having = "agg_"+splt[0].strip().replace(' ', '_')+ op + splt[1]
-                        # print(having)
-
 
                     else:
-                        # run the cooresponding function to add the new column
+                        # run the corresponding function to add the new column
                         ops = [">=", "<=", "=", ">", "<"]
                         
                         for op in ops:
@@ -356,7 +345,6 @@ class Table:
                             if(len(splt)>1):
                                 break
                         
-                        #agg_funs[aggname](self,grouped,splt[0].strip().split(" "),column_names)
                         call_agg_fun(self,grouped,splt[0].strip().split(" "),column_names,aggname)
                         having = "agg_"+splt[0].strip().replace(' ', '_')+ op + splt[1]
 
@@ -793,35 +781,20 @@ class Table:
 
         self.__dict__.update(tmp_dict)
 
-# the following is helping function for the aggregates
-
-def _sort_based_on_groupby(original,grouped,groupby_list,target_column_name,order_type=" asc"):
-    '''
-    Args:
-
-    original: Table object. this is a reference to the original table containing all the columns and rows.
-    grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
-    input_paren: string. The string inside the parenthesis of the agg function (without extra SPACES).
-    groupby_list: list of strings. Contains all the column names in GROUP BY clause.
-    order_type: string. Indicates the sorting order (asc or desc) that will be used
-
-    Function called by the agg functions to sort the original table based on the groupby_list
-    and the column in the parenthesis of the agg fun
-
-    EXAMPLE:
-    Let column_names be : groupby_list = ['column1', 'column2']
-    and target_column_name: 'column3'
-    we essentially sort by calling: ORDER BY column1, column1, column3 asc|desc
-    '''
-    orders = groupby_list.copy()
-    if(target_column_name not in grouped.column_names):
-        # asc and desc only matters on column3 depending if we want the max or the min to be
-        # first in the groups of the original table
-        orders.append(target_column_name + order_type)
-    # sort by calling order_by on original
-    original.order_by(orders)
 
 def call_agg_fun(original,grouped,input_paren,groupby_list,agg_fun_type):
+
+    '''
+    original: Table object. this is a reference to the original table containing all the columns and rows.
+    grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
+    input_paren: list. list containing the agg name, DISTINCT (if it was given) and the column (see mdb.py).
+    groupby_list: list of strings. Contains all the column names in GROUP BY clause.
+    order_type: string. Indicates the sorting order (asc or desc) that will be used
+    agg_fun_type: string ("min", "max", "avg", "count", "sum") indicates the agg function that will be used
+
+    This function will sort the original table and call an agg function for the rows
+    of each 'group'.
+    '''
 
     # helping dict
     agg_funs = {'min':_min,
@@ -829,7 +802,6 @@ def call_agg_fun(original,grouped,input_paren,groupby_list,agg_fun_type):
                 'avg':_avg,
                 'count':_count,
                 'sum':_sum}
-
 
     # get the name and index of column in parenthesis
     distinct=False
@@ -850,8 +822,9 @@ def call_agg_fun(original,grouped,input_paren,groupby_list,agg_fun_type):
 
     prev = original.data[0] # this is only updated when we find a row of a new group
 
-    interest = [prev[target_column_index]]
+    group_rows = [prev[target_column_index]] # will contain the rows of each group
 
+    # loop through the sorted table to find the rows of each group
     for row_index,row in enumerate(original.data[1:]):
 
         tuple_prev = [prev[group_indexes[i]] for i in range(len(group_indexes))]
@@ -859,23 +832,19 @@ def call_agg_fun(original,grouped,input_paren,groupby_list,agg_fun_type):
 
         # if previous tuple is different than current, we reached a new group
         if tuple_curr != tuple_prev:
-            #print(interest)
             # calculate with agg fun
-            agg_col.append(agg_funs[agg_fun_type](interest,distinct))
-            interest = []
+            agg_col.append(agg_funs[agg_fun_type](group_rows,distinct))
+            group_rows = []
         
-        interest.append(row[target_column_index])
+        group_rows.append(row[target_column_index])
 
         if(row_index==len(original.data[1:])-1):
-            #print(interest)
             # calculate with agg fun
-            agg_col.append(agg_funs[agg_fun_type](interest,distinct))
+            agg_col.append(agg_funs[agg_fun_type](group_rows,distinct))
 
         prev = row # save current group as previous
 
-    #print(agg_col)
-
-        # append the min array to a new column on 'grouped' table
+    # append the agg_col array to a new column on 'grouped' table
     if(distinct):
         new_column_name = "agg_" + agg_fun_type + "_distinct_" + target_column_name
     else:
@@ -907,377 +876,3 @@ def _avg(rows,distinct):
     if(distinct):
         rows = list(dict.fromkeys(rows)) # remove duplicates
     return sum(rows) / len(rows)
-
-# The following are the aggregate functions
-
-def max2(original,grouped,input_paren,groupby_list):
-    '''
-    Args:
-
-    original: Table object. this is a reference to the original table containing all the columns and rows.
-    grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
-    input_paren: list containing the agg name, DISTINCT (if it was given) and the column (see mdb.py).
-    groupby_list: list of strings. Contains all the column names in GROUP BY clause.
-    order_type: string. Indicates the sorting order (asc or desc) that will be used
-
-    The function ignores if the keyword DISTINCT was given in the parenthesis
-    (distinct doesn't make a difference in min/max agg functions when they are used with group by)
-    The original table is sorted (by using helper function) based on the columns of GROUP BY clause
-    and the column in parenthesis.
-    This way, the 'groups' of the table (duplicates) will be neighbouring and because of the
-    sorting, we save the first element (of the column in parenthesis) of each group in the array max.
-    Then we simply append this array to the 'grouped' Table object
-    '''
-
-    # get the name and index of column in parenthesis
-    distinct=False
-    # get the name and index of column in parenthesis
-    if(input_paren[1]=="distinct"):
-        target_column_name = input_paren[2]
-        distinct=True
-    else:
-        target_column_name = input_paren[1]
-    target_column_index = original.column_names.index(target_column_name)
-    # take the indexes of the columns that are in the GROUP BY clause
-    group_indexes = [original.column_names.index(elem) for elem in groupby_list]
-    # sort original table
-    _sort_based_on_groupby(original=original,grouped=grouped,
-    groupby_list=groupby_list,target_column_name=target_column_name,order_type=" desc")
-
-    # initialize array that will have the maximum of each class
-    max = [None] * len(grouped.data)
-    # initialize variables for the loop
-    max[0] = original.data[0][target_column_index]
-    prev = original.data[0] # this is only updated when we find a row of a new group
-    index = 1
-
-    for elem in list(original.data[1:]):
-        # add the values of each column that takes part in the group
-        # for the previous and the current
-        tprev = [prev[group_indexes[i]] for i in range(len(group_indexes))]
-        telem = [elem[group_indexes[i]] for i in range(len(group_indexes))]
-
-        # if previous group is different than current, we reached a new group
-        if(tprev != telem):
-            # append value to max
-            max[index] = elem[target_column_index]
-            prev = elem # save current group as previous
-            index +=1
-
-    # append the min array to a new column on 'grouped' table
-    if(distinct):
-        new_column_name = "agg_max_distinct_" + target_column_name
-    else:
-        new_column_name = "agg_max_" + target_column_name
-    grouped.column_names.append(new_column_name)
-    grouped.column_types.append(original.column_types[target_column_index])
-
-    for i in range(len(grouped.data)):
-        (grouped.data[i]).append(max[i])
-
-
-def min2(original,grouped,input_paren,groupby_list):
-    '''
-    Args:
-
-    original: Table object. this is a reference to the original table containing all the columns and rows.
-    grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
-    input_paren: list. list containing the agg name, DISTINCT (if it was given) and the column (see mdb.py).
-    groupby_list: list of strings. Contains all the column names in GROUP BY clause.
-    order_type: string. Indicates the sorting order (asc or desc) that will be used
-
-    The function ignores if the keyword DISTINCT was given in the parenthesis
-    (distinct doesn't make a difference in min/max agg functions when they are used with group by)
-    The original table is sorted (by using helper function) based on the columns of GROUP BY clause
-    and the column in parenthesis.
-    This way, the 'groups' of the table (duplicates) will be neighbouring and because of the
-    sorting, we save the first element (of the column in parenthesis) of each group in the array min.
-    Then we simply append this array to the 'grouped' Table object
-    '''
-
-    distinct=False
-    # get the name and index of column in parenthesis
-    if(input_paren[1]=="distinct"):
-        target_column_name = input_paren[2]
-        distinct=True
-    else:
-        target_column_name = input_paren[1]
-    target_column_index = original.column_names.index(target_column_name)
-    # take the indexes of the columns that are in the GROUP BY clause
-    group_indexes = [original.column_names.index(elem) for elem in groupby_list]
-    # sort original table
-    _sort_based_on_groupby(original=original,grouped=grouped,
-    groupby_list=groupby_list,target_column_name=target_column_name)
-
-    # initialize array that will have the minimum of each class
-    min = [None] * len(grouped.data)
-    # initialize variables for the loop
-    min[0] = original.data[0][target_column_index]
-    prev = original.data[0] # this is only updated when we find a row of a new group
-    index = 1
-
-    for elem in list(original.data[1:]):
-        # add the values of each column that takes part in the group
-        # for the previous and the current
-        tprev = [prev[group_indexes[i]] for i in range(len(group_indexes))]
-        telem = [elem[group_indexes[i]] for i in range(len(group_indexes))]
-
-        # if previous group is different than current, we reached a new group
-        if(tprev != telem):
-            # append value to min
-            min[index] = elem[target_column_index]
-            prev = elem # save current group as previous
-            index +=1
-
-    # append the min array to a new column on 'grouped' table
-    if(distinct):
-        new_column_name = "agg_min_distinct_" + target_column_name
-    else:
-        new_column_name = "agg_min_" + target_column_name
-    grouped.column_names.append(new_column_name)
-    grouped.column_types.append(original.column_types[target_column_index])
-
-    for i in range(len(grouped.data)):
-        (grouped.data[i]).append(min[i])
-
-
-def sum2(original,grouped,input_paren,groupby_list):
-    '''
-    Args:
-
-    original: Table object. this is a reference to the original table containing all the columns and rows.
-    grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
-    input_paren: list containing the agg name, DISTINCT (if it was given) and the column (see mdb.py).
-    groupby_list: list of strings. Contains all the column names in GROUP BY clause.
-    order_type: string. Indicates the sorting order (asc or desc) that will be used
-
-    The function behaves differently if the keyword DISTINCT was
-    given in the parenthesis (see how sum(distinct column) works).
-    The original table is sorted (by using helper function) based on the columns of GROUP BY clause
-    and the column in parenthesis. This way, the 'groups' of the table (duplicates) will 
-    be neighbouring and we use a loop to calculate the sums and store them in an array.
-    Then we simply append this array to the 'grouped' Table object
-    '''
-    distinct=False
-    # get the name and index of column in parenthesis
-    if(input_paren[1]=="distinct"):
-        target_column_name = input_paren[2]
-        distinct=True
-    else:
-        target_column_name = input_paren[1]
-    target_column_index = original.column_names.index(target_column_name)
-    # take the indexes of the columns that are in the GROUP BY clause
-    group_indexes = [original.column_names.index(elem) for elem in groupby_list]
-    # sort original table
-    _sort_based_on_groupby(original=original,grouped=grouped,
-    groupby_list=groupby_list,target_column_name=target_column_name)
-
-    # initialize array that will have the sum of each class
-    sums = [None] * len(grouped.data)
-    # initialize variables for the loop
-    index = 0
-    prev = original.data[0]
-
-    for elem in list(original.data[1:]):
-        if(sums[index] is None):
-            sums[index] = prev[target_column_index]
-
-        #we must check whether the two rows are of the same group.
-        #to achieve this, we add the values of each column that takes part in the group
-        #in a list for both the current, and the previous row.
-        tprev = [prev[group_indexes[i]] for i in range(len(group_indexes))]
-        telem = [elem[group_indexes[i]] for i in range(len(group_indexes))]
-
-        if(distinct):
-
-            if(tprev == telem and elem[target_column_index] != prev[target_column_index]):
-                sums[index] += elem[target_column_index]
-            elif(tprev == telem and elem[target_column_index] == prev[target_column_index]):
-                pass
-            else:
-                index += 1
-
-        else:
-
-            if(tprev == telem):
-                sums[index] += elem[target_column_index]
-            else:
-                index += 1
-
-        prev = elem
-
-    #if the last row is its own group, the above loop does not update the sums list
-    #and leaves it empty. Thus, in such case, we update it manually.
-    if(sums[-1] is None):
-        sums[-1] = prev[target_column_index]
-
-    # append the min array to a new column on 'grouped' table
-    if(distinct):
-        new_column_name = "agg_sum_distinct_" + target_column_name
-    else:
-        new_column_name = "agg_sum_" + target_column_name
-    grouped.column_names.append(new_column_name)
-    grouped.column_types.append(original.column_types[target_column_index])
-
-    for i in range(len(grouped.data)):
-        (grouped.data[i]).append(sums[i])
-
-
-def count2(original,grouped,input_paren,groupby_list):
-    '''
-    Args:
-
-    original: Table object. this is a reference to the original table containing all the columns and rows.
-    grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
-    input_paren: list containing the agg name, DISTINCT (if it was given) and the column (see mdb.py).
-    groupby_list: list of strings. Contains all the column names in GROUP BY clause.
-    order_type: string. Indicates the sorting order (asc or desc) that will be used
-
-    The function behaves differently if the keyword DISTINCT was
-    given in the parenthesis (see how sum(distinct column) works).
-    The original table is sorted (by using helper function) based on the columns of GROUP BY clause
-    and the column in parenthesis. This way, the 'groups' of the table (duplicates) will 
-    be neighbouring and we use a loop to calculate the counts and store them in an array.
-    Then we simply append this array to the 'grouped' Table object
-    '''
-    distinct=False
-    # get the name and index of column in parenthesis
-    if(input_paren[1]=="distinct"):
-        target_column_name = input_paren[2]
-        distinct=True
-    else:
-        target_column_name = input_paren[1]
-    target_column_index = original.column_names.index(target_column_name)
-    # take the indexes of the columns that are in the GROUP BY clause
-    group_indexes = [original.column_names.index(elem) for elem in groupby_list]
-    # sort original table
-    _sort_based_on_groupby(original=original,grouped=grouped,
-    groupby_list=groupby_list,target_column_name=target_column_name)
-
-    # initialize array that will have the count of each class
-    counts = [1] * len(grouped.data)
-    # initialize variables for the loop
-    index = 0
-    prev = original.data[0]
-
-    for elem in list(original.data[1:]):
-
-        #we must check whether the two rows are of the same group.
-        #to achieve this, we add the values of each column that takes part in the group
-        #in a list for both the current, and the previous row.
-        tprev = [prev[group_indexes[i]] for i in range(len(group_indexes))]
-        telem = [elem[group_indexes[i]] for i in range(len(group_indexes))]
-
-        if(distinct):
-
-            if(tprev == telem and elem[target_column_index] != prev[target_column_index]):
-                counts[index] += 1
-            elif(tprev == telem and elem[target_column_index] == prev[target_column_index]):
-                pass
-            else:
-                index += 1
-
-        else:
-
-            if(tprev == telem):
-                counts[index] += 1
-            else:
-                index += 1
-
-        prev = elem
-
-    # append the min array to a new column on 'grouped' table
-    if(distinct):
-        new_column_name = "agg_count_distinct_" + target_column_name
-    else:
-        new_column_name = "agg_count_" + target_column_name
-    grouped.column_names.append(new_column_name)
-    grouped.column_types.append(type(6))
-
-    for i in range(len(grouped.data)):
-        (grouped.data[i]).append(counts[i])
-
-
-def avg2(original,grouped,input_paren,groupby_list):
-    '''
-    Args:
-
-    original: Table object. this is a reference to the original table containing all the columns and rows.
-    grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
-    input_paren: list containing the agg name, DISTINCT (if it was given) and the column (see mdb.py).
-    groupby_list: list of strings. Contains all the column names in GROUP BY clause.
-    order_type: string. Indicates the sorting order (asc or desc) that will be used
-
-    The function behaves differently if the keyword DISTINCT was
-    given in the parenthesis (see how sum(distinct column) works).
-    The original table is sorted (by using helper function) based on the columns of GROUP BY clause
-    and the column in parenthesis. This way, the 'groups' of the table (duplicates) will 
-    be neighbouring and we use a loop to calculate the sums and counts and store them in 2 arrays.
-    Then we simply calculate the avgs and add them 'grouped' Table object
-    '''
-    distinct=False
-    # get the name and index of column in parenthesis
-    if(input_paren[1]=="distinct"):
-        target_column_name = input_paren[2]
-        distinct=True
-    else:
-        target_column_name = input_paren[1]
-    target_column_index = original.column_names.index(target_column_name)
-    # take the indexes of the columns that are in the GROUP BY clause
-    group_indexes = [original.column_names.index(elem) for elem in groupby_list]
-    # sort original table
-    _sort_based_on_groupby(original=original,grouped=grouped,
-    groupby_list=groupby_list,target_column_name=target_column_name)
-
-    # initialize arrays that will have the sum and count of each class
-    sums = [None] * len(grouped.data)
-    counts = [1] * len(grouped.data)
-    # initialize variables for the loop
-    index = 0
-    prev = original.data[0]
-
-    for elem in list(original.data[1:]):
-        if(sums[index] is None):
-            sums[index] = prev[target_column_index]
-
-        #we must check whether the two rows are of the same group.
-        #to achieve this, we add the values of each column that takes part in the group
-        #in a list for both the current, and the previous row.
-        tprev = [prev[group_indexes[i]] for i in range(len(group_indexes))]
-        telem = [elem[group_indexes[i]] for i in range(len(group_indexes))]
-
-        if(distinct):
-
-            if(tprev == telem and elem[target_column_index] != prev[target_column_index]):
-                sums[index] += elem[target_column_index]
-                counts[index] += 1
-            elif(tprev == telem and elem[target_column_index] == prev[target_column_index]):
-                pass
-            else:
-                index += 1
-
-        else:
-
-            if(tprev == telem):
-                sums[index] += elem[target_column_index]
-                counts[index] += 1
-            else:
-                index += 1
-
-        prev = elem
-
-    #if the last row is its own group, the above loop does not update the sums list
-    #and leaves it empty. Thus, in such case, we update it manually.
-    if(sums[-1] is None):
-        sums[-1] = prev[target_column_index]
-
-    # append the min array to a new column on 'grouped' table
-    if(distinct):
-        new_column_name = "agg_avg_distinct_" + target_column_name
-    else:
-        new_column_name = "agg_avg_" + target_column_name
-    grouped.column_names.append(new_column_name)
-    grouped.column_types.append(original.column_types[target_column_index])
-
-    for i in range(len(grouped.data)):
-        (grouped.data[i]).append(sums[i]/counts[i])
