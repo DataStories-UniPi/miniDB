@@ -568,10 +568,10 @@ class Table:
                 target_cols_order.append(False)
 
         # function will sort the given self.data
-        self._hyper_sort(self.data,0,len(self.data),target_cols,target_cols_order)
+        self._sort(self.data,0,len(self.data),target_cols,target_cols_order)
 
 
-    def _hyper_sort(self,input_list,indexStart,indexEnd,columns,reverses):
+    def _sort(self,input_list,indexStart,indexEnd,columns,reverses):
         '''
         Args:
 
@@ -612,16 +612,16 @@ class Table:
                 if(i== len(input_list_copy)-1):
                     # print(f" found {prev} from {initial} till {i}")
 
-                    # The duplicates are [initial,i], rec call _hyper_sort for the next column
+                    # The duplicates are [initial,i], rec call _sort for the next column
                     if(len(columns)>1):
-                        input_list_copy = self._hyper_sort(input_list_copy,initial,i,columns[1:],reverses[1:])
+                        input_list_copy = self._sort(input_list_copy,initial,i,columns[1:],reverses[1:])
 
             else:
                 # print(f" found {prev} from {initial} till {i-1}")
 
-                # The duplicates are [initial,i-1], rec call _hyper_sort again
+                # The duplicates are [initial,i-1], rec call _sort again
                 if(len(columns)>1):
-                    input_list_copy = self._hyper_sort(input_list_copy,initial,i-1,columns[1:],reverses[1:])
+                    input_list_copy = self._sort(input_list_copy,initial,i-1,columns[1:],reverses[1:])
 
                 prev = input_list_copy[i][columns[0]]
                 initial = i
