@@ -253,11 +253,11 @@ class Table:
             return_cols = []
 
             # helping dict
-            agg_funs = {'min':min,
-                        'max':max,
-                        'avg':avg,
-                        'count':count,
-                        'sum':sum}
+            agg_funs = {'min':min2,
+                        'max':max2,
+                        'avg':avg2,
+                        'count':count2,
+                        'sum':sum2}
 
             if return_columns == '*':
                 raise Exception("Syntax error: cannot have '*' in select list when using GROUP BY")
@@ -291,7 +291,10 @@ class Table:
                         aggname = col.split(" ")[0]
 
                         try:
-                            agg_funs[aggname](s_table,grouped,col.split(" "),column_names)
+                            
+                            #agg_funs[aggname](s_table,grouped,col.split(" "),column_names)
+                            #print("aggname",aggname)
+                            call_agg_fun(s_table,grouped,col.split(" "),column_names,aggname)
                         except KeyError:
                             raise Exception("Given select list is INVALID")
                         
@@ -353,8 +356,8 @@ class Table:
                             if(len(splt)>1):
                                 break
                         
-                        agg_funs[aggname](self,grouped,splt[0].strip().split(" "),column_names)
-
+                        #agg_funs[aggname](self,grouped,splt[0].strip().split(" "),column_names)
+                        call_agg_fun(self,grouped,splt[0].strip().split(" "),column_names,aggname)
                         having = "agg_"+splt[0].strip().replace(' ', '_')+ op + splt[1]
 
 
@@ -818,9 +821,96 @@ def _sort_based_on_groupby(original,grouped,groupby_list,target_column_name,orde
     # sort by calling order_by on original
     original.order_by(orders)
 
+def call_agg_fun(original,grouped,input_paren,groupby_list,agg_fun_type):
+
+    # helping dict
+    agg_funs = {'min':_min,
+                'max':_max,
+                'avg':_avg,
+                'count':_count,
+                'sum':_sum}
+
+
+    # get the name and index of column in parenthesis
+    distinct=False
+    # get the name and index of column in parenthesis
+    if(input_paren[1]=="distinct"):
+        target_column_name = input_paren[2]
+        distinct=True
+    else:
+        target_column_name = input_paren[1]
+    
+    target_column_index = original.column_names.index(target_column_name)
+    # take the indexes of the columns that are in the GROUP BY clause
+    group_indexes = [original.column_names.index(elem) for elem in groupby_list]
+    # sort original table
+    original.order_by(groupby_list)
+
+    agg_col = [] # agg function column
+
+    prev = original.data[0] # this is only updated when we find a row of a new group
+
+    interest = [prev[target_column_index]]
+
+    for row_index,row in enumerate(original.data[1:]):
+
+        tuple_prev = [prev[group_indexes[i]] for i in range(len(group_indexes))]
+        tuple_curr = [row[group_indexes[i]] for i in range(len(group_indexes))]
+
+        # if previous tuple is different than current, we reached a new group
+        if tuple_curr != tuple_prev:
+            #print(interest)
+            # calculate with agg fun
+            agg_col.append(agg_funs[agg_fun_type](interest,distinct))
+            interest = []
+        
+        interest.append(row[target_column_index])
+
+        if(row_index==len(original.data[1:])-1):
+            #print(interest)
+            # calculate with agg fun
+            agg_col.append(agg_funs[agg_fun_type](interest,distinct))
+
+        prev = row # save current group as previous
+
+    #print(agg_col)
+
+        # append the min array to a new column on 'grouped' table
+    if(distinct):
+        new_column_name = "agg_" + agg_fun_type + "_distinct_" + target_column_name
+    else:
+        new_column_name = "agg_" + agg_fun_type + "_" + target_column_name
+    grouped.column_names.append(new_column_name)
+    grouped.column_types.append(original.column_types[target_column_index])
+
+    for i in range(len(grouped.data)):
+        (grouped.data[i]).append(agg_col[i])
+
+
+def _max(rows,distinct):
+    return max(rows)
+
+def _min(rows,distinct):
+    return min(rows)
+
+def _sum(rows,distinct):
+    if(distinct):
+        rows = list(dict.fromkeys(rows)) # remove duplicates
+    return sum(rows)
+
+def _count(rows,distinct):
+    if(distinct):
+        rows = list(dict.fromkeys(rows)) # remove duplicates
+    return len(rows)
+
+def _avg(rows,distinct):
+    if(distinct):
+        rows = list(dict.fromkeys(rows)) # remove duplicates
+    return sum(rows) / len(rows)
+
 # The following are the aggregate functions
 
-def max(original,grouped,input_paren,groupby_list):
+def max2(original,grouped,input_paren,groupby_list):
     '''
     Args:
 
@@ -886,7 +976,7 @@ def max(original,grouped,input_paren,groupby_list):
         (grouped.data[i]).append(max[i])
 
 
-def min(original,grouped,input_paren,groupby_list):
+def min2(original,grouped,input_paren,groupby_list):
     '''
     Args:
 
@@ -951,7 +1041,7 @@ def min(original,grouped,input_paren,groupby_list):
         (grouped.data[i]).append(min[i])
 
 
-def sum(original,grouped,input_paren,groupby_list):
+def sum2(original,grouped,input_paren,groupby_list):
     '''
     Args:
 
@@ -1033,7 +1123,7 @@ def sum(original,grouped,input_paren,groupby_list):
         (grouped.data[i]).append(sums[i])
 
 
-def count(original,grouped,input_paren,groupby_list):
+def count2(original,grouped,input_paren,groupby_list):
     '''
     Args:
 
@@ -1108,7 +1198,7 @@ def count(original,grouped,input_paren,groupby_list):
         (grouped.data[i]).append(counts[i])
 
 
-def avg(original,grouped,input_paren,groupby_list):
+def avg2(original,grouped,input_paren,groupby_list):
     '''
     Args:
 
