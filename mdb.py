@@ -53,7 +53,8 @@ def create_query_plan(query, keywords, action):
     kw_positions = []
     i=0
     while i<len(ql):
-        if in_paren(ql, i): 
+        if in_paren(ql, i):
+            i+=1
             continue
         if ql[i] in keywords:
             kw_in_query.append(ql[i])
@@ -64,8 +65,8 @@ def create_query_plan(query, keywords, action):
             ql[i] = ql[i]+' '+ql[i+1]
             ql.pop(i+1)
             kw_positions.append(i)
-        
         i+=1
+
 
 
     for i in range(len(kw_in_query)-1):
