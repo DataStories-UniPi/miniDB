@@ -51,13 +51,21 @@ def create_query_plan(query, keywords, action):
 
     kw_in_query = []
     kw_positions = []
-    for i in range(len(ql)):
-        if ql[i] in keywords and not in_paren(ql, i):
+    i=0
+    while i<len(ql):
+        if in_paren(ql, i): 
+            continue
+        if ql[i] in keywords:
             kw_in_query.append(ql[i])
             kw_positions.append(i)
-        elif i!=len(ql)-1 and f'{ql[i]} {ql[i+1]}' in keywords and not in_paren(ql, i):
+        
+        elif i!=len(ql)-1 and f'{ql[i]} {ql[i+1]}' in keywords:
             kw_in_query.append(f'{ql[i]} {ql[i+1]}')
-            kw_positions.append(i+1)
+            ql[i] = ql[i]+' '+ql[i+1]
+            ql.pop(i+1)
+            kw_positions.append(i)
+        
+        i+=1
 
 
     for i in range(len(kw_in_query)-1):
@@ -71,7 +79,7 @@ def create_query_plan(query, keywords, action):
             dic['distinct'] = True
         
         if dic['order by'] is not None:
-            dic['from'] = dic['from'].removesuffix(' order')
+            dic['from'] = dic['from']
             if 'desc' in dic['order by']:
                 dic['desc'] = True
             else:
@@ -234,13 +242,20 @@ if __name__ == "__main__":
 
     db = Database(dbname, load=True)
 
+    
+
     if fname is not None:
         for line in open(fname, 'r').read().splitlines():
             if line.startswith('--'): continue
-            dic = interpret(line.lower())
-            result = execute_dic(dic)
-            if isinstance(result,Table):
-                result.show()
+            if line.startswith('explain'):
+                dic = interpret(line.removeprefix('explain '))
+                pprint(dic, sort_dicts=False)
+            else :
+                dic = interpret(line.lower())
+                result = execute_dic(dic)
+                if isinstance(result,Table):
+                    result.show()
+        
     else:
         from prompt_toolkit import PromptSession
         from prompt_toolkit.history import FileHistory
