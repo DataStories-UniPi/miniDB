@@ -1,0 +1,14 @@
+create table workers (worker_id str primary key, name str, department str, salary int);
+insert into workers values (5678,Friday,team1,5000);
+insert into workers values (9991,Sophie,team2,8000);
+insert into workers values (8988,Ulysses,team3,7600);
+insert into workers values (6543,Noah,team4,5600);
+insert into workers values (4553,Ava,team1,5500);
+insert into workers values (8765,Amelia,team3,6573);
+insert into workers values (3121,Benjamin,team2,4500);
+insert into workers values (0128,William,team1,6000);
+insert into workers values (4371,David,team4,7000);
+insert into workers values (4321,Alexander,team4,7000);
+insert into workers values (6653,Emma,team3,4352);
+insert into workers values (5739,Liam,team3,9000);
+insert into workers values (2345,Oliver,team4,6077);

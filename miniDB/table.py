@@ -1,5 +1,7 @@
 from __future__ import annotations
 from hashlib import new
+from itertools import groupby
+from multiprocessing import Condition
 from tabulate import tabulate
 import pickle
 import os
@@ -199,8 +201,7 @@ class Table:
 
 
 
-    def _select_where(self, return_columns, condition=None, group_by=None, having=None, order_by=None, top_k=None, distinct=False):
-
+    def _select_where(self, return_columns, condition=None, group_by_list=None, having=None, order_by=None, top_k=None, distinct=False):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -225,240 +226,199 @@ class Table:
         If group_by is None the procedure is almost vanilla.
         '''
 
-        if group_by is not None:
+        # first run 'WHERE'
+        # if condition is None, return all rows
+        # if not, return the rows with values where condition is met for value
+        if condition is not None:
+            column_name, operator, value = self._parse_condition(condition)
+            column = self.column_by_name(column_name)
+            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+        else:
+            rows = [i for i in range(len(self.data))]
 
-            # first run WHERE clause by checking the given condition to create the s_table object
-            if condition is not None:
-                column_name, operator, value = self._parse_condition(condition)
-                column = self.column_by_name(column_name)
-                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
-            else:
-                rows = [i for i in range(len(self.data))]
-
-            all_columns = [i for i in range(len(self.column_names))]
-            dict = {(key):([[self.data[i][j] for j in all_columns] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
-
-            s_table = Table(load=dict)
-
-            # pass the s_table object to group_by function to create
-            # a table containing the columns of GROUP BY clause with distinct values
-            # This will be the table of the groups.
-            grouped = s_table.group_by(group_by)
-            # store the names of the columns of GROUP BY clause
-            column_names = grouped.column_names.copy()
+        all_columns = [i for i in range(len(self.column_names))]
 
 
-            # Now examine the return_columns (select list)
+        # copy the old dict, but only the rows of data
+        # with index in rows/columns (the indexes that we want returned)
+        # but keep ALL columns
+        dict = {(key):([[self.data[i][j] for j in all_columns] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
 
-            return_cols = []
+        # create Table object
+        s_table = Table(load=dict)
 
-
-            if return_columns == '*':
-                raise Exception("Syntax error: cannot have '*' in select list when using GROUP BY")
-            else:
-
-                '''
-                If the select list contains a column name, it must be a name of the group columns
-                (columns in GROUP BY clause). if so add the index of the column from the
-                'grouped' table to return_cols.
-
-                If the select list contains an agg function:
-
-                - get the column that is specified inside the agg function's parenthesis
-
-                - run the corresponding function by passing the 's_table', the 'grouped', the target_column
-                and the column_names. The function will append a column to the 'grouped' table
-
-                - add the index of the column that was just added by the agg function to return_cols.
-
-                > The column added by the agg function has a name style:
-
-                agg_[min|max|avg|count|sum]_[distinct]_[column_name]
-
-                '''
-                for col in return_columns.split(','):
-
-                    if(col in grouped.column_names):
-                        return_cols.append(grouped.column_names.index(col.strip()))
-
-                    else:
-                        aggname = col.split(" ")[0]
-
-                        try:
-                            call_agg_fun(s_table,grouped,col.split(" "),column_names,aggname)
-                        except KeyError:
-                            raise Exception("Given select list is INVALID")
-                        
-                        return_cols.append(len(grouped.column_names)-1)
+        if group_by_list is not None:
+            groupby_table = s_table.group_by(group_by_list)
 
 
-            if(having is not None):
+        called_agg = False # indicates if an agg fun is inside the SELECT list
+        agg_tables = []
 
-                '''
-                The format of having clause is:
-                'column[<,<=,==,>=,>]value' or
-                'aggregate function (column)[<,<=,==,>=,>]value'
+        return_cols = []
 
-                if the left side is a column, the procedure is the same with WHERE.
-
-                If the left side is an agg function:
-
-                    check if the agg function with the given argument is already in the
-                    'grouped' table. If yes then, it just needs to examine the condition with the
-                    corresponding column.
-
-                    If no, call the corresponding function to append a new column to the
-                    'grouped' table and then check the condition with that column. The newly added
-                    column will not be displayed since it is not in the 'retrun_cols' list
-                '''
-
-                # if agg function was given it will like this:
-                # min distinct column1 < 400 or min column1 <400 (see mdb.py)
-                if(having.split(" ")[0] in ["min","max","count","sum","avg"]):
-                    aggname = having.split(" ")[0]
-
-                    # get the name of column in the the agg function
-                    if(having.split(" ")[1]=="distinct"):
-                        column_in_agg = having.split(" ")[1] +"_" + having.split(" ")[2]
-                    else:
-                        column_in_agg = having.split(" ")[1]
-
-                    # if the corresponding column is already in the 'grouped' table
-                    if(('agg_'+aggname+'_'+column_in_agg) in grouped.column_names):
-                        # remove the "agg_function ( column name ) " from the condition
-                        # and replace it with the name of the corresponding column (agg_max_[column_name])
-                        ops = [">=", "<=", "=", ">", "<"]
-                        
-                        for op in ops:
-                            splt = having.split(op)
-                            if(len(splt)>1):
-                                break
-
-                        having = "agg_"+splt[0].strip().replace(' ', '_')+ op + splt[1]
-
-                    else:
-                        # run the corresponding function to add the new column
-                        ops = [">=", "<=", "=", ">", "<"]
-                        
-                        for op in ops:
-                            splt = having.split(op)
-                            if(len(splt)>1):
-                                break
-                        
-                        call_agg_fun(self,grouped,splt[0].strip().split(" "),column_names,aggname)
-                        having = "agg_"+splt[0].strip().replace(' ', '_')+ op + splt[1]
-
-
-                # do the same as WHERE only now with the string 'having'
-                column_name, operator, value = grouped._parse_condition(having)
-                column = grouped.column_by_name(column_name)
-                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
-            else:
-                rows = [i for i in range(len(grouped.data))]
-
-
-            all_columns = [i for i in range(len(grouped.column_names))]
-
-            temp_dict = {(key):([[grouped.data[i][j] for j in all_columns] for i in rows] if key=="data" else value) for key,value in grouped.__dict__.items()}
-
-            temp_table = Table(load=temp_dict)
-
-            # the rest is the same with the case without GROUP BY
-
-            # if the query has 'order by' without 'distinct'
-            # order by is applied on the table with all the columns
-            if order_by and not(distinct):
-                order_cols = order_by.split(',')
-                temp_table.order_by(order_cols)
-
-            return_dict = {(key):([[temp_table.data[i][j] for j in return_cols] for i in range(len(temp_table.data))] if key=="data" else value) for key,value in temp_table.__dict__.items()}
-
-            return_dict['column_names'] = [temp_table.column_names[i] for i in return_cols]
-            return_dict['column_types'] = [temp_table.column_types[i] for i in return_cols]
-
-            return_table = Table(load=return_dict)
-
-            if(distinct == True):
-                return_table.distinct()
-
-                # if the query has 'order by' AND 'distinct', the 'order by' action is called AFTER the
-                # 'distinct' function and the table has only the rows that will be displayed
-
-                # NOTE : for SELECT DISTINCT, ORDER BY expressions must appear in select list
-                if order_by:
-                    order_cols = order_by.split(',')
-                    return_table.order_by(order_cols)
-
-            # if needed, keep only top k rows
-            return_table.data = return_table.data[:int(top_k)] if isinstance(top_k,str) else return_table.data
-
-
-            return return_table
-
+        # examine SELECT LIST
+        # if '*' return all columns, else find the column indexes for the columns specified
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
         else:
 
-            # if * return all columns, else find the column indexes for the columns specified
-            if return_columns == '*':
-                return_cols = [i for i in range(len(self.column_names))]
+            for col in return_columns.split(','):
+
+                if col in self.column_names:
+                    if group_by_list is None:
+                        return_cols.append(self.column_names.index(col.strip()))
+                        if called_agg:
+                            raise Exception(f"ERROR: columns in SELECT list must appear in the GROUP BY clause or be used in an aggregate function")
+                 
+                    else:
+                        return_cols.append(groupby_table.column_names.index(col.strip()))
+
+                if(col.startswith("max ") or col.startswith("min ") or col.startswith("avg ") or col.startswith("count ") or col.startswith("sum ")):
+                    
+                    if group_by_list is None:
+
+                        called_agg = True
+                        col = col.split(" ")
+                        agg_tables.append(_call_agg_2(s_table,col[1:],col[0]))
+
+                        if len(return_cols) > 0:
+                            raise Exception(f"ERROR: columns in SELECT list must appear in the GROUP BY clause or be used in an aggregate function")
+                    else:
+                        col = col.split(" ")
+
+                        groupby_table = _call_agg_on_group_by(groupby_table,group_by_list,s_table,col[1:],col[0])
+        
+                        return_cols.append(len(groupby_table.column_names)-1)
+
+        if group_by_list is not None:
+            original = s_table
+            s_table = groupby_table
+
+        #concatenate agg_tables
+        if called_agg and (group_by_list is None):
+
+            t_names = []
+            t_types = []
+            t_data = []
+
+            for table in agg_tables:
+                t_names.append(table.column_names[0])
+                t_types.append(table.column_types[0])
+                t_data.append(table.data[0][0])
+
+            new_table = Table("temp", t_names, t_types)
+            new_table.data = [t_data]
+
+            # no need to 'order by' or 'distinct' as the result will always be 1 row
+            # just check if a given col is invalid
+
+            if order_by:
+                order_cols = order_by.split(',')
+                for column in order_cols:
+                    if column.split(" ")[0] not in new_table.column_names:
+                        raise Exception(f"ERROR:  column '{column}' does not exist")
+
+            return new_table
+
+
+        if having is not None:
+
+
+            ops = [">=", "<=", "=", ">", "<"]
+            
+            for op in ops:
+                splt = having.split(op)
+                if(len(splt)>1):
+                    break
+
+
+            # having can be used without GROUP BY
+            # right side can have agg fun
+            if group_by_list is None:
+
+
+
+                right = splt[1].strip()
+
+                #print(right.split(" ")[0])
+
+                if(right.split(" ")[0] in ["min","max","count","sum","avg"]):
+
+                    temp = _call_agg_2(s_table, right.split(" ")[1:],right.split(" ")[0])
+
+                    #print(temp.data[0][0])
+
+                    #print(str(splt[0])+str(op)+str(int(temp.data[0][0])))
+
+                    new_condition = str(splt[0])+str(op)+str(int(temp.data[0][0]))
+
             else:
-                return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+                left = splt[0].strip()
+                if(left.split(" ")[0] in ["min","max","count","sum","avg"]):
 
-            all_columns = [i for i in range(len(self.column_names))]
+                    agg_table = "agg_"+left.replace(' ', '_')
 
+                    new_condition = "agg_"+left.replace(' ', '_')+ op + splt[1]
 
-            # if condition is None, return all rows
-            # if not, return the rows with values where condition is met for value
-            if condition is not None:
-                column_name, operator, value = self._parse_condition(condition)
-                column = self.column_by_name(column_name)
-                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
-            else:
-                rows = [i for i in range(len(self.data))]
+                    if agg_table not in s_table.column_names:
 
+                        groupby_table = _call_agg_on_group_by(groupby_table,group_by_list,original,left.split(" ")[1:],left.split(" ")[0])
+                else:
 
-
-            # copy the old dict, but only the rows of data
-            # with index in rows/columns (the indexes that we want returned)
-            # but keep ALL columns
-            dict = {(key):([[self.data[i][j] for j in all_columns] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
-
-            # create Table object
-            s_table = Table(load=dict)
+                    new_condition = having
 
 
-            # if the query has 'order by' without 'distinct'
-            # order by is applied on the table with all the columns
-            if order_by and not(distinct):
+
+            # do the same as WHERE only now with the string 'having'
+            column_name, operator, value = s_table._parse_condition(new_condition)
+            column = s_table.column_by_name(column_name)
+            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+            all_columns = [i for i in range(len(s_table.column_names))]
+
+            temp_dict = {(key):([[s_table.data[i][j] for j in all_columns] for i in rows] if key=="data" else value) for key,value in s_table.__dict__.items()}
+
+            s_table = Table(load=temp_dict)
+
+
+
+
+        # if the query has 'order by' without 'distinct'
+        # order by is applied on the table with all the columns
+        if order_by and not(distinct):
+            order_cols = order_by.split(',')
+            s_table.order_by(order_cols)
+
+        # create new dict from the s_table object that has only the columns that will be displayed
+        # (only the columns in SELECT)
+        new_dict = {(key):([[s_table.data[i][j] for j in return_cols] for i in range(len(s_table.data))] if key=="data" else value) for key,value in s_table.__dict__.items()}
+
+        # we need to set the new column names/types and no of columns, since we might
+        # only return some columns
+        new_dict['column_names'] = [s_table.column_names[i] for i in return_cols]
+        new_dict['column_types'] = [s_table.column_types[i] for i in return_cols]
+
+        # create the new table object to be returned
+        s_table = Table(load=new_dict)
+
+
+        if(distinct == True):
+            s_table.distinct()
+
+            # if the query has 'order by' AND 'distinct', the 'order by' action is called AFTER the
+            # 'distinct' function and the table has only the rows that will be displayed
+
+            # NOTE : for SELECT DISTINCT, ORDER BY expressions must appear in select list
+            if order_by:
                 order_cols = order_by.split(',')
                 s_table.order_by(order_cols)
 
-            # create new dict from the s_table object that has only the columns that will be displayed
-            # (only the columns in SELECT)
-            new_dict = {(key):([[s_table.data[i][j] for j in return_cols] for i in range(len(s_table.data))] if key=="data" else value) for key,value in s_table.__dict__.items()}
+        # if needed, keep only top k rows
+        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
 
-            # we need to set the new column names/types and no of columns, since we might
-            # only return some columns
-            new_dict['column_names'] = [self.column_names[i] for i in return_cols]
-            new_dict['column_types'] = [self.column_types[i] for i in return_cols]
+        
 
-            # create the new table object to be returned
-            s_table = Table(load=new_dict)
-
-            if(distinct == True):
-                s_table.distinct()
-
-                # if the query has 'order by' AND 'distinct', the 'order by' action is called AFTER the
-                # 'distinct' function and the table has only the rows that will be displayed
-
-                # NOTE : for SELECT DISTINCT, ORDER BY expressions must appear in select list
-                if order_by:
-                    order_cols = order_by.split(',')
-                    s_table.order_by(order_cols)
-
-            # if needed, keep only top k rows
-            s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
-
-            return s_table
+        return s_table
 
 
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, top_k=None):
@@ -622,7 +582,7 @@ class Table:
         return input_list
 
 
-    def group_by(self,groups):
+    def group_by(self,group_by_list):
         '''
         Args:
         groups: the string given in the query, containing the GROUP BY list
@@ -632,11 +592,11 @@ class Table:
         with distinct rows
         '''
 
-        if(groups is None):
+        if(group_by_list is None):
             return
 
         # use the _select_where function to do a 'query': select distinct <groups> from <self>
-        s_table = self._select_where(groups, None,None,None,None,None,True)
+        s_table = self._select_where(group_by_list, distinct = True)
 
         return s_table
 
@@ -854,6 +814,86 @@ def call_agg_fun(original,grouped,input_paren,groupby_list,agg_fun_type):
 
     for i in range(len(grouped.data)):
         (grouped.data[i]).append(agg_col[i])
+
+
+def _call_agg_2(table, row, aggtype):
+
+    # helping dict
+    agg_funs = {'min':_min,
+                'max':_max,
+                'avg':_avg,
+                'count':_count,
+                'sum':_sum}
+
+    distinct = False
+    col = row[0]
+
+    if row[0] == "distinct":
+        distinct = True
+        col = row[1]
+
+    s_table =  table._select_where(return_columns = col)
+
+    raw_data  = []
+
+    for d in s_table.data:
+        raw_data.append(d[0])
+
+    if distinct:
+        c_names = ["agg_" + aggtype +"_distinct_" + col.replace(' ', '_')]
+    else:
+        c_names = ["agg_" + aggtype +"_" + col.replace(' ', '_')]
+    c_types = s_table.column_types
+    n_table = Table("temp", c_names, c_types)
+    n_table.data = [[agg_funs[aggtype](raw_data,distinct)]]
+
+    return n_table
+
+
+def _call_agg_on_group_by(group_by_table, group_by_list, orignal_table, target_col, agg_fun_type):
+
+    # first get the names of the 'groups'
+    temp_table = group_by_table._select_where(return_columns=group_by_list)
+
+    group_names  = []
+
+    for d in temp_table.data:
+        group_names.append(d[0])
+
+    new_column =[]
+
+    for group in group_names:
+
+        #print("target_col",target_col)
+        condition = group_by_list + "=" + group
+        #print("condition",condition)
+
+        tg = target_col[0]
+        if len(target_col)==2:
+            tg = target_col[1]
+
+        agg_table = orignal_table._select_where(return_columns=tg, condition=condition )
+        #print("agg_table.data",agg_table.data)
+
+        agg2 = _call_agg_2(agg_table,target_col,agg_fun_type)
+        #print(agg2.data[0][0])
+
+        new_column.append(agg2.data[0][0])
+
+    #print(new_column)
+    #print(agg2.column_types)
+
+    # append the agg_col array to a new column on 'grouped' table
+
+    group_by_table.column_names.append(agg2.column_names[0])
+    group_by_table.column_types.append(agg2.column_types[0])
+
+    for i in range(len(group_by_table.data)):
+        (group_by_table.data[i]).append(new_column[i])
+
+    #print(group_by_table.data)
+
+    return group_by_table
 
 
 def _max(rows,distinct):

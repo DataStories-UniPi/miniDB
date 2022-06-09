@@ -83,20 +83,19 @@ def create_query_plan(query, keywords, action):
         elif(dic['distinct'] is None):
             dic['distinct'] = False
 
-        if dic['group by'] is not None:
-            # if agg function was given in SELECT list do the following:
-            # max ( column ) -> max column
-            select_list = dic['select'].split(",")
-            new_select_list = ""
+        # if agg function was given in SELECT list do the following:
+        # max ( column ) -> max column
+        select_list = dic['select'].split(",")
+        new_select_list = ""
 
-            for elem in select_list:
-                if(all(k in elem for k in ["(", ")"])):
-                    elem = elem.replace("(","")
-                    elem = elem.replace(")","")
-                    elem = elem.replace("  "," ")
-                new_select_list +=elem.strip() +","
+        for elem in select_list:
+            if(all(k in elem for k in ["(", ")"])):
+                elem = elem.replace("(","")
+                elem = elem.replace(")","")
+                elem = elem.replace("  "," ")
+            new_select_list +=elem.strip() +","
 
-            dic['select'] = new_select_list[:-1]
+        dic['select'] = new_select_list[:-1]
 
 
         if dic['having'] is not None:
