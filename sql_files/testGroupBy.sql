@@ -6,5 +6,6 @@ select department,max(salary), min(salary) from workers group by department havi
 select department,max(salary), min(salary) from workers group by department having min(salary) < 5500 order by department desc;
 select * from workers order by department having salary > avg(salary);
 select name from workers order by department having salary > avg(salary);
+select name,salary from workers order by department having salary > 6000;
 select avg(salary) from workers;
 select max(salary),min(name) from workers;

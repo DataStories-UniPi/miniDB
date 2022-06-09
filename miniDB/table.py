@@ -221,9 +221,6 @@ class Table:
 
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
             distinct: boolean. If it is 'True' it indicates that the query is "select distinct" and a new function is called to remove duplicate rows
-
-        The function behaves differently if group_by is None or not.
-        If group_by is None the procedure is almost vanilla.
         '''
 
         # first run 'WHERE'
@@ -248,7 +245,7 @@ class Table:
         s_table = Table(load=dict)
 
         if group_by_list is not None:
-            groupby_table = s_table.group_by(group_by_list)
+            groupby_table = s_table._group_by(group_by_list)
 
 
         called_agg = False # indicates if an agg fun is inside the SELECT list
@@ -279,7 +276,7 @@ class Table:
 
                         called_agg = True
                         col = col.split(" ")
-                        agg_tables.append(_call_agg_2(s_table,col[1:],col[0]))
+                        agg_tables.append(_call_agg(s_table,col[1:],col[0]))
 
                         if len(return_cols) > 0:
                             raise Exception(f"ERROR: columns in SELECT list must appear in the GROUP BY clause or be used in an aggregate function")
@@ -294,7 +291,7 @@ class Table:
             original = s_table
             s_table = groupby_table
 
-        #concatenate agg_tables
+        #concatenate agg_tables ONLY WHEN GROUP BY list is empty!!
         if called_agg and (group_by_list is None):
 
             t_names = []
@@ -311,7 +308,6 @@ class Table:
 
             # no need to 'order by' or 'distinct' as the result will always be 1 row
             # just check if a given col is invalid
-
             if order_by:
                 order_cols = order_by.split(',')
                 for column in order_cols:
@@ -323,33 +319,21 @@ class Table:
 
         if having is not None:
 
-
             ops = [">=", "<=", "=", ">", "<"]
-            
             for op in ops:
                 splt = having.split(op)
                 if(len(splt)>1):
                     break
 
-
             # having can be used without GROUP BY
             # right side can have agg fun
             if group_by_list is None:
 
-
-
                 right = splt[1].strip()
-
-                #print(right.split(" ")[0])
+                new_condition = having
 
                 if(right.split(" ")[0] in ["min","max","count","sum","avg"]):
-
-                    temp = _call_agg_2(s_table, right.split(" ")[1:],right.split(" ")[0])
-
-                    #print(temp.data[0][0])
-
-                    #print(str(splt[0])+str(op)+str(int(temp.data[0][0])))
-
+                    temp = _call_agg(s_table, right.split(" ")[1:],right.split(" ")[0])
                     new_condition = str(splt[0])+str(op)+str(int(temp.data[0][0]))
 
             else:
@@ -357,17 +341,12 @@ class Table:
                 if(left.split(" ")[0] in ["min","max","count","sum","avg"]):
 
                     agg_table = "agg_"+left.replace(' ', '_')
-
                     new_condition = "agg_"+left.replace(' ', '_')+ op + splt[1]
 
                     if agg_table not in s_table.column_names:
-
                         groupby_table = _call_agg_on_group_by(groupby_table,group_by_list,original,left.split(" ")[1:],left.split(" ")[0])
                 else:
-
                     new_condition = having
-
-
 
             # do the same as WHERE only now with the string 'having'
             column_name, operator, value = s_table._parse_condition(new_condition)
@@ -375,12 +354,8 @@ class Table:
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
 
             all_columns = [i for i in range(len(s_table.column_names))]
-
             temp_dict = {(key):([[s_table.data[i][j] for j in all_columns] for i in rows] if key=="data" else value) for key,value in s_table.__dict__.items()}
-
             s_table = Table(load=temp_dict)
-
-
 
 
         # if the query has 'order by' without 'distinct'
@@ -415,8 +390,6 @@ class Table:
 
         # if needed, keep only top k rows
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
-
-        
 
         return s_table
 
@@ -582,7 +555,7 @@ class Table:
         return input_list
 
 
-    def group_by(self,group_by_list):
+    def _group_by(self,group_by_list):
         '''
         Args:
         groups: the string given in the query, containing the GROUP BY list
@@ -742,81 +715,7 @@ class Table:
         self.__dict__.update(tmp_dict)
 
 
-def call_agg_fun(original,grouped,input_paren,groupby_list,agg_fun_type):
-
-    '''
-    original: Table object. this is a reference to the original table containing all the columns and rows.
-    grouped: Table object. this is the table returned from GROUP BY and modified by the aggregate functions.
-    input_paren: list. list containing the agg name, DISTINCT (if it was given) and the column (see mdb.py).
-    groupby_list: list of strings. Contains all the column names in GROUP BY clause.
-    order_type: string. Indicates the sorting order (asc or desc) that will be used
-    agg_fun_type: string ("min", "max", "avg", "count", "sum") indicates the agg function that will be used
-
-    This function will sort the original table and call an agg function for the rows
-    of each 'group'.
-    '''
-
-    # helping dict
-    agg_funs = {'min':_min,
-                'max':_max,
-                'avg':_avg,
-                'count':_count,
-                'sum':_sum}
-
-    # get the name and index of column in parenthesis
-    distinct=False
-    # get the name and index of column in parenthesis
-    if(input_paren[1]=="distinct"):
-        target_column_name = input_paren[2]
-        distinct=True
-    else:
-        target_column_name = input_paren[1]
-    
-    target_column_index = original.column_names.index(target_column_name)
-    # take the indexes of the columns that are in the GROUP BY clause
-    group_indexes = [original.column_names.index(elem) for elem in groupby_list]
-    # sort original table
-    original.order_by(groupby_list)
-
-    agg_col = [] # agg function column
-
-    prev = original.data[0] # this is only updated when we find a row of a new group
-
-    group_rows = [prev[target_column_index]] # will contain the rows of each group
-
-    # loop through the sorted table to find the rows of each group
-    for row_index,row in enumerate(original.data[1:]):
-
-        tuple_prev = [prev[group_indexes[i]] for i in range(len(group_indexes))]
-        tuple_curr = [row[group_indexes[i]] for i in range(len(group_indexes))]
-
-        # if previous tuple is different than current, we reached a new group
-        if tuple_curr != tuple_prev:
-            # calculate with agg fun
-            agg_col.append(agg_funs[agg_fun_type](group_rows,distinct))
-            group_rows = []
-        
-        group_rows.append(row[target_column_index])
-
-        if(row_index==len(original.data[1:])-1):
-            # calculate with agg fun
-            agg_col.append(agg_funs[agg_fun_type](group_rows,distinct))
-
-        prev = row # save current group as previous
-
-    # append the agg_col array to a new column on 'grouped' table
-    if(distinct):
-        new_column_name = "agg_" + agg_fun_type + "_distinct_" + target_column_name
-    else:
-        new_column_name = "agg_" + agg_fun_type + "_" + target_column_name
-    grouped.column_names.append(new_column_name)
-    grouped.column_types.append(original.column_types[target_column_index])
-
-    for i in range(len(grouped.data)):
-        (grouped.data[i]).append(agg_col[i])
-
-
-def _call_agg_2(table, row, aggtype):
+def _call_agg(table, row, aggtype):
 
     # helping dict
     agg_funs = {'min':_min,
@@ -864,34 +763,23 @@ def _call_agg_on_group_by(group_by_table, group_by_list, orignal_table, target_c
 
     for group in group_names:
 
-        #print("target_col",target_col)
         condition = group_by_list + "=" + group
-        #print("condition",condition)
 
         tg = target_col[0]
         if len(target_col)==2:
             tg = target_col[1]
 
         agg_table = orignal_table._select_where(return_columns=tg, condition=condition )
-        #print("agg_table.data",agg_table.data)
 
-        agg2 = _call_agg_2(agg_table,target_col,agg_fun_type)
-        #print(agg2.data[0][0])
+        agg2 = _call_agg(agg_table,target_col,agg_fun_type)
 
         new_column.append(agg2.data[0][0])
-
-    #print(new_column)
-    #print(agg2.column_types)
-
-    # append the agg_col array to a new column on 'grouped' table
 
     group_by_table.column_names.append(agg2.column_names[0])
     group_by_table.column_types.append(agg2.column_types[0])
 
     for i in range(len(group_by_table.data)):
         (group_by_table.data[i]).append(new_column[i])
-
-    #print(group_by_table.data)
 
     return group_by_table
 
