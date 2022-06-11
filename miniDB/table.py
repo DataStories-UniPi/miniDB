@@ -328,7 +328,19 @@ class Table:
                         temp_dict = {(key):([[new_table.data[i][j] for j in all_columns] for i in rows] if key=="data" else value) for key,value in new_table.__dict__.items()}
                         new_table = Table(load=temp_dict)
                     else:
-                        raise Exception(f"not implemented")
+
+                        temp = _call_agg(s_table,left.split(" ")[1:],left.split(" ")[0])
+                        new_condition = "agg_"+left.replace(' ', '_')+ op + splt[1]
+
+                        
+                        column_name, operator, value = temp._parse_condition(new_condition)
+                        column = temp.column_by_name(column_name)
+                        rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+                        if len(rows) == 0:
+                            new_table.data = []
+
+                        return new_table
                 else:
                     raise Exception(f"Must used agg function here")
 
