@@ -306,6 +306,33 @@ class Table:
             new_table = Table("temp", t_names, t_types)
             new_table.data = [t_data]
 
+            if having is not None:
+                ops = [">=", "<=", "=", ">", "<"]
+                for op in ops:
+                    splt = having.split(op)
+                    if(len(splt)>1):
+                        break
+
+                left = splt[0].strip()
+                if(left.split(" ")[0] in ["min","max","count","sum","avg"]):
+
+                    agg_column = "agg_"+left.replace(' ', '_')
+                    new_condition = "agg_"+left.replace(' ', '_')+ op + splt[1]
+
+                    if agg_column in new_table.column_names:
+                        column_name, operator, value = new_table._parse_condition(new_condition)
+                        column = new_table.column_by_name(column_name)
+                        rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+                        all_columns = [i for i in range(len(new_table.column_names))]
+                        temp_dict = {(key):([[new_table.data[i][j] for j in all_columns] for i in rows] if key=="data" else value) for key,value in new_table.__dict__.items()}
+                        new_table = Table(load=temp_dict)
+                    else:
+                        raise Exception(f"not implemented")
+                else:
+                    raise Exception(f"Must used agg function here")
+
+
             # no need to 'order by' or 'distinct' as the result will always be 1 row
             # just check if a given col is invalid
             if order_by:
