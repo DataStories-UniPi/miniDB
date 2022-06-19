@@ -26,7 +26,7 @@ class Database:
         self.tables = {}
         self._name = name
         # flag for when transaction initiation starts
-        self.save_state = False
+        self.open_transaction = False
         self.savedir = f'dbdata/{name}_db'
         # to keep locked tables allowing us to unlock them at the end of the transaction
         if load:
@@ -49,6 +49,7 @@ class Database:
         try:
             os.mkdir(self.savedir)
         except:
+            warnings.warn(f'Couldnt create save directory at "{self.savedir}".')
             pass
 
         # create all the meta tables
@@ -62,7 +63,7 @@ class Database:
         '''
         Save database as a pkl file. This method saves the database object, including all tables and attributes.
         '''
-        if not self.save_state:
+        if not self.open_transaction:
             for name, table in self.tables.items():
                 with open(f'{self.savedir}/{name}.pkl', 'wb') as f:
                     pickle.dump(table, f)
@@ -80,7 +81,7 @@ class Database:
         Args:
             path: string. Directory (path) of the database on the system.
         '''
-        if not self.save_state:
+        if not self.open_transaction:
             path = f'dbdata/{self._name}_db'
             for file in os.listdir(path):
                 if file[-3:] != 'pkl':  # if used to load only pkl files
@@ -263,7 +264,7 @@ class Database:
             logging.info('ABORTED')
         self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
 
-        if lock_ownership and not self.save_state:
+        if lock_ownership and not self.open_transaction:
             self.unlock_table(table_name)
         self._update()
         self.save_database()
@@ -288,7 +289,7 @@ class Database:
         
         lock_ownership = self.lock_table(table_name, mode='x')
         self.tables[table_name]._update_rows(set_value, set_column, condition)
-        if lock_ownership and not self.save_state:
+        if lock_ownership and not self.open_transaction:
             self.unlock_table(table_name)
         self._update()
         self.save_database()
@@ -309,7 +310,7 @@ class Database:
         
         lock_ownership = self.lock_table(table_name, mode='x')
         deleted = self.tables[table_name]._delete_where(condition)
-        if lock_ownership and not self.save_state:
+        if lock_ownership and not self.open_transaction:
             self.unlock_table(table_name)
         self._update()
         self.save_database()
@@ -394,7 +395,7 @@ class Database:
         
         lock_ownership = self.lock_table(table_name, mode='x')
         self.tables[table_name]._sort(column_name, asc=asc)
-        if lock_ownership and not self.save_state:
+        if lock_ownership and not self.open_transaction:
             self.unlock_table(table_name)
         else:
             self.transaction_locks += table_name
@@ -688,10 +689,10 @@ class Database:
 
     def start_transaction(self, action):
         # you cannot start a transaction whilst in a transaction is already running
-        if self.save_state:
+        if self.open_transaction:
             raise ValueError("Transaction already started")
         else:
-            self.save_state = True
+            self.open_transaction = True
 
         # if transation begins and user want to undo what he has done( dont we all )
         # we turn savestate into false we call the unlocking phase well doing what its named
@@ -699,9 +700,9 @@ class Database:
 
     def rollback(self, action):
 
-        if self.save_state:
-            self.save_state = False
-            self.unlocking_phase()
+        if self.open_transaction:
+            self.open_transaction = False
+            self.end_transaction()
             self.load_database()
         # if a transaction has not started you cant really roll back can you
         else:
@@ -711,9 +712,9 @@ class Database:
         # we save the altered (or perhaps not) DB as the now last save
 
     def commit(self, action):
-        if self.save_state:
-            self.save_state = False
-            self.unlocking_phase()
+        if self.open_transaction:
+            self.open_transaction = False
+            self.end_transaction()
             self.save_database()
         # if a transaction has not started you cant really commit can you
         else:
@@ -721,7 +722,7 @@ class Database:
 
         # well it unlocks the locked tables
 
-    def unlocking_phase(self):
+    def end_transaction(self):
         here=os.getpid()  #Get pid of current process
         transaction_locks=self.tables['meta_locks']._select_where('table_name', f'pid={here}')#Find all tables with pid of the current process
         for table in transaction_locks.data:#Iterate through all the tables
