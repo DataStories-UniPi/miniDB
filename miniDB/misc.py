@@ -25,4 +25,11 @@ def split_condition(condition):
     for op_key in ops.keys():
         splt=condition.split(op_key)
         if len(splt)>1:
-            return splt[0].strip(), op_key, splt[1].strip() # remove all leading and trailing spaces from left and right parts
+            left, right = splt[0].strip(), splt[1].strip()
+            if ' ' in right:
+                if right[0] == '"' == right[-1]:
+                    return left, op_key, right.strip('"')
+                else:
+                    raise Exception(f'Invalid condition ({condition}). Value must be enclosed in double quotation marks if it contains whitespaces.')
+            else:
+                return left, op_key, right
