@@ -32,4 +32,7 @@ def split_condition(condition):
                 else:
                     raise Exception(f'Invalid condition ({condition}). Value must be enclosed in double quotation marks if it contains whitespaces.')
             else:
-                return left, op_key, right
+                if right[0] == '"' == right[-1]:
+                    return left, op_key, right.strip('"')
+                else:
+                    return left, op_key, right
