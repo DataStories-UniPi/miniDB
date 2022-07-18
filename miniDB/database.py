@@ -415,15 +415,35 @@ class Database:
         if self.is_locked(left_table) or self.is_locked(right_table):
             return
 
-        left_table = left_table if isinstance(left_table, Table) else self.tables[left_table] 
-        right_table = right_table if isinstance(right_table, Table) else self.tables[right_table] 
+        left_table = left_table if isinstance(left_table, Table) else self.tables[left_table]
+        right_table = right_table if isinstance(right_table, Table) else self.tables[right_table]
 
+        left_table_name = left_table._name
+        right_table_name = right_table._name
+        
+        # Check if there is an index of either of the two tables available, as then we can use inlj for quicker join
+        leftIndexExists = self._has_index(left_table_name)
+        print(leftIndexExists)
+        rightIndexExists = self._has_index(right_table_name)
+        print(rightIndexExists)
+
+        print(self.select('*', 'meta_indexes', f'table_name={left_table_name}', return_object=True).column_by_name('index_name'))
 
         if mode=='inner':
+            print('inner')
             res = left_table._inner_join(right_table, condition)
 
-        elif mode=='inlj':
-            res = Inlj(condition, left_table, right_table).runner()
+        elif mode != 'smj' and (mode=='inlj' or leftIndexExists or rightIndexExists):
+            print('inlj initiated')
+            
+            if rightIndexExists:
+                index_name = self.select('*', 'meta_indexes', f'table_name={right_table_name}', return_object=True).column_by_name('index_name')[0]
+                res = Inlj(condition, left_table, right_table, None, self._load_idx(index_name)).runner()
+            elif leftIndexExists:
+                index_name = self.select('*', 'meta_indexes', f'table_name={left_table_name}', return_object=True).column_by_name('index_name')[3]
+                res = Inlj(condition, left_table, right_table, self._load_idx(index_name), None).runner()
+            else:
+                res = Inlj(condition, left_table, right_table, None, None).runner()
 
         elif mode=='smj':
             res = Smj(condition, left_table, right_table).runner()
