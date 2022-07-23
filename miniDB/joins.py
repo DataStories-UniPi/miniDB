@@ -5,49 +5,40 @@ import ast
 from externalmergesort import ExternalMergeSort
 
 class Inlj:
-    def __init__(self, condition, left_table, right_table, left_index, right_index):
+    def __init__(self, condition, left_table, right_table):
         self.left_table = left_table
         self.right_table = right_table
         self.condition = condition
         self.join_table = None
-        # If an index is not Non-value save it, else save None so that it will be created later
-        self.index = left_index if left_index is not None else right_index
-        if left_index is not None:
-            self.indexSaved = 'left'
-        elif right_index is not None:
-            self.indexSaved = 'right'
-        else:
-            self.indexSaved = 'none'
+        self.index = None
         self.results = None
 
     def runner(self):
+        # If we execute INLJ when SMJ is not possible, delete the folder we may have created
+        if os.path.exists('miniDB/externalSortFolder'):
+            os.rmdir('miniDB/externalSortFolder')
+
         # Get the column of the left and right tables and the operator, from the condition of the join
         column_name_left, operator, column_name_right = Table()._parse_condition(self.condition, join=True)
-
-        print(self.indexSaved)
-        # If both the tables cannot be indexed and the user specifies to do inlj, then do a simple inner join
+        # If both the tables cannot be indexed, then do a simple inner join
         if (self.left_table.pk is None and self.right_table.pk is None) or (column_name_left != self.left_table.pk and column_name_right != self.right_table.pk):
             print('Index-nested-loop join cannot be executed. Using inner join instead.\n')
             return self.left_table._inner_join(self.right_table, self.condition)
         else:
             reversed = False
             
-            # If the right table isn't/cannot be indexed and the left can, we reverse them
-            if self.indexSaved == 'left':
-                self.right_table, self.left_table = self.left_table, self.right_table
-                column_name_left, column_name_right = column_name_right, column_name_left
-                reversed = True
-            elif (column_name_left == self.left_table.pk and (self.right_table.pk is None or column_name_right != self.right_table.pk)):
+            # If the right table cannot be indexed and the left can, we reverse them
+            if(column_name_left == self.left_table.pk and (self.right_table.pk is None or column_name_right != self.right_table.pk)):
                 self.right_table, self.left_table = self.left_table, self.right_table
                 column_name_left, column_name_right = column_name_right, column_name_left
                 reversed = True
 
-            # Create the index of the second table if no indexes exist
-            if self.indexSaved == 'none':
-                self.index = Btree(3) # 3 is arbitrary
-                # For each record in the primary key of the table, insert its value and index to the btree
-                for idx, key in enumerate(self.right_table.column_by_name(self.right_table.pk)):
-                    self.index.insert(key, idx)
+            # Create the index of the second table
+            self.index = Btree(3) # 3 is arbitrary
+
+            # For each record in the primary key of the table, insert its value and index to the btree
+            for idx, key in enumerate(self.right_table.column_by_name(self.right_table.pk)):
+                self.index.insert(key, idx)
             
             # Try to find the left column, as even during the reverse, it is the only one needed
             # If it fails, raise exception
@@ -91,10 +82,8 @@ class Smj:
         column_name_left, operator, column_name_right = Table()._parse_condition(self.condition, join=True)
 
         if(operator != "="):
-            # Remove the directory as an inner join will be used and thus it is not needed
-            os.rmdir('miniDB/externalSortFolder')
-            print("Sort-Merge Join is used when the condition operator is '='. Using inner join instead.")
-            return self.left_table._inner_join(self.right_table, self.condition)
+            print("Sort-Merge Join is used when the condition operator is '='. Using INLJ instead.")
+            return Inlj(self.condition, self.left_table, self.right_table).runner()
 
         # Create the names that appear over the tables when the final joined table is presented to the user
         left_names = [f'{self.left_table._name}.{colname}' if self.left_table._name!='' else colname for colname in self.left_table.column_names]
