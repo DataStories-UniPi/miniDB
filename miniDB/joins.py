@@ -1,17 +1,18 @@
 from table import Table
-from btree import Btree
 import os
 import ast
 from externalmergesort import ExternalMergeSort
+from misc import reverse_op
 
 class Inlj:
-    def __init__(self, condition, left_table, right_table):
+    def __init__(self, condition, left_table, right_table, index, index_saved):
         self.left_table = left_table
         self.right_table = right_table
         self.condition = condition
         self.join_table = None
-        self.index = None
         self.results = None
+        self.index = index
+        self.index_saved = index_saved
 
     def runner(self):
         # If we execute INLJ when SMJ is not possible, delete the folder we may have created
@@ -20,53 +21,45 @@ class Inlj:
 
         # Get the column of the left and right tables and the operator, from the condition of the join
         column_name_left, operator, column_name_right = Table()._parse_condition(self.condition, join=True)
-        # If both the tables cannot be indexed, then do a simple inner join
-        if (self.left_table.pk is None and self.right_table.pk is None) or (column_name_left != self.left_table.pk and column_name_right != self.right_table.pk):
-            print('Index-nested-loop join cannot be executed. Using inner join instead.\n')
-            return self.left_table._inner_join(self.right_table, self.condition)
-        else:
-            reversed = False
-            
-            # If the right table cannot be indexed and the left can, we reverse them
-            if(column_name_left == self.left_table.pk and (self.right_table.pk is None or column_name_right != self.right_table.pk)):
-                self.right_table, self.left_table = self.left_table, self.right_table
-                column_name_left, column_name_right = column_name_right, column_name_left
-                reversed = True
+        
+        reversed = False
+        # If we have the index of the left table, reverse the order of the tables
+        if(self.index_saved=='left'):
+            self.right_table, self.left_table = self.left_table, self.right_table
+            column_name_left, column_name_right = column_name_right, column_name_left
+            reversed = True
+        
+        # Try to find the left column, as even if a reverse took place, it is the only one needed
+        # If it fails, raise exception
+        try:
+            self.column_index_left = self.left_table.column_names.index(column_name_left)
+        except:
+            raise Exception(f'Column "{column_name_left}" doesn\'t exist in the left table. Valid columns: {self.left_table.column_names}.')
 
-            # Create the index of the second table
-            self.index = Btree(3) # 3 is arbitrary
+        # Create the names that appear over the tables when the final joined table is presented to the user
+        left_names = [f'{self.left_table._name}.{colname}' if self.left_table._name!='' else colname for colname in self.left_table.column_names]
+        right_names = [f'{self.right_table._name}.{colname}' if self.right_table._name!='' else colname for colname in self.right_table.column_names]
 
-            # For each record in the primary key of the table, insert its value and index to the btree
-            for idx, key in enumerate(self.right_table.column_by_name(self.right_table.pk)):
-                self.index.insert(key, idx)
-            
-            # Try to find the left column, as even during the reverse, it is the only one needed
-            # If it fails, raise exception
-            try:
-                self.column_index_left = self.left_table.column_names.index(column_name_left)
-            except:
-                raise Exception(f'Column "{column_name_left}" doesn\'t exist in the left table. Valid columns: {self.left_table.column_names}.')
+        join_table_colnames = left_names + right_names if not reversed else right_names + left_names
+        join_table_coltypes = self.left_table.column_types + self.right_table.column_types if not reversed else self.right_table.column_types + self.left_table.column_types
+        self.join_table = Table(name='', column_names=join_table_colnames, column_types=join_table_coltypes)
 
-            # Create the names that appear over the tables when the final joined table is presented to the user
-            left_names = [f'{self.left_table._name}.{colname}' if self.left_table._name!='' else colname for colname in self.left_table.column_names]
-            right_names = [f'{self.right_table._name}.{colname}' if self.right_table._name!='' else colname for colname in self.right_table.column_names]
+        # The operator needs to be reversed as we search based on the elements of the index.
+        # For example, if A > B and we search based on B, we need to search for B < A
+        operator = reverse_op(operator) if self.index_saved == 'right' else operator
 
-            join_table_colnames = left_names + right_names if not reversed else right_names + left_names
-            join_table_coltypes = self.left_table.column_types + self.right_table.column_types if not reversed else self.right_table.column_types + self.left_table.column_types
-            self.join_table = Table(name='', column_names=join_table_colnames, column_types=join_table_coltypes)
+        # Implementation of the index-nested-loop join
+        # If the tables had been reversed in the beginning, then the joined table appears
+        # with the tables shown in the order they appeared in the query
+        for row_left in self.left_table.data:
+            # The value that will be searched for in the index
+            left_value = row_left[self.column_index_left]
+            self.results = self.index.find(operator, left_value)
+            if len(self.results) > 0:
+                for element in self.results:
+                    self.join_table._insert(row_left + self.right_table.data[element] if not reversed else self.right_table.data[element] + row_left)
 
-            # Implementation of the index-nested-loop join
-            # If the tables had been reversed in the beginning, then the joined table appears
-            # with the tables shown in the order they appeared in the query
-            for row_left in self.left_table.data:
-                # The value that will be searched for in the index
-                left_value = row_left[self.column_index_left]
-                self.results = self.index.find(operator, left_value)
-                if len(self.results) > 0:
-                    for element in self.results:
-                        self.join_table._insert(row_left + self.right_table.data[element] if not reversed else self.right_table.data[element] + row_left)
-
-            return self.join_table
+        return self.join_table
 
 class Smj:
     def __init__(self, condition, left_table, right_table):
@@ -82,8 +75,8 @@ class Smj:
         column_name_left, operator, column_name_right = Table()._parse_condition(self.condition, join=True)
 
         if(operator != "="):
-            print("Sort-Merge Join is used when the condition operator is '='. Using INLJ instead.")
-            return Inlj(self.condition, self.left_table, self.right_table).runner()
+            print("Sort-Merge Join is used when the condition operator is '='. Using inner join instead.")
+            return self.left_table._inner_join(self.right_table, self.condition)
 
         # Create the names that appear over the tables when the final joined table is presented to the user
         left_names = [f'{self.left_table._name}.{colname}' if self.left_table._name!='' else colname for colname in self.left_table.column_names]
