@@ -1,8 +1,13 @@
-from table import Table
 import os
 import ast
-from externalmergesort import ExternalMergeSort
-from misc import reverse_op
+try:
+    from externalmergesort import ExternalMergeSort
+    from misc import reverse_op
+    from table import Table
+except:
+    from .externalmergesort import ExternalMergeSort
+    from .misc import reverse_op
+    from .table import Table
 
 class Inlj:
     def __init__(self, condition, left_table, right_table, index, index_saved):

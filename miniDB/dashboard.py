@@ -1,4 +1,7 @@
-from database import Database
+try:
+    from database import Database
+except:
+    from .database import Database
 import sys
 
 db = Database(sys.argv[1])

@@ -1,15 +1,21 @@
 from __future__ import annotations
 import pickle
-from table import Table
 from time import sleep, localtime, strftime
 import os,sys
-from btree import Btree
-from misc import split_condition
 import logging
 import warnings
 import readline
 from tabulate import tabulate
-from joins import Inlj, Smj
+try:
+    from joins import Inlj, Smj
+    from btree import Btree
+    from misc import split_condition
+    from table import Table
+except:
+    from .joins import Inlj, Smj
+    from .btree import Btree
+    from .misc import split_condition
+    from .table import Table
 
 
 # sys.setrecursionlimit(100)

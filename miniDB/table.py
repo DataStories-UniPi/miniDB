@@ -2,7 +2,10 @@ from __future__ import annotations
 from tabulate import tabulate
 import pickle
 import os
-from misc import get_op, split_condition
+try:
+    from misc import get_op, split_condition
+except:
+    from .misc import get_op, split_condition
 
 
 class Table:
