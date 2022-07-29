@@ -89,14 +89,15 @@ class Smj:
 
         # Write all the records of the right table to a local file in the following format:
         # 'column_name_value [whole record]'
+        # Use special character '@@@' to represent spaces as spaces break the code.
         with open('miniDB/externalSortFolder/rightTableFile', 'w+') as rt:
             for row in self.right_table.data:
-                rt.write(f'{row[self.right_table.column_names.index(column_name_right)]} {str(row).replace(" ","")}\n')
+                rt.write(f'{row[self.right_table.column_names.index(column_name_right)]} {str(row).replace(" ","@@@")}\n')
         
         # Same for the left lable
         with open('miniDB/externalSortFolder/leftTableFile', 'w+') as lt:
             for row in self.left_table.data:
-                lt.write(f'{row[self.left_table.column_names.index(column_name_left)]} {str(row).replace(" ","")}\n')
+                lt.write(f'{row[self.left_table.column_names.index(column_name_left)]} {str(row).replace(" ","@@@")}\n')
         
         # Create an ExternalMergeSort object and sort both right table and left table local files
         ems = ExternalMergeSort()
@@ -161,7 +162,7 @@ class Smj:
             for line in f:
                 records = line.split()
                 # ast.literal_eval creates the list [a,b,c] from the string '[a,b,c]'
-                join_table._insert(ast.literal_eval(records[0]) + ast.literal_eval(records[1]))
+                join_table._insert(ast.literal_eval(records[0].replace('@@@', ' ')) + ast.literal_eval(records[1].replace('@@@', ' ')))
 
         # Finally, the final file and the externalSortFolder are not needed, as the joined table
         # exists in a variable and can be presented to the user
