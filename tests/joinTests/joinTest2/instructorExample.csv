@@ -1,0 +1,15 @@
+0
+str,str,str,int
+id,name,dept_name,salary
+10101,srinivasan,comp.sci.,65000
+12121,wu,finance,90000
+15151,mozart,music,40000
+22222,einstein,physics,95000
+32343,elsaid,history,60000
+33456,gold,physics,87000
+45565,katz,comp.sci.,75000
+58583,califieri,history,62000
+76543,singh,finance,80000
+76766,crick,biology,72000
+83821,brandt,comp.sci.,92000
+98345,kim,elec.eng.,80000
