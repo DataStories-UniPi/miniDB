@@ -20,10 +20,6 @@ class Inlj:
         self.index_saved = index_saved
 
     def runner(self):
-        # If we execute INLJ when SMJ is not possible, delete the folder we may have created
-        if os.path.exists('miniDB/externalSortFolder'):
-            os.rmdir('miniDB/externalSortFolder')
-
         # Get the column of the left and right tables and the operator, from the condition of the join
         column_name_left, operator, column_name_right = Table()._parse_condition(self.condition, join=True)
         
