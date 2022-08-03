@@ -90,7 +90,7 @@ def test_1():
     joinedTable = csv_to_table('Join', filename=os.getcwd()+'/joinTests/joinTest1/instructorAdvisorGtTest.csv')
     
     db = Database('smdb', load=True)
-    join = db.join(mode = 'inlj', left_table = instructor, right_table = advisor, condition = 'id > i_id', save_as=None, return_object=True)
+    join = db.join(mode = 'inl', left_table = instructor, right_table = advisor, condition = 'id > i_id', save_as=None, return_object=True)
 
     assert join.__dict__['column_names'] == joinedTable.__dict__['column_names']
     assert join.__dict__['column_types'] == joinedTable.__dict__['column_types']
@@ -106,7 +106,7 @@ def test_2():
     joinedTable = csv_to_table('Join', filename=os.getcwd()+'/joinTests/joinTest2/instructorAdvisorEqTest.csv')
 
     db = Database('smdb', load=True)
-    join = db.join(mode = 'smj', left_table = instructor, right_table = advisor, condition = 'id = i_id', save_as=None, return_object=True)
+    join = db.join(mode = 'sm', left_table = instructor, right_table = advisor, condition = 'id = i_id', save_as=None, return_object=True)
 
     if os.path.exists(os.getcwd() + '/miniDB'):
             os.rmdir(os.getcwd() + '/miniDB')
@@ -125,7 +125,7 @@ def test_3():
     joinedTable = csv_to_table('Join', filename=os.getcwd()+'/joinTests/joinTest3/takesTeachesFailInljTest.csv')
 
     db = Database('smdb', load=True)
-    join = db.join(mode = 'inlj', left_table = takes, right_table = teaches, condition = 'course_id = course_id', save_as=None, return_object=True)
+    join = db.join(mode = 'inl', left_table = takes, right_table = teaches, condition = 'course_id = course_id', save_as=None, return_object=True)
 
     assert join.__dict__['column_names'] == joinedTable.__dict__['column_names']
     assert join.__dict__['column_types'] == joinedTable.__dict__['column_types']
@@ -141,7 +141,7 @@ def test_4():
     joinedTable = csv_to_table('Join', filename=os.getcwd()+'/joinTests/joinTest4/takesTeachesFailSmjTest.csv')
 
     db = Database('smdb', load=True)
-    join = db.join(mode = 'smj', left_table = takes, right_table = teaches, condition = 'course_id > course_id', save_as=None, return_object=True)
+    join = db.join(mode = 'sm', left_table = takes, right_table = teaches, condition = 'course_id > course_id', save_as=None, return_object=True)
 
     if os.path.exists(os.getcwd() + '/miniDB/externalSortFolder'):
         shutil.rmtree(os.getcwd() + '/miniDB')

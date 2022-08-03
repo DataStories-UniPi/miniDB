@@ -428,7 +428,7 @@ class Database:
         if mode=='inner':
             res = left_table._inner_join(right_table, condition)
 
-        elif mode=='inlj':            
+        elif mode=='inl':            
             # Check if there is an index of either of the two tables available, as if there isn't we can't use inlj
             leftIndexExists = self._has_index(left_table._name)
             rightIndexExists = self._has_index(right_table._name)
@@ -443,7 +443,7 @@ class Database:
                 index_name = self.select('*', 'meta_indexes', f'table_name={left_table._name}', return_object=True).column_by_name('index_name')[0]
                 res = Inlj(condition, left_table, right_table, self._load_idx(index_name), 'left').join()
 
-        elif mode=='smj':
+        elif mode=='sm':
             res = Smj(condition, left_table, right_table).join()
 
         else:

@@ -117,28 +117,23 @@ def evaluate_from_clause(dic):
     '''
     Evaluate the part of the query (argument or subquery) that is supplied as the 'from' argument
     '''
-    join_types = ['inner', 'left', 'right', 'full']
+    join_types = ['inner', 'left', 'right', 'full', 'sm', 'inl']
     from_split = dic['from'].split(' ')
     if from_split[0] == '(' and from_split[-1] == ')':
         subquery = ' '.join(from_split[1:-1])
         dic['from'] = interpret(subquery)
 
-    join_idx = [i for i,word in enumerate(from_split) if (word=='join' or word=='inlj' or word=='smj') and not in_paren(from_split,i)]
+    join_idx = [i for i,word in enumerate(from_split) if word=='join' and not in_paren(from_split,i)]
     on_idx = [i for i,word in enumerate(from_split) if word=='on' and not in_paren(from_split,i)]
     if join_idx:
-        # join_type takes the value of 'join', 'inlj' or 'smj'
-        join_type = from_split[join_idx[0]]
         join_idx = join_idx[0]
         on_idx = on_idx[0]
         join_dic = {}
-        if join_type=='join' and from_split[join_idx-1] in join_types:
+        if from_split[join_idx-1] in join_types:
             join_dic['join'] = from_split[join_idx-1]
             join_dic['left'] = ' '.join(from_split[:join_idx-1])
         else:
-            if join_type=='smj' or join_type=='inlj':
-                join_dic['join'] = join_type
-            else:
-                join_dic['join'] = 'inner'
+            join_dic['join'] = 'inner'
             join_dic['left'] = ' '.join(from_split[:join_idx])
         join_dic['right'] = ' '.join(from_split[join_idx+1:on_idx])
         join_dic['on'] = ''.join(from_split[on_idx+1:])
