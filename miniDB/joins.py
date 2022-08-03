@@ -1,13 +1,15 @@
+import heapq
+import shutil
 import os
 import ast
 try:
-    from externalmergesort import ExternalMergeSort
     from misc import reverse_op
     from table import Table
 except:
-    from .externalmergesort import ExternalMergeSort
     from .misc import reverse_op
     from .table import Table
+
+
 
 class Inlj:
     def __init__(self, condition, left_table, right_table, index, index_saved):
@@ -19,7 +21,7 @@ class Inlj:
         self.index = index
         self.index_saved = index_saved
 
-    def runner(self):
+    def join(self):
         # Get the column of the left and right tables and the operator, from the condition of the join
         column_name_left, operator, column_name_right = Table()._parse_condition(self.condition, join=True)
         
@@ -63,12 +65,13 @@ class Inlj:
         return self.join_table
 
 class Smj:
+
     def __init__(self, condition, left_table, right_table):
         self.left_table = left_table
         self.right_table = right_table
         self.condition = condition
 
-    def runner(self):
+    def join(self):
         # Create a temporary folder for the external sort to happen. The folder will be deleted in the end
         os.makedirs('miniDB/externalSortFolder', exist_ok=True)
         
@@ -96,10 +99,10 @@ class Smj:
                 lt.write(f'{row[self.left_table.column_names.index(column_name_left)]} {str(row).replace(" ","@@@")}\n')
         
         # Create an ExternalMergeSort object and sort both right table and left table local files
-        ems = ExternalMergeSort()
+        ems = self.ExternalMergeSort()
         ems.runExternalSort('rightTableFile')
         # Re-initialization of all values
-        ems = ExternalMergeSort()
+        ems = self.ExternalMergeSort()
         ems.runExternalSort('leftTableFile')
 
         # Now there are sorted versions of the local files, so the initial ones can be removed
@@ -166,3 +169,137 @@ class Smj:
         os.rmdir('miniDB/externalSortFolder')
         
         return join_table
+
+    class ExternalMergeSort:
+        # Total number of split files
+        numFiles = 0
+        # Total number of numbers in the first file
+        sumFiles = 0
+        # File name, so as to recognize the sorted file
+        startingFileName = ''
+
+        # Sort the given array with the merge sort algorithm
+        def mergeSort(self, arr):
+            if len(arr) > 1:
+                mid = len(arr)//2
+                L, R = arr[:mid], arr[mid:]
+
+                # Recursive call of merge sort
+                self.mergeSort(L)
+                self.mergeSort(R)
+        
+                i = j = k = 0
+
+                while i < len(L) and j < len(R):
+                    if L[i] < R[j]:
+                        arr[k] = L[i]
+                        i += 1
+                    else:
+                        arr[k] = R[j]
+                        j += 1
+                    k += 1
+
+                while i < len(L):
+                    arr[k] = L[i]
+                    i += 1
+                    k += 1
+        
+                while j < len(R):
+                    arr[k] = R[j]
+                    j += 1
+                    k += 1
+
+        # Function to split the big file into smaller chunks of size specified by the user
+        def splitFile(self, largeFile, chunkSize:int):
+            # Variables used throughout the class
+            self.startingFileName = largeFile
+            self.numFiles = 1
+
+            # Split the file in chunks of chunkSize bytes
+            with open(f'miniDB/externalSortFolder/{largeFile}') as f:
+                chunk = f.readlines(chunkSize)
+                while chunk:
+                    os.makedirs(os.path.dirname(f'miniDB/externalSortFolder/tempSplitFiles {self.startingFileName}/{self.numFiles}'), exist_ok=True)
+                    with open(f'miniDB/externalSortFolder/tempSplitFiles {self.startingFileName}/{self.numFiles}', 'w+') as chunk_file:
+                        for el in chunk:
+                            chunk_file.write(el)
+
+                    chunk = f.readlines(chunkSize)
+                    self.numFiles += 1
+
+            return self.numFiles
+
+        # Function to sort a chunk of the starting file using merge sort
+        def sortSmallFile(self, fileToBeSorted):
+            arr = []
+
+            with open(f'miniDB/externalSortFolder/tempSplitFiles {self.startingFileName}/{fileToBeSorted}', 'r') as fts:
+                # If the contents of the file are integers
+                try:
+                    with open(f'miniDB/externalSortFolder/tempSplitFiles {self.startingFileName}/{fileToBeSorted}', 'r') as fts:
+                        arr = list(map(int, fts.read().splitlines()))
+                # If the contents are alphanumeric values
+                except:
+                    with open(f'miniDB/externalSortFolder/tempSplitFiles {self.startingFileName}/{fileToBeSorted}', 'r') as fts:
+                        arr = list(map(str, fts.read().splitlines()))
+                
+                self.sumFiles += len(arr)
+                self.mergeSort(arr)
+
+            with open(f'miniDB/externalSortFolder/tempSplitFiles {self.startingFileName}/{fileToBeSorted}', 'w') as fts:
+                for el in arr:
+                    fts.write(f'{el}\n')
+
+        # K-Way Merge with priority queue implementation
+        def k_wayMerge(self, number):
+            # Create dictionary of files opened. Open all the files
+            # That will be merged
+            fileNames = {}
+            for i in range(1, number):
+                fileNames[i] = open(f'miniDB/externalSortFolder/tempSplitFiles {self.startingFileName}/{i}', 'r')
+
+            output = []
+
+            # (X,Y) where
+            # X is the value of the element and
+            # Y is the key of the file in fileName
+            try:
+                pq = [(int(fileNames[i].readline().replace('\n', '')), i) for i in range(1, len(fileNames) + 1)]
+            except:
+                for i in range(1, len(fileNames) + 1):
+                    fileNames[i].seek(0)
+                pq = [(fileNames[i].readline().replace('\n', ''), i) for i in range(1, len(fileNames) + 1)]
+
+            # Create heap for the external merge sort
+            heapq.heapify(pq)
+
+            while len(output) < self.sumFiles:
+                elem, file_key = heapq.heappop(pq)
+                output.append(elem)
+                next = fileNames[file_key].readline().replace('\n', '')
+
+                # When on EOF, an empty string will be returned
+                # So if the value is not an empty string, add the integer to the heap
+                if next != '':
+                    try:
+                        heapq.heappush(pq, (int(next), file_key))
+                    except:
+                        heapq.heappush(pq, (next, file_key))
+
+            with open(f'miniDB/externalSortFolder/sorting of {self.startingFileName}', 'w+') as sf:
+                for el in output:
+                    sf.write(f'{el}\n')
+
+            return output
+
+        def runExternalSort(self, filename):
+            # 30 is just an example
+            self.splitFile(filename, 30)
+
+            for i in range(1, self.numFiles):
+                self.sortSmallFile(i)
+
+            self.k_wayMerge(self.numFiles)
+            
+            # After the k-way Merge is completed, remove the folder containing the temporary split files
+            shutil.rmtree(f'miniDB/externalSortFolder/tempSplitFiles {self.startingFileName}/')

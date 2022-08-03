@@ -438,13 +438,13 @@ class Database:
                 res = left_table._inner_join(right_table, condition)
             elif rightIndexExists:
                 index_name = self.select('*', 'meta_indexes', f'table_name={right_table._name}', return_object=True).column_by_name('index_name')[0]
-                res = Inlj(condition, left_table, right_table, self._load_idx(index_name), 'right').runner()
+                res = Inlj(condition, left_table, right_table, self._load_idx(index_name), 'right').join()
             elif leftIndexExists:
                 index_name = self.select('*', 'meta_indexes', f'table_name={left_table._name}', return_object=True).column_by_name('index_name')[0]
-                res = Inlj(condition, left_table, right_table, self._load_idx(index_name), 'left').runner()
+                res = Inlj(condition, left_table, right_table, self._load_idx(index_name), 'left').join()
 
         elif mode=='smj':
-            res = Smj(condition, left_table, right_table).runner()
+            res = Smj(condition, left_table, right_table).join()
 
         else:
             raise NotImplementedError
