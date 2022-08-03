@@ -2,10 +2,11 @@ from __future__ import annotations
 from tabulate import tabulate
 import pickle
 import os
-try:
-    from misc import get_op, split_condition
-except:
-    from .misc import get_op, split_condition
+import sys
+
+sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
+
+from misc import get_op, split_condition
 
 
 class Table:

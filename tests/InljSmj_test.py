@@ -4,18 +4,10 @@ import sys
 import os
 import pickle
 
-# The following section of code is important! Do not remove without checking for errors.
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.dirname(SCRIPT_DIR))
-sys.path.append('miniDB/tests')
+sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
-from miniDB import table
-from miniDB import btree
 from miniDB.database import *
 from miniDB.table import *
-
-sys.modules['table'] = table
-sys.modules['btree'] = btree
 
 # endregion
 

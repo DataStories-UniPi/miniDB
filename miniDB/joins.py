@@ -2,12 +2,12 @@ import heapq
 import shutil
 import os
 import ast
-try:
-    from misc import reverse_op
-    from table import Table
-except:
-    from .misc import reverse_op
-    from .table import Table
+import sys
+
+sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
+
+from misc import reverse_op
+from table import Table
 
 
 

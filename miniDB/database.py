@@ -6,16 +6,16 @@ import logging
 import warnings
 import readline
 from tabulate import tabulate
-try:
-    from joins import Inlj, Smj
-    from btree import Btree
-    from misc import split_condition
-    from table import Table
-except:
-    from .joins import Inlj, Smj
-    from .btree import Btree
-    from .misc import split_condition
-    from .table import Table
+
+sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
+from miniDB import table
+sys.modules['table'] = table
+
+from joins import Inlj, Smj
+from btree import Btree
+from misc import split_condition
+from table import Table
+
 
 
 # sys.setrecursionlimit(100)
