@@ -28,9 +28,17 @@ def split_condition(condition):
             left, right = splt[0].strip(), splt[1].strip()
 
             if right[0] == '"' == right[-1]:
-                return left, op_key, right.strip('"')
+                right = right.strip('"')
+
+                if right.find('"') != -1:
+                    raise ValueError(f'Invalid condition: {condition}. Double quotation marks are not allowed inside values.')
+
+                return left, op_key, right
             else:
+                if right.find('"') != -1:
+                    raise ValueError(f'Invalid condition: {condition}. Double quotation marks are not allowed inside values.')
+
                 if ' ' in right:
-                    raise Exception(f'Invalid condition ({condition}). Value must be enclosed in double quotation marks if it contains whitespaces.')
+                    raise ValueError(f'Invalid condition ({condition}). Value must be enclosed in double quotation marks to include whitespaces.')
                 else:
                     return left, op_key, right
