@@ -27,3 +27,15 @@ def split_condition(condition):
         splt=condition.split(op_key)
         if len(splt)>1:
             return splt[0], op_key, splt[1]
+
+def reverse_op(op):
+    '''
+    Reverse the operator given
+    '''
+    return {
+        '>' : '<',
+        '>=' : '<=',
+        '<' : '>',
+        '<=' : '>=',
+        '=' : '='
+    }.get(op)
