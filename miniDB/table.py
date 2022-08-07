@@ -2,6 +2,10 @@ from __future__ import annotations
 from tabulate import tabulate
 import pickle
 import os
+import sys
+
+sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
+
 from misc import get_op, split_condition
 
 
@@ -428,4 +432,4 @@ class Table:
         tmp_dict = pickle.load(f)
         f.close()
 
-        self.__dict__.update(tmp_dict)
+        self.__dict__.update(tmp_dict.__dict__)

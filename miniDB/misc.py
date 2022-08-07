@@ -36,3 +36,15 @@ def split_condition(condition):
                 raise ValueError(f'Invalid condition: {condition}\nDouble quotation marks are not allowed inside values.')
 
             return left, op_key, right
+
+def reverse_op(op):
+    '''
+    Reverse the operator given
+    '''
+    return {
+        '>' : '<',
+        '>=' : '<=',
+        '<' : '>',
+        '<=' : '>=',
+        '=' : '='
+    }.get(op)
