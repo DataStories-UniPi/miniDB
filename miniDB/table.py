@@ -418,6 +418,8 @@ class Table:
 
             return join_table
 
+
+
     def _sm_join(self,table_left: Table, table_right: Table, condition):
         # Create directory 'tempFiles' for temporary files
         os.mkdir("tempFiles")
@@ -577,3 +579,174 @@ class Table:
         f.close()
 
         self.__dict__.update(tmp_dict)
+
+
+
+
+#Class for External Merge Sort    
+    class ExternalMergeSort:
+
+        # the number of total temp files
+        number_of_files = 1
+
+
+        def ext_merge_sort(self,file):
+            final_list = []
+            self.chunk_file(file)
+            with open('tempFiles/1','r') as last_table_read:
+                for line in last_table_read:
+                    final_list.append(line)
+            last_table_read.close() 
+            return final_list
+
+        # Chunks original file into smaller pieces. Each piece has 3 values
+        def chunk_file(self,original_file):
+            flag = True
+            # counter for lines
+            current_index = 0 
+            # the number of total temp files
+            number_of_files = 1
+            with open('tempFiles/'+str(original_file), 'r') as read_obj:
+                chunk_values = []
+                # Line by line copy data from original file to dummy file
+                for line in read_obj:
+                    # If current line number matches the given line number then skip copying
+                    if current_index <= 2:
+                        chunk_values.append(line)
+                        # if we have 3 lines we sort them and write them in files
+                        if current_index == 2:
+                            chunk_values.sort()
+                            # write the 3 lines in a new temp file
+                            with open('tempFiles/'+str(number_of_files), 'w+') as write_obj:
+                                for i in range(0,len(chunk_values)):
+                                    if chunk_values[i]!="\n":
+                                        write_obj.write(str(chunk_values[i]))
+                                number_of_files+=1
+                            write_obj.close()
+                            current_index = 0
+                            chunk_values = []
+                        else:    
+                            current_index += 1
+                # if there are remaining lines when the loop stops, sort them and save the in another temp file
+                if len(chunk_values) != 0:
+                    flag=False;
+                    chunk_values.sort()
+                    with open('tempFiles/'+str(number_of_files), 'w+') as write_obj:
+                        for i in range(0,len(chunk_values)):
+                            if chunk_values[i]!="\n":
+                                write_obj.write(str(chunk_values[i]))
+                    write_obj.close()
+                # number_of_files is increased for the next file to be created. If there is no next file we restore number_of_files value
+                elif flag:
+                    number_of_files-=1
+            self.mergeSortedFiles(number_of_files)
+            return
+
+        def mergeSortedFiles(self,number_of_files):
+            # merged files counter
+            file_counter = 1
+            # original file counter
+            left_counter = 1
+
+            left_list=[]
+            right_list=[]
+            # this will store left+right lists
+            combined_list=[]
+
+            for i in range(0,int(number_of_files/2)):
+                left_list=[]
+                right_list=[]
+                combined_list=[]
+
+                # reads chunked files and appends them in left and right lists
+                with open('tempFiles/'+str(left_counter),'r') as left_read_obj, open('tempFiles/'+str(left_counter+1),'r') as right_read_obj:
+                    for line1 in left_read_obj:
+                        left_list.append(line1)
+                    for line2 in right_read_obj:
+                        right_list.append(line2)
+                left_read_obj.close()
+                right_read_obj.close()
+
+                # the combined list of left and right list is sorted with merge-sort algorithm
+                combined_list = self.mergeSortAlgorithm(left_list,right_list)
+
+                # write the combined list into a temp file
+                with open('tempFiles/'+str(file_counter), 'w+') as write_obj:
+                    for i in range(0,len(combined_list)):
+                        write_obj.write(str(combined_list[i]))
+                write_obj.close()
+                left_counter+=2 
+                file_counter+=1 
+
+
+            # if number_of_files is ODD we have one file remaining so we combine it with the last merged file
+            if number_of_files%2!=0:
+                left_list=[]
+                right_list=[]
+                combined_list=[]
+
+                # we open the last merged file and the file remaining
+                with open('tempFiles/'+str(file_counter-1), 'r') as left_read_obj, open('tempFiles/'+str(left_counter),'r') as right_read_obj:
+                    for line1 in left_read_obj:
+                        left_list.append(line1)
+                    for line2 in right_read_obj:
+                        right_list.append(line2)
+                left_read_obj.close()
+                right_read_obj.close()
+
+                # the combined list of left and right list is sorted with merge-sort algorithm
+                combined_list = self.mergeSortAlgorithm(left_list,right_list)
+
+                # write the combined list into a temp file
+                with open('tempFiles/'+str(file_counter-1), 'w+') as write_obj:
+                    for i in range(0,len(combined_list)):
+                        write_obj.write(str(combined_list[i]))
+                write_obj.close()
+
+            ''' 
+                file_counter is always number_of_files + 1. If file_counter is at least 3 then we have at least 2 files (number_of_files >= 2) so we need 
+                to call again mergeSortedFiles function 
+            '''
+            if file_counter>=3:
+                number_of_files = file_counter-1 
+            else:
+                number_of_files=1
+
+            # if we have more than one files we enter mergeSortedFiles function again until we have only 1 file
+            if number_of_files!=1:
+                self.mergeSortedFiles(number_of_files)
+
+            return
+
+
+        # this is just merge-sort algorithm
+        # Remember: we have already chunked our file so we use 2 different chunks for the algorithm
+        def mergeSortAlgorithm(self,left,right):
+            myList = []
+            if len(left) >= 1 and len(right) >= 1:
+                # Two iterators for traversing the two halves
+                i = 0
+                j = 0
+
+                while i < len(left) and j < len(right):
+                    if left[i] <= right[j]:
+                      # The value from the left half has been used
+                      myList.append(left[i])
+                      # Move the iterator forward
+                      i += 1
+                    else:
+                        myList.append(right[j])
+                        j += 1
+
+
+                # For all the remaining values
+                while i < len(left):
+                    myList.append(left[i])
+                    i += 1
+
+
+                while j < len(right):
+                    myList.append(right[j])
+                    j += 1
+
+            return myList

@@ -425,6 +425,8 @@ class Database:
                 res = left_table._inner_join(right_table,condition)
             else:
                 res = left_table._inl_join(left_table,right_table,condition)
+        elif mode == 'smj':
+            res = left_table._sm_join(left_table,right_table,condition)
                 
         else:
             raise NotImplementedError
