@@ -423,9 +423,9 @@ class Database:
             if (left_table.pk is None and right_table.pk is None):
                 print("Index nested loop join cannot be executed. So the inner join  will be used insted !")
                 res = left_table._inner_join(right_table,condition)
-                '''
-                Both tables should have pk's
-                '''
+            else:
+                res = left_table._inl_join(left_table,right_table,condition)
+                
         else:
             raise NotImplementedError
 

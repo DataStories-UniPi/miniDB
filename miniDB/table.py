@@ -1,7 +1,9 @@
 from __future__ import annotations
+import shutil
 from tabulate import tabulate
 import pickle
 import os
+from miniDB.btree import Btree
 from misc import get_op, split_condition
 
 
@@ -356,6 +358,159 @@ class Table:
                     join_table._insert(row_left+row_right)
 
         return join_table
+
+
+    def _inl_join(self, table_left:Table , table_right : Table , condition):
+        # columns and operator 
+
+        '''
+        query should bt like selec * from table1 inlj table 2  on table1.col1 = table2.col2
+        '''
+
+        if table_left.pk is None  and table_right.pk is not None :
+            # We should create index for the right table 
+            index = Btree(3)
+            for right_indx, key in enumerate(table_right.column_by_name(table_right.pk)):
+                index.insert(key,right_indx)
+        elif table_left.pk is not None and table_right.pk is None:
+            # if the left table has the pk we must reverse them and use the one with the primary key 
+            temp =table_right
+            table_right = table_left
+            table_left = temp
+            # we should create index for the right table 
+            index = Btree(3)
+            for right_indx ,key in enumerate(table_right.column_by_name(table_right.pk)):
+                index.insert(key,right_indx)
+
+            # Getting columns and operator 
+
+            column_name_left , operator , column_name_right = table_left._parse_condition(condition, join=True)
+            if operator != '=':
+                print ("You should only use  '=' operator !!!")
+            try :
+                column_index_left = table_left.column_names.index(column_name_left)
+            except:
+                raise Exception (f'Column "{column_name_left}" does not exist in left table. Valid columns: {table_left.column_names}.')
+            try :
+                column_index_right = table_right.column_names.index(column_name_right)
+            except:
+                raise Exception (f'Column "{column_name_right}" dont exist in right table. Valid columns: {table_right.column_names}.')
+            # get the column names of both tables with the table name in front
+            # ex. for left -> name becomes left_table_name_name etc
+            left_names = [f'{table_left._name}.{colname}' if table_left._name!='' else colname for colname in table_left.column_names]
+            right_names = [f'{table_right._name}.{colname}' if table_right._name!='' else colname for colname in table_right.column_names]
+
+            # define the new tables name, its column names and types
+            join_table_name = ''
+            join_table_colnames = left_names+right_names
+            join_table_coltypes = table_left.column_types+table_right.column_types
+            join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
+
+
+            # index nested loop join  for loop
+            for row_left in table_left.data:
+                left_value = row_left[column_index_left]
+                results = index.find(operator,left_value)
+                if(len(results)>0):
+                    for i in results:
+                        if get_op(operator, left_value, table_right.data[i][column_index_right]):
+                            join_table._insert(row_left + table_right.data[i])
+
+            return join_table
+
+    def _sm_join(self,table_left: Table, table_right: Table, condition):
+        # Create directory 'tempFiles' for temporary files
+        os.mkdir("tempFiles")
+
+        # two dictionaries to store table data and keys
+        dict_left = {}
+        dict_right = {}
+        # get columns and operator
+        column_name_left, operator, column_name_right = table_left._parse_condition(condition, join=True)
+        if operator != '=':
+            print("Wrong operator!!! You can only use the '=' operator")
+            return
+        # try to find both columns, if you fail raise error
+        try:
+            column_index_left = [table_left.column_names.index(column_name_left)]
+        except:
+            raise Exception(f'Column "{column_name_left}" dont exist in left table. Valid columns: {table_left.column_names}.')
+        try:
+            column_index_right = [table_right.column_names.index(column_name_right)]
+        except:
+            raise Exception(f'Column "{column_name_right}" dont exist in right table. Valid columns: {table_right.column_names}.')
+
+        # select all rows
+        left_table_rows = [i for i in range(len(table_left.data))]
+        right_table_rows = [i for i in range(len(table_right.data))]
+
+        # save in leftTableFile all the values of the selected column in left table
+        with open("tempFiles/leftTableFile",'w+') as left_table_file:
+            for i in left_table_rows:
+                for j in column_index_left:
+                    left_table_file.write(str(table_left.data[i][j])+'\n')
+                    dict_left[table_left.data[i][j]] = table_left.data[i][:]
+        # save in leftTableFile all the values of the selected column in left table
+        with open("tempFiles/rightTableFile",'w+') as right_table_file:
+            for i in right_table_rows:
+                for j in column_index_right:
+                    right_table_file.write(str(table_right.data[i][j])+'\n')
+                    dict_right[table_right.data[i][j]] = table_right.data[i][:]
+
+        # For left table - dictionary create a new sorted dictionary
+        table_l = Table.ExternalMergeSort()
+        keys_left = table_l.ext_merge_sort('leftTableFile')
+        new_dict_left = {}
+        for i in keys_left:
+            line = i.rstrip("\n")
+            new_dict_left[i] = dict_left[line]
+
+        # For right table - dictionary create a new sorted dictionary
+        table_r = Table.ExternalMergeSort()
+        keys_right = table_r.ext_merge_sort('rightTableFile')
+        new_dict_right = {}
+        for i in keys_right:
+            line = i.rstrip("\n")
+            new_dict_right[i] = dict_right[line]
+
+
+        left_table_file.close()
+        right_table_file.close()
+
+        # get the column names of both tables with the table name in front
+        # ex. for left -> name becomes left_table_name_name etc
+        left_names = [f'{self._name}.{colname}' if self._name!='' else colname for colname in self.column_names]
+        right_names = [f'{table_right._name}.{colname}' if table_right._name!='' else colname for colname in table_right.column_names]
+
+        # define the new tables name, its column names and types
+        join_table_name = ''
+        join_table_colnames = left_names+right_names
+        join_table_coltypes = self.column_types+table_right.column_types
+        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
+
+        # Joins the two tables
+        for line_left in new_dict_left.values():
+            left_value = line_left[column_index_left[0]]
+            for line_right in new_dict_right.values():
+                right_value = line_right[column_index_right[0]]
+                if get_op(operator, left_value, right_value):
+                    join_table._insert(line_left+line_right)
+
+        # Delete "tempFiles" folder
+        shutil.rmtree("tempFiles")
+
+        return join_table
+
+
+
+
+
+
+            
+            
+        
+
+
 
 
     def show(self, no_of_rows=None, is_locked=False):
