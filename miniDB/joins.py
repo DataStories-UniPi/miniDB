@@ -79,8 +79,7 @@ class Smj:
         column_name_left, operator, column_name_right = Table()._parse_condition(self.condition, join=True)
 
         if(operator != "="):
-            print("Sort-Merge Join is used when the condition operator is '='.")
-            return None
+            raise Exception("Sort-Merge Join is used when the condition operator is '='.")
 
         # Create the names that appear over the tables when the final joined table is presented to the user
         left_names = [f'{self.left_table._name}.{colname}' if self.left_table._name!='' else colname for colname in self.left_table.column_names]
@@ -165,8 +164,8 @@ class Smj:
 
         # Finally, the final file and the externalSortFolder are not needed, as the joined table
         # exists in a variable and can be presented to the user
-        os.remove('miniDB/externalSortFolder/final')
-        os.rmdir('miniDB/externalSortFolder')
+        os.remove(f'{os.getcwd()}/miniDB/externalSortFolder/final')
+        os.rmdir(f'{os.getcwd()}/miniDB/externalSortFolder')
         
         return join_table
 
