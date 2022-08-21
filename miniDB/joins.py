@@ -79,8 +79,8 @@ class Smj:
         column_name_left, operator, column_name_right = Table()._parse_condition(self.condition, join=True)
 
         if(operator != "="):
-            print("Sort-Merge Join is used when the condition operator is '='. Using inner join instead.")
-            return self.left_table._inner_join(self.right_table, self.condition)
+            print("Sort-Merge Join is used when the condition operator is '='.")
+            return None
 
         # Create the names that appear over the tables when the final joined table is presented to the user
         left_names = [f'{self.left_table._name}.{colname}' if self.left_table._name!='' else colname for colname in self.left_table.column_names]
