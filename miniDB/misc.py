@@ -8,7 +8,12 @@ def get_op(op, a, b):
                 '<': operator.lt,
                 '>=': operator.ge,
                 '<=': operator.le,
-                '=': operator.eq}
+                '=': operator.eq
+                ',between,': anamesa,
+                ',in,': in_op,
+                ',like,': like
+                 }
+
 
     try:
         return ops[op](a,b)
