@@ -196,7 +196,10 @@ class Table:
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
 
-
+ distinct = False
+ if 'distinct' in return_columns:
+ return_columns = return_columns.split(' ')[1]
+ distinct = True
     def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
