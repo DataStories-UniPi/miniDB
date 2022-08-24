@@ -699,3 +699,14 @@ class Database:
         index = pickle.load(f)
         f.close()
         return index
+
+    def drop_index(self, index_name):
+        if index_name in self.tables['meta_indexes'].column_by_name('index_name'):
+            self.delete_from('meta_indexes', f'index_name = {index_name}')
+
+            if os.path.isfile(f'{self.savedir}/indexes/meta_{index_name}_index.pkl'):
+                os.remove(f'{self.savedir}/indexes/meta_{index_name}_index.pkl')
+            else:
+                warnings.warn(f'"{self.savedir}/indexes/meta_{index_name}_index.pkl" not found.')
+
+            self.save_database()
