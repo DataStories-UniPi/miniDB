@@ -41,3 +41,4 @@ insert into joins values(98345,kim,elec. eng.,80000,44553,22222)
 insert into joins values(98345,kim,elec. eng.,80000,45678,22222)
 insert into joins values(98345,kim,elec. eng.,80000,76543,45565)
 insert into joins values(98345,kim,elec. eng.,80000,98988,76766)
+create index idx on instructor using btree;
