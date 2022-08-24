@@ -72,14 +72,14 @@ class Smj:
         self.condition = condition
 
     def join(self):
-        # Create a temporary folder for the external sort to happen. The folder will be deleted in the end
-        os.makedirs('miniDB/externalSortFolder', exist_ok=True)
-        
         # Get the column of the left and right tables and the operator, from the condition of the join
         column_name_left, operator, column_name_right = Table()._parse_condition(self.condition, join=True)
 
         if(operator != "="):
             raise Exception("Sort-Merge Join is used when the condition operator is '='.")
+
+        # Create a temporary folder for the external sort to happen. The folder will be deleted in the end
+        os.makedirs('miniDB/externalSortFolder', exist_ok=True)
 
         # Create the names that appear over the tables when the final joined table is presented to the user
         left_names = [f'{self.left_table._name}.{colname}' if self.left_table._name!='' else colname for colname in self.left_table.column_names]
