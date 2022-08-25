@@ -14,9 +14,8 @@ from mdb import interpret, execute_dic, interpret_meta, search_between
 
 # endregion
 
-# region helpFunctions
 '''
-THESE ARE CURRENTLY NOT IN USE! SQL FILES ARE USED INSTEAD OF CSV FILES
+THESE ARE CURRENTLY NOT IN USE! SQL FILES ARE USED INSTEAD OF CSV FILES. MIGHT NEED TO BE DELETED
 '''
 def csv_to_table(table_name, filename):
     '''
@@ -73,31 +72,49 @@ def table_to_csv(table_object, filename=None, directory=None):
     file.write(res)
     file.close()
 
-# endregion
+# region helpFunctions
 
-# region testFunctions
-
-def resetTestDB(sqlTest, sqlDB=f'{os.getcwd()}/smallRelationsInsertFile.sql'):
+def makeUniqueChanges(sqlTest, sqlDB=f'{os.getcwd()}/smallRelationsInsertFile.sql'):
     db = Database('test', load=True)
-    interpret_meta('.cdb test;')
+    interpret_meta('cdb test;')
 
-    for line in open(sqlDB, 'r').read().splitlines():
-        if line.startswith('--'): continue
-        dic = interpret(line.lower())
-        execute_dic(dic)
+    hardResetTestDB(sqlDB)
     
+    # Make the unique changes described in the corresponding sqlTest SQL file
     if sqlTest is not None:
         for line in open(sqlTest, 'r').read().splitlines():
             if line.startswith('--'): continue
             dic = interpret(line.lower())
             execute_dic(dic)
 
+def hardResetTestDB(sqlDB = f'{os.getcwd()}/smallRelationsInsertFile.sql'):
+    db = Database('test', load=True)
+    interpret_meta('cdb test;')
+
+    # Reset the tables of the database using the sqlDB SQL file provided
+    for line in open(sqlDB, 'r').read().splitlines():
+        if line.startswith('--'): continue
+        dic = interpret(line.lower())
+        execute_dic(dic)
+
+    # Delete all the indexes created. This ensures the lack of conflicts between the tests
+    for index in db.tables['meta_indexes'].column_by_name('index_name'):
+        print(index)
+        try:
+            dic = interpret(f'drop index {index}')
+            execute_dic(dic)
+        except Exception as e:
+            print(e)
+
+# endregion
+
+# region testFunctions
 
 def test_1(sqlTest=f'{os.getcwd()}/joinTests/test1.sql'):
     '''
     Successful INLJ test between 2 tables. One of them has an index (instructor).
     '''
-    resetTestDB(sqlTest)
+    makeUniqueChanges(sqlTest)
     db = Database('test', load=True)
 
     instructor = Table(load=f'{os.getcwd()}/dbdata/test_db/instructor.pkl')
@@ -115,7 +132,7 @@ def test_2(sqlTest=f'{os.getcwd()}/joinTests/test2.sql'):
     '''
     Successful SMJ test between 2 tables.
     '''
-    resetTestDB(sqlTest)
+    makeUniqueChanges(sqlTest)
     db = Database('test', load=True)
 
     instructor = Table(load=f'{os.getcwd()}/dbdata/test_db/instructor.pkl')
@@ -128,13 +145,16 @@ def test_2(sqlTest=f'{os.getcwd()}/joinTests/test2.sql'):
     assert join.__dict__['column_types'] == smj.__dict__['column_types']
     for d in join.__dict__['data']:
         assert d in smj.__dict__['data']
-    shutil.rmtree(f'{os.getcwd()}/miniDB')
+    try:
+        shutil.rmtree(f'{os.getcwd()}/miniDB')
+    except:
+        pass
 
 def test_3(sqlTest=None):
     '''
     Unsuccessful INLJ test, no index of the given tables exists. Checks if the failure of INLJ works correctly.
     '''
-    resetTestDB(sqlTest)
+    makeUniqueChanges(sqlTest)
     db = Database('test', load=True)
 
     takes = Table(load=f'{os.getcwd()}/dbdata/test_db/takes.pkl')
@@ -151,7 +171,7 @@ def test_4(sqlTest=None):
     '''
     Unsuccessful SMJ test, no index of the given tables exists. Checks if the plan B of SMJ (inner join) works correctly.
     '''
-    resetTestDB(sqlTest)
+    makeUniqueChanges(sqlTest)
     db = Database('test', load=True)
 
     takes = Table(load=f'{os.getcwd()}/dbdata/test_db/takes.pkl')
@@ -163,6 +183,5 @@ def test_4(sqlTest=None):
         inlj = db.join(mode = 'sm', left_table = takes, right_table = teaches, condition = 'course_id > course_id', save_as=None, return_object=True)
     
     assert "Sort-Merge Join is used when the condition operator is '='." in str(exc.value)
-    shutil.rmtree(f'{os.getcwd()}/miniDB')
 
 # endregion
