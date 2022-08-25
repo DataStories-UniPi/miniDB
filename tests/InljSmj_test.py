@@ -2,7 +2,6 @@
 import shutil
 import sys
 import os
-import pickle
 import pytest
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}')
@@ -10,7 +9,7 @@ sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}'
 from miniDB.database import *
 from miniDB.table import *
 
-from mdb import interpret, execute_dic, interpret_meta, search_between
+from mdb import interpret, execute_dic, interpret_meta
 
 # endregion
 
