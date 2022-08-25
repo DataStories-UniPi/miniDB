@@ -99,7 +99,6 @@ def hardResetTestDB(sqlDB = f'{os.getcwd()}/smallRelationsInsertFile.sql'):
 
     # Delete all the indexes created. This ensures the lack of conflicts between the tests
     for index in db.tables['meta_indexes'].column_by_name('index_name'):
-        print(index)
         try:
             dic = interpret(f'drop index {index}')
             execute_dic(dic)
@@ -123,6 +122,7 @@ def test_1(sqlTest=f'{os.getcwd()}/joinTests/test1.sql'):
 
     inlj = db.join(mode = 'inl', left_table = instructor, right_table = advisor, condition = 'id > i_id', save_as=None, return_object=True)
     
+    assert len(inlj.data) == len(join.data)
     assert join.__dict__['column_names'] == inlj.__dict__['column_names']
     assert join.__dict__['column_types'] == inlj.__dict__['column_types']
     for d in join.__dict__['data']:
@@ -141,14 +141,16 @@ def test_2(sqlTest=f'{os.getcwd()}/joinTests/test2.sql'):
 
     smj = db.join(mode = 'sm', left_table = instructor, right_table = advisor, condition = 'id = i_id', save_as=None, return_object=True)
     
-    assert join.__dict__['column_names'] == smj.__dict__['column_names']
-    assert join.__dict__['column_types'] == smj.__dict__['column_types']
-    for d in join.__dict__['data']:
-        assert d in smj.__dict__['data']
     try:
         shutil.rmtree(f'{os.getcwd()}/miniDB')
     except:
         pass
+
+    assert len(smj.data) == len(join.data)
+    assert join.__dict__['column_names'] == smj.__dict__['column_names']
+    assert join.__dict__['column_types'] == smj.__dict__['column_types']
+    for d in join.__dict__['data']:
+        assert d in smj.__dict__['data']
 
 def test_3(sqlTest=None):
     '''
