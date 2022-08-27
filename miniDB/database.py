@@ -1,3 +1,4 @@
+#dokimastiko test p19263
 from __future__ import annotations
 import pickle
 from table import Table
