@@ -198,6 +198,11 @@ class Table:
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
 
+ #oso to distinct ine false den kanei kati an iparxei sto string eisodou to kanei true
+    distinct = False
+    if 'distinct' in return_columns:
+    return_columns = return_columns.split(' ')[1]
+    distinct = True
 
     def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None):
          #εγινε τροποιήση του αρχείου απο Άρτεμις Οικονόμου Ρ19263 για τα issues #76
