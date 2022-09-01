@@ -455,3 +455,12 @@ class Table:
         f.close()
 
         self.__dict__.update(tmp_dict)
+        
+
+    def _insert_mass(self,rows,inserts=[]):
+        try:
+            for r in rows:
+                self.data[inserts] = r
+        except:
+            if None in r:
+                raise Error("ERROR")
