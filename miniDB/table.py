@@ -197,20 +197,17 @@ class Table:
         # self._update()
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
-
- #oso to distinct ine false den kanei kati an iparxei sto string eisodou to kanei true
-    distinct = False
-    if 'distinct' in return_columns:
-    return_columns = return_columns.split(' ')[1]
-    distinct = True
-
+    
     def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None):
          #εγινε τροποιήση του αρχείου απο Άρτεμις Οικονόμου Ρ19263 για τα issues #76
-        #oso to distinct ine false den kanei kati an iparxei sto string eisodou to kanei true
-            distinct = False
-             if 'distinct' in return_columns:
-            return_columns = return_columns.split(' ')[1]
-            distinct = True
+        #αρχικοποιήση της τιμής σε false.
+            metabliti_elegxou_distinct = False
+            #an diavaseis sthn eisodo tin lexi distinct kane to metabliti_elegxou_distinct true gia na energopoihthei o elegxo
+            #gia tin xrisi distinct.
+            if 'distinct' in return_columns:
+                metabliti_elegxou_distinct = True
+                return_columns = return_columns.split(' ')[1]
+                
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -241,7 +238,7 @@ class Table:
         else:
             rows = [i for i in range(len(self.data))]
         #εγινε τροποιήση του αρχείου απο Άρτεμις Οικονόμου Ρ19263 για τα issues #76  
-        if distinct:
+        if  metabliti_elegxou_distinct:
             #tha xreiastei 3 pinakes enan gia to id tis grammis | 1 gia to poses grammes ikanopoioun thn sinthiki | 1 gia to periexomno tis grammis
              idtisgrammis=[]
              arithmosgrammwn =[]
@@ -257,7 +254,7 @@ class Table:
                 if row not in arithmosgrammwn:
                     arithmosgrammwn.append(row)
                     idtisgrammis.append(idx)
-                rows = idtisgrammis
+                    rows = idtisgrammis
 
         # top k rows
         # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
