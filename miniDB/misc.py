@@ -9,9 +9,9 @@ def get_op(op, a, b):
                 '>=': operator.ge,
                 '<=': operator.le,
                 '=': operator.eq}
-                ',between,': anamesa,
-                ',in,': in_op,
-                ',like,': like
+                ',between,': anamesa_se_duo_times,
+                ',in,': function_in,
+                ',like,': function_like
            }
 
     try:
@@ -33,41 +33,46 @@ def split_condition(condition):
            '=': operator.eq,
            '>': operator.gt,
            '<': operator.lt}
-           ',between,': anamesa,
-           ',in,': in_op,
-           ',like,': like
+           ',between,': anamesa_se_duo_times,
+           ',in,': function_in,
+           ',like,': function_like}
     
      for op_key in ops.keys():
         splt=condition.split(op_key)
         if len(splt)>1:
             return splt[0], op_key, splt[1]
-         def anamesa(a, b, c):
- '''
-     b <= a <= c
- '''
+        
+#synartisi pou pernei san orisma dio times min, max kai epistrefei oles tis times metaxi auton
+def anamesa_se_duo_times(a_result, b_min, c_max):
+
+#an to c_max den einai keno kai  to b_min einai mikrotero apo to c_max epistrefei oles tis times metaxi ton timon bmin < a_result<c_Max
+#an kati paei lathos gurnaei flase kai error
+
     try:
-        if c is not None and b < c:
-           return operator.ge(a, b) and operator.le(a, c)
+        if c_max is not None and b_min < c_max:
+           return operator.ge(a_result, b_min) and operator.le(a_result, c_max)
     except TypeError:
            return False
-def in_op(a, b):
- '''
- a should be in b list
- '''
+
+#synartisi pou pernei san orisma to zitoumeno kai mia lista me strings       
+def function_in(zitomeno, lista):
+#to zitoumeno prepei na iparxei stin lista
     try:
-        if type(b) == list:
-           for i in b:
-              if i == a:
+        if type(lista) == list:
+           for i in lista:
+              if i == zitomeno:
                  return True
-                 return False
+           return False
     except TypeError:
            return False
-    
- def like(a, b):
+# sunartisi pou pernei san orisma ena zitoumeno kai mia lista apo strings kai ginete elenxo
+#me xrisi ton kanonikwn ekfrasewn antikathistonas  "%" me ".*" kai to "_" me "."
+
+def function_like(zitomeno, lista):
      try:
-         b = b.replace('%', '.*')
-         b = b.replace('_', '.')
-         b += '$'
-         return bool(re.search(b, a))
+         lista = lista.replace('%', '.*')
+         lista = lista.replace('_', '.')
+         lista += '$'
+         return bool(re.search(lista, zitomeno))
      except TypeError:
             return False
