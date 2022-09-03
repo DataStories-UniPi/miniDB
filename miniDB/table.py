@@ -130,6 +130,7 @@ class Table:
         # self._update()
 
     def _update_rows(self, set_value, set_column, condition):
+        
         '''
         Update where Condition is met.
 
@@ -202,7 +203,6 @@ class Table:
     def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
-
         Args:
             return_columns: list. The columns to be returned.
             condition: string. A condition using the following format:
@@ -215,18 +215,104 @@ class Table:
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
 
-        # if * return all columns, else find the column indexes for the columns specified
-        if return_columns == '*':
-            return_cols = [i for i in range(len(self.column_names))]
+
+        # Select DISTINCT
+        distinct = False
+        # check if distinct is in return_columns (it means is after select)
+        if 'distinct' in return_columns:
+            distinct = True
+            # take columns (remove distinct from return columns)
+            return_columns_tmp = return_columns.split('distinct')[1].strip().split(',')
+            # select everything
+            if '*' in return_columns_tmp:
+                return_cols = [i for i in range(len(self.column_names))]
+            # select specified columns
+            else:
+                return_cols = [self.column_names.index(col.strip()) for col in return_columns_tmp]
+
+        # Basic select
         else:
-            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+            # return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+
+            # if * return all columns, else find the column indexes for the columns specified
+            if return_columns == '*':
+                return_cols = [i for i in range(len(self.column_names))]
+            else:
+                return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+
 
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            tmp_condition = condition.split(" ")[1]
+            rows = []
+            # select between
+            if 'between' in tmp_condition:
+                column_name = condition.split('between')[0].strip()
+                values = condition.split('between')[1].split('and')
+                column = self.column_by_name(column_name)
+                try:
+                    # Take only data between a and b
+                    for ind, x in enumerate(column):
+                        if int(values[0]) <= x <= int(values[1]):
+                            rows.append(ind)
+                except:
+                    pass
+            # select in
+            elif 'in' in tmp_condition:
+                column_name = condition.split('in')[0].strip()
+                values = condition.split('(')[1].split(')')[0].split(',')
+                column = self.column_by_name(column_name)
+                # Take only data much in parentheses values
+                for ind, x in enumerate(column):
+                    if str(x) in str(values):
+                        rows.append(ind)
+
+            # select like
+            elif 'like' in tmp_condition:
+                column_name, value = condition.split('like')[0].strip(), condition.split('like')[1].strip().replace("'", "")
+                column = self.column_by_name(column_name)
+
+                if '%' in value:
+                    like = [i for i, j in enumerate(value) if j == '%']
+                    # Start end
+                    if len(like) == 2 and like[0] == 0 and like[1] + 1 == len(value):
+                        value = value.split("%")[1]
+                        # Take only data much include value between %'s
+                        for ind, x in enumerate(column):
+                            if value in str(x):
+                                rows.append(ind)
+
+                    # Start
+                    elif like[0] == 0:
+                        value = value.split("%")[1]
+                        # Take only data ends with value after %
+                        for ind, x in enumerate(column):
+                            if value == str(x)[-len(value):]:
+                                rows.append(ind)
+
+                    # End
+                    elif like[0] + 1 == len(value):
+                        value = value.split("%")[0]
+                        # Take only data starts with value before %
+                        for ind, x in enumerate(column):
+                            if value == str(x)[:len(value)].strip():
+                                rows.append(ind)
+
+                    # Middle
+                    elif 0 < value.index('%') < len(value):
+                        values = value.split("%")
+                        # Take only data start and end with value before and after %
+                        for ind, x in enumerate(column):
+                            if values[1] == str(x)[-len(values[1]):] and values[0] == str(x)[:len(values[0])+1].strip():
+
+                                rows.append(ind)
+            # continue normally...
+            else:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -238,15 +324,33 @@ class Table:
         # we need to set the new column names/types and no of columns, since we might
         # only return some columns
         dict['column_names'] = [self.column_names[i] for i in return_cols]
-        dict['column_types']   = [self.column_types[i] for i in return_cols]
+        dict['column_types'] = [self.column_types[i] for i in return_cols]
 
-        s_table = Table(load=dict) 
+        s_table = Table(load=dict)
         if order_by:
             s_table.order_by(order_by, desc)
 
-        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
+        # Select DISTINCT
+        if distinct:
+            tmp_list = []
+            tmp_tbl = s_table
+            index = 0
+            # for table's data check for multiplied data and ignore them using tmp list and pop method
+            for i in range(len(s_table.data)):
+                if s_table.data[index] not in tmp_list:
+                    tmp_list.append(s_table.data[index])
+                    index += 1
+                else:
+                    tmp_tbl.data.pop(index)  # remove item from objects data
+
+            s_table = tmp_tbl
+
+        # Basic select
+        else:
+            s_table.data = s_table.data[:int(top_k)] if isinstance(top_k, str) else s_table.data
 
         return s_table
+
 
 
     def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, desc=True, top_k=None):
