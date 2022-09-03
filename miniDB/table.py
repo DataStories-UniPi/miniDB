@@ -210,10 +210,6 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            #column_name, operator, value = self._parse_condition(condition)
-            #column = self.column_by_name(column_name)
-            #rows = [index for index, x in enumerate(column) if get_op(operator, x, value)]
-            #if like if fould in the command
             if "like" in condition.split():
                 conditions = condition.split()#the conditions list
                 column_name = conditions[0]
@@ -456,11 +452,31 @@ class Table:
 
         self.__dict__.update(tmp_dict)
         
+    #----------------------------------------------------------------
+    def _insert_into_select(self, rows, insert_stack=[]):
+        if isinstance(rows[0],list):
+         for r in rows:
+            for i in range(len(r)):
+                #refill rows
+                r[i] = self.column_types[i](r[i])
+         # appending last index in case of not empty
+         for r in rows:
+             if insert_stack != []:
+               self.data[insert_stack[-1]] = r
+             else:
+               self.data.append(r)
+        #in case of single insert
+        else:
+             if len(rows)!=len(self.column_names):#checking the amount of parameters
+               raise ValueError(f'ERROR ->Only {len(self.column_names)} columns do exist')
+             for i in range(len(rows)):
+               # for each value, cast and replace it in row.
+                rows[i] = self.column_types[i](rows[i])
 
-    def _insert_mass(self,rows,inserts=[]):
-        try:
-            for r in rows:
-                self.data[inserts] = r
-        except:
-            if None in r:
-                raise Error("ERROR")
+             #values exists check on PK
+             if i==self.pk_idx and rows[i] in self.column_by_name(self.pk):
+                raise ValueError(f'## ERROR -> Value {rows[i]} already exists on PK')
+             if insert_stack != []:
+                self.data[insert_stack[-1]] = rows
+             else:
+                self.data.append(rows)
