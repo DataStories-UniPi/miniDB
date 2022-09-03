@@ -437,10 +437,10 @@ class Table:
        #εγινε τροποιήση του αρχείου απο Άρτεμις Οικονόμου Ρ19263 για τα issues #77
        # an o xristis zitisi between I like na xrisimopoithoun ta dexia kai aristera I ison #simbola
       
-    if op == ',between,' or op == ',like,':
+       if op == ',between,' or op == ',like,':
             return left, op, right
         #xrisi tou left kai right na einai idia metaxi tous
-        elif op == ',in,':
+       elif op == ',in,':
             return left, op, ast.literal_eval(right)
 
         return left, op, coltype(right)
