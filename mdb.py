@@ -94,7 +94,9 @@ def create_query_plan(query, keywords, action):
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
     if action=='insert into':
-        if dic['values'][0] == '(' and dic['values'][-1] == ')':
+                if dic['select'] is not None: #if select exists
+            dic = evaluate_from_clause(dic)
+        elif dic['values'][0] == '(' and dic['values'][-1] == ')':
             dic['values'] = dic['values'][1:-1]
         else:
             raise ValueError('Your parens are not right m8')
@@ -148,12 +150,12 @@ def interpret(query):
     '''
     Interpret the query.
     '''
-    kw_per_action = {'create table': ['create table'],
+        kw_per_action = {'create table': ['create table'],
                      'drop table': ['drop table'],
                      'cast': ['cast', 'from', 'to'],
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
-                     'insert into': ['insert into', 'values'],
+                     'insert into': ['insert into', 'values','select','from','where'],
                      'select': ['select', 'from', 'where', 'order by', 'top'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
