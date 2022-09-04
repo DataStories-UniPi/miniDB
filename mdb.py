@@ -6,7 +6,6 @@ import readline
 import traceback
 import shutil
 
-
 sys.path.append('miniDB')
 
 from database import Database
