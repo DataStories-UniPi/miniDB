@@ -226,10 +226,7 @@ class Table:
         '''
         # Contains the specific values which the aggregate functions return 
         elements_of_all_aggregate_functions = []
-
-        #Contains the columns of every aggregate function we meet 
-        #The columns are grouped by each aggregate functions
-        #For example all the max columns will be first , all the min columns will be second etc 
+        
         aggregate_columns = []
 
         #Searching at the dictionary and testing which aggregate functions have been called. Also there can more than one columns with the same function
