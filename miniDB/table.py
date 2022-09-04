@@ -2,7 +2,6 @@ from __future__ import annotations
 from tabulate import tabulate
 import pickle
 import os
-import re
 from misc import get_op, split_condition
 
 
@@ -189,18 +188,6 @@ class Table:
         for row_ind, column_value in enumerate(column):
             if get_op(operator, column_value, value):
                 self.data[row_ind][set_column_idx] = set_value
-                
-                if len(self.not_null_columns) != 0 and self.not_null_columns[set_column_idx] != 'None' and set_value == '':
-                    print(f'## ERROR -> Column {set_value} is a not null column.')
-                    raise ValueError(f'## ERROR -> Column {set_value} is a not null column.')
-
-                if len(self.unique_columns) != 0 and self.unique_columns[set_column_idx] != 'None':
-                    #loop to check the values of the table
-                    for val in self.column_by_name(self.column_names[set_column_idx]):
-                        #compare them with the insert
-                        if set_value == val:
-                            print(f'## ERROR -> Column {set_value} is a unique column.')
-                            raise ValueError(f'## ERROR -> Column {set_value} is a unique column.')
 
         # self._update()
                 # print(f"Updated {len(indexes_to_del)} rows")
@@ -260,18 +247,6 @@ class Table:
             desc: boolean. If True, order_by will return results in descending order (False by default).
             top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
-        
-        #Check if we have distinct keyword
-        distinct = False
-        if 'distinct' in return_columns:
-            distinct = True
-            #We cut the distinct word from the return_columns string
-            return_columns = return_columns.replace('distinct ', '')
-            if return_columns == '*':
-                return_cols = [i for i in range(len(self.column_names))]
-            else:
-                return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
-
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
@@ -282,84 +257,9 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            rows = []
-            # Check if 'between keyword is in condition
-            # then we isolate column_name, columns size and the two values of between in order to run the for loop
-            # where we scan the column to find records that comlete the restrictions
-            if 'between' in condition:
-                #column_name = condition 
-                condition_splitted = condition.split()
-                column_name = condition_splitted[0]
-                column = self.column_by_name(column_name)
-                values = condition.split('between')[1].split('and')
-
-                try:
-                    for ind, x in enumerate(column):
-                        if int(values[0]) <= x <= int(values[1]):
-                            rows.append(ind)
-                except:
-                    pass
-            
-            if 'like' in condition:
-
-                condition_list = condition.split()
-                column_name = condition_list[0]
-                column = self.column_by_name(column_name)
-
-                #we keep the condition
-                values_in_like = condition_list[2]
-                
-                
-                #like '%string%'
-                if values_in_like[1] == '%' and values_in_like[-2] == '%':
-                    value = values_in_like.split('%')
-                    print(value)
-                    for ind, x in enumerate(column):
-                            # value[1] because the single quotes still exist
-                            if value[1] in str(x):
-                                rows.append(ind)
-    
-                #like '$string'
-                elif values_in_like[1] == '%':
-                    value = values_in_like.split('%')
-                    value[1].replace("'", '')
-                    for ind, x in enumerate(column):
-                            # value[1] because the single quotes still exist
-                            if str(x).endswith(value[1].replace("'",'')):
-                                rows.append(ind)
-
-                #like 'string%'
-                elif values_in_like[-2] == '%':
-                    value = values_in_like.split('%')
-                    for ind, x in enumerate(column):
-                            # value[0] because the single quotes still exist
-                            if str(x).startswith(value[0].replace("'",'')):
-                                rows.append(ind)
-
-                #like 'string1%string2'
-                else:
-                    values = values_in_like.split('%')
-                    values = [v.replace("'",'') for v in values]
-                    for ind, x in enumerate(column):
-                            # value[0] because the single quotes still exist
-                            if str(x).startswith(values[0]) and str(x).endswith(values[1]):
-                                rows.append(ind)
-
-            #na apomonwsw afta mesa sto in
-            if 'in' in condition:
-                condition_list = condition.split()
-                column_name = condition_list[0]
-                column = self.column_by_name(column_name)
-
-                #isolation of values inside the parenthesis
-                values_inside_in = condition.split('in')[1].split(',')
-                values_inside_in = [v.replace("'",'').replace("(","").replace(")","").replace(" ","") for v in values_inside_in]
-
-                for ind, x in enumerate(column):
-                        #we check if the record is equal to values inside in
-                        if str(x) in values_inside_in:
-                            rows.append(ind)
-
+            column_name, operator, value = self._parse_condition(condition)
+            column = self.column_by_name(column_name)
+            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -378,10 +278,6 @@ class Table:
             s_table.order_by(order_by, desc)
 
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
-        #Delete duplicated values in distinct occ
-        if distinct == True:
-            s_table.data = list(set(map(lambda x: tuple(x), s_table.data)))
-
 
         return s_table
 

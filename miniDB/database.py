@@ -97,7 +97,7 @@ class Database:
         # self._update_meta_locks()
         self._update_meta_insert_stack()
 
-    #prosthetoume to not null columns
+
     def create_table(self, name, column_names, column_types, not_null_columns, primary_key=None, load=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
@@ -340,16 +340,7 @@ class Database:
             return table_name._select_where(columns, condition, order_by, desc, top_k)
 
         if condition is not None:
-            
-            #If there are the words 'between' or 'in' or 'like' in the command, as condition column we keep the left side of these words
-            if 'between' in condition: 
-                condition_column = condition.split('between')[0]  
-            elif 'in' in condition: 
-                condition_column = condition.split('in')[0]  
-            elif 'like' in condition: 
-                condition_column = condition.split('like')[0]  
-            else:
-                condition_column = split_condition(condition)[0]
+            condition_column = split_condition(condition)[0]
         else:
             condition_column = ''
 

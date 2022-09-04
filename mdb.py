@@ -98,11 +98,7 @@ def create_query_plan(query, keywords, action):
                         if count == 0:
                             dic['not_null_columns'] += (val[0])
                         else: dic['not_null_columns'] += ','+(val[0])
-            else:
-                if count == 0:
-                    dic['not_null_columns'] += 'None'
-                else:
-                    dic['not_null_columns'] += ',None'
+            else:dic['not_null_columns'] += ',None'
 
 
 
