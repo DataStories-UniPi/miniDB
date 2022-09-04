@@ -341,7 +341,7 @@ if __name__ == "__main__":
                 if line[-1]!=';':
                     line+=';'
             except (KeyboardInterrupt, EOFError):
-                Database.exit_handler(db) #we call the exit handler in order to delete all the temp views which have been created.
+                Database.exit_handler(db) #we call the exit handler in order to delete the temp views which have been created.
                 print('\nbye!')
                 break
             try:
