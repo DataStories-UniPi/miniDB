@@ -54,21 +54,28 @@ class Database:
         self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
         self.save_database()
 
-         #pollapla insert se pinaka gia to issue 78
+         #synartisi gia pollapla insert se pinaka me xrisi select idi iparxwn pinaka gia to issue 78
      def multieinsert(self, table_name, select_query, lock_load_save=True):
-         try:
-             db = Database(self._name, load=True)
-             select_query = select_query.replace(' ', '') # remove all whitespaces
-             a = '''insert_data = db''' + select_query[len(select_query.split('.')[0]):] + '''.data'''
-             loc = {}
-             exec(a, {'db.select': db.select, 'db': db}, loc)
-             insert_data = loc['insert_data']
-             print('rows: ', insert_data)
-             for row in insert_data:
+        #xrisi try gia apofigi lathwn kata thn eisagwgi
+        try:
+            #stin metabliti db apothikeuetai to onoma tou neou pinaka pou tha ginoun ta insert
+            db = Database(self._name, load=True)
+            # dimiourgia select erotimatos "select * from classroom" afairontas ta kena an iparxoun
+            select_query = select_query.replace(' ', '') 
+            # diamorfosi tou string eisodou "insert into classroom2 select * from classroom" se morfi anagnwsimi apo to programma
+            a = '''insert_data = db''' + select_query[len(select_query.split('.')[0]):] + '''.data'''
+            #dimiourgeitai mia metabliti insert_data i opoia diabazei grammi grammi to apotelesma select
+            loc = {}
+            exec(a, {'db.select': db.select, 'db': db}, loc)
+            insert_data = loc['insert_data']
+            #ginete print grammi grammi  to ti diabase gia elegxo (debbugging)
+            print('rows: ', insert_data)
+            #gia kathe mia katagrafei pou exei parei apo to select ta pernaei ston neo pinaka me xrisi tis gnwstis insert
+            for row in insert_data:
                  self.insert(table_name, row, lock_load_save)
-             except Exception as e:
-                 print(e)
-                 print('ABORTED')
+         except Exception as e:
+                print(e)
+                print('ABORTED')
                 
     def save_database(self):
         '''
