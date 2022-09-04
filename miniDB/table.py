@@ -177,10 +177,7 @@ class Table:
             else:
                 return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
-	'''
-        if condition is None, return all rows
-        if not, return the rows with values where condition is met for value
-	'''
+	            
         if condition is not None:
             tmp_condition = condition.split(" ")[1]
             rows = []
@@ -553,7 +550,7 @@ class Table:
             headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
 
         # detect the rows that are no tfull of nones (these rows have been deleted)
-      
+        non_none_rows = [row for row in self.data if any(row)]
         print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
 
 
