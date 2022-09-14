@@ -13,64 +13,6 @@ from mdb import interpret, execute_dic, interpret_meta
 
 # endregion
 
-'''
-THESE ARE CURRENTLY NOT IN USE! SQL FILES ARE USED INSTEAD OF CSV FILES. MIGHT NEED TO BE DELETED
-'''
-def csv_to_table(table_name, filename):
-    '''
-    Creates table from CSV file.
-
-    Args:
-        table_name: string. The table object's name.
-        filename: string. CSV filename. If not specified, filename's name will be used.
-    '''
-    file = open(filename, 'r')
-    table = None
-
-    lines = file.readlines()
-
-    # Set important info like primary key, column types and column names first
-    pk_idx = lines[0].strip('\n')
-    colTypes = lines[1].strip('\n').split(',')
-    colNames = lines[2].strip('\n').split(',')
-    primary_key = colNames[int(pk_idx)] if pk_idx != '-1' else None
-
-    table = Table(name=table_name, column_names=colNames, column_types=colTypes, primary_key=primary_key)
-
-    # Add the table's data
-    for line in lines[3:]:
-        table._insert(line.strip('\n').split(','))
-    table._update()
-    
-    return table
-
-def table_to_csv(table_object, filename=None, directory=None):
-    '''
-    Transform table to CSV.
-
-    Args:
-        table_object: Table object. The Table object that will be represented in csv format.
-        filename: string. Output CSV filename.
-        directory: string. Output CSV parent directory and path.
-    '''
-    res = ''
-
-    res += f'-1\n' if table_object.pk is None else f'{table_object.pk_idx}\n'
-    res += str([str(t.__name__) for t in table_object.column_types])[1:-1].replace('\'', '').replace('"','').replace(' ','')+'\n'
-
-    for row in [table_object.column_names] + table_object.data:
-        res+=str(row)[1:-1].replace('\'', '').replace('"','').replace(' ','')+'\n'
-
-    if filename is None:
-        filename = f'{table_object._name}.csv'
-    
-    if directory is not None:
-        filename = f'{directory}/{filename}'
-
-    file = open(os.getcwd()+filename, 'w+')
-    file.write(res)
-    file.close()
-
 # region helpFunctions
 
 def makeUniqueChanges(sqlTest, sqlDB=f'{os.getcwd()}/smallRelationsInsertFile.sql'):
