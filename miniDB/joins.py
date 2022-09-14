@@ -74,6 +74,8 @@ class Smj:
     def join(self):
         # Get the column of the left and right tables and the operator, from the condition of the join
         column_name_left, operator, column_name_right = Table()._parse_condition(self.condition, join=True)
+        column_index_left = self.left_table.column_names.index(column_name_left)
+        column_index_right = self.right_table.column_names.index(column_name_right)
 
         if(operator != "="):
             raise Exception("Sort-Merge Join is used when the condition operator is '='.")
@@ -90,12 +92,14 @@ class Smj:
         # Use special character '@@@' to represent spaces as spaces break the code.
         with open('miniDB/externalSortFolder/rightTableFile', 'w+') as rt:
             for row in self.right_table.data:
-                rt.write(f'{row[self.right_table.column_names.index(column_name_right)]} {str(row).replace(" ","@@@")}\n')
+                if row[column_index_right] is not None:
+                    rt.write(f'{row[self.right_table.column_names.index(column_name_right)]} {str(row).replace(" ","@@@")}\n')
         
         # Same for the left lable
         with open('miniDB/externalSortFolder/leftTableFile', 'w+') as lt:
             for row in self.left_table.data:
-                lt.write(f'{row[self.left_table.column_names.index(column_name_left)]} {str(row).replace(" ","@@@")}\n')
+                if row[column_index_left] is not None:
+                    lt.write(f'{row[self.left_table.column_names.index(column_name_left)]} {str(row).replace(" ","@@@")}\n')
         
         # Create an ExternalMergeSort object and sort both right table and left table local files
         ems = self.ExternalMergeSort()
@@ -132,7 +136,7 @@ class Smj:
                     # Now that the column_values are equal save both records to the final, joined_tables local file
                     # Then progress the right table's current line and continue with the procedure
                     if l.split()[0] == r.split()[0]:
-                        final.write(l.replace("\n","")[l.index("['"):] + " " + r.replace("\n","")[r.index("['"):] + '\n')
+                        final.write(l.replace("\n","")[l.index("["):] + " " + r.replace("\n","")[r.index("["):] + '\n')
                         r = right.readline()
                     
                     # Else, if left_value isn't equal to right_value after having found at least one equality of column_values
