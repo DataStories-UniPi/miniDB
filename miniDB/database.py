@@ -710,3 +710,19 @@ class Database:
                 warnings.warn(f'"{self.savedir}/indexes/meta_{index_name}_index.pkl" not found.')
 
             self.save_database()
+        
+    def compare(self, table1Name, table2Name):
+        t1 = self.tables[table1Name]
+        t2 = self.tables[table2Name]
+
+        # Keep only the non-none values of the two tables
+        t1_non_none = [x for x in t1.data if any(x)]
+        t2_non_none = [x for x in t2.data if any(x)]
+
+        assert len(t1_non_none) == len(t2_non_none)
+        assert t1.__dict__['column_names'] == t2.__dict__['column_names']
+        assert t1.__dict__['column_types'] == t2.__dict__['column_types']
+        for d in t1_non_none:
+            assert d in t2_non_none
+        
+        print('There is a match between the 2 specified tables.')

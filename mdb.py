@@ -173,7 +173,8 @@ def interpret(query):
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
                      'create index': ['create index', 'on', 'using'],
-                     'drop index': ['drop index']
+                     'drop index': ['drop index'],
+                     'compare' : ['compare', 'with']
                      }
 
     if query[-1]!=';':
