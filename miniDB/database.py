@@ -143,7 +143,7 @@ class Database:
         self.delete_from('meta_locks', f'table_name={table_name}')
         self.delete_from('meta_length', f'table_name={table_name}')
         self.delete_from('meta_insert_stack', f'table_name={table_name}')
-
+        delattr(self, table_name)
         # self._update()
         self.save_database()
 
@@ -343,7 +343,13 @@ class Database:
         # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
-            return table_name._select_where(columns, condition, distinct, order_by, desc, top_k)
+            ret_table = table_name._select_where(columns, condition, distinct, order_by, desc, top_k)
+            if save_as is not None:
+                ret_table._name = save_as
+                self.table_from_object(ret_table)
+                return
+            else:
+                return ret_table
 
         if condition is not None:
             condition_column = split_condition(condition)[0]
@@ -449,14 +455,10 @@ class Database:
         else:
             raise NotImplementedError
 
-        if save_as is not None:
-            res._name = save_as
-            self.table_from_object(res)
+        if return_object:
+            return res
         else:
-            if return_object:
-                return res
-            else:
-                res.show()
+            res.show()
 
     def lock_table(self, table_name, mode='x'):
         '''
