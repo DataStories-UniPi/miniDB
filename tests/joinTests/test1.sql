@@ -41,4 +41,6 @@ insert into joins values(98345,kim,elec. eng.,80000,44553,22222)
 insert into joins values(98345,kim,elec. eng.,80000,45678,22222)
 insert into joins values(98345,kim,elec. eng.,80000,76543,45565)
 insert into joins values(98345,kim,elec. eng.,80000,98988,76766)
-create index idx on instructor using btree;
+create index idx1 on instructor using btree
+select * from instructor inl join advisor on id > i_id save as joinedTable1
+compare joins with joinedTable1

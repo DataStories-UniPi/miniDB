@@ -8,3 +8,5 @@ insert into joins values(76543,singh,finance,80000,23121,76543)
 insert into joins values(76766,crick,biology,72000,98988,76766)
 insert into joins values(98345,kim,elec. eng.,80000,76653,98345)
 insert into joins values(98345,kim,elec. eng.,80000,98765,98345)
+select * from instructor sm join advisor on id = i_id save as joinedTable2
+compare joins with joinedTable2

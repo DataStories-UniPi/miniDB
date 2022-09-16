@@ -2,7 +2,6 @@
 import shutil
 import sys
 import os
-import pytest
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}')
 
@@ -55,76 +54,50 @@ def test_1(sqlTest=f'{os.getcwd()}/joinTests/test1.sql'):
     Successful INLJ test between 2 tables. One of them has an index (instructor).
     '''
     makeUniqueChanges(sqlTest)
-    db = Database('test', load=True)
-
-    instructor = Table(load=f'{os.getcwd()}/dbdata/test_db/instructor.pkl')
-    advisor = Table(load=f'{os.getcwd()}/dbdata/test_db/advisor.pkl')
-    join = Table(load=f'{os.getcwd()}/dbdata/test_db/joins.pkl')
-
-    inlj = db.join(mode = 'inl', left_table = instructor, right_table = advisor, condition = 'id > i_id', save_as=None, return_object=True)
-    
-    assert len(inlj.data) == len(join.data)
-    assert join.__dict__['column_names'] == inlj.__dict__['column_names']
-    assert join.__dict__['column_types'] == inlj.__dict__['column_types']
-    for d in join.__dict__['data']:
-        assert d in inlj.__dict__['data']
 
 def test_2(sqlTest=f'{os.getcwd()}/joinTests/test2.sql'):
     '''
     Successful SMJ test between 2 tables.
     '''
     makeUniqueChanges(sqlTest)
-    db = Database('test', load=True)
-
-    instructor = Table(load=f'{os.getcwd()}/dbdata/test_db/instructor.pkl')
-    advisor = Table(load=f'{os.getcwd()}/dbdata/test_db/advisor.pkl')
-    join = Table(load=f'{os.getcwd()}/dbdata/test_db/joins.pkl')
-
-    smj = db.join(mode = 'sm', left_table = instructor, right_table = advisor, condition = 'id = i_id', save_as=None, return_object=True)
-    
     try:
         shutil.rmtree(f'{os.getcwd()}/miniDB')
     except:
         pass
 
-    assert len(smj.data) == len(join.data)
-    assert join.__dict__['column_names'] == smj.__dict__['column_names']
-    assert join.__dict__['column_types'] == smj.__dict__['column_types']
-    for d in join.__dict__['data']:
-        assert d in smj.__dict__['data']
 
-def test_3(sqlTest=None):
-    '''
-    Unsuccessful INLJ test, no index of the given tables exists. Checks if the failure of INLJ works correctly.
-    '''
-    makeUniqueChanges(sqlTest)
-    db = Database('test', load=True)
+# def test_3(sqlTest=None):
+#     '''
+#     Unsuccessful INLJ test, no index of the given tables exists. Checks if the failure of INLJ works correctly.
+#     '''
+#     makeUniqueChanges(sqlTest)
+#     db = Database('test', load=True)
 
-    takes = Table(load=f'{os.getcwd()}/dbdata/test_db/takes.pkl')
-    teaches = Table(load=f'{os.getcwd()}/dbdata/test_db/teaches.pkl')
-    # The join is not actually needed
-    # join = Table(load=f'{os.getcwd()}/dbdata/test_db/joins.pkl')
+#     takes = Table(load=f'{os.getcwd()}/dbdata/test_db/takes.pkl')
+#     teaches = Table(load=f'{os.getcwd()}/dbdata/test_db/teaches.pkl')
+#     # The join is not actually needed
+#     # join = Table(load=f'{os.getcwd()}/dbdata/test_db/joins.pkl')
 
-    with pytest.raises(Exception) as exc:
-        inlj = db.join(mode = 'inl', left_table = takes, right_table = teaches, condition = 'course_id = course_id', save_as=None, return_object=True)
+#     with pytest.raises(Exception) as exc:
+#         inlj = db.join(mode = 'inl', left_table = takes, right_table = teaches, condition = 'course_id = course_id', save_as=None, return_object=True)
     
-    assert 'Index-nested-loop join cannot be executed. Using inner join instead.\n' in str(exc.value)
+#     assert 'Index-nested-loop join cannot be executed. Using inner join instead.\n' in str(exc.value)
 
-def test_4(sqlTest=None):
-    '''
-    Unsuccessful SMJ test, no index of the given tables exists. Checks if the plan B of SMJ (inner join) works correctly.
-    '''
-    makeUniqueChanges(sqlTest)
-    db = Database('test', load=True)
+# def test_4(sqlTest=None):
+#     '''
+#     Unsuccessful SMJ test, no index of the given tables exists. Checks if the plan B of SMJ (inner join) works correctly.
+#     '''
+#     makeUniqueChanges(sqlTest)
+#     db = Database('test', load=True)
 
-    takes = Table(load=f'{os.getcwd()}/dbdata/test_db/takes.pkl')
-    teaches = Table(load=f'{os.getcwd()}/dbdata/test_db/teaches.pkl')
-    # The join is not actually needed
-    # join = Table(load=f'{os.getcwd()}/dbdata/test_db/joins.pkl')
+#     takes = Table(load=f'{os.getcwd()}/dbdata/test_db/takes.pkl')
+#     teaches = Table(load=f'{os.getcwd()}/dbdata/test_db/teaches.pkl')
+#     # The join is not actually needed
+#     # join = Table(load=f'{os.getcwd()}/dbdata/test_db/joins.pkl')
 
-    with pytest.raises(Exception) as exc:
-        inlj = db.join(mode = 'sm', left_table = takes, right_table = teaches, condition = 'course_id > course_id', save_as=None, return_object=True)
+#     with pytest.raises(Exception) as exc:
+#         inlj = db.join(mode = 'sm', left_table = takes, right_table = teaches, condition = 'course_id > course_id', save_as=None, return_object=True)
     
-    assert "Sort-Merge Join is used when the condition operator is '='." in str(exc.value)
+#     assert "Sort-Merge Join is used when the condition operator is '='." in str(exc.value)
 
-# endregion
+# # endregion
