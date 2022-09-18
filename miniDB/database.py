@@ -441,7 +441,7 @@ class Database:
 
             if not leftIndexExists and not rightIndexExists:
                 res = None
-                raise Exception('Index-nested-loop join cannot be executed. Using inner join instead.\n')
+                raise Exception('Index-nested-loop join cannot be executed. Use inner join instead.\n')
             elif rightIndexExists:
                 index_name = self.select('*', 'meta_indexes', f'table_name={right_table._name}', return_object=True).column_by_name('index_name')[0]
                 res = Inlj(condition, left_table, right_table, self._load_idx(index_name), 'right').join()
