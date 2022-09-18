@@ -78,7 +78,9 @@ class Smj:
         column_index_right = self.right_table.column_names.index(column_name_right)
 
         if(operator != "="):
-            raise Exception('Sort-Merge Join is used when the condition operator is "=".\n')
+            class CustomFailException(Exception):
+                pass
+            raise CustomFailException('Sort-Merge Join is used when the condition operator is "=".\n')
 
         # Create a temporary folder for the external sort to happen. The folder will be deleted in the end
         os.makedirs('miniDB/externalSortFolder', exist_ok=True)
