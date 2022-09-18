@@ -126,3 +126,5 @@ insert into joins values(98765,cs-315,1,spring,2010,b,76766,bio-301,1,summer,201
 insert into joins values(98765,cs-315,1,spring,2010,b,83821,cs-190,1,spring,2009)
 insert into joins values(98765,cs-315,1,spring,2010,b,83821,cs-190,2,spring,2009)
 insert into joins values(98988,bio-301,1,summer,2010, null,76766,bio-101,1,summer,2009)
+select * from takes sm join teaches on course_id > course_id save as joinedTable4
+compare joins with joinedTable4

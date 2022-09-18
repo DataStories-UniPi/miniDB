@@ -32,3 +32,5 @@ insert into joins values(98765,cs-101,1,fall,2009,c-,45565,cs-101,1,spring,2010)
 insert into joins values(98765,cs-315,1,spring,2010,b,10101,cs-315,1,spring,2010)
 insert into joins values(98988,bio-101,1,summer,2009,a,76766,bio-101,1,summer,2009)
 insert into joins values(98988,bio-301,1,summer,2010, null,76766,bio-301,1,summer,2010)
+select * from takes inl join teaches on course_id = course_id save as joinedTable3
+compare joins with joinedTable3
