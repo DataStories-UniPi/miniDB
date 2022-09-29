@@ -319,20 +319,26 @@ class Table:
         # self._update()
 
 
-    def _inner_join(self, table_right: Table, condition):
+    def _general_join_processing(self, table_right:Table, condition, join_type):
         '''
-        Join table (left) with a supplied table (right) where condition is met.
+        Performs the processes all the join operations need (regardless of type) so that there is no code repetition.
 
         Args:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
-                Operatores supported: (<,<=,==,>=,>)
+                Operators supported: (<,<=,==,>=,>)
         '''
         # get columns and operator
         column_name_left, operator, column_name_right = self._parse_condition(condition, join=True)
         # try to find both columns, if you fail raise error
+
+        if(operator != '=' and join_type in ['left','right','full']):
+            class CustomFailException(Exception):
+                pass
+            raise CustomFailException('Outer Joins can only be used if the condition operator is "=".\n')
+
         try:
             column_index_left = self.column_names.index(column_name_left)
         except:
@@ -354,6 +360,22 @@ class Table:
         join_table_coltypes = self.column_types+table_right.column_types
         join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
 
+        return join_table, column_index_left, column_index_right, operator
+
+
+    def _inner_join(self, table_right: Table, condition):
+        '''
+        Join table (left) with a supplied table (right) where condition is met.
+
+        Args:
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+                
+                Operators supported: (<,<=,==,>=,>)
+        '''
+        join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'inner')
+
         # count the number of operations (<,> etc)
         no_of_ops = 0
         # this code is dumb on purpose... it needs to illustrate the underline technique
@@ -369,7 +391,121 @@ class Table:
                     join_table._insert(row_left+row_right)
 
         return join_table
+    
+    def _left_join(self, table_right: Table, condition):
+        '''
+        Perform a left join on the table with the supplied table (right).
 
+        Args:
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+                
+                Operators supported: (<,<=,==,>=,>)
+        '''
+        join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'left')
+
+        # count the number of operations (<,> etc)
+        no_of_ops = 0
+        right_table_data_num = len(table_right.data)
+        
+        for row_left in self.data:
+            left_value = row_left[column_index_left]
+
+            for idx, row_right in enumerate(table_right.data):
+                right_value = row_right[column_index_right]
+                no_of_ops+=1
+                if get_op(operator, left_value, right_value): #EQ_OP
+                    join_table._insert(row_left+row_right)
+                    break
+                # If the condition is not met, keep only the left row and fill the right one with None values
+                else:
+                    if idx == right_table_data_num - 1:
+                        join_table._insert(row_left+len(row_right)*[None])
+
+        return join_table
+
+    def _right_join(self, table_right: Table, condition):
+        '''
+        Perform a right join on the table with the supplied table (right).
+
+        Args:
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+                
+                Operators supported: (<,<=,==,>=,>)
+        '''
+        join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'right')
+
+        # count the number of operations (<,> etc)
+        no_of_ops = 0
+        left_table_data_num = len(self.data)
+        
+        for row_right in table_right.data:
+            right_value = row_right[column_index_right]
+
+            for idx, row_left in enumerate(self.data):
+                left_value = row_left[column_index_left]
+                no_of_ops+=1
+                if get_op(operator, left_value, right_value): #EQ_OP
+                    join_table._insert(row_left+row_right)
+                    break
+                # If the condition is not met, keep only the right row and fill the right one with None values
+                else:
+                    if idx == left_table_data_num - 1:
+                        join_table._insert(len(row_left)*[None]+row_right)
+
+        return join_table
+    
+    def _full_join(self, table_right: Table, condition):
+        '''
+        Perform a full join on the table with the supplied table (right).
+
+        Args:
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+                
+                Operators supported: (<,<=,==,>=,>)
+        '''
+        join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'full')
+
+        # count the number of operations (<,> etc)
+        no_of_ops = 0
+        right_table_data_num = len(table_right.data)
+        
+        for row_left in self.data:
+            left_value = row_left[column_index_left]
+
+            for idx, row_right in enumerate(table_right.data):
+                right_value = row_right[column_index_right]
+                no_of_ops+=1
+                if get_op(operator, left_value, right_value): #EQ_OP
+                    join_table._insert(row_left+row_right)
+                    break
+                # If the condition is not met, keep only the left row and fill the right one with None values
+                else:
+                    if idx == right_table_data_num - 1:
+                        join_table._insert(row_left+len(row_right)*[None])
+                        join_table._insert(len(row_left)*[None] + row_right)
+
+        left_table_data_num = len(self.data)
+        
+        for row_right in table_right.data:
+            right_value = row_right[column_index_right]
+
+            for idx, row_left in enumerate(self.data):
+                left_value = row_left[column_index_left]
+                no_of_ops+=1
+                if get_op(operator, left_value, right_value): #EQ_OP
+                    break
+                # If the condition is not met, keep only the right row and fill the right one with None values
+                else:
+                    if idx == left_table_data_num - 1:
+                        join_table._insert(len(row_left)*[None]+row_right)
+
+        return join_table
 
     def show(self, no_of_rows=None, is_locked=False):
         '''

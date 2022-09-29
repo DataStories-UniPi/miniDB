@@ -433,6 +433,15 @@ class Database:
 
         if mode=='inner':
             res = left_table._inner_join(right_table, condition)
+        
+        elif mode=='left':
+            res = left_table._left_join(right_table, condition)
+        
+        elif mode=='right':
+            res = left_table._right_join(right_table, condition)
+        
+        elif mode=='full':
+            res = left_table._right_join(right_table, condition)
 
         elif mode=='inl':            
             # Check if there is an index of either of the two tables available, as if there isn't we can't use inlj
@@ -662,6 +671,8 @@ class Database:
 
         # for each record in the primary key of the table, insert its value and index to the btree
         for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
+            if key is None:
+                continue
             bt.insert(key, idx)
         # save the btree
         self._save_index(index_name, bt)
