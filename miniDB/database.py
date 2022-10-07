@@ -441,9 +441,9 @@ class Database:
             res = left_table._right_join(right_table, condition)
         
         elif mode=='full':
-            res = left_table._right_join(right_table, condition)
+            res = left_table._full_join(right_table, condition)
 
-        elif mode=='inl':            
+        elif mode=='inl':
             # Check if there is an index of either of the two tables available, as if there isn't we can't use inlj
             leftIndexExists = self._has_index(left_table._name)
             rightIndexExists = self._has_index(right_table._name)

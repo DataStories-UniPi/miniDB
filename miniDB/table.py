@@ -115,14 +115,18 @@ class Table:
 
         for i in range(len(row)):
             # for each value, cast and replace it in row.
-            # try:
-            row[i] = self.column_types[i](row[i])
-            # except:
-            #     raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
+            try:
+                row[i] = self.column_types[i](row[i])
+            except TypeError:
+                row[i] = None
+            except:
+                raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
 
             # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
+            elif i==self.pk_idx and row[i] is None:
+                raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
@@ -250,6 +254,10 @@ class Table:
         if order_by:
             s_table.order_by(order_by, desc)
 
+        if isinstance(top_k, str):
+            l = 0
+            for iter in range(top_k):
+                pass
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
 
         return s_table
@@ -405,23 +413,18 @@ class Table:
         '''
         join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'left')
 
-        # count the number of operations (<,> etc)
-        no_of_ops = 0
-        right_table_data_num = len(table_right.data)
-        
+        right_column = table_right.column_by_name(self.column_names[column_index_right])
+        right_table_row_length = len(table_right.column_names)
+
         for row_left in self.data:
             left_value = row_left[column_index_left]
-
-            for idx, row_right in enumerate(table_right.data):
-                right_value = row_right[column_index_right]
-                no_of_ops+=1
-                if get_op(operator, left_value, right_value): #EQ_OP
-                    join_table._insert(row_left+row_right)
-                    break
-                # If the condition is not met, keep only the left row and fill the right one with None values
-                else:
-                    if idx == right_table_data_num - 1:
-                        join_table._insert(row_left+len(row_right)*[None])
+            if left_value not in right_column:
+                join_table._insert(row_left + right_table_row_length*[None])
+            else:
+                for row_right in table_right.data:
+                    right_value = row_right[column_index_right]
+                    if left_value == right_value:
+                        join_table._insert(row_left + row_right)
 
         return join_table
 
@@ -438,23 +441,18 @@ class Table:
         '''
         join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'right')
 
-        # count the number of operations (<,> etc)
-        no_of_ops = 0
-        left_table_data_num = len(self.data)
-        
+        left_column = self.column_by_name(self.column_names[column_index_left])
+        left_table_row_length = len(self.column_names)
+
         for row_right in table_right.data:
             right_value = row_right[column_index_right]
-
-            for idx, row_left in enumerate(self.data):
-                left_value = row_left[column_index_left]
-                no_of_ops+=1
-                if get_op(operator, left_value, right_value): #EQ_OP
-                    join_table._insert(row_left+row_right)
-                    break
-                # If the condition is not met, keep only the right row and fill the right one with None values
-                else:
-                    if idx == left_table_data_num - 1:
-                        join_table._insert(len(row_left)*[None]+row_right)
+            if right_value not in left_column:
+                join_table._insert(left_table_row_length*[None] + row_right)
+            else:
+                for row_left in self.data:
+                    left_value = row_left[column_index_left]
+                    if left_value == right_value:
+                        join_table._insert(row_left + row_right)
 
         return join_table
     
@@ -471,39 +469,27 @@ class Table:
         '''
         join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'full')
 
-        # count the number of operations (<,> etc)
-        no_of_ops = 0
-        right_table_data_num = len(table_right.data)
+        right_column = table_right.column_by_name(table_right.column_names[column_index_right])
+        left_column = self.column_by_name(self.column_names[column_index_left])
+
+        right_table_row_length = len(table_right.column_names)
+        left_table_row_length = len(self.column_names)
         
         for row_left in self.data:
             left_value = row_left[column_index_left]
+            if left_value not in right_column:
+                join_table._insert(row_left + right_table_row_length*[None])
+            else:
+                for row_right in table_right.data:
+                    right_value = row_right[column_index_right]
+                    if left_value == right_value:
+                        join_table._insert(row_left + row_right)
 
-            for idx, row_right in enumerate(table_right.data):
-                right_value = row_right[column_index_right]
-                no_of_ops+=1
-                if get_op(operator, left_value, right_value): #EQ_OP
-                    join_table._insert(row_left+row_right)
-                    break
-                # If the condition is not met, keep only the left row and fill the right one with None values
-                else:
-                    if idx == right_table_data_num - 1:
-                        join_table._insert(row_left+len(row_right)*[None])
-                        join_table._insert(len(row_left)*[None] + row_right)
-
-        left_table_data_num = len(self.data)
-        
         for row_right in table_right.data:
             right_value = row_right[column_index_right]
 
-            for idx, row_left in enumerate(self.data):
-                left_value = row_left[column_index_left]
-                no_of_ops+=1
-                if get_op(operator, left_value, right_value): #EQ_OP
-                    break
-                # If the condition is not met, keep only the right row and fill the right one with None values
-                else:
-                    if idx == left_table_data_num - 1:
-                        join_table._insert(len(row_left)*[None]+row_right)
+            if right_value not in left_column:
+                join_table._insert(left_table_row_length*[None] + row_right)
 
         return join_table
 
