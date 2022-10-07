@@ -255,10 +255,15 @@ class Table:
             s_table.order_by(order_by, desc)
 
         if isinstance(top_k, str):
-            l = 0
-            for iter in range(top_k):
-                pass
-        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
+            try:
+                k = int(top_k)
+            except ValueError:
+                raise Exception("The value following 'top' in the query should be a number.")
+            
+            # Remove from the table's data all the None-filled rows, as they are not shown by default
+            # Then, show the first k rows 
+            s_table.data.remove(len(s_table.column_names) * [None])
+            s_table.data = s_table.data[:k]
 
         return s_table
 
