@@ -298,8 +298,12 @@ class Table:
         # btree find
         rows = bt.find(operator, value)
 
+        try:
+            k = int(top_k)
+        except TypeError:
+            k = None
         # same as simple select from now on
-        rows = rows[:top_k]
+        rows = rows[:k]
         # TODO: this needs to be dumbed down
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
 
@@ -313,6 +317,7 @@ class Table:
         if order_by:
             s_table.order_by(order_by, desc)
 
+        # Possible deletion
         s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
 
         return s_table
