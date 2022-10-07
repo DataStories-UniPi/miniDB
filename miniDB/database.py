@@ -143,7 +143,10 @@ class Database:
         self.delete_from('meta_locks', f'table_name={table_name}')
         self.delete_from('meta_length', f'table_name={table_name}')
         self.delete_from('meta_insert_stack', f'table_name={table_name}')
-        delattr(self, table_name)
+        try:
+            delattr(self, table_name)
+        except AttributeError:
+            pass
         # self._update()
         self.save_database()
 
