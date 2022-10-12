@@ -143,6 +143,16 @@ class Database:
         self.delete_from('meta_locks', f'table_name={table_name}')
         self.delete_from('meta_length', f'table_name={table_name}')
         self.delete_from('meta_insert_stack', f'table_name={table_name}')
+
+        if self._has_index(table_name):
+            to_be_deleted = []
+            for key, table in enumerate(self.tables['meta_indexes'].column_by_name('table_name')):
+                if table == table_name:
+                    to_be_deleted.append(key)
+
+            for i in reversed(to_be_deleted):
+                self.drop_index(self.tables['meta_indexes'].data[i][1])
+
         try:
             delattr(self, table_name)
         except AttributeError:
