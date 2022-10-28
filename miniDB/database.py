@@ -356,13 +356,7 @@ class Database:
         # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
-            ret_table = table_name._select_where(columns, condition, distinct, order_by, desc, top_k)
-            if save_as is not None:
-                ret_table._name = save_as
-                self.table_from_object(ret_table)
-                return
-            else:
-                return ret_table
+            return table_name._select_where(columns, condition, distinct, order_by, desc, top_k)
 
         if condition is not None:
             condition_column = split_condition(condition)[0]
@@ -421,7 +415,18 @@ class Database:
         self._update()
         self.save_database()
 
-    def join(self, mode, left_table, right_table, condition, save_as=None, return_object=True):
+    def create_view(self, table_name, table):
+        '''
+        Create a virtual table based on the result-set of the SQL statement provided.
+
+        Args:
+            table_name: string. Name of the table that will be saved.
+            table: table. The table that will be saved.
+        '''
+        table._name = table_name
+        self.table_from_object(table)
+
+    def join(self, mode, left_table, right_table, condition, return_object=True):
         '''
         Join two tables that are part of the database where condition is met.
 

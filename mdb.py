@@ -71,6 +71,9 @@ def create_query_plan(query, keywords, action):
 
     for i in range(len(kw_in_query)-1):
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
+    
+    if action == 'create view':
+        dic['as'] = interpret(dic['as'])
 
     if action=='select':
         dic = evaluate_from_clause(dic)
@@ -78,9 +81,6 @@ def create_query_plan(query, keywords, action):
         if dic['distinct'] is not None:
             dic['select'] = dic['distinct']
             dic['distinct'] = True
-        
-        if dic['save as'] is not None:
-            dic['save_as'] = dic['save as']
 
         if dic['order by'] is not None:
             dic['from'] = dic['from']
@@ -170,14 +170,15 @@ def interpret(query):
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
-                     'select': ['select', 'from', 'where', 'distinct', 'order by', 'top', 'save as'],
+                     'select': ['select', 'from', 'where', 'distinct', 'order by', 'top'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
                      'create index': ['create index', 'on', 'using'],
                      'drop index': ['drop index'],
-                     'compare' : ['compare', 'with']
+                     'compare' : ['compare', 'with'],
+                     'create view' : ['create view', 'as']
                      }
 
     if query[-1]!=';':
