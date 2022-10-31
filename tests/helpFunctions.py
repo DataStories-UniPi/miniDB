@@ -10,9 +10,8 @@ from miniDB.table import *
 from mdb import interpret, execute_dic, interpret_meta
 
 def resetAndTest(sqlTest, sqlDB=f'{os.getcwd()}/smallRelationsInsertFile.sql'):
+    resetTestDB(sqlDB)
 
-    hardResetTestDB(sqlDB)
-    
     # Make the unique changes described in the corresponding sqlTest SQL file
     if sqlTest is not None:
         for line in open(sqlTest, 'r').read().splitlines():
@@ -20,11 +19,11 @@ def resetAndTest(sqlTest, sqlDB=f'{os.getcwd()}/smallRelationsInsertFile.sql'):
             dic = interpret(line.lower())
             execute_dic(dic)
 
-def hardResetTestDB(sqlDB = f'{os.getcwd()}/smallRelationsInsertFile.sql'):
+def resetTestDB(sqlDB = f'{os.getcwd()}/smallRelationsInsertFile.sql'):
     db = Database('test', load=True)
     interpret_meta('cdb test;')
 
-    # Reset the tables of the database using the sqlDB SQL file provided
+    # Reset the default tables of the database using the sqlDB SQL file provided
     for line in open(sqlDB, 'r').read().splitlines():
         if line.startswith('--'): continue
         dic = interpret(line.lower())
