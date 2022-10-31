@@ -1,7 +1,5 @@
-import shutil
 import sys
 import os
-import pytest
 from pathlib import Path
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}')
 
@@ -10,26 +8,23 @@ from miniDB.table import *
 
 from tests.helpFunctions import *
 
-
-def test():
+def runAllSqlFiles():
+    '''
+    Collects and executes all the testing SQL files to create changes in the Database
+    that will later result in the test's pass or failure.
+    '''
     # Collect all the sql files existing inside the folder that contains the sql tests
     allSqlTestFiles = list(Path("testSqls").rglob("*.sql"))
 
-    successful_SQLs = [sql for sql in allSqlTestFiles if '/successful/' in str(sql)]
-    failing_SQLs = [sql for sql in allSqlTestFiles if '/failing/' in str(sql)]
-
-    # Asserting no exceptions will be raised
-    for sql in successful_SQLs:
+    for sql in allSqlTestFiles:
         resetAndTest(sql)
 
-    # Asserting a custom exception used for failing scenarios will be raised
-    for sql in failing_SQLs:
-        with pytest.raises(Exception) as exc:
-            resetAndTest(sql)
-        assert exc.type.__name__ == 'CustomFailException'
 
-    # Deleting any leftover unused folders created by functions run by tests
-    try:
-        shutil.rmtree(f'{os.getcwd()}/miniDB')
-    except:
-        pass
+if __name__ == '__main__':
+    db = Database('test', load=True)
+    runAllSqlFiles()
+    for table in list(db.tables.keys()):
+        if table.startswith('_test_'):
+            # For the test's name, we used the substring after '_test_', as the naming convention is '_test_NAMEOFTEST'.
+            # This can be changed of course if the user sees fit.
+            print(db.compare(table, table.replace('_test_',''), table.replace('_test_','')))
