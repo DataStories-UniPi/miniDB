@@ -734,6 +734,12 @@ class Database:
         return index
 
     def drop_index(self, index_name):
+        '''
+        Drop index from current database.
+
+        Args:
+            index_name: string. Name of index.
+        '''
         if index_name in self.tables['meta_indexes'].column_by_name('index_name'):
             self.delete_from('meta_indexes', f'index_name = {index_name}')
 
@@ -744,7 +750,18 @@ class Database:
 
             self.save_database()
         
-    def compare(self, table1Name, table2Name):
+    def compare(self, table1Name, table2Name, testName=None):
+        '''
+        Compares 2 tables to see if they have the same records.
+
+        Args:
+            table1Name: string. Name of the first table.
+            table2Name: string. Name of the second table.
+            testName: string. Name of the test that is run.
+        '''
+        PASScolor = '\033[92m'
+        FAILcolor = '\033[91m'
+        ENDcolor = '\033[0m'
         t1 = self.tables[table1Name]
         t2 = self.tables[table2Name]
 
@@ -752,10 +769,10 @@ class Database:
         t1_non_none = [x for x in t1.data if any(x)]
         t2_non_none = [x for x in t2.data if any(x)]
 
-        assert len(t1_non_none) == len(t2_non_none)
-        assert t1.__dict__['column_names'] == t2.__dict__['column_names']
-        assert t1.__dict__['column_types'] == t2.__dict__['column_types']
-        for d in t1_non_none:
-            assert d in t2_non_none
-        
-        print('There is a match between the 2 specified tables.')
+        if len(t1_non_none) == len(t2_non_none) \
+            and t1.__dict__['column_names'] == t2.__dict__['column_names'] \
+            and t1.__dict__['column_types'] == t2.__dict__['column_types'] \
+            and [record not in t1_non_none for record in t2_non_none] != []:
+            return f'{PASScolor}{testName} PASSED {ENDcolor}' if testName is not None else f'{PASScolor}There is a match between the 2 specified tables.{ENDcolor}'
+        else:
+            return f'{FAILcolor}{testName} FAILED {ENDcolor}' if testName is not None else f'{FAILcolor}The 2 specified tables are different.{ENDcolor}'
