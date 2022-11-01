@@ -13,16 +13,21 @@ def runAllSqlFiles():
     Collects and executes all the testing SQL files to create changes in the Database
     that will later result in the test's pass or failure.
     '''
+    db = Database('test', load=True, verbose=False)
+    interpret_meta(f'cdb {db._name} -noverb;')
+
     # Collect all the sql files existing inside the folder that contains the sql tests
     allSqlTestFiles = list(Path("testSqls").rglob("*.sql"))
-
     for sql in allSqlTestFiles:
-        resetAndTest(sql)
-
+        resetAndTest(db, sql)
 
 if __name__ == '__main__':
-    db = Database('test', load=True)
+    print(f'========== TESTING INITIATED ==========')
+    interpret_meta('rmdb test;')
     runAllSqlFiles()
+
+    db = Database('test', load=True, verbose=False)
+
     for table in list(db.tables.keys()):
         if table.startswith('_test_'):
             # For the test's name, we used the substring after '_test_', as the naming convention is '_test_NAMEOFTEST'.

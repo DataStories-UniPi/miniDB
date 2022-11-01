@@ -9,20 +9,15 @@ from miniDB.table import *
 
 from mdb import interpret, execute_dic, interpret_meta
 
-def resetAndTest(sqlTest, sqlDB=f'{os.getcwd()}/smallRelationsInsertFile.sql'):
-    resetTestDB(sqlDB)
+def resetAndTest(db, sqlTest, sqlDB=f'{os.getcwd()}/smallRelationsInsertFile.sql'):
+    '''
+    Resets the default tables of the testing database, deletes all the indexes and executes the given SQL code.
 
-    # Make the unique changes described in the corresponding sqlTest SQL file
-    if sqlTest is not None:
-        for line in open(sqlTest, 'r').read().splitlines():
-            if line.startswith('--'): continue
-            dic = interpret(line.lower())
-            execute_dic(dic)
-
-def resetTestDB(sqlDB = f'{os.getcwd()}/smallRelationsInsertFile.sql'):
-    db = Database('test', load=True)
-    interpret_meta('cdb test;')
-
+    Args:
+        db: Database. The testing database.
+        sqlTest: string. Path to the SQL file that contains the changes that should be made to the testing DB.
+        sqlDB: string. Blueprint of the testing DB so that it is reset easily and quickly.
+    '''
     # Reset the default tables of the database using the sqlDB SQL file provided
     for line in open(sqlDB, 'r').read().splitlines():
         if line.startswith('--'): continue
@@ -36,3 +31,12 @@ def resetTestDB(sqlDB = f'{os.getcwd()}/smallRelationsInsertFile.sql'):
             execute_dic(dic)
         except Exception as e:
             print(e)
+
+    # Make the unique changes described in the corresponding sqlTest SQL file
+    if sqlTest is not None:
+        for line in open(sqlTest, 'r').read().splitlines():
+            if line.startswith('--'): continue
+            dic = interpret(line.lower())
+            execute_dic(dic)
+        
+    return db

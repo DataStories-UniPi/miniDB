@@ -218,6 +218,11 @@ def interpret_meta(command):
 
     db_name = db._name if search_between(command, action,';')=='' else search_between(command, action,';')
 
+    verbose = True
+    if action == 'cdb' and ' -noverb' in db_name:
+        db_name = db_name.replace(' -noverb','')
+        verbose = False
+
     def list_databases(db_name):
         [print(fold.removesuffix('_db')) for fold in os.listdir('dbdata')]
     
@@ -227,7 +232,7 @@ def interpret_meta(command):
 
     def change_db(db_name):
         global db
-        db = Database(db_name, load=True)
+        db = Database(db_name, load=True, verbose=verbose)
     
     def remove_db(db_name):
         shutil.rmtree(f'dbdata/{db_name}_db')

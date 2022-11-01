@@ -28,9 +28,10 @@ class Database:
     Main Database class, containing tables.
     '''
 
-    def __init__(self, name, load=True):
+    def __init__(self, name, load=True, verbose = True):
         self.tables = {}
         self._name = name
+        self.verbose = verbose
 
         self.savedir = f'dbdata/{name}_db'
 
@@ -40,7 +41,8 @@ class Database:
                 logging.info(f'Loaded "{name}".')
                 return
             except:
-                warnings.warn(f'Database "{name}" does not exist. Creating new.')
+                if verbose:
+                    warnings.warn(f'Database "{name}" does not exist. Creating new.')
 
         # create dbdata directory if it doesnt exist
         if not os.path.exists('dbdata'):
@@ -122,7 +124,8 @@ class Database:
         self._update()
         self.save_database()
         # (self.tables[name])
-        print(f'Created table "{name}".')
+        if self.verbose:
+            print(f'Created table "{name}".')
 
 
     def drop_table(self, table_name):
