@@ -422,7 +422,7 @@ class Table:
         '''
         join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'left')
 
-        right_column = table_right.column_by_name(self.column_names[column_index_right])
+        right_column = table_right.column_by_name(table_right.column_names[column_index_right])
         right_table_row_length = len(table_right.column_names)
 
         for row_left in self.data:
