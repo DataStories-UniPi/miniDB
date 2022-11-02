@@ -429,7 +429,7 @@ class Database:
         table._name = table_name
         self.table_from_object(table)
 
-    def join(self, mode, left_table, right_table, condition, return_object=True):
+    def join(self, mode, left_table, right_table, condition, save_as=None, return_object=True):
         '''
         Join two tables that are part of the database where condition is met.
 
@@ -440,7 +440,7 @@ class Database:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
-                Operatores supported: (<,<=,==,>=,>)
+                Operators supported: (<,<=,==,>=,>)
         save_as: string. The output filename that will be used to save the resulting table in the database (won't save if None).
         return_object: boolean. If True, the result will be a table object (useful for internal usage - the result will be printed by default).
         '''
@@ -484,6 +484,15 @@ class Database:
 
         else:
             raise NotImplementedError
+
+        if save_as is not None:
+            res._name = save_as
+            self.table_from_object(res)
+        else:
+            if return_object:
+                return res
+            else:
+                res.show()
 
         if return_object:
             return res
