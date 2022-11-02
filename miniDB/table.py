@@ -120,6 +120,9 @@ class Table:
             except ValueError:
                 if row[i] != 'NULL':
                     raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
+            except TypeError as exc:
+                if row[i] != None:
+                    print(exc)
 
             # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
@@ -427,7 +430,9 @@ class Table:
 
         for row_left in self.data:
             left_value = row_left[column_index_left]
-            if left_value not in right_column:
+            if left_value is None:
+                continue
+            elif left_value not in right_column:
                 join_table._insert(row_left + right_table_row_length*["NULL"])
             else:
                 for row_right in table_right.data:
@@ -455,7 +460,9 @@ class Table:
 
         for row_right in table_right.data:
             right_value = row_right[column_index_right]
-            if right_value not in left_column:
+            if right_value is None:
+                continue
+            elif right_value not in left_column:
                 join_table._insert(left_table_row_length*["NULL"] + row_right)
             else:
                 for row_left in self.data:
@@ -486,6 +493,8 @@ class Table:
         
         for row_left in self.data:
             left_value = row_left[column_index_left]
+            if left_value is None:
+                continue
             if left_value not in right_column:
                 join_table._insert(row_left + right_table_row_length*["NULL"])
             else:
@@ -497,7 +506,9 @@ class Table:
         for row_right in table_right.data:
             right_value = row_right[column_index_right]
 
-            if right_value not in left_column:
+            if right_value is None:
+                continue
+            elif right_value not in left_column:
                 join_table._insert(left_table_row_length*["NULL"] + row_right)
 
         return join_table
