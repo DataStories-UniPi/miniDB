@@ -71,6 +71,9 @@ def create_query_plan(query, keywords, action):
 
     for i in range(len(kw_in_query)-1):
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
+    
+    if action == 'create view':
+        dic['as'] = interpret(dic['as'])
 
     if action=='select':
         dic = evaluate_from_clause(dic)
@@ -78,7 +81,7 @@ def create_query_plan(query, keywords, action):
         if dic['distinct'] is not None:
             dic['select'] = dic['distinct']
             dic['distinct'] = True
-        
+
         if dic['order by'] is not None:
             dic['from'] = dic['from']
             if 'desc' in dic['order by']:
@@ -173,7 +176,9 @@ def interpret(query):
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
                      'create index': ['create index', 'on', 'using'],
-                     'drop index': ['drop index']
+                     'drop index': ['drop index'],
+                     'compare' : ['compare', 'with'],
+                     'create view' : ['create view', 'as']
                      }
 
     if query[-1]!=';':
@@ -213,6 +218,11 @@ def interpret_meta(command):
 
     db_name = db._name if search_between(command, action,';')=='' else search_between(command, action,';')
 
+    verbose = True
+    if action == 'cdb' and ' -noverb' in db_name:
+        db_name = db_name.replace(' -noverb','')
+        verbose = False
+
     def list_databases(db_name):
         [print(fold.removesuffix('_db')) for fold in os.listdir('dbdata')]
     
@@ -222,7 +232,7 @@ def interpret_meta(command):
 
     def change_db(db_name):
         global db
-        db = Database(db_name, load=True)
+        db = Database(db_name, load=True, verbose=verbose)
     
     def remove_db(db_name):
         shutil.rmtree(f'dbdata/{db_name}_db')

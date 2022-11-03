@@ -33,7 +33,9 @@ class Node:
         # else (no value in the node is larger) return the last ptr
         for index, existing_val in enumerate(self.values):
             ops+=1
-            if value<existing_val:
+            if value is None or existing_val is None:
+                continue
+            if value<type(value)(existing_val):
                 if return_ops:
                     return self.ptrs[index], ops
                 else:

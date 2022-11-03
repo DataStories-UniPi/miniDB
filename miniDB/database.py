@@ -28,9 +28,10 @@ class Database:
     Main Database class, containing tables.
     '''
 
-    def __init__(self, name, load=True):
+    def __init__(self, name, load=True, verbose = True):
         self.tables = {}
         self._name = name
+        self.verbose = verbose
 
         self.savedir = f'dbdata/{name}_db'
 
@@ -40,7 +41,8 @@ class Database:
                 logging.info(f'Loaded "{name}".')
                 return
             except:
-                warnings.warn(f'Database "{name}" does not exist. Creating new.')
+                if verbose:
+                    warnings.warn(f'Database "{name}" does not exist. Creating new.')
 
         # create dbdata directory if it doesnt exist
         if not os.path.exists('dbdata'):
@@ -122,7 +124,8 @@ class Database:
         self._update()
         self.save_database()
         # (self.tables[name])
-        print(f'Created table "{name}".')
+        if self.verbose:
+            print(f'Created table "{name}".')
 
 
     def drop_table(self, table_name):
@@ -144,6 +147,19 @@ class Database:
         self.delete_from('meta_length', f'table_name={table_name}')
         self.delete_from('meta_insert_stack', f'table_name={table_name}')
 
+        if self._has_index(table_name):
+            to_be_deleted = []
+            for key, table in enumerate(self.tables['meta_indexes'].column_by_name('table_name')):
+                if table == table_name:
+                    to_be_deleted.append(key)
+
+            for i in reversed(to_be_deleted):
+                self.drop_index(self.tables['meta_indexes'].data[i][1])
+
+        try:
+            delattr(self, table_name)
+        except AttributeError:
+            pass
         # self._update()
         self.save_database()
 
@@ -402,6 +418,17 @@ class Database:
         self._update()
         self.save_database()
 
+    def create_view(self, table_name, table):
+        '''
+        Create a virtual table based on the result-set of the SQL statement provided.
+
+        Args:
+            table_name: string. Name of the table that will be saved.
+            table: table. The table that will be saved.
+        '''
+        table._name = table_name
+        self.table_from_object(table)
+
     def join(self, mode, left_table, right_table, condition, save_as=None, return_object=True):
         '''
         Join two tables that are part of the database where condition is met.
@@ -413,7 +440,7 @@ class Database:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
-                Operatores supported: (<,<=,==,>=,>)
+                Operators supported: (<,<=,==,>=,>)
         save_as: string. The output filename that will be used to save the resulting table in the database (won't save if None).
         return_object: boolean. If True, the result will be a table object (useful for internal usage - the result will be printed by default).
         '''
@@ -427,15 +454,24 @@ class Database:
 
         if mode=='inner':
             res = left_table._inner_join(right_table, condition)
+        
+        elif mode=='left':
+            res = left_table._left_join(right_table, condition)
+        
+        elif mode=='right':
+            res = left_table._right_join(right_table, condition)
+        
+        elif mode=='full':
+            res = left_table._full_join(right_table, condition)
 
-        elif mode=='inl':            
+        elif mode=='inl':
             # Check if there is an index of either of the two tables available, as if there isn't we can't use inlj
             leftIndexExists = self._has_index(left_table._name)
             rightIndexExists = self._has_index(right_table._name)
 
             if not leftIndexExists and not rightIndexExists:
-                print('Index-nested-loop join cannot be executed. Using inner join instead.\n')
-                res = left_table._inner_join(right_table, condition)
+                res = None
+                raise Exception('Index-nested-loop join cannot be executed. Use inner join instead.\n')
             elif rightIndexExists:
                 index_name = self.select('*', 'meta_indexes', f'table_name={right_table._name}', return_object=True).column_by_name('index_name')[0]
                 res = Inlj(condition, left_table, right_table, self._load_idx(index_name), 'right').join()
@@ -457,6 +493,11 @@ class Database:
                 return res
             else:
                 res.show()
+
+        if return_object:
+            return res
+        else:
+            res.show()
 
     def lock_table(self, table_name, mode='x'):
         '''
@@ -658,6 +699,8 @@ class Database:
 
         # for each record in the primary key of the table, insert its value and index to the btree
         for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
+            if key is None:
+                continue
             bt.insert(key, idx)
         # save the btree
         self._save_index(index_name, bt)
@@ -699,3 +742,47 @@ class Database:
         index = pickle.load(f)
         f.close()
         return index
+
+    def drop_index(self, index_name):
+        '''
+        Drop index from current database.
+
+        Args:
+            index_name: string. Name of index.
+        '''
+        if index_name in self.tables['meta_indexes'].column_by_name('index_name'):
+            self.delete_from('meta_indexes', f'index_name = {index_name}')
+
+            if os.path.isfile(f'{self.savedir}/indexes/meta_{index_name}_index.pkl'):
+                os.remove(f'{self.savedir}/indexes/meta_{index_name}_index.pkl')
+            else:
+                warnings.warn(f'"{self.savedir}/indexes/meta_{index_name}_index.pkl" not found.')
+
+            self.save_database()
+        
+    def compare(self, table1Name, table2Name, testName=None):
+        '''
+        Compares 2 tables to see if they have the same records.
+
+        Args:
+            table1Name: string. Name of the first table.
+            table2Name: string. Name of the second table.
+            testName: string. Name of the test that is run.
+        '''
+        PASScolor = '\033[92m'
+        FAILcolor = '\033[91m'
+        ENDcolor = '\033[0m'
+        t1 = self.tables[table1Name]
+        t2 = self.tables[table2Name]
+
+        # Keep only the non-none values of the two tables
+        t1_non_none = [x for x in t1.data if any(x)]
+        t2_non_none = [x for x in t2.data if any(x)]
+
+        if len(t1_non_none) == len(t2_non_none) \
+            and t1.__dict__['column_names'] == t2.__dict__['column_names'] \
+            and t1.__dict__['column_types'] == t2.__dict__['column_types'] \
+            and [record not in t1_non_none for record in t2_non_none] != []:
+            return f'{PASScolor}{testName} PASSED {ENDcolor}' if testName is not None else f'{PASScolor}There is a match between the 2 specified tables.{ENDcolor}'
+        else:
+            return f'{FAILcolor}{testName} FAILED {ENDcolor}' if testName is not None else f'{FAILcolor}The 2 specified tables are different.{ENDcolor}'

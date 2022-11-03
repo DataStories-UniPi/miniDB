@@ -72,15 +72,16 @@ class Smj:
         self.condition = condition
 
     def join(self):
-        # Create a temporary folder for the external sort to happen. The folder will be deleted in the end
-        os.makedirs('miniDB/externalSortFolder', exist_ok=True)
-        
         # Get the column of the left and right tables and the operator, from the condition of the join
         column_name_left, operator, column_name_right = Table()._parse_condition(self.condition, join=True)
+        column_index_left = self.left_table.column_names.index(column_name_left)
+        column_index_right = self.right_table.column_names.index(column_name_right)
 
         if(operator != "="):
-            print("Sort-Merge Join is used when the condition operator is '='. Using inner join instead.")
-            return self.left_table._inner_join(self.right_table, self.condition)
+            raise Exception('Sort-Merge Join is used when the condition operator is "=".\n')
+
+        # Create a temporary folder for the external sort to happen. The folder will be deleted in the end
+        os.makedirs('tempSMJfolder/externalSortFolder', exist_ok=True)
 
         # Create the names that appear over the tables when the final joined table is presented to the user
         left_names = [f'{self.left_table._name}.{colname}' if self.left_table._name!='' else colname for colname in self.left_table.column_names]
@@ -89,14 +90,16 @@ class Smj:
         # Write all the records of the right table to a local file in the following format:
         # 'column_name_value [whole record]'
         # Use special character '@@@' to represent spaces as spaces break the code.
-        with open('miniDB/externalSortFolder/rightTableFile', 'w+') as rt:
+        with open('tempSMJfolder/externalSortFolder/rightTableFile', 'w+') as rt:
             for row in self.right_table.data:
-                rt.write(f'{row[self.right_table.column_names.index(column_name_right)]} {str(row).replace(" ","@@@")}\n')
+                if row[column_index_right] is not None:
+                    rt.write(f'{row[self.right_table.column_names.index(column_name_right)]} {str(row).replace(" ","@@@")}\n')
         
         # Same for the left lable
-        with open('miniDB/externalSortFolder/leftTableFile', 'w+') as lt:
+        with open('tempSMJfolder/externalSortFolder/leftTableFile', 'w+') as lt:
             for row in self.left_table.data:
-                lt.write(f'{row[self.left_table.column_names.index(column_name_left)]} {str(row).replace(" ","@@@")}\n')
+                if row[column_index_left] is not None:
+                    lt.write(f'{row[self.left_table.column_names.index(column_name_left)]} {str(row).replace(" ","@@@")}\n')
         
         # Create an ExternalMergeSort object and sort both right table and left table local files
         ems = self.ExternalMergeSort()
@@ -106,11 +109,11 @@ class Smj:
         ems.runExternalSort('leftTableFile')
 
         # Now there are sorted versions of the local files, so the initial ones can be removed
-        os.remove('miniDB/externalSortFolder/rightTableFile')
-        os.remove('miniDB/externalSortFolder/leftTableFile')
+        os.remove('tempSMJfolder/externalSortFolder/rightTableFile')
+        os.remove('tempSMJfolder/externalSortFolder/leftTableFile')
 
         # This does the final merge on sort-merge join
-        with open('miniDB/externalSortFolder/sorting of rightTableFile', 'r') as right, open('miniDB/externalSortFolder/sorting of leftTableFile', 'r') as left, open('miniDB/externalSortFolder/final', 'w+') as final:
+        with open('tempSMJfolder/externalSortFolder/sorting of rightTableFile', 'r') as right, open('tempSMJfolder/externalSortFolder/sorting of leftTableFile', 'r') as left, open('tempSMJfolder/externalSortFolder/final', 'w+') as final:
             mark = None #Used to return to previous values of the file
             l = None
             r = None
@@ -133,7 +136,7 @@ class Smj:
                     # Now that the column_values are equal save both records to the final, joined_tables local file
                     # Then progress the right table's current line and continue with the procedure
                     if l.split()[0] == r.split()[0]:
-                        final.write(l.replace("\n","")[l.index("['"):] + " " + r.replace("\n","")[r.index("['"):] + '\n')
+                        final.write(l.replace("\n","")[l.index("["):] + " " + r.replace("\n","")[r.index("["):] + '\n')
                         r = right.readline()
                     
                     # Else, if left_value isn't equal to right_value after having found at least one equality of column_values
@@ -147,8 +150,8 @@ class Smj:
                     mark = None
         
         # Now that the final joined file exists, the sorted files are not needed and are thus deleted
-        os.remove('miniDB/externalSortFolder/sorting of rightTableFile')
-        os.remove('miniDB/externalSortFolder/sorting of leftTableFile')
+        os.remove('tempSMJfolder/externalSortFolder/sorting of rightTableFile')
+        os.remove('tempSMJfolder/externalSortFolder/sorting of leftTableFile')
 
         join_table_name = ''
         join_table_colnames = left_names + right_names
@@ -157,7 +160,7 @@ class Smj:
 
         # Save merged file first. The hypothesis is that the RAM cannot fit the file, thus we have it saved
         # However we load the file to display it like this, might need to be changed in the future
-        with open('miniDB/externalSortFolder/final', 'r') as f:
+        with open('tempSMJfolder/externalSortFolder/final', 'r') as f:
             for line in f:
                 records = line.split()
                 # ast.literal_eval creates the list [a,b,c] from the string '[a,b,c]'
@@ -165,8 +168,9 @@ class Smj:
 
         # Finally, the final file and the externalSortFolder are not needed, as the joined table
         # exists in a variable and can be presented to the user
-        os.remove('miniDB/externalSortFolder/final')
-        os.rmdir('miniDB/externalSortFolder')
+        os.remove(f'{os.getcwd()}/tempSMJfolder/externalSortFolder/final')
+        os.rmdir(f'{os.getcwd()}/tempSMJfolder/externalSortFolder')
+        os.rmdir(f'{os.getcwd()}/tempSMJfolder')
         
         return join_table
 
@@ -216,11 +220,11 @@ class Smj:
             self.numFiles = 1
 
             # Split the file in chunks of chunkSize bytes
-            with open(f'miniDB/externalSortFolder/{largeFile}') as f:
+            with open(f'tempSMJfolder/externalSortFolder/{largeFile}') as f:
                 chunk = f.readlines(chunkSize)
                 while chunk:
-                    os.makedirs(os.path.dirname(f'miniDB/externalSortFolder/tempSplitFiles {self.startingFileName}/{self.numFiles}'), exist_ok=True)
-                    with open(f'miniDB/externalSortFolder/tempSplitFiles {self.startingFileName}/{self.numFiles}', 'w+') as chunk_file:
+                    os.makedirs(os.path.dirname(f'tempSMJfolder/externalSortFolder/tempSplitFiles {self.startingFileName}/{self.numFiles}'), exist_ok=True)
+                    with open(f'tempSMJfolder/externalSortFolder/tempSplitFiles {self.startingFileName}/{self.numFiles}', 'w+') as chunk_file:
                         for el in chunk:
                             chunk_file.write(el)
 
@@ -233,20 +237,20 @@ class Smj:
         def sortSmallFile(self, fileToBeSorted):
             arr = []
 
-            with open(f'miniDB/externalSortFolder/tempSplitFiles {self.startingFileName}/{fileToBeSorted}', 'r') as fts:
+            with open(f'tempSMJfolder/externalSortFolder/tempSplitFiles {self.startingFileName}/{fileToBeSorted}', 'r') as fts:
                 # If the contents of the file are integers
                 try:
-                    with open(f'miniDB/externalSortFolder/tempSplitFiles {self.startingFileName}/{fileToBeSorted}', 'r') as fts:
+                    with open(f'tempSMJfolder/externalSortFolder/tempSplitFiles {self.startingFileName}/{fileToBeSorted}', 'r') as fts:
                         arr = list(map(int, fts.read().splitlines()))
                 # If the contents are alphanumeric values
                 except:
-                    with open(f'miniDB/externalSortFolder/tempSplitFiles {self.startingFileName}/{fileToBeSorted}', 'r') as fts:
+                    with open(f'tempSMJfolder/externalSortFolder/tempSplitFiles {self.startingFileName}/{fileToBeSorted}', 'r') as fts:
                         arr = list(map(str, fts.read().splitlines()))
                 
                 self.sumFiles += len(arr)
                 self.mergeSort(arr)
 
-            with open(f'miniDB/externalSortFolder/tempSplitFiles {self.startingFileName}/{fileToBeSorted}', 'w') as fts:
+            with open(f'tempSMJfolder/externalSortFolder/tempSplitFiles {self.startingFileName}/{fileToBeSorted}', 'w') as fts:
                 for el in arr:
                     fts.write(f'{el}\n')
 
@@ -256,7 +260,7 @@ class Smj:
             # That will be merged
             fileNames = {}
             for i in range(1, number):
-                fileNames[i] = open(f'miniDB/externalSortFolder/tempSplitFiles {self.startingFileName}/{i}', 'r')
+                fileNames[i] = open(f'tempSMJfolder/externalSortFolder/tempSplitFiles {self.startingFileName}/{i}', 'r')
 
             output = []
 
@@ -286,7 +290,7 @@ class Smj:
                     except:
                         heapq.heappush(pq, (next, file_key))
 
-            with open(f'miniDB/externalSortFolder/sorting of {self.startingFileName}', 'w+') as sf:
+            with open(f'tempSMJfolder/externalSortFolder/sorting of {self.startingFileName}', 'w+') as sf:
                 for el in output:
                     sf.write(f'{el}\n')
 
@@ -302,4 +306,4 @@ class Smj:
             self.k_wayMerge(self.numFiles)
             
             # After the k-way Merge is completed, remove the folder containing the temporary split files
-            shutil.rmtree(f'miniDB/externalSortFolder/tempSplitFiles {self.startingFileName}/')
+            shutil.rmtree(f'tempSMJfolder/externalSortFolder/tempSplitFiles {self.startingFileName}/')
