@@ -200,7 +200,6 @@ def execute_dic(dic):
             dic[key] = execute_dic(dic[key])
     
     action = list(dic.keys())[0].replace(' ','_')
-    print(dic.values())
     return getattr(db, action)(*dic.values())
 
 def interpret_meta(command):
