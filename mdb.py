@@ -16,7 +16,7 @@ art = '''
   _ __ ___   _  _ __   _ | |  | || |_) |
  | '_ ` _ \ | || '_ \ | || |  | ||  _ < 
  | | | | | || || | | || || |__| || |_) |
- |_| |_| |_||_||_| |_||_||_____/ |____/   2021 - v3.2                               
+ |_| |_| |_||_||_| |_||_||_____/ |____/   2022                              
 '''   
 
 
@@ -51,23 +51,39 @@ def create_query_plan(query, keywords, action):
 
     kw_in_query = []
     kw_positions = []
-    for i in range(len(ql)):
-        if ql[i] in keywords and not in_paren(ql, i):
+    i=0
+    while i<len(ql):
+        if in_paren(ql, i): 
+            i+=1
+            continue
+        if ql[i] in keywords:
             kw_in_query.append(ql[i])
             kw_positions.append(i)
-        elif i!=len(ql)-1 and f'{ql[i]} {ql[i+1]}' in keywords and not in_paren(ql, i):
+        
+        elif i!=len(ql)-1 and f'{ql[i]} {ql[i+1]}' in keywords:
             kw_in_query.append(f'{ql[i]} {ql[i+1]}')
-            kw_positions.append(i+1)
+            ql[i] = ql[i]+' '+ql[i+1]
+            ql.pop(i+1)
+            kw_positions.append(i)
+        i+=1
+        
 
 
     for i in range(len(kw_in_query)-1):
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
+    
+    if action == 'create view':
+        dic['as'] = interpret(dic['as'])
 
     if action=='select':
         dic = evaluate_from_clause(dic)
-        
+
+        if dic['distinct'] is not None:
+            dic['select'] = dic['distinct']
+            dic['distinct'] = True
+
         if dic['order by'] is not None:
-            dic['from'] = dic['from'].removesuffix(' order')
+            dic['from'] = dic['from']
             if 'desc' in dic['order by']:
                 dic['desc'] = True
             else:
@@ -113,7 +129,7 @@ def evaluate_from_clause(dic):
     '''
     Evaluate the part of the query (argument or subquery) that is supplied as the 'from' argument
     '''
-    join_types = ['inner', 'left', 'right', 'full']
+    join_types = ['inner', 'left', 'right', 'full', 'sm', 'inl']
     from_split = dic['from'].split(' ')
     if from_split[0] == '(' and from_split[-1] == ')':
         subquery = ' '.join(from_split[1:-1])
@@ -154,13 +170,14 @@ def interpret(query):
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
-                     'select': ['select', 'from', 'where', 'order by', 'top'],
+                     'select': ['select', 'from', 'where', 'distinct', 'order by', 'limit'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
                      'create index': ['create index', 'on', 'using'],
-                     'drop index': ['drop index']
+                     'drop index': ['drop index'],
+                     'create view' : ['create view', 'as']
                      }
 
     if query[-1]!=';':
@@ -196,9 +213,14 @@ def interpret_meta(command):
     cdb - change/create database
     rmdb - delete database
     """
-    action = command[1:].split(' ')[0].removesuffix(';')
+    action = command.split(' ')[0].removesuffix(';')
 
     db_name = db._name if search_between(command, action,';')=='' else search_between(command, action,';')
+
+    verbose = True
+    if action == 'cdb' and ' -noverb' in db_name:
+        db_name = db_name.replace(' -noverb','')
+        verbose = False
 
     def list_databases(db_name):
         [print(fold.removesuffix('_db')) for fold in os.listdir('dbdata')]
@@ -209,7 +231,7 @@ def interpret_meta(command):
 
     def change_db(db_name):
         global db
-        db = Database(db_name, load=True)
+        db = Database(db_name, load=True, verbose=verbose)
     
     def remove_db(db_name):
         shutil.rmtree(f'dbdata/{db_name}_db')
@@ -230,40 +252,47 @@ if __name__ == "__main__":
 
     db = Database(dbname, load=True)
 
+    
+
     if fname is not None:
         for line in open(fname, 'r').read().splitlines():
             if line.startswith('--'): continue
-            dic = interpret(line.lower())
-            result = execute_dic(dic)
-            if isinstance(result,Table):
-                result.show()
-    else:
-        from prompt_toolkit import PromptSession
-        from prompt_toolkit.history import FileHistory
-        from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+            if line.startswith('explain'):
+                dic = interpret(line.removeprefix('explain '))
+                pprint(dic, sort_dicts=False)
+            else :
+                dic = interpret(line.lower())
+                result = execute_dic(dic)
+                if isinstance(result,Table):
+                    result.show()
+        
 
-        print(art)
-        session = PromptSession(history=FileHistory('.inp_history'))
-        while 1:
-            try:
-                line = session.prompt(f'({db._name})> ', auto_suggest=AutoSuggestFromHistory()).lower()
-                if line[-1]!=';':
-                    line+=';'
-            except (KeyboardInterrupt, EOFError):
-                print('\nbye!')
+    from prompt_toolkit import PromptSession
+    from prompt_toolkit.history import FileHistory
+    from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+
+    print(art)
+    session = PromptSession(history=FileHistory('.inp_history'))
+    while 1:
+        try:
+            line = session.prompt(f'({db._name})> ', auto_suggest=AutoSuggestFromHistory()).lower()
+            if line[-1]!=';':
+                line+=';'
+        except (KeyboardInterrupt, EOFError):
+            print('\nbye!')
+            break
+        try:
+            if line=='exit':
                 break
-            try:
-                if line=='exit':
-                    break
-                if line.startswith('.'):
-                    interpret_meta(line)
-                elif line.startswith('explain'):
-                    dic = interpret(line.removeprefix('explain '))
-                    pprint(dic, sort_dicts=False)
-                else:
-                    dic = interpret(line)
-                    result = execute_dic(dic)
-                    if isinstance(result,Table):
-                        result.show()
-            except Exception:
-                print(traceback.format_exc())
+            if line.split(' ')[0].removesuffix(';') in ['lsdb', 'lstb', 'cdb', 'rmdb']:
+                interpret_meta(line)
+            elif line.startswith('explain'):
+                dic = interpret(line.removeprefix('explain '))
+                pprint(dic, sort_dicts=False)
+            else:
+                dic = interpret(line)
+                result = execute_dic(dic)
+                if isinstance(result,Table):
+                    result.show()
+        except Exception:
+            print(traceback.format_exc())

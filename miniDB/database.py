@@ -1,30 +1,33 @@
 from __future__ import annotations
 import pickle
-from table import Table
 from time import sleep, localtime, strftime
 import os,sys
-from btree import Btree
-import shutil
-from misc import split_condition
 import logging
 import warnings
 import readline
 from tabulate import tabulate
 
+sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
+from miniDB import table
+sys.modules['table'] = table
 
-# sys.setrecursionlimit(100)
+from joins import Inlj, Smj
+from btree import Btree
+from misc import split_condition
+from table import Table
 
-# Clear command cache (journal)
-readline.clear_history()
+
+# readline.clear_history()
 
 class Database:
     '''
     Main Database class, containing tables.
     '''
 
-    def __init__(self, name, load=True):
+    def __init__(self, name, load=True, verbose = True):
         self.tables = {}
         self._name = name
+        self.verbose = verbose
 
         self.savedir = f'dbdata/{name}_db'
 
@@ -34,7 +37,8 @@ class Database:
                 logging.info(f'Loaded "{name}".')
                 return
             except:
-                warnings.warn(f'Database "{name}" does not exist. Creating new.')
+                if verbose:
+                    warnings.warn(f'Database "{name}" does not exist. Creating new.')
 
         # create dbdata directory if it doesnt exist
         if not os.path.exists('dbdata'):
@@ -116,7 +120,8 @@ class Database:
         self._update()
         self.save_database()
         # (self.tables[name])
-        print(f'Created table "{name}".')
+        if self.verbose:
+            print(f'Created table "{name}".')
 
 
     def drop_table(self, table_name):
@@ -138,6 +143,19 @@ class Database:
         self.delete_from('meta_length', f'table_name={table_name}')
         self.delete_from('meta_insert_stack', f'table_name={table_name}')
 
+        if self._has_index(table_name):
+            to_be_deleted = []
+            for key, table in enumerate(self.tables['meta_indexes'].column_by_name('table_name')):
+                if table == table_name:
+                    to_be_deleted.append(key)
+
+            for i in reversed(to_be_deleted):
+                self.drop_index(self.tables['meta_indexes'].data[i][1])
+
+        try:
+            delattr(self, table_name)
+        except AttributeError:
+            pass
         # self._update()
         self.save_database()
 
@@ -313,8 +331,8 @@ class Database:
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
 
-    def select(self, columns, table_name, condition, order_by=None, top_k=True,\
-               desc=None, save_as=None, return_object=True):
+    def select(self, columns, table_name, condition, distinct=None, order_by=None, \
+               limit=True, desc=None, save_as=None, return_object=True):
         '''
         Selects and outputs a table's data where condtion is met.
 
@@ -328,14 +346,16 @@ class Database:
                 Operatores supported: (<,<=,==,>=,>)
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (True by default).
-            top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
+            limit: int. An integer that defines the number of rows that will be returned (all rows if None).
             save_as: string. The name that will be used to save the resulting table into the database (no save if None).
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
+            distinct: boolean. If True, the resulting table will contain only unique rows.
         '''
+
         # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
-            return table_name._select_where(columns, condition, order_by, desc, top_k)
+            return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
         if condition is not None:
             condition_column = split_condition(condition)[0]
@@ -349,9 +369,9 @@ class Database:
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, order_by, desc, top_k)
+            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
         else:
-            table = self.tables[table_name]._select_where(columns, condition, order_by, desc, top_k)
+            table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as
@@ -394,6 +414,17 @@ class Database:
         self._update()
         self.save_database()
 
+    def create_view(self, table_name, table):
+        '''
+        Create a virtual table based on the result-set of the SQL statement provided.
+
+        Args:
+            table_name: string. Name of the table that will be saved.
+            table: table. The table that will be saved.
+        '''
+        table._name = table_name
+        self.table_from_object(table)
+
     def join(self, mode, left_table, right_table, condition, save_as=None, return_object=True):
         '''
         Join two tables that are part of the database where condition is met.
@@ -405,7 +436,7 @@ class Database:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
-                Operatores supported: (<,<=,==,>=,>)
+                Operators supported: (<,<=,==,>=,>)
         save_as: string. The output filename that will be used to save the resulting table in the database (won't save if None).
         return_object: boolean. If True, the result will be a table object (useful for internal usage - the result will be printed by default).
         '''
@@ -419,6 +450,34 @@ class Database:
 
         if mode=='inner':
             res = left_table._inner_join(right_table, condition)
+        
+        elif mode=='left':
+            res = left_table._left_join(right_table, condition)
+        
+        elif mode=='right':
+            res = left_table._right_join(right_table, condition)
+        
+        elif mode=='full':
+            res = left_table._full_join(right_table, condition)
+
+        elif mode=='inl':
+            # Check if there is an index of either of the two tables available, as if there isn't we can't use inlj
+            leftIndexExists = self._has_index(left_table._name)
+            rightIndexExists = self._has_index(right_table._name)
+
+            if not leftIndexExists and not rightIndexExists:
+                res = None
+                raise Exception('Index-nested-loop join cannot be executed. Use inner join instead.\n')
+            elif rightIndexExists:
+                index_name = self.select('*', 'meta_indexes', f'table_name={right_table._name}', return_object=True).column_by_name('index_name')[0]
+                res = Inlj(condition, left_table, right_table, self._load_idx(index_name), 'right').join()
+            elif leftIndexExists:
+                index_name = self.select('*', 'meta_indexes', f'table_name={left_table._name}', return_object=True).column_by_name('index_name')[0]
+                res = Inlj(condition, left_table, right_table, self._load_idx(index_name), 'left').join()
+
+        elif mode=='sm':
+            res = Smj(condition, left_table, right_table).join()
+
         else:
             raise NotImplementedError
 
@@ -430,6 +489,11 @@ class Database:
                 return res
             else:
                 res.show()
+
+        if return_object:
+            return res
+        else:
+            res.show()
 
     def lock_table(self, table_name, mode='x'):
         '''
@@ -505,16 +569,6 @@ class Database:
         except IndexError:
             pass
         return False
-
-    def journal(idx = None):
-        if idx != None:
-            cache_list = '\n'.join([str(readline.get_history_item(i + 1)) for i in range(readline.get_current_history_length())]).split('\n')[int(idx)]
-            out = tabulate({"Command": cache_list.split('\n')}, headers=["Command"])
-        else:
-            cache_list = '\n'.join([str(readline.get_history_item(i + 1)) for i in range(readline.get_current_history_length())])
-            out = tabulate({"Command": cache_list.split('\n')}, headers=["Index","Command"], showindex="always")
-        print('journal:', out)
-        #return out
 
 
     #### META ####
@@ -631,6 +685,8 @@ class Database:
 
         # for each record in the primary key of the table, insert its value and index to the btree
         for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
+            if key is None:
+                continue
             bt.insert(key, idx)
         # save the btree
         self._save_index(index_name, bt)
@@ -672,3 +728,21 @@ class Database:
         index = pickle.load(f)
         f.close()
         return index
+
+    def drop_index(self, index_name):
+        '''
+        Drop index from current database.
+
+        Args:
+            index_name: string. Name of index.
+        '''
+        if index_name in self.tables['meta_indexes'].column_by_name('index_name'):
+            self.delete_from('meta_indexes', f'index_name = {index_name}')
+
+            if os.path.isfile(f'{self.savedir}/indexes/meta_{index_name}_index.pkl'):
+                os.remove(f'{self.savedir}/indexes/meta_{index_name}_index.pkl')
+            else:
+                warnings.warn(f'"{self.savedir}/indexes/meta_{index_name}_index.pkl" not found.')
+
+            self.save_database()
+        
