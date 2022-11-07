@@ -16,7 +16,7 @@ art = '''
   _ __ ___   _  _ __   _ | |  | || |_) |
  | '_ ` _ \ | || '_ \ | || |  | ||  _ < 
  | | | | | || || | | || || |__| || |_) |
- |_| |_| |_||_||_| |_||_||_____/ |____/   2021 - v3.2                               
+ |_| |_| |_||_||_| |_||_||_____/ |____/   2022                              
 '''   
 
 
@@ -170,14 +170,13 @@ def interpret(query):
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
-                     'select': ['select', 'from', 'where', 'distinct', 'order by', 'top'],
+                     'select': ['select', 'from', 'where', 'distinct', 'order by', 'limit'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
                      'create index': ['create index', 'on', 'using'],
                      'drop index': ['drop index'],
-                     'compare' : ['compare', 'with'],
                      'create view' : ['create view', 'as']
                      }
 
@@ -201,6 +200,7 @@ def execute_dic(dic):
             dic[key] = execute_dic(dic[key])
     
     action = list(dic.keys())[0].replace(' ','_')
+    print(dic.values())
     return getattr(db, action)(*dic.values())
 
 def interpret_meta(command):
@@ -267,33 +267,33 @@ if __name__ == "__main__":
                 if isinstance(result,Table):
                     result.show()
         
-    else:
-        from prompt_toolkit import PromptSession
-        from prompt_toolkit.history import FileHistory
-        from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 
-        print(art)
-        session = PromptSession(history=FileHistory('.inp_history'))
-        while 1:
-            try:
-                line = session.prompt(f'({db._name})> ', auto_suggest=AutoSuggestFromHistory()).lower()
-                if line[-1]!=';':
-                    line+=';'
-            except (KeyboardInterrupt, EOFError):
-                print('\nbye!')
+    from prompt_toolkit import PromptSession
+    from prompt_toolkit.history import FileHistory
+    from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+
+    print(art)
+    session = PromptSession(history=FileHistory('.inp_history'))
+    while 1:
+        try:
+            line = session.prompt(f'({db._name})> ', auto_suggest=AutoSuggestFromHistory()).lower()
+            if line[-1]!=';':
+                line+=';'
+        except (KeyboardInterrupt, EOFError):
+            print('\nbye!')
+            break
+        try:
+            if line=='exit':
                 break
-            try:
-                if line=='exit':
-                    break
-                if line.split(' ')[0].removesuffix(';') in ['lsdb', 'lstb', 'cdb', 'rmdb']:
-                    interpret_meta(line)
-                elif line.startswith('explain'):
-                    dic = interpret(line.removeprefix('explain '))
-                    pprint(dic, sort_dicts=False)
-                else:
-                    dic = interpret(line)
-                    result = execute_dic(dic)
-                    if isinstance(result,Table):
-                        result.show()
-            except Exception:
-                print(traceback.format_exc())
+            if line.split(' ')[0].removesuffix(';') in ['lsdb', 'lstb', 'cdb', 'rmdb']:
+                interpret_meta(line)
+            elif line.startswith('explain'):
+                dic = interpret(line.removeprefix('explain '))
+                pprint(dic, sort_dicts=False)
+            else:
+                dic = interpret(line)
+                result = execute_dic(dic)
+                if isinstance(result,Table):
+                    result.show()
+        except Exception:
+            print(traceback.format_exc())

@@ -207,7 +207,7 @@ class Table:
         return indexes_to_del
 
 
-    def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, top_k=None):
+    def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -221,7 +221,7 @@ class Table:
             distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (False by default).
-            top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
+            limit: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
 
         # if * return all columns, else find the column indexes for the columns specified
@@ -239,8 +239,6 @@ class Table:
         else:
             rows = [i for i in range(len(self.data))]
 
-        # top k rows
-        # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
 
@@ -256,21 +254,23 @@ class Table:
         if order_by:
             s_table.order_by(order_by, desc)
 
-        if isinstance(top_k, str):
-            try:
-                k = int(top_k)
-            except ValueError:
-                raise Exception("The value following 'top' in the query should be a number.")
+        # if isinstance(limit, str):
+        #     try:
+        #         k = int(limit)
+        #     except ValueError:
+        #         raise Exception("The value following 'top' in the query should be a number.")
             
-            # Remove from the table's data all the None-filled rows, as they are not shown by default
-            # Then, show the first k rows 
-            s_table.data.remove(len(s_table.column_names) * [None])
-            s_table.data = s_table.data[:k]
+        #     # Remove from the table's data all the None-filled rows, as they are not shown by default
+        #     # Then, show the first k rows 
+        #     s_table.data.remove(len(s_table.column_names) * [None])
+        #     s_table.data = s_table.data[:k]
+        if isinstance(limit,str):
+            s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
 
         return s_table
 
 
-    def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, top_k=None):
+    def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
@@ -301,7 +301,7 @@ class Table:
         rows = bt.find(operator, value)
 
         try:
-            k = int(top_k)
+            k = int(limit)
         except TypeError:
             k = None
         # same as simple select from now on
@@ -319,8 +319,8 @@ class Table:
         if order_by:
             s_table.order_by(order_by, desc)
 
-        # Possible deletion
-        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
+        if isinstance(limit,str):
+            s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
 
         return s_table
 

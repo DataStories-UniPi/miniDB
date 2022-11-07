@@ -17,11 +17,7 @@ from misc import split_condition
 from table import Table
 
 
-
-# sys.setrecursionlimit(100)
-
-# Clear command cache (journal)
-readline.clear_history()
+# readline.clear_history()
 
 class Database:
     '''
@@ -336,7 +332,7 @@ class Database:
         self.save_database()
 
     def select(self, columns, table_name, condition, distinct=None, order_by=None, \
-               top_k=True, desc=None, save_as=None, return_object=True):
+               limit=True, desc=None, save_as=None, return_object=True):
         '''
         Selects and outputs a table's data where condtion is met.
 
@@ -350,7 +346,7 @@ class Database:
                 Operatores supported: (<,<=,==,>=,>)
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (True by default).
-            top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
+            limit: int. An integer that defines the number of rows that will be returned (all rows if None).
             save_as: string. The name that will be used to save the resulting table into the database (no save if None).
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
             distinct: boolean. If True, the resulting table will contain only unique rows.
@@ -359,7 +355,7 @@ class Database:
         # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
-            return table_name._select_where(columns, condition, distinct, order_by, desc, top_k)
+            return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
         if condition is not None:
             condition_column = split_condition(condition)[0]
@@ -373,9 +369,9 @@ class Database:
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, top_k)
+            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
         else:
-            table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, top_k)
+            table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as
@@ -574,16 +570,6 @@ class Database:
             pass
         return False
 
-    def journal(idx = None):
-        if idx != None:
-            cache_list = '\n'.join([str(readline.get_history_item(i + 1)) for i in range(readline.get_current_history_length())]).split('\n')[int(idx)]
-            out = tabulate({"Command": cache_list.split('\n')}, headers=["Command"])
-        else:
-            cache_list = '\n'.join([str(readline.get_history_item(i + 1)) for i in range(readline.get_current_history_length())])
-            out = tabulate({"Command": cache_list.split('\n')}, headers=["Index","Command"], showindex="always")
-        print('journal:', out)
-        #return out
-
 
     #### META ####
 
@@ -760,29 +746,3 @@ class Database:
 
             self.save_database()
         
-    def compare(self, table1Name, table2Name, testName=None):
-        '''
-        Compares 2 tables to see if they have the same records.
-
-        Args:
-            table1Name: string. Name of the first table.
-            table2Name: string. Name of the second table.
-            testName: string. Name of the test that is run.
-        '''
-        PASScolor = '\033[92m'
-        FAILcolor = '\033[91m'
-        ENDcolor = '\033[0m'
-        t1 = self.tables[table1Name]
-        t2 = self.tables[table2Name]
-
-        # Keep only the non-none values of the two tables
-        t1_non_none = [x for x in t1.data if any(x)]
-        t2_non_none = [x for x in t2.data if any(x)]
-
-        if len(t1_non_none) == len(t2_non_none) \
-            and t1.__dict__['column_names'] == t2.__dict__['column_names'] \
-            and t1.__dict__['column_types'] == t2.__dict__['column_types'] \
-            and [record not in t1_non_none for record in t2_non_none] != []:
-            return f'{PASScolor}{testName} PASSED {ENDcolor}' if testName is not None else f'{PASScolor}There is a match between the 2 specified tables.{ENDcolor}'
-        else:
-            return f'{FAILcolor}{testName} FAILED {ENDcolor}' if testName is not None else f'{FAILcolor}The 2 specified tables are different.{ENDcolor}'
