@@ -233,9 +233,29 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            if "between" in condition.split():
+                split_con = condition.split()
+                if (split_con[3] != 'and'):  #vlepoume an o xristis egrapse swsta ton kwdika
+                    print('Prepei na xrisimopoihseis "and" anamesa stous arithmous')
+                    exit()
+                else:   
+                    left_val = split_con[2]  # aristerh
+                    right_val = split_con[4]  # deksia
+                    column_name = split_con[0]
+                    column = self.column_by_name(column_name)
+                    rows = []
+                    if (
+                            left_val.isdigit() and right_val.isdigit()):  # an oi times einai arithmoi
+                        for i, j in enumerate(column):
+                            if int(j) >= int(left_val) and int(j) <= int(right_val):
+                                rows.append(i)  # stelnei stin grammi gia emfanish tis times pou epalitheuoun tin sunthiki
+                    else:  # den dexetai string
+                        print('Cannot compare strings')
+                        exit()
+            else:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -332,7 +352,7 @@ class Table:
             column_name: string. Name of column.
             desc: boolean. If True, order_by will return results in descending order (False by default).
         '''
-        column = [val if val is not None else 0 for val in self.column_by_name(column_name)]
+        column = self.column_by_name(column_name)
         idx = sorted(range(len(column)), key=lambda k: column[k], reverse=desc)
         # print(idx)
         self.data = [self.data[i] for i in idx]
