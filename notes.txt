@@ -1,3 +1,41 @@
 <> Issue #1:    mdb.py, lines 173-177.
                 table.py, lines 142,171,210,273,388.
                 database.py, lines 287,311,324,337,358,372,374,430,512,542,547,565,637.
+
+
+<> mdb.py, line 48
+keywords = ['select', 'from', 'where', 'not', 'distinct', 'order by', 'limit', ';']
+dic = {val: None for val in keywords if val!=';'}
+dic = {'select': None, 'from': None, 'where': None, 'not': None, 'distinct': None, 'order by': None, 'limit': None}
+
+
+<> mdb.py, line 50
+query = 'select * from a where not t=a ;'
+ql = [val for val in query.split(' ') if val !='']
+ql = ['select', '*', 'from', 'a', 'where', 'not', 't=a', ';']
+
+
+<> mdb.py, line 38
+qsplit = ['select', '*', 'from', 'a', 'where', 'not', 't=a', ';']
+ind = 3
+qsplit[:ind] = ['select', '*', 'from']
+qsplit[:ind].count('(') = 0
+qsplit[:ind].count(')') = 0
+return qsplit[:ind].count('(')>qsplit[:ind].count(')') -> return false
+
+
+<> mdb.py, line 63
+ql = ['select', '*', 'from', 'a', 'where', 'not', 't=a', ';']
+i = 3 
+f'{ql[i]} {ql[i+1]}' = 'a where'
+
+
+<> mdb.py, line 73
+kw_positions=[0, 2, 4, 5, 7]
+i = 3
+ql[kw_positions[i]+1:kw_positions[i+1]] = ['t=a']
+' '.join(ql[kw_positions[i]+1:kw_positions[i+1]]) = 't=a'
+
+
+<> Την επόμενη φορά συνεχίζουμε από το mdb.py γραμμή 72 με breakpoint στη γραμμή 73 και με query = 'select * from a where not t=a ;' . 
+Λύνουμε το πρόβλημα του dic['where'] = ''.
