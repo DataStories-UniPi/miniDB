@@ -252,6 +252,35 @@ class Table:
                     else:  # den dexetai string
                         print('Cannot compare strings')
                         exit()
+             # OR operator
+            elif "OR" in condition.split() or "or" in condition.split():
+                condition_list = condition.split("OR")
+                condition_list = condition_list[0].split("or")
+
+                row_lists = []
+                for cond in condition_list: # run every condition seperatly
+                    column_name, operator, value = self._parse_condition(cond)
+                    column = self.column_by_name(column_name)
+                    row_lists.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)])
+
+                rows = []
+                for l in row_lists: # move all rows into one 1d list
+                    for row in l:
+                        if not(row in rows):
+                            rows.append(row)
+            # AND operator
+            elif "AND" in condition.split() or "and" in condition.split():
+                condition_list = condition.split("AND")
+                condition_list = condition_list[0].split("and")
+
+                row_lists = []
+                for cond in condition_list: # run every condition seperatly
+                    column_name, operator, value = self._parse_condition(cond)
+                    column = self.column_by_name(column_name)
+                    row_lists.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)])
+
+                rows = set(row_lists[0]).intersection(*row_lists) # get the intersection of the seperate conditions                
+            
             else:
                 column_name, operator, value = self._parse_condition(condition)
                 column = self.column_by_name(column_name)
