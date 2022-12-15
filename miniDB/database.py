@@ -55,7 +55,8 @@ class Database:
         self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
-        self.create_table('meta_indexes', 'table_name,index_name,column_name', 'str,str,str')  #prosthetoume sthlh ston pinaka gia to column_name toy index
+        #prosthetoume sthlh ston pinaka gia to column_name toy index. Prepei na ksanafortwsoume thn vash gia ftiaxtei o pinakas me parapanw sthlh
+        self.create_table('meta_indexes', 'table_name,index_name,column_name', 'str,str,str')  
         self.save_database()
 
     def save_database(self):
@@ -349,7 +350,8 @@ class Database:
         '''
 
         if condition is not None:
-            # Tsekaroume an stin sumthiki exoume betweeen, not kai to eisagoume stin metavliti condition_column
+            # Tsekaroume an stin sumthiki exoume betweeen, not,and,or kai to eisagoume stin metavliti condition_column
+            #to prwto stoixeio tou condition meta apo .split("").
 
             if "BETWEEN" in condition.split() or "between" in condition.split():
                 condition_column = condition.split(" ")[0]
@@ -655,21 +657,28 @@ class Database:
         self.tables['meta_insert_stack']._update_rows(new_stack, 'indexes', f'table_name={table_name}')
 
     # indexes
-    #prosthetoume ena argument pou afora to column tou pinaka
+    #prosthetoume ena argument pou afora to column tou pinaka. 
     def create_index(self, index_name, table_name, column_name, index_type='btree'):
         '''
-        Creates an index on a specified table with a given name.
-        Important: An index can only be created on a primary key (the user does not specify the column).
+        Creates an index on a specified column in table with a given name.
 
         Args:
             table_name: string. Table name (must be part of database).
-            index_name: string. Name of the created index.
-        
-        #Afairoume to exception gia na epitrepei index se oles tis stiles'''
-
+            column_name:string.Column name (must be part of database)
+            index_name: string. Name of the created index.        
+        '''
+        #Afairoume to exception gia na epitrepei index se oles tis stiles
         #if self.tables[table_name].pk_idx is None:  # if no primary key, no index
         #    raise Exception('Cannot create index. Table has no primary key.')
-        if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
+
+
+        if table_name not in self.tables:   #an den uparxei o pinakas
+            raise Exception('Cannot create index. Table does not exist')
+
+        if column_name not in self.tables[table_name].column_names:   #an den uparxei h sthlh
+            raise Exception('Cannot create index. Column does not exist')    
+
+        if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):  #an to index_name uparxei ksana
             # currently only btree is supported. This can be changed by adding another if.
             if index_type == 'btree':
                 logging.info('Creating Btree index.')
@@ -680,6 +689,8 @@ class Database:
                 self.save_database()
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
+
+       
 
     def _construct_index(self, table_name, index_name, column_name):  #prosthetoume argument to column tou index
         '''
