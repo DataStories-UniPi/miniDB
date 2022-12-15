@@ -121,9 +121,18 @@ def create_query_plan(query, keywords, action):
         else:
             dic['force'] = False
 
+    #ftiaxnoume query plan gia tin dimiourgia index
+    if action=='create index':
+        split_con=dic[kw_in_query[1]].split() 
+        split_con.remove("(")
+        split_con.remove(")")
+
+        dic['create index'] = dic[kw_in_query[0]]
+        dic['on'] = split_con[0]
+        dic['column'] = split_con[1]
+        dic['using'] = dic[kw_in_query[2]]
+
     return dic
-
-
 
 def evaluate_from_clause(dic):
     '''
@@ -162,6 +171,7 @@ def evaluate_from_clause(dic):
 
 def interpret(query):
     '''
+    Dimiourgisame extra keyword gia to create index wste na dilonoume kai stilh
     Interpret the query.
     '''
     kw_per_action = {'create table': ['create table'],
@@ -175,7 +185,7 @@ def interpret(query):
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
-                     'create index': ['create index', 'on', 'using'],
+                     'create index': ['create index', 'on', 'column', 'using'],
                      'drop index': ['drop index'],
                      'create view' : ['create view', 'as']
                      }
