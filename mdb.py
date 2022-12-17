@@ -78,6 +78,9 @@ def create_query_plan(query, keywords, action):
     if action=='select':
         dic = evaluate_from_clause(dic)
 
+        if dic['where'] is not None:
+            dic = evaluate_where_clause(dic)
+        
         if dic['distinct'] is not None:
             dic['select'] = dic['distinct']
             dic['distinct'] = True
@@ -160,6 +163,53 @@ def evaluate_from_clause(dic):
         
     return dic
 
+def evaluate_where_clause(dic):
+    '''
+    Evaluate the part of the query (argument or subquery) that is supplied as the 'where' argument
+    '''
+    where_split = dic['where'].split(' ')
+    if where_split[0] == '(' and where_split[-1] == ')':
+        subquery = ' '.join(where_split[1:-1])
+        dic['where'] = interpret(subquery)
+
+    not_idx = [i for i,word in enumerate(where_split) if word=='not' and not in_paren(where_split,i)]
+    '''btw_idx = [i for i,word in enumerate(where_split) if word=='between' and not in_paren(where_split,i)]
+    and_idx = [i for i,word in enumerate(where_split) if word=='and' and not in_paren(where_split,i)]
+    or_idx = [i for i,word in enumerate(where_split) if word=='or' and not in_paren(where_split,i)]'''
+    
+    if not_idx:
+        not_idx = not_idx[0]
+        where_dic = {}
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        if where_split[not_idx-1] in join_types:
+            join_dic['join'] = where_split[join_idx-1]
+            join_dic['left'] = ' '.join(where_split[:join_idx-1])
+        else:
+            join_dic['join'] = 'inner'
+            join_dic['left'] = ' '.join(where_split[:join_idx])
+        join_dic['right'] = ' '.join(where_split[join_idx+1:on_idx])
+        join_dic['on'] = ''.join(where_split[on_idx+1:])
+
+        if join_dic['left'].startswith('(') and join_dic['left'].endswith(')'):
+            join_dic['left'] = interpret(join_dic['left'][1:-1].strip())
+
+        if join_dic['right'].startswith('(') and join_dic['right'].endswith(')'):
+            join_dic['right'] = interpret(join_dic['right'][1:-1].strip())
+
+        dic['from'] = join_dic
+        
+    return dic
+
+
 def interpret(query):
     '''
     Interpret the query.
@@ -170,11 +220,11 @@ def interpret(query):
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
-                     'select': ['select', 'from', 'where', 'not', 'distinct', 'order by', 'limit'],
+                     'select': ['select', 'from', 'where', 'distinct', 'order by', 'limit'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
-                     'delete from': ['delete from', 'where', 'not'],
-                     'update table': ['update table', 'set', 'where', 'not'],
+                     'delete from': ['delete from', 'where'],
+                     'update table': ['update table', 'set', 'where'],
                      'create index': ['create index', 'on', 'using'],
                      'drop index': ['drop index'],
                      'create view' : ['create view', 'as']
