@@ -121,8 +121,7 @@ def create_query_plan(query, keywords, action):
         else:
             dic['force'] = False
 
-    #ftiaxnoume to dic me to query plan gia tin dimiourgia index. Den ginetai elegxos gia to an uparxei h sthlh,pinakas
-    #tha mporousame na to ftiaksoume se deutero chrono
+    #ftiaxnoume to dictionery me to query plan gia tin dimiourgia index. Den ginetai edw elegxos gia to an uparxei h sthlh,pinakas
     if action=='create index':
         split_con=dic[kw_in_query[1]].split() 
         split_con.remove("(")
