@@ -1,4 +1,37 @@
-<> Issue #1:    mdb.py, lines 173-177.
+<> Issue 3: (α) Εντοπισμός των εναλλακτικών RA expressions.
+		    (β) Επιλογή του καλύτερου RA expression (λιγότερο κόστος).
+	
+<> Issue 1:
+		SELECT * FROM table_name WHERE NOT condition;
+		'WHERE' : {
+				'not' : condition
+		}
+
+		SELECT * FROM table_name WHERE column_name BETWEEN value1 AND value2;
+		'WHERE' : {
+				'column': column_name 
+				'between' : {
+								'and' : {
+										'left' : value1,
+										'right' : value2
+								}
+				}
+		}
+
+		SELECT * FROM table_name WHERE condition1 AND/OR condition2;
+		'WHERE' : {
+				'column': table_name
+				'and' : {
+							'left' : condition1,
+							'right' : condition2
+				},
+				'or' : {
+							'left' : condition1,
+							'right' : condition2
+				}
+		}
+
+<> Issue 1:    mdb.py, lines 173-177.
                 table.py, lines 142,171,210,273,388.
                 database.py, lines 287,311,324,337,358,372,374,430,512,542,547,565,637.
 
