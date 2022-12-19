@@ -37,7 +37,6 @@ def in_paren(qsplit, ind):
     '''
     return qsplit[:ind].count('(')>qsplit[:ind].count(')')
 
-
 def create_query_plan(query, keywords, action):
     '''
     Given a query, the set of keywords that we expect to pe present and the overall action, return the query plan for this query.
@@ -126,8 +125,6 @@ def create_query_plan(query, keywords, action):
 
     return dic
 
-
-
 def evaluate_from_clause(dic):
     '''
     Evaluate the part of the query (argument or subquery) that is supplied as the 'from' argument
@@ -208,7 +205,6 @@ def evaluate_where_clause(dic):
         dic['from'] = join_dic
         
     return dic
-
 
 def interpret(query):
     '''
