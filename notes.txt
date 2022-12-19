@@ -75,3 +75,9 @@
 <> mdb.py:
     * Δημιουργώ την αντίστοιχη μέθοδο (evaluate_where_clause) για τον υπολογισμό του where statement  (line 78 and line 167).
     * Έχω υπόψη μου τη μέθοδο interpreter όταν καλεστεί ξανά από ένα subquery (line 210).
+	* line 249, στη μέθοδος execute_dic όπου γίνεται return getattr(db, action)(*dic.values()), το getattr μας βρίσκει από το αντικείμενο db την μέθοδο action(πχ select) και στη συνέχεια στη συγκεκριμένη μέθοδο στέλνουμε ως όρισμα τα *dic.values().
+	Έστω ότι action = select και dic.values() = ['*', 'teaches', 'year=2009', None, None, None, None], άρα κάνοντας *dic.values() η μέθοδος select παίρνει τις εξής τιμές στα ορίσματα:
+	select(self, columns, table_name, condition, distinct=None, order_by=None, limit=True, desc=None, save_as=None, return_object=True)
+	select(self, '*', 'teaches', 'year=2009', None, None, None, None, None, True)
+
+<> Πρέπει να εκτελέσει ο καθένας μας ένα ερώτημα (π.χ select * from teaches where year=2009;) και να το κάνουμε μόνοι μας debug για να δούμε πως γίνεται η όλη διαδικασία.
