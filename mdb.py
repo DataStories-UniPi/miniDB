@@ -306,3 +306,181 @@ if __name__ == "__main__":
                     result.show()
         except Exception:
             print(traceback.format_exc())
+
+def create_query_plan2(query, keywords, action): #query plan gia ulopoiish E1 ⊲⊳θ E2 = E2 ⊲⊳θ E1  KAI #σθ1∧θ2(E) = σθ1(σθ2(E))
+    '''
+    Given a query, the set of keywords that we expect to pe present and the overall action, return the query plan for this query.
+
+    This can and will be used recursively
+    '''
+
+    dic = {val: None for val in keywords if val!=';'}
+
+    ql = [val for val in query.split(' ') if val !='']
+
+    kw_in_query = []
+    kw_positions = []
+    i=0
+    while i<len(ql):
+        if in_paren(ql, i): 
+            i+=1
+            continue
+        if ql[i] in keywords:
+            kw_in_query.append(ql[i])
+            kw_positions.append(i)
+        
+        elif i!=len(ql)-1 and f'{ql[i]} {ql[i+1]}' in keywords:
+            kw_in_query.append(f'{ql[i]} {ql[i+1]}')
+            ql[i] = ql[i]+' '+ql[i+1]
+            ql.pop(i+1)
+            kw_positions.append(i)
+        i+=1
+
+
+    for i in range(len(kw_in_query)-1):
+        dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
+
+        
+
+    if action=='select':
+        dic = evaluate_from_clause2(dic) #taktopoioume to FROM  Gia tin  ISODUNAMIS: E1 ⊲⊳θ E2 = E2 ⊲⊳θ E1 
+
+        #σθ1∧θ2(E) = σθ1(σθ2(E))  ISODYNAMIES
+        if "and" in dic[kw_in_query[2]]:    #theoroume oti o xristis exei valei parentheseis sto condition
+            split_con=dic[kw_in_query[2]].split() 
+            split_con.remove("(")
+            split_con.remove(")")
+            split_con.remove("(")
+            split_con.remove(")")
+
+            query_s1 = ''.join(split_con[0]) 
+            query_s2 = ''.join(split_con[2])    
+            query_s2_E= interpret("select" + dic[kw_in_query[0]] + "from" + dic[kw_in_query[1]] + "where" + subquery ) #stelnoume gia ektelesi to kommati s2(E)
+
+            query_se_e= interpret("select" + dic[kw_in_query[0]] + "from" + dic[kw_in_query[1]] + "where" +  query_s1 +  "and" + query_s2_E) #stelnoume gia ektelesi thn teliki synthiki
+
+            dic['where'] = query_se_e #to apotelesmaa twn 2 praksewn to vazoume to dic['where'] 
+
+        if dic['distinct'] is not None:
+            dic['select'] = dic['distinct']
+            dic['distinct'] = True
+
+        if dic['order by'] is not None:
+            dic['from'] = dic['from']
+            if 'desc' in dic['order by']:
+                dic['desc'] = True
+            else:
+                dic['desc'] = False
+            dic['order by'] = dic['order by'].removesuffix(' asc').removesuffix(' desc')
+            
+        else:
+            dic['desc'] = None
+
+        return dic    
+
+
+def create_query_plan(query, keywords, action):  #query plan gia ulopoiish E1 ⊲⊳θ E2 = E2 ⊲⊳θ E1  KAI #σθ1∧θ2(E) = σθ2(σθ1(E))
+    '''
+    Given a query, the set of keywords that we expect to pe present and the overall action, return the query plan for this query.
+
+    This can and will be used recursively
+    '''
+
+    dic = {val: None for val in keywords if val!=';'}
+
+    ql = [val for val in query.split(' ') if val !='']
+
+    kw_in_query = []
+    kw_positions = []
+    i=0
+    while i<len(ql):
+        if in_paren(ql, i): 
+            i+=1
+            continue
+        if ql[i] in keywords:
+            kw_in_query.append(ql[i])
+            kw_positions.append(i)
+        
+        elif i!=len(ql)-1 and f'{ql[i]} {ql[i+1]}' in keywords:
+            kw_in_query.append(f'{ql[i]} {ql[i+1]}')
+            ql[i] = ql[i]+' '+ql[i+1]
+            ql.pop(i+1)
+            kw_positions.append(i)
+        i+=1
+
+
+    for i in range(len(kw_in_query)-1):
+        dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
+
+        
+
+    if action=='select':
+        dic = evaluate_from_clause2(dic) #taktopoioume to FROM  Gia tin  ISODUNAMIS: E1 ⊲⊳θ E2 = E2 ⊲⊳θ E1 
+
+        #σθ1∧θ2(E) = σθ2(σθ1(E))  ISODYNAMIS
+        if "and" in dic[kw_in_query[2]]:    #theoroume oti o xristis exei valei parentheseis sto condition
+            split_con=dic[kw_in_query[2]].split() 
+            split_con.remove("(")
+            split_con.remove(")")
+            split_con.remove("(")
+            split_con.remove(")")
+
+            query_s2 = ''.join(split_con[0]) 
+            query_s1 = ''.join(split_con[2])    
+            query_s1_E= interpret("select" + dic[kw_in_query[0]] + "from" + dic[kw_in_query[1]] + "where" + subquery ) #stelnoume gia ektelesi to kommati s1E)
+
+            query_se_e= interpret("select" + dic[kw_in_query[0]] + "from" + dic[kw_in_query[1]] + "where" +  query_s1 +  "and" + query_s2_E) #stelnoume gia ektelesi thn teliki synthiki
+
+            dic['where'] = query_se_e #to apotelesmaa twn 2 praksewn to vazoume to dic['where'] 
+
+        if dic['distinct'] is not None:
+            dic['select'] = dic['distinct']
+            dic['distinct'] = True
+
+        if dic['order by'] is not None:
+            dic['from'] = dic['from']
+            if 'desc' in dic['order by']:
+                dic['desc'] = True
+            else:
+                dic['desc'] = False
+            dic['order by'] = dic['order by'].removesuffix(' asc').removesuffix(' desc')
+            
+        else:
+            dic['desc'] = None
+
+        return dic    
+
+
+def evaluate_from_clause2(dic): #ulopoiish E1 ⊲⊳θ E2 = E2 ⊲⊳θ E1. EInai enalaktikh sunartish tou > def evaluate_from_clause(dic)
+    '''
+    Evaluate the part of the query (argument or subquery) that is supplied as the 'from' argument
+    '''
+    join_types = ['inner', 'left', 'right', 'full', 'sm', 'inl']
+    from_split = dic['from'].split(' ')
+    if from_split[0] == '(' and from_split[-1] == ')':
+        subquery = ' '.join(from_split[1:-1])
+        dic['from'] = interpret(subquery)
+
+    join_idx = [i for i,word in enumerate(from_split) if word=='join' and not in_paren(from_split,i)]
+    on_idx = [i for i,word in enumerate(from_split) if word=='on' and not in_paren(from_split,i)]
+    if join_idx:
+        join_idx = join_idx[0]
+        on_idx = on_idx[0]
+        join_dic = {}
+        if from_split[join_idx-1] in join_types:
+            join_dic['join'] = from_split[join_idx-1]
+            join_dic['right'] = ' '.join(from_split[:join_idx-1])
+        else:
+            join_dic['join'] = 'inner'
+            join_dic['right'] = ' '.join(from_split[:join_idx])
+        join_dic['left'] = ' '.join(from_split[join_idx+1:on_idx])
+        join_dic['on'] = ''.join(from_split[on_idx+1:])
+
+        if join_dic['right'].startswith('(') and join_dic['right'].endswith(')'):
+            join_dic['right'] = interpret(join_dic['right'][1:-1].strip())
+
+        if join_dic['left'].startswith('(') and join_dic['left'].endswith(')'):
+            join_dic['left'] = interpret(join_dic['left'][1:-1].strip())
+        dic['from'] = join_dic
+        
+    return dic                 
