@@ -26,7 +26,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None,unique=None,load=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -70,6 +70,12 @@ class Table:
             self.pk = primary_key
             # self._update()
 
+            #UNIQUE CONSTRAING DECLARATION
+            if(unique is not None):
+                self.unique_idx=self.column_names.index(unique)
+            else:
+                self.unique_idx=None
+
     # if any of the name, columns_names and column types are none. return an empty table object
 
     def column_by_name(self, column_name):
@@ -100,6 +106,7 @@ class Table:
         # change the type of the column
         self.column_types[column_idx] = cast_type
         # self._update()
+
 
 
     def _insert(self, row, insert_stack=[]):
@@ -206,8 +213,37 @@ class Table:
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
 
+    def _select_hash(self,condition,number_of_bins=5):
+        # parse the condition
+        number_of_bins=3
+        column_name, operator, value = self._parse_condition(condition)
+        #IN ORDER FOR THE HASH TO BE OF USE,IT SHOULD BE EQUALITY
+        pkcolumn=[]
+        for pk in self.data:
+            pkcolumn.append(pk[0])
+        #INITIALIZING EMPTY BINS
+        #WE ALSO INITIALIZE A HELPER ARRAY WITH THE POINTERS
+        ht=[]
+        ptr=[]
+        for i in range(0,number_of_bins):
+            ht.append([])
+            ptr.append([])
+        #CREATING HASHING AND STORING HASH POINTERS IN THE PTR ARRAY
+        for i in range(0,len(pkcolumn)):
+            h=pkcolumn[i]%number_of_bins
+            ht[h].append(pkcolumn[i])
+            ptr[h].append(i)
+        #SPLITTING CONDITION INTO PARTS
+        if(str.isdigit(str(value))):
+            val=int(str(value))
+            #getting the value through the hashing function
+            h=val%number_of_bins
+            for i in range(0,len(ht[h])):
+                if(ht[h][i]==val):
+                    print(self.data[ptr[h][i]])
 
-    def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
+
+    def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):   
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -513,7 +549,7 @@ class Table:
 
         return join_table
 
-    def show(self, no_of_rows=None, is_locked=False):
+    def show(self, no_of_rows=None, is_locked=False,print_output=True):
         '''
         Print the table in a nice readable format.
 
@@ -530,14 +566,21 @@ class Table:
 
         # headers -> "column name (column type)"
         headers = [f'{col} ({tp.__name__})' for col, tp in zip(self.column_names, self.column_types)]
-        if self.pk_idx is not None:
+        if self.pk_idx is not None :
             # table has a primary key, add PK next to the appropriate column
-            headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
+            if(self.column_names[self.pk_idx] in headers[self.pk_idx]):
+                headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
+        if(hasattr(self,'unique_idx')):
+            #IF THE TABLE CREATED HAS UNIQUE CONSTRAINT FIELD
+            if(self.unique_idx is not None and self.unique_idx<len(headers)):
+                headers[self.unique_idx]=headers[self.unique_idx]+' #U#'
         # detect the rows that are no tfull of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]
         # print using tabulate
-        print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
+        if(print_output):
+            print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
+        return headers,non_none_rows
 
 
     def _parse_condition(self, condition, join=False):
@@ -561,8 +604,12 @@ class Table:
         if left not in self.column_names:
             raise ValueError(f'Condition is not valid (cant find column name)')
         coltype = self.column_types[self.column_names.index(left)]
-
-        return left, op, coltype(right)
+        operator=split_condition(condition)[1]
+        if(operator=='between'):
+            #ALL INPUTS FOR BETWEEN FUNCTION ARE STRINGS
+            return left, op, str(right)
+        else:
+            return left,op,coltype(right)
 
 
     def _load_from_file(self, filename):
