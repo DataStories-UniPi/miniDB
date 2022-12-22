@@ -348,16 +348,17 @@ def create_query_plan2(query, keywords, action): #query plan gia ulopoiish E1 �
         #σθ1∧θ2(E) = σθ1(σθ2(E))  ISODYNAMIES
         if "and" in dic[kw_in_query[2]]:    #theoroume oti o xristis exei valei parentheseis sto condition
             split_con=dic[kw_in_query[2]].split() 
-            split_con.remove("(")
-            split_con.remove(")")
-            split_con.remove("(")
-            split_con.remove(")")
+            if ("()" in split_con) or (")" in split_con):
+                split_con.remove("(")
+                split_con.remove(")")
+                split_con.remove("(")
+                split_con.remove(")")
 
             query_s1 = ''.join(split_con[0]) 
             query_s2 = ''.join(split_con[2])    
             query_s2_E= interpret("select" + dic[kw_in_query[0]] + "from" + dic[kw_in_query[1]] + "where" + query_s2 ) #stelnoume gia ektelesi to kommati s2(E)
 
-            query_se_e= interpret("select" + dic[kw_in_query[0]] + "from" query_s2_E + "where" +  query_s1) #stelnoume gia ektelesi thn teliki synthiki
+            query_se_e= interpret("select" + dic[kw_in_query[0]] + "from" + query_s2_E + "where" +  query_s1) #stelnoume gia ektelesi thn teliki synthiki
 
             dic['where'] = query_se_e #to apotelesmaa twn 2 praksewn to vazoume to dic['where'] 
 
@@ -420,10 +421,11 @@ def create_query_plan3(query, keywords, action):  #query plan gia ulopoiish E1 �
         #σθ1∧θ2(E) = σθ2(σθ1(E))  ISODYNAMIS
         if "and" in dic[kw_in_query[2]]:    #theoroume oti o xristis exei valei parentheseis sto condition
             split_con=dic[kw_in_query[2]].split() 
-            split_con.remove("(")
-            split_con.remove(")")
-            split_con.remove("(")
-            split_con.remove(")")
+            if ("()" in split_con) or (")" in split_con):
+                split_con.remove("(")
+                split_con.remove(")")
+                split_con.remove("(")
+                split_con.remove(")")
 
             query_s1 = ''.join(split_con[0]) 
             query_s2 = ''.join(split_con[2])    
