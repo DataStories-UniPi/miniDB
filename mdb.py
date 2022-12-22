@@ -355,9 +355,9 @@ def create_query_plan2(query, keywords, action): #query plan gia ulopoiish E1 �
 
             query_s1 = ''.join(split_con[0]) 
             query_s2 = ''.join(split_con[2])    
-            query_s2_E= interpret("select" + dic[kw_in_query[0]] + "from" + dic[kw_in_query[1]] + "where" + subquery ) #stelnoume gia ektelesi to kommati s2(E)
+            query_s2_E= interpret("select" + dic[kw_in_query[0]] + "from" + dic[kw_in_query[1]] + "where" + query_s2 ) #stelnoume gia ektelesi to kommati s2(E)
 
-            query_se_e= interpret("select" + dic[kw_in_query[0]] + "from" + dic[kw_in_query[1]] + "where" +  query_s1 +  "and" + query_s2_E) #stelnoume gia ektelesi thn teliki synthiki
+            query_se_e= interpret("select" + dic[kw_in_query[0]] + "from" query_s2_E + "where" +  query_s1) #stelnoume gia ektelesi thn teliki synthiki
 
             dic['where'] = query_se_e #to apotelesmaa twn 2 praksewn to vazoume to dic['where'] 
 
@@ -379,7 +379,7 @@ def create_query_plan2(query, keywords, action): #query plan gia ulopoiish E1 �
         return dic    
 
 
-def create_query_plan(query, keywords, action):  #query plan gia ulopoiish E1 ⊲⊳θ E2 = E2 ⊲⊳θ E1  KAI #σθ1∧θ2(E) = σθ2(σθ1(E))
+def create_query_plan3(query, keywords, action):  #query plan gia ulopoiish E1 ⊲⊳θ E2 = E2 ⊲⊳θ E1  KAI #σθ1∧θ2(E) = σθ2(σθ1(E))
     '''
     Given a query, the set of keywords that we expect to pe present and the overall action, return the query plan for this query.
 
@@ -425,11 +425,11 @@ def create_query_plan(query, keywords, action):  #query plan gia ulopoiish E1 �
             split_con.remove("(")
             split_con.remove(")")
 
-            query_s2 = ''.join(split_con[0]) 
-            query_s1 = ''.join(split_con[2])    
-            query_s1_E= interpret("select" + dic[kw_in_query[0]] + "from" + dic[kw_in_query[1]] + "where" + subquery ) #stelnoume gia ektelesi to kommati s1E)
+            query_s1 = ''.join(split_con[0]) 
+            query_s2 = ''.join(split_con[2])    
+            query_s1_E= interpret("select" + dic[kw_in_query[0]] + "from" + dic[kw_in_query[1]] + "where" + query_s1 ) #stelnoume gia ektelesi to kommati s1(E)
 
-            query_se_e= interpret("select" + dic[kw_in_query[0]] + "from" + dic[kw_in_query[1]] + "where" +  query_s1 +  "and" + query_s2_E) #stelnoume gia ektelesi thn teliki synthiki
+            query_se_e= interpret("select" + dic[kw_in_query[0]] + "from" + query_s1_E + "where" +  query_s2 ) #stelnoume gia ektelesi thn teliki synthiki
 
             dic['where'] = query_se_e #to apotelesmaa twn 2 praksewn to vazoume to dic['where'] 
 
