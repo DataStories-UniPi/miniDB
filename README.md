@@ -1,3 +1,6 @@
+<h1>ALL CHANGES ARE RECORDED ON THE miniDBchanges.pdf AND THE MEMBERS ARE LISTED IN THE members.txt</h1><br>
+<h1>Π18139 ΦΑΙΗ ΣΙΟΣΙΟ&nbsp&nbspΠ20050 ΧΡΥΣΟΥΛΑ ΓΟΥΜΕΝΑΚΗ&nbsp&nbspΠ20069 ΑΓΓΕΛΙΚΗ ΚΑΛΔΙΡΗ</h1>
+
 <p align=center>
   <img width="550" alt="mdblogo" src="https://user-images.githubusercontent.com/15364873/146045747-5dbdce9c-a70a-494b-8fdd-52ba932cdd19.png">
 </p>
