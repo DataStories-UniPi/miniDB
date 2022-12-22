@@ -6,6 +6,7 @@ import readline
 import traceback
 import shutil
 sys.path.append('miniDB')
+from tabulate import tabulate
 
 from database import Database
 from table import Table
@@ -105,6 +106,12 @@ def create_query_plan(query, keywords, action):
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
+        #UNIQUE COLUMN CREATION
+        if 'unique' in args:
+            arglist=args[1:-1].split(' ')
+            #REMOVING ALL CHARACTERS BEFORE THE COMMA
+            uq=arglist[arglist.index('unique')-2].split(",",1)
+            dic['unique']=uq[1]
     
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
@@ -177,19 +184,77 @@ def interpret(query):
                      'update table': ['update table', 'set', 'where'],
                      'create index': ['create index', 'on', 'using'],
                      'drop index': ['drop index'],
-                     'create view' : ['create view', 'as']
+                     'create view' : ['create view', 'as'],
                      }
 
     if query[-1]!=';':
         query+=';'
     
     query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip()
+    #SPLITTIGN QUERY INTO MORE QUERIES
+    word_query=query.split()
+    are_multiple=False
+    for word in word_query:
+        if(word=='and' or word=='or'):
+            are_multiple=True
+            special_word=word
 
-    for kw in kw_per_action.keys():
-        if query.startswith(kw):
-            action = kw
+    if(are_multiple):
+        are_multiple=True
+        #THIS BLOCK CREATES THE BASIC SELECT * FROM WHERE PART THAT ALL QUERIES USE
+        base_query=[]
+        for i in range(0,len(word_query)):
+            if(word_query[i]=='where'):
+                base_query.append(word_query[i])
+                break
+            else:
+                base_query.append(word_query[i])
+        #THIS BLOCK CREATES THE PARTS MAKE BASIC QUERIES 
+        queries=[]
+        q=[]
+        for j in range(i+1,len(word_query)):
+            if(word_query[j]=='and' or word_query[j]=='or'):
+                #IF QUERY IS COMPLETED
+                queries.append(q)
+                q=[]
+            else:
+                q.append(word_query[j])
+        queries.append(q)
+        #COMBINING QUERIES
+        out_q=[]
+        bc=[]
+        #MAKING SMALLER QUERIES
+        for q in queries:
+            for i in base_query:
+                bc.append(i)
+            for i in q:
+                bc.append(i)
+            out_q.append(bc)
+            bc=[]
+        #TURNING THE QUERIES INTO PROCESSING FORMAT
+        out_s=[]
+        for i in out_q:
+            q=' '.join(i)
+            if(q[-1]!=';'):
+                q+=' ;'
+            out_s.append(q)
+        query_plans=[]
+        #CREATING A QUERY PLAN FOR EACH SUBQUERY
+        for query in out_s:
+            for kw in kw_per_action.keys():
+                if query.startswith(kw):
+                    action = kw
 
-    return create_query_plan(query, kw_per_action[action]+[';'], action)
+            query_plans.append(create_query_plan(query, kw_per_action[action]+[';'], action))
+        
+        #RETURNING THE QUERY PLANS WITH THE SPECIAL WORD SO THAT WE KNOW IF WE HAVE TO PERFORM AND/OR
+        return query_plans,special_word
+   
+    else:
+        for kw in kw_per_action.keys():
+            if query.startswith(kw):
+                action = kw
+        return create_query_plan(query, kw_per_action[action]+[';'], action),'none'
 
 def execute_dic(dic):
     '''
@@ -198,7 +263,6 @@ def execute_dic(dic):
     for key in dic.keys():
         if isinstance(dic[key],dict):
             dic[key] = execute_dic(dic[key])
-    
     action = list(dic.keys())[0].replace(' ','_')
     return getattr(db, action)(*dic.values())
 
@@ -274,6 +338,7 @@ if __name__ == "__main__":
     print(art)
     session = PromptSession(history=FileHistory('.inp_history'))
     while 1:
+        #EXECUTION HAPPENS IN THIS LOOP
         try:
             line = session.prompt(f'({db._name})> ', auto_suggest=AutoSuggestFromHistory()).lower()
             if line[-1]!=';':
@@ -290,9 +355,81 @@ if __name__ == "__main__":
                 dic = interpret(line.removeprefix('explain '))
                 pprint(dic, sort_dicts=False)
             else:
-                dic = interpret(line)
-                result = execute_dic(dic)
-                if isinstance(result,Table):
-                    result.show()
+                dic,special_word = interpret(line)
+                if(special_word=='none'):
+                    #NOTHING CHANGES
+                    result = execute_dic(dic)
+                    if isinstance(result,Table):
+                        result.show()
+                elif(special_word=='and'):
+                    results=[]
+                    for q in dic:
+                        results.append(execute_dic(q))
+                    nn_rows=[]
+                    for r in results:
+                        #RETURNING HEADERS AND ROWS
+                        header,n=r.show(print_output=False)
+                        nn_rows.append(n)
+                    #FINDING LONGEST TUPLE
+                    l=0
+                    length=len(nn_rows[0])
+                    for i in range(1,len(nn_rows)):
+                        if(len(nn_rows[i])>length):
+                            length=nn_rows[i]
+                            l=i
+                    #REMOVING DUPLICATES AND VALUES THAT DO NOT EXIST IN ALL RESULTS
+                    out_table=[]
+                    for i in range(0,len(nn_rows[l])):
+                        for j in nn_rows:
+                            isFound=False
+                            for t in j:
+                                if(t[0]==nn_rows[l][i][0]):
+                                    isFound=True
+                            if(isFound==False):
+                                #ROW DOESNT EXIST IN OTHER TABLE
+                                break
+                        if(isFound):
+                            #THIS MEANS THAT FOR EACH ROW IT HAS BEEN SET AS TRUE
+                            out_table.append(nn_rows[l][i])
+                    print(tabulate(out_table[:None], headers=header)+'\n')
+                elif(special_word=='or'):
+                    results=[]
+                    for q in dic:
+                        results.append(execute_dic(q))
+                    nn_rows=[]
+                    for r in results:
+                        #RETURNING HEADERS AND ROWS
+                        header,n=r.show(print_output=False)
+                        nn_rows.append(n)
+                    #FINDING LONGEST TUPLE
+                    l=0
+                    length=len(nn_rows[0])
+                    for i in range(1,len(nn_rows)):
+                        if(len(nn_rows[i])>length):
+                            length=nn_rows[i]
+                            l=i
+                    #REMOVING DUPLICATE ROWS
+                    out_table=[]
+                    for i in nn_rows[l]:
+                        out_table.append(i)
+                    for i in range(0,len(nn_rows[l])):
+                        for j in range(0,len(nn_rows)):
+                            for t in nn_rows[j]:
+                                isDuplicate=False
+                                if(nn_rows[l][i][0]==t[0]):
+                                    isDuplicate=True
+                                    break
+                                if(isDuplicate==False):
+                                    check=True
+                                    for x in out_table:
+                                        if(x[0]==t[0]):
+                                            check=False
+                                    if(check):
+                                        out_table.append(t)
+                    print(tabulate(out_table[:None], headers=header)+'\n')
+                            
+
+
+                        
         except Exception:
             print(traceback.format_exc())
