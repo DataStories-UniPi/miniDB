@@ -11,6 +11,7 @@ def get_op(op, a, b):
            '=': operator.eq,
            '!=': operator.ne
            }
+    #marinos test
 
     try:
         return ops[op](a,b)
