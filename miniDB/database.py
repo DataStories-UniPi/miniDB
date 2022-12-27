@@ -331,10 +331,10 @@ class Database:
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
 
-    def select(self, columns, table_name, condition, distinct=None, order_by=None, \
+    def select(self, columns, table_name, condition, distinct=None, order_by=None,
                limit=True, desc=None, save_as=None, return_object=True):
         '''
-        Selects and outputs a table's data where condtion is met.
+        Selects and outputs a table's data where condition is met.
 
         Args:
             table_name: string. Name of table (must be part of database).
@@ -343,7 +343,7 @@ class Database:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
-                Operatores supported: (<,<=,==,>=,>)
+                Operators supported: (<,<=,==,>=,>)
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (True by default).
             limit: int. An integer that defines the number of rows that will be returned (all rows if None).

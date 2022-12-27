@@ -233,9 +233,17 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            if len([condition]) == 1:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            else:
+                for i in range(len([condition])):
+                    column_name, operator, value = self._parse_condition(condition[i])
+                    column = self.column_by_name(column_name)
+                    rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+
         else:
             rows = [i for i in range(len(self.data))]
 
