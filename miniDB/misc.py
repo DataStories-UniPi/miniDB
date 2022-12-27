@@ -32,8 +32,8 @@ def split_condition(condition):
                }
 
     for log_op in log_ops.keys():
-        if log_op == 'not':
-            logsplt = condition.split(log_op)
+        logsplt = condition.split(log_op)
+        if log_op == 'not' and len(logsplt) > 1:
             logsplt.pop(0)
             logsplt = logsplt[0]
 
