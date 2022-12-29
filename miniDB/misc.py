@@ -1,5 +1,10 @@
 import operator
 
+
+def bt(v,mn,mx):
+    if ((v >= mn) and (v <= mx)):
+        return True
+
 def get_op(op, a, b):
     '''
     Get op as a function of a and b by using a symbol
@@ -8,7 +13,8 @@ def get_op(op, a, b):
                 '<': operator.lt,
                 '>=': operator.ge,
                 '<=': operator.le,
-                '=': operator.eq}
+                '=': operator.eq,
+                'BETWEEN': operator.bt}
 
     try:
         return ops[op](a,b)
@@ -20,7 +26,8 @@ def split_condition(condition):
            '<=': operator.le,
            '=': operator.eq,
            '>': operator.gt,
-           '<': operator.lt}
+           '<': operator.lt,
+           'BETWEEN': operator.bt}
 
     for op_key in ops.keys():
         splt=condition.split(op_key)
