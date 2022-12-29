@@ -8,6 +8,7 @@ def get_op(op, a, b):
                 '<': operator.lt,
                 '>=': operator.ge,
                 '<=': operator.le,
+                '!=': operator.ne,
                 '=': operator.eq}
 
     try:
@@ -18,6 +19,7 @@ def get_op(op, a, b):
 def split_condition(condition):
     ops = {'>=': operator.ge,
            '<=': operator.le,
+           '!=': operator.ne, # not equal operator (!=)
            '=': operator.eq,
            '>': operator.gt,
            '<': operator.lt}
