@@ -23,13 +23,15 @@ def get_op(op, a, b):
 
     #EVALA STO SPILT TO AND ,NOT ,OR  
 def split_condition(condition):
-    ops = {'>=': operator.ge,
+    ops = {'&&':operator.and_,
+           'and':operator.and_,
+           'or':operator.or_,
+           '||':operator.or_,
+           '>=': operator.ge,
            '<=': operator.le,
            '=': operator.eq,
            '>': operator.gt,
-           '<': operator.lt,
-           '&&':operator.and_,
-           '||':operator.or_
+           '<': operator.lt
            }
 
     for op_key in ops.keys():
@@ -44,7 +46,10 @@ def split_condition(condition):
 
             if right.find('"') != -1: # If there are any double quotes in the value, throw. (Notice we've already removed the leading and trailing ones)
                 raise ValueError(f'Invalid condition: {condition}\nDouble quotation marks are not allowed inside values.')
-            print(op_key+"____"+right)
+            print(left)
+            print("/n")
+
+            print(right)
             print("/n")
             return left, op_key, right
 

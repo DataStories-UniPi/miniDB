@@ -209,15 +209,6 @@ class Table:
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
     
-    def _select_where_not(self, return_colums, condition=None, distinct=False, order_by=None, desc=True, limit=None):
-       
-       if condition is not None:
-            column_name, operator, value = split_condition
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)] 
-       else:
-            rows = [i for i in range(len(self.data))]
-
     def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
@@ -247,7 +238,6 @@ class Table:
         #print(split_condition(condition))
         if condition is not None:
             column_name, operator, value = self._parse_condition(condition)
-            operator= '!='
             column = self.column_by_name(column_name)
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
@@ -595,7 +585,7 @@ class Table:
             left=''
             for i in my_list:
                 left+=i
-            
+            op='!='
             print(left)
 
 
