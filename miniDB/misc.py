@@ -48,3 +48,16 @@ def reverse_op(op):
         '<=' : '>=',
         '=' : '='
     }.get(op)
+
+def between(a, b, result):
+    '''
+    Returns all the values between a and b.
+    First it checks if a <= b and if the values are not None.
+    If both conditions are true, then by using python operator module
+    the function finds the values that are in range [a, b] and returns them
+    '''
+    try:
+        if b is not None and a < b:
+            return operator.ge(result, a) and operator.le(result, b)
+    except TypeError:
+        return False
