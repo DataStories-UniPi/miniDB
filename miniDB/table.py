@@ -592,14 +592,10 @@ class Table:
             my_list.remove('')
             print(my_list)
             print("/n")
-            k=len(my_list)
-            left1=''
             left=''
-            for i in range(k):
-                left1+=my_list.pop()
+            for i in my_list:
+                left+=i
             
-            for i in range(5,0,-1):
-                left+=left1
             print(left)
 
 
