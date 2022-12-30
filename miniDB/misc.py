@@ -44,6 +44,8 @@ def split_condition(condition):
 
             if right.find('"') != -1: # If there are any double quotes in the value, throw. (Notice we've already removed the leading and trailing ones)
                 raise ValueError(f'Invalid condition: {condition}\nDouble quotation marks are not allowed inside values.')
+            print(op_key+"____"+right)
+            print("/n")
             return left, op_key, right
 
 def reverse_op(op):
