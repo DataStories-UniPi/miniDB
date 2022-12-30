@@ -1,4 +1,7 @@
-from __future__ import annotations
+﻿from __future__ import annotations
+from audioop import reverse
+import string
+import re
 from tabulate import tabulate
 import pickle
 import os
@@ -205,12 +208,20 @@ class Table:
         # self._update()
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
-
+    
+    def _select_where_not(self, return_colums, condition=None, distinct=False, order_by=None, desc=True, limit=None):
+       
+       if condition is not None:
+            column_name, operator, value = split_condition
+            column = self.column_by_name(column_name)
+            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)] 
+       else:
+            rows = [i for i in range(len(self.data))]
 
     def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
-
+         
         Args:
             return_columns: list. The columns to be returned.
             condition: string. A condition using the following format:
@@ -232,8 +243,11 @@ class Table:
 
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
+        #print(condition)
+        #print(split_condition(condition))
         if condition is not None:
             column_name, operator, value = self._parse_condition(condition)
+            operator= '!='
             column = self.column_by_name(column_name)
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
@@ -241,7 +255,7 @@ class Table:
 
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
-
+        
         # we need to set the new column names/types and no of columns, since we might
         # only return some columns
         dict['column_names'] = [self.column_names[i] for i in return_cols]
@@ -539,7 +553,7 @@ class Table:
         # print using tabulate
         print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
 
-
+        
     def _parse_condition(self, condition, join=False):
         '''
         Parse the single string condition and return the value of the column and the operator.
@@ -558,6 +572,77 @@ class Table:
 
         # cast the value with the specified column's type and return the column name, the operator and the casted value
         left, op, right = split_condition(condition)
+
+        my_str = left
+
+        my_list = re.split(r'', my_str)  # 👈️ split on comma or hyphen
+
+        print(my_list)  
+        print("/n")
+        print(my_list[0])  
+        print("/n")
+        
+
+        if (my_list[1]=='n') and ( my_list[2]=='o') and (my_list[3]=='t'):
+            my_list.remove('')
+            my_list.remove('n')
+            my_list.remove('o')
+            my_list.remove('t')
+            my_list.remove(' ')
+            my_list.remove('')
+            print(my_list)
+            print("/n")
+            k=len(my_list)
+            left1=''
+            left=''
+            for i in range(k):
+                left1+=my_list.pop()
+            
+            for i in range(5,0,-1):
+                left+=left1
+            print(left)
+
+
+
+
+        '''
+        i=0
+        arxiki=""
+        teliki="" 
+        mesea =[ ]
+        k=len(left)
+        #print(k)
+        for i in range(k):
+            if left[i]!=" ":
+                arxiki+=left[i]
+        #print(arxiki)
+
+        for i in range(k):
+            mesea.append(arxiki[i].lower())
+
+        teliki="" 
+        for i in range(3):
+            teliki+=arxiki[i]
+            mesea.pop(i)
+
+        lo=len(mesea)
+        
+        print(teliki + " ")
+        print(lo)
+        print("/n")
+        for i in range(lo):
+            print(mesea[i]+" ")
+          
+        #print(arxiki)
+
+        if teliki=='not':
+           op='!='
+           teliki=''
+           for i in range(lo):
+               teliki=mesea.pop(i)+''
+               print(teliki+" ")
+        '''
+
         if left not in self.column_names:
             raise ValueError(f'Condition is not valid (cant find column name)')
         coltype = self.column_types[self.column_names.index(left)]

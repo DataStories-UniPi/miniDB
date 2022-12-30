@@ -4,7 +4,9 @@ from time import sleep, localtime, strftime
 import os,sys
 import logging
 import warnings
-import readline
+#import pyreadline3
+from pyreadline3 import Readline
+readline = Readline()
 from tabulate import tabulate
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
@@ -350,8 +352,7 @@ class Database:
             save_as: string. The name that will be used to save the resulting table into the database (no save if None).
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
             distinct: boolean. If True, the resulting table will contain only unique rows.
-        '''
-
+        '''       
         # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):

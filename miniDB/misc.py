@@ -4,23 +4,33 @@ def get_op(op, a, b):
     '''
     Get op as a function of a and b by using a symbol
     '''
+     #EVALA STO ops TO AND ,NOT ,OR
     ops = {'>': operator.gt,
                 '<': operator.lt,
                 '>=': operator.ge,
                 '<=': operator.le,
-                '=': operator.eq}
+                '=': operator.eq,
+                '!=':operator.ne,
+                '&&':operator.and_,
+                '||':operator.or_
+                }
 
     try:
         return ops[op](a,b)
     except TypeError:  # if a or b is None (deleted record), python3 raises typerror
         return False
 
+
+    #EVALA STO SPILT TO AND ,NOT ,OR  
 def split_condition(condition):
     ops = {'>=': operator.ge,
            '<=': operator.le,
            '=': operator.eq,
            '>': operator.gt,
-           '<': operator.lt}
+           '<': operator.lt,
+           '&&':operator.and_,
+           '||':operator.or_
+           }
 
     for op_key in ops.keys():
         splt=condition.split(op_key)
@@ -34,7 +44,6 @@ def split_condition(condition):
 
             if right.find('"') != -1: # If there are any double quotes in the value, throw. (Notice we've already removed the leading and trailing ones)
                 raise ValueError(f'Invalid condition: {condition}\nDouble quotation marks are not allowed inside values.')
-
             return left, op_key, right
 
 def reverse_op(op):
@@ -46,5 +55,5 @@ def reverse_op(op):
         '>=' : '<=',
         '<' : '>',
         '<=' : '>=',
-        '=' : '='
+        '=' : '=',
     }.get(op)

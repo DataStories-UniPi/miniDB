@@ -26,7 +26,7 @@ def search_between(s, first, last):
     '''
     try:
         start = s.index( first ) + len( first )
-        end = s.index( last, start )
+        end = s.index( last, start )     
     except:
         return
     return s[start:end].strip()
@@ -77,7 +77,7 @@ def create_query_plan(query, keywords, action):
 
     if action=='select':
         dic = evaluate_from_clause(dic)
-
+        print(dic)
         if dic['distinct'] is not None:
             dic['select'] = dic['distinct']
             dic['distinct'] = True
@@ -160,6 +160,8 @@ def evaluate_from_clause(dic):
         
     return dic
 
+# EKANA ALLAGI STO KW_PER_ACTION KAI EVALA TO WHERE = AND OR NOT
+# DEN EVALA TO BETWEEN GIATI EXEI TO PIO PANO ETOIMO
 def interpret(query):
     '''
     Interpret the query.
@@ -292,7 +294,7 @@ if __name__ == "__main__":
             else:
                 dic = interpret(line)
                 result = execute_dic(dic)
-                if isinstance(result,Table):
+                if isinstance(result,Table):                  
                     result.show()
         except Exception:
             print(traceback.format_exc())
