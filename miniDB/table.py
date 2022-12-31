@@ -562,7 +562,11 @@ class Table:
             raise ValueError(f'Condition is not valid (cant find column name)')
         coltype = self.column_types[self.column_names.index(left)]
 
-        return left, op, coltype(right)
+
+        if (op == 'between'): # Check if operator is 'between'
+            return left, op, right #  
+            
+        return left, op, coltype(right) 
 
 
     def _load_from_file(self, filename):

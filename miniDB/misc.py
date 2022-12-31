@@ -1,5 +1,21 @@
 import operator
 
+
+def between(a,b):
+    '''
+       Returns a boolean that shows if x is in the specified range [b[0], b[1]].
+       It works for numerical and strings.
+    '''
+    range_list = b.split('_and_') # Split where condition value to get the range
+    try:   # For numerical data convert string to float    
+        min = float(range_list[0])
+        max = float(range_list[1])
+        return min <= a <= max # <= because between is inclusive in theory
+    except: # If conversion to float does not succeed because range_list contains strings
+        min = range_list[0]
+        max = range_list[1]
+        return min <= a <= max # <= because between is inclusive in theory
+
 def get_op(op, a, b):
     '''
     Get op as a function of a and b by using a symbol
@@ -8,10 +24,12 @@ def get_op(op, a, b):
                 '<': operator.lt,
                 '>=': operator.ge,
                 '<=': operator.le,
-                '=': operator.eq}
+                '=': operator.eq, 
+                'between':between # Between operator
+                }
 
     try:
-        return ops[op](a,b)
+         return ops[op](a,b)
     except TypeError:  # if a or b is None (deleted record), python3 raises typerror
         return False
 
@@ -20,8 +38,10 @@ def split_condition(condition):
            '<=': operator.le,
            '=': operator.eq,
            '>': operator.gt,
-           '<': operator.lt}
-
+           '<': operator.lt,
+           'between':between # Between operator
+           }
+        
     for op_key in ops.keys():
         splt=condition.split(op_key)
         if len(splt)>1:
@@ -36,6 +56,7 @@ def split_condition(condition):
                 raise ValueError(f'Invalid condition: {condition}\nDouble quotation marks are not allowed inside values.')
 
             return left, op_key, right
+    
 
 def reverse_op(op):
     '''
@@ -48,16 +69,3 @@ def reverse_op(op):
         '<=' : '>=',
         '=' : '='
     }.get(op)
-
-def between(a, b, result):
-    '''
-    Returns all the values between a and b.
-    First it checks if a <= b and if the values are not None.
-    If both conditions are true, then by using python operator module
-    the function finds the values that are in range [a, b] and returns them
-    '''
-    try:
-        if b is not None and a < b:
-            return operator.ge(result, a) and operator.le(result, b)
-    except TypeError:
-        return False
