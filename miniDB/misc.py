@@ -1,21 +1,6 @@
 import operator
 
 
-def between(a,b):
-    '''
-       Returns a boolean that shows if x is in the specified range [b[0], b[1]].
-       It works for numerical and strings.
-    '''
-    range_list = b.split('_and_') # Split where condition value to get the range
-    try:   # For numerical data convert string to float    
-        min = float(range_list[0])
-        max = float(range_list[1])
-        return min <= a <= max # <= because between is inclusive in theory
-    except: # If conversion to float does not succeed because range_list contains strings
-        min = range_list[0]
-        max = range_list[1]
-        return min <= a <= max # <= because between is inclusive in theory
-
 def get_op(op, a, b):
     '''
     Get op as a function of a and b by using a symbol
@@ -69,3 +54,18 @@ def reverse_op(op):
         '<=' : '>=',
         '=' : '='
     }.get(op)
+
+def between(a,b):
+    '''
+       Returns a boolean that shows if a is in the specified range [b[0], b[1]].
+       It works for numerical and strings.
+    '''
+    range_list = b.split('_and_') # Split where condition value to get the range
+    try:   # For numerical data convert string to float    
+        min = float(range_list[0])
+        max = float(range_list[1])
+        return min <= a <= max # <= because between is inclusive in theory
+    except: # If conversion to float does not succeed because range_list contains strings
+        min = range_list[0]
+        max = range_list[1]
+        return min <= a <= max # <= because between is inclusive in theory
