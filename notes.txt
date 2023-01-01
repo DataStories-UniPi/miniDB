@@ -36,48 +36,47 @@
                 database.py, lines 287,311,324,337,358,372,374,430,512,542,547,565,637.
 
 <> mdb.py, line 38.
-    qsplit = ['select', '*', 'from', 'a', 'where', 'not', 't=a', ';']
-    ind = 3
-    qsplit[:ind] = ['select', '*', 'from']
-    qsplit[:ind].count('(') -> 0
-    qsplit[:ind].count(')') -> 0
-    return qsplit[:ind].count('(')>qsplit[:ind].count(')') -> return false
+    ~ qsplit = ['select', '*', 'from', 'a', 'where', 'not', 't=a', ';']
+    ~ ind = 3
+    ~ qsplit[:ind] = ['select', '*', 'from']
+    ~ qsplit[:ind].count('(') -> 0
+    ~ qsplit[:ind].count(')') -> 0
+    ~ return qsplit[:ind].count('(')>qsplit[:ind].count(')') -> return false
 
-<> mdb.py, line 48.
-    keywords = ['select', 'from', 'where', 'not', 'distinct', 'order by', 'limit', ';']
-    dic = {val: None for val in keywords if val!=';'}
-    dic -> {'select': None, 'from': None, 'where': None, 'not': None, 'distinct': None, 'order by': None, 'limit': None}
-
-
-<> mdb.py, line 50.
-    query = 'select * from a where not t=a ;'
-    ql = [val for val in query.split(' ') if val !='']
-    ql -> ['select', '*', 'from', 'a', 'where', 'not', 't=a', ';']
+<> mdb.py, line 47.
+    ~ keywords = ['select', 'from', 'where', 'not', 'distinct', 'order by', 'limit', ';']
+    ~ dic = {val: None for val in keywords if val!=';'}
+    ~ dic -> {'select': None, 'from': None, 'where': None, 'not': None, 'distinct': None, 'order by': None, 'limit': None}
 
 
-<> mdb.py, line 63.
-    ql = ['select', '*', 'from', 'a', 'where', 'not', 't=a', ';']
-    i = 3 
-    f'{ql[i]} {ql[i+1]}' -> 'a where'
+<> mdb.py, line 49.
+    ~ query = 'select * from a where not t=a ;'
+    ~ ql = [val for val in query.split(' ') if val !='']
+    ~ ql -> ['select', '*', 'from', 'a', 'where', 'not', 't=a', ';']
 
 
-<> mdb.py, line 73.
-    kw_positions=[0, 2, 4, 5, 7]
-    i = 3
-    ql[kw_positions[i]+1:kw_positions[i+1]] = ['t=a']
-    ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]]) -> 't=a'
+<> mdb.py, line 62.
+    ~ ql = ['select', '*', 'from', 'a', 'where', 'not', 't=a', ';']
+    ~ i = 3 
+    ~ f'{ql[i]} {ql[i+1]}' -> 'a where'
 
-<> mdb.py, line 138-139.
-    from_split=['teacher', 'inner', 'join', 'student', 'on', 'email']
-    join_idx = [i for i,word in enumerate(from_split) if word=='join' and not in_paren(from_split,i)] -> [2]
-    on_idx = [i for i,word in enumerate(from_split) if word=='on' and not in_paren(from_split,i)] -> [4]
+
+<> mdb.py, line 70.
+	~ ql = ['select', '*', 'from', 'a', 'where', 'not', 't=a', ';']
+    ~ kw_positions = [0, 2, 4, 7]
+    ~ i = 1
+    ~ ql[kw_positions[i]+1:kw_positions[i+1]] -> ['a']
+    ~ ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]]) -> 'a'
+
+<> mdb.py, line 136-137.
+    ~ from_split = ['teacher', 'inner', 'join', 'student', 'on', 'email']
+    ~ join_idx = [i for i,word in enumerate(from_split) if word=='join' and not in_paren(from_split,i)] -> [2]
+    ~ on_idx = [i for i,word in enumerate(from_split) if word=='on' and not in_paren(from_split,i)] -> [4]
 
 <> mdb.py:
-    * Δημιουργώ την αντίστοιχη μέθοδο (evaluate_where_clause) για τον υπολογισμό του where statement  (line 78 and line 167).
-    * Έχω υπόψη μου τη μέθοδο interpreter όταν καλεστεί ξανά από ένα subquery (line 210).
-	* line 249, στη μέθοδος execute_dic όπου γίνεται return getattr(db, action)(*dic.values()), το getattr μας βρίσκει από το αντικείμενο db την μέθοδο action(πχ select) και στη συνέχεια στη συγκεκριμένη μέθοδο στέλνουμε ως όρισμα τα *dic.values().
+	~ line 217, στη μέθοδος execute_dic όπου γίνεται return getattr(db, action)(*dic.values()), το getattr μας βρίσκει από το αντικείμενο db την μέθοδο action(πχ select) και στη συνέχεια στη συγκεκριμένη μέθοδο στέλνουμε ως όρισμα τα *dic.values().
 	Έστω ότι action = select και dic.values() = ['*', 'teaches', 'year=2009', None, None, None, None], άρα κάνοντας *dic.values() η μέθοδος select παίρνει τις εξής τιμές στα ορίσματα:
 	select(self, columns, table_name, condition, distinct=None, order_by=None, limit=True, desc=None, save_as=None, return_object=True)
 	select(self, '*', 'teaches', 'year=2009', None, None, None, None, None, True)
 
-<> Πρέπει να εκτελέσει ο καθένας μας ένα ερώτημα (π.χ select * from teaches where year=2009;) και να το κάνουμε μόνοι μας debug για να δούμε πως γίνεται η όλη διαδικασία.
+<> Πρέπει να εκτελέσει ο καθένας μας ένα ερώτημα (π.χ explain select * from A join B on A.id=B.id where not A.id=5) και να το κάνουμε μόνοι μας debug για να δούμε πως γίνεται η όλη διαδικασία.
