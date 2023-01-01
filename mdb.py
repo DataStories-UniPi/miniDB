@@ -65,8 +65,6 @@ def create_query_plan(query, keywords, action):
             ql.pop(i+1)
             kw_positions.append(i)
         i+=1
-        
-
 
     for i in range(len(kw_in_query)-1):
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
@@ -168,42 +166,21 @@ def evaluate_where_clause(dic):
     if where_split[0] == '(' and where_split[-1] == ')':
         subquery = ' '.join(where_split[1:-1])
         dic['where'] = interpret(subquery)
-
+        
+    '''
+    not operator
+    '''
     not_idx = [i for i,word in enumerate(where_split) if word=='not' and not in_paren(where_split,i)]
-    '''btw_idx = [i for i,word in enumerate(where_split) if word=='between' and not in_paren(where_split,i)]
-    and_idx = [i for i,word in enumerate(where_split) if word=='and' and not in_paren(where_split,i)]
-    or_idx = [i for i,word in enumerate(where_split) if word=='or' and not in_paren(where_split,i)]'''
     
     if not_idx:
         not_idx = not_idx[0]
         where_dic = {}
+        where_dic['not'] = ''.join(where_split[not_idx+1])
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        if where_split[not_idx-1] in join_types:
-            join_dic['join'] = where_split[join_idx-1]
-            join_dic['left'] = ' '.join(where_split[:join_idx-1])
-        else:
-            join_dic['join'] = 'inner'
-            join_dic['left'] = ' '.join(where_split[:join_idx])
-        join_dic['right'] = ' '.join(where_split[join_idx+1:on_idx])
-        join_dic['on'] = ''.join(where_split[on_idx+1:])
-
-        if join_dic['left'].startswith('(') and join_dic['left'].endswith(')'):
-            join_dic['left'] = interpret(join_dic['left'][1:-1].strip())
-
-        if join_dic['right'].startswith('(') and join_dic['right'].endswith(')'):
-            join_dic['right'] = interpret(join_dic['right'][1:-1].strip())
-
-        dic['from'] = join_dic
-        
+    '''
+    between operator
+    '''
+    dic['where'] = where_dic
     return dic
 
 def interpret(query):
