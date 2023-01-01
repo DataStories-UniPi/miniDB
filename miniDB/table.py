@@ -6,7 +6,7 @@ import sys
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
-from misc import get_op, split_condition
+from misc import get_op, split_condition, check_logops
 
 
 class Table:
@@ -230,18 +230,34 @@ class Table:
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
+
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            if len([condition]) == 1:
+            #edit
+
+            condition, op = check_logops(condition)
+
+            #edit
+
+            if op == 'none': #len([condition]) == 1:
                 column_name, operator, value = self._parse_condition(condition)
                 column = self.column_by_name(column_name)
                 rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
-            else:
-                for i in range(len([condition])):
-                    column_name, operator, value = self._parse_condition(condition[i])
-                    column = self.column_by_name(column_name)
-                    rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            elif op == 'and':
+                column_name, operator, value = self._parse_condition(condition[0])
+                column_name2, operator2, value2 = self._parse_condition(condition[1])
+                column = self.column_by_name(column_name)
+                column2 = self.column_by_name(column_name2)
+                rows = [ind for ind, (x, x2) in enumerate(zip(column, column2)) if
+                        get_op(operator, x, value) and get_op(operator2, x2, value2)]
+            elif op == 'or':
+                column_name, operator, value = self._parse_condition(condition[0])
+                column_name2, operator2, value2 = self._parse_condition(condition[1])
+                column = self.column_by_name(column_name)
+                column2 = self.column_by_name(column_name2)
+                rows = [ind for ind, (x, x2) in enumerate(zip(column, column2)) if
+                        get_op(operator, x, value) or get_op(operator2, x2, value2)]
 
 
         else:

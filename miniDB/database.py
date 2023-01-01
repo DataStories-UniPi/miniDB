@@ -13,7 +13,7 @@ sys.modules['table'] = table
 
 from joins import Inlj, Smj
 from btree import Btree
-from misc import split_condition
+from misc import split_condition, check_logops
 from table import Table
 
 
@@ -358,7 +358,8 @@ class Database:
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
         if condition is not None:
-            condition_column = split_condition(condition)[0]
+            cnd, op = check_logops(condition)
+            condition_column = split_condition(cnd[0])[0]
         else:
             condition_column = ''
 
