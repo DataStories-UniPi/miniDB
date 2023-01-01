@@ -20,10 +20,10 @@ def get_op(op, a, b):
 def split_condition(condition):
     ops = {'>=': operator.ge,
            '<=': operator.le,
+           '!=': operator.ne,
            '=': operator.eq,
            '>': operator.gt,
-           '<': operator.lt,
-           '!=': operator.ne
+           '<': operator.lt
            }
 
     for op_key in ops.keys():
@@ -87,5 +87,6 @@ def oppose_op(op):
         '<=': '>',
         '=': '!=',
         'and': 'or',
-        'or': 'and'
+        'or': 'and',
+        'none': 'none'
     }.get(op)
