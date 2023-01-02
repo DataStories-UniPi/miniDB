@@ -359,7 +359,7 @@ class Database:
 
         if condition is not None:
             cnd, op = check_logops(condition)
-            if op == 'not':
+            if op == 'not ':
                 cnd, op = check_logops(cnd)
             condition_column = split_condition(cnd[0])[0]
         else:

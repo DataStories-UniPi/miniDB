@@ -46,14 +46,14 @@ def split_condition(condition):
 
 
 def check_logops(condition):
-    log_ops = {'not': operator.not_,
-               'and': operator.and_,
-               'or': operator.or_,
+    log_ops = {'not ': operator.not_,
+               ' and': operator.and_,
+               ' or': operator.or_,
                }
 
     for log_op in log_ops.keys():
         logsplt = condition.split(log_op)
-        if log_op == 'not' and len(logsplt) > 1:
+        if log_op == 'not ' and len(logsplt) > 1:
             logsplt.pop(0)
             logsplt = logsplt[0]
             return logsplt, log_op
@@ -86,7 +86,7 @@ def oppose_op(op):
         '<': '>=',
         '<=': '>',
         '=': '!=',
-        'and': 'or',
-        'or': 'and',
+        ' and': ' or',
+        ' or': ' and',
         'none': 'none'
     }.get(op)

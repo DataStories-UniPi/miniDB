@@ -239,7 +239,7 @@ class Table:
 
             oppose = False
             condition, op = check_logops(condition)
-            if op == 'not':
+            if op == 'not ':
                 oppose = True
                 condition, op = check_logops(condition)
                 op = oppose_op(op)
@@ -252,7 +252,7 @@ class Table:
                     operator = oppose_op(operator)
                 column = self.column_by_name(column_name)
                 rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
-            elif op == 'and':
+            elif op == ' and':
                 column_name, operator, value = self._parse_condition(condition[0])
                 column_name2, operator2, value2 = self._parse_condition(condition[1])
                 if oppose:
@@ -262,7 +262,7 @@ class Table:
                 column2 = self.column_by_name(column_name2)
                 rows = [ind for ind, (x, x2) in enumerate(zip(column, column2)) if
                         get_op(operator, x, value) and get_op(operator2, x2, value2)]
-            elif op == 'or':
+            elif op == ' or':
                 column_name, operator, value = self._parse_condition(condition[0])
                 column_name2, operator2, value2 = self._parse_condition(condition[1])
                 if oppose:
