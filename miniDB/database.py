@@ -353,7 +353,9 @@ class Database:
         '''
 
         # print(table_name)
+        
         self.load_database()
+        print(condition)
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
