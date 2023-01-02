@@ -10,7 +10,8 @@ def get_op(op, a, b):
                 '>=': operator.ge,
                 '<=': operator.le,
                 '=': operator.eq, 
-                'between':between # Between operator
+                'between':between, # Between operator. Function definition below.
+                'not': operator.ne # Not operator using built-in operator module. If x != y, then ne(x,y) returns true.
                 }
 
     try:
@@ -24,7 +25,8 @@ def split_condition(condition):
            '=': operator.eq,
            '>': operator.gt,
            '<': operator.lt,
-           'between':between # Between operator
+           'between':between, # Between operator. Function definition below.
+           'not': operator.ne # Not operator using built-in operator module. If x != y, then ne(x,y) returns true.
            }
         
     for op_key in ops.keys():
