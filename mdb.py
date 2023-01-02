@@ -167,19 +167,88 @@ def evaluate_where_clause(dic):
         subquery = ' '.join(where_split[1:-1])
         dic['where'] = interpret(subquery)
         
+    where_dic = {}
+    kw_per_action = ['create table',
+                     'drop table',
+                     'cast',
+                     'import',
+                     'export',
+                     'insert into',
+                     'select',
+                     'lock table',
+                     'unlock table',
+                     'delete from',
+                     'update table',
+                     'create index',
+                     'drop index',
+                     'create view']
+    
+    '''
+    or operator
+    '''
+    or_idx = [i for i,word in enumerate(where_split) if word=='or' and not in_paren(where_split,i)]
+    if or_idx:
+        or_dic = {}
+        or_idx = or_idx[0]
+        or_dic['left'] = ' '.join(where_split[:or_idx])
+        or_dic['right'] = ' '.join(where_split[or_idx+1:])
+        
+        if or_dic['left'].startswith('(') and or_dic['left'].endswith(')'):
+            subquery = or_dic['left'][1:-1].strip()
+            subquery_first_word = subquery.split()[0]
+            if subquery_first_word in kw_per_action:
+                or_dic['left'] = interpret(subquery)
+        
+        if or_dic['right'].startswith('(') and or_dic['right'].endswith(')'):
+            subquery = or_dic['right'][1:-1].strip()
+            subquery_first_word = subquery.split()[0]
+            if subquery_first_word in kw_per_action:
+                or_dic['right'] = interpret(subquery)
+        
+        where_dic['or'] = or_dic
+    
+    '''
+    and/between operator
+    When 'between' operator exists, then it contains an 'and' operator.
+    '''
+    and_idx = [i for i,word in enumerate(where_split) if word=='and' and not in_paren(where_split,i)]
+    if and_idx:
+        '''
+        if and_idx exists, then it may exists inside 'between' operator.
+        '''
+        and_dic = {}
+        and_idx = and_idx[0]
+        and_dic['left'] = ' '.join(where_split[:and_idx])
+        and_dic['right'] = ' '.join(where_split[and_idx+1:])
+        
+        if and_dic['left'].startswith('(') and and_dic['left'].endswith(')'):
+            subquery = and_dic['left'][1:-1].strip()
+            subquery_first_word = subquery.split()[0]
+            if subquery_first_word in kw_per_action:
+                and_dic['left'] = interpret(subquery)
+        
+        if and_dic['right'].startswith('(') and and_dic['right'].endswith(')'):
+            subquery = and_dic['right'][1:-1].strip()
+            subquery_first_word = subquery.split()[0]
+            if subquery_first_word in kw_per_action:
+                and_dic['right'] = interpret(subquery)
+        
+        btw_idx = [i for i,word in enumerate(where_split) if word=='between' and not in_paren(where_split,i)]
+        if btw_idx:
+            where_dic['between'] = {'and': and_dic}
+        else:
+            where_dic['and'] = and_dic
+        
     '''
     not operator
     '''
     not_idx = [i for i,word in enumerate(where_split) if word=='not' and not in_paren(where_split,i)]
-    
     if not_idx:
         not_idx = not_idx[0]
-        where_dic = {}
-        where_dic['not'] = ''.join(where_split[not_idx+1])
-        
-    '''
-    between operator
-    '''
+        where_dic['not'] = where_split[not_idx+1]
+
+    ################################### Πρέπει να προσθέσω και την πιο απλή περίπτωση πχ  where ID=5    
+    
     dic['where'] = where_dic
     return dic
 
