@@ -4,12 +4,12 @@ def get_op(op, a, b):
     '''
     Get op as a function of a and b by using a symbol
     '''
-    ops = {'>': operator.gt,
+    ops = {     '>': operator.gt,
                 '<': operator.lt,
                 '>=': operator.ge,
                 '<=': operator.le,
-                '=': operator.eq,
-                'NOT': operator.ne} # not equal operator !=
+                '!=': operator.ne, # not equal operator !=
+                '=': operator.eq,} 
 
     try:
         return ops[op](a,b)
@@ -19,14 +19,15 @@ def get_op(op, a, b):
 def split_condition(condition):
     ops = {'>=': operator.ge,
            '<=': operator.le,
+           '!=': operator.ne,
            '=': operator.eq,
            '>': operator.gt,
-           '<': operator.lt,
-           'NOT': operator.ne} 
+           '<': operator.lt,} 
 
     for op_key in ops.keys():
         splt=condition.split(op_key)
-        if len(splt)>1:
+        print(splt)
+        if len(splt)>1: # operator has been found
             left, right = splt[0].strip(), splt[1].strip() 
 
             if right[0] == '"' == right[-1]: # If the value has leading and trailing quotes, remove them.
