@@ -237,11 +237,12 @@ class Table:
         #print(condition)
         #print(split_condition(condition))
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
+            column_name, operator, value, column_name2, operator2, value2 = self._parse_condition(condition)
             column = self.column_by_name(column_name)
-            #column2 = self.column_by_name(column_name2)
+            if column_name2!='no':
+                column2 = self.column_by_name(column_name2)
+                rows2 = [ind for ind, x in enumerate(column2) if get_op(operator2, x, value2)]
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
-            #rows2 = [ind for ind, x in enumerate(column2) if get_op(operator2, x, value2)]
         else:
             rows = [i for i in range(len(self.data))]
  
@@ -620,52 +621,11 @@ class Table:
             print(left)
 
 
-
-
-
-        '''
-        i=0
-        arxiki=""
-        teliki="" 
-        mesea =[ ]
-        k=len(left)
-        #print(k)
-        for i in range(k):
-            if left[i]!=" ":
-                arxiki+=left[i]
-        #print(arxiki)
-
-        for i in range(k):
-            mesea.append(arxiki[i].lower())
-
-        teliki="" 
-        for i in range(3):
-            teliki+=arxiki[i]
-            mesea.pop(i)
-
-        lo=len(mesea)
-        
-        print(teliki + " ")
-        print(lo)
-        print("/n")
-        for i in range(lo):
-            print(mesea[i]+" ")
-          
-        #print(arxiki)
-
-        if teliki=='not':
-           op='!='
-           teliki=''
-           for i in range(lo):
-               teliki=mesea.pop(i)+''
-               print(teliki+" ")
-        '''
-
         if left not in self.column_names:
             raise ValueError(f'Condition is not valid (cant find column name)')
         coltype = self.column_types[self.column_names.index(left)]
 
-        return left, op, coltype(right)
+        return left, op, coltype(right), 'no', 'no', 'no'
 
 
     def _load_from_file(self, filename):
