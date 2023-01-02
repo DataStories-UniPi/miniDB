@@ -239,9 +239,12 @@ class Table:
         if condition is not None:
             column_name, operator, value = self._parse_condition(condition)
             column = self.column_by_name(column_name)
+            #column2 = self.column_by_name(column_name2)
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            #rows2 = [ind for ind, x in enumerate(column2) if get_op(operator2, x, value2)]
         else:
             rows = [i for i in range(len(self.data))]
+ 
 
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
@@ -273,6 +276,7 @@ class Table:
 
         return s_table
 
+   
 
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
 
@@ -562,6 +566,33 @@ class Table:
 
         # cast the value with the specified column's type and return the column name, the operator and the casted value
         left, op, right = split_condition(condition)
+        if op=='and ':
+            left2,op2,right2=split_condition(left)
+            left3,op3,right3=split_condition(right)
+            if left2 not in self.column_names:
+                raise ValueError(f'Condition is not valid (cant find column name)')
+            coltype2 = self.column_types[self.column_names.index(left2)]
+
+            if left3 not in self.column_names:
+                raise ValueError(f'Condition is not valid (cant find column name)')
+            coltype3 = self.column_types[self.column_names.index(left3)]
+
+            return left2, op2, coltype2(right2), left3, op3, coltype3(right3)
+                
+
+        if op=='or ':
+            left2,op2,right2=split_condition(left)
+            left3,op3,right3=split_condition(right)
+            if left2 not in self.column_names:
+                raise ValueError(f'Condition is not valid (cant find column name)')
+            coltype2 = self.column_types[self.column_names.index(left2)]
+
+            if left3 not in self.column_names:
+                raise ValueError(f'Condition is not valid (cant find column name)')
+            coltype3 = self.column_types[self.column_names.index(left3)]
+
+            return left2, op2, coltype2(right2), left3, op3, coltype3(right3)
+            
 
         my_str = left
 
@@ -587,6 +618,7 @@ class Table:
                 left+=i
             op='!='
             print(left)
+
 
 
 

@@ -23,10 +23,10 @@ def get_op(op, a, b):
 
     #EVALA STO SPILT TO AND ,NOT ,OR  
 def split_condition(condition):
-    ops = {'&&':operator.and_,
-           'and':operator.and_,
-           'or':operator.or_,
-           '||':operator.or_,
+    ops = {'&& ':operator.and_,
+           'and ':operator.and_,
+           'or ':operator.or_,
+           '|| ':operator.or_,
            '>=': operator.ge,
            '<=': operator.le,
            '=': operator.eq,
@@ -39,9 +39,24 @@ def split_condition(condition):
         if len(splt)>1:
             left, right = splt[0].strip(), splt[1].strip()
 
-            if right[0] == '"' == right[-1]: # If the value has leading and trailing quotes, remove them.
-                right = right.strip('"')
-            elif ' ' in right: # If it has whitespaces but no leading and trailing double quotes, throw.
+            print(len(right))
+            print("/n")
+            i=0
+
+            for n in left:
+                if n=='"':
+                    left=left.replace(n,'')
+            i=i+1
+
+            i=0
+            for n in right:
+                if n=='"':
+                    right=right.replace(n,'')
+            i=i+1
+
+            #if right[0] == '"' == right[-1]: # If the value has leading and trailing quotes, remove them.
+            #   right = right.strip('"')
+            if ' ' in right: # If it has whitespaces but no leading and trailing double quotes, throw.
                 raise ValueError(f'Invalid condition: {condition}\nValue must be enclosed in double quotation marks to include whitespaces.')
 
             if right.find('"') != -1: # If there are any double quotes in the value, throw. (Notice we've already removed the leading and trailing ones)
@@ -52,6 +67,9 @@ def split_condition(condition):
             print(right)
             print("/n")
             return left, op_key, right
+
+
+
 
 def reverse_op(op):
     '''
