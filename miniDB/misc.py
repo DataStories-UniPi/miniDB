@@ -26,8 +26,8 @@ def split_condition(condition):
 
     for op_key in ops.keys():
         splt=condition.split(op_key)
-        if (len(splt)>1 and len(splt)!= 3):
-            left, right = splt[0].strip(), splt[1].strip()
+        if len(splt)>1:
+            left, right = splt[0].strip(), splt[1].strip() 
 
             if right[0] == '"' == right[-1]: # If the value has leading and trailing quotes, remove them.
                 right = right.strip('"')
