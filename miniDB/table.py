@@ -238,22 +238,25 @@ class Table:
         #print(split_condition(condition))
         if condition is not None:
             column_name, operator, value, column_name2, operator2, value2 = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            if column_name2!='no':
-                column2 = self.column_by_name(column_name2)
-                rows2 = [ind for ind, x in enumerate(column2) if get_op(operator2, x, value2)]
+            column = self.column_by_name(column_name) 
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
- 
-
-        # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
-        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+        
+        if column_name2!=' ':
+            column2 = self.column_by_name(column_name2)
+            rows2 = [ind for ind, x in enumerate(column2) if get_op(operator2, x, value2)]
+            dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows2] if key=="data" else value2) for key,value2 in self.dict.items()}
+        else:
+            # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
+            dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.dict.items()}
+        
+        
         
         # we need to set the new column names/types and no of columns, since we might
         # only return some columns
         dict['column_names'] = [self.column_names[i] for i in return_cols]
-        dict['column_types']   = [self.column_types[i] for i in return_cols]
+        dict['column_types'] = [self.column_types[i] for i in return_cols]
 
         s_table = Table(load=dict)
 
@@ -625,7 +628,7 @@ class Table:
             raise ValueError(f'Condition is not valid (cant find column name)')
         coltype = self.column_types[self.column_names.index(left)]
 
-        return left, op, coltype(right), 'no', 'no', 'no'
+        return left, op, coltype(right), ' ', ' ', ' '
 
 
     def _load_from_file(self, filename):
