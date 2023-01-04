@@ -1,20 +1,27 @@
 import operator
 
 
-def bt(v,mn,mx):
-    if ((v >= mn) and (v <= mx)):
-        return True
+def bt(col_name,v1,v2):
+    list = []
+    for i in col_name:
+        if (i >= v1) and (i <= v2):
+            list.append(i)
+    return list
+
+
 
 def get_op(op, a, b):
     '''
     Get op as a function of a and b by using a symbol
     '''
+    #BETWEEN = bt
     ops = {'>': operator.gt,
                 '<': operator.lt,
                 '>=': operator.ge,
                 '<=': operator.le,
                 '=': operator.eq,
-                'BETWEEN': operator.bt}
+                'between' : bt()
+                }
 
     try:
         return ops[op](a,b)
@@ -22,12 +29,14 @@ def get_op(op, a, b):
         return False
 
 def split_condition(condition):
+    
     ops = {'>=': operator.ge,
            '<=': operator.le,
            '=': operator.eq,
            '>': operator.gt,
            '<': operator.lt,
-           'BETWEEN': operator.bt}
+           'between' : bt()
+           }
 
     for op_key in ops.keys():
         splt=condition.split(op_key)
