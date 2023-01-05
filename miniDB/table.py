@@ -534,12 +534,27 @@ class Table:
             # table has a primary key, add PK next to the appropriate column
             headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
         # detect the rows that are no tfull of nones (these rows have been deleted)
-        # if we dont skip these rows, the returning table has empty rows at the deleted positions
+        # if we don't skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]
         # print using tabulate
         print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
 
+    def results_rows_headers(self):
+        '''
+        Return the rows and the headers of the result. It's based on show() funtion.
 
+        '''
+        
+        # headers -> "column name (column type)"
+        headers = [f'{col} ({tp.__name__})' for col, tp in zip(self.column_names, self.column_types)]
+        if self.pk_idx is not None:
+            # table has a primary key, add PK next to the appropriate column
+            headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
+        # detect the rows that are no full of nones (these rows have been deleted)
+        # if we don't skip these rows, the returning table has empty rows at the deleted positions
+        non_none_rows = [row for row in self.data if any(row)]
+        return non_none_rows, headers 
+        
     def _parse_condition(self, condition, join=False):
         '''
         Parse the single string condition and return the value of the column and the operator.
