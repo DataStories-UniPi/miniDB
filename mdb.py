@@ -263,7 +263,77 @@ def intersect(query):
     return processed_query1, processed_query2
 
     
+def unite(query):
+    '''
+    Converts a query that has a complex where conditions combined with 'or' operator
+    into two separate queries with simpler conditions.
+
+    Parameters
+    ----------
+    query : string that contains the query
+
+    Returns
+    -------
+    processed_query1 : string with the query that contains the first simpler condition.
+    processed_query2 : string with the query that contains the second simpler condition.
+    '''
+    words_list = query.split() #split the query string to get the words
+    print(words_list)
+    # Using dropwhile to split into the second part of the query that contains the conditions
+    query_part2 = list(dropwhile(lambda x: x != 'where', words_list))[1:]
+    print("query_part2")
+    print(query_part2)
+
     
+    # Get difference between two lists (query_part1 = words_list - query_part2)
+    query_part1 = [x for x in words_list if x not in query_part2]
+
+    print("query_part1")
+    print(query_part1)
+    # converting to list
+    query_part1 = list(query_part1)
+    query_part2 = list(query_part2)
+    print("query_part1_list")
+    print(query_part1)
+    print("query_part2List")
+    print(query_part1)
+    
+    # Using dropwhile to split into the conditions
+    condition2 = list(dropwhile(lambda x: x != 'or', query_part2))[1:]
+    
+    
+    # Get difference between two lists (condition1 = query_part2 - condition2)
+    condition1 = [x for x in query_part2 if x not in condition2]
+    
+    # Removing 'split' string
+    condition1.remove('or')
+    
+    # Converting to list
+    condition1 = list(condition1)
+    condition2 = list(condition2)
+    print("condition1list")
+    print(condition1)
+    print("condition2list")
+    print(condition2)
+    
+    # Create the new queries
+    query1 = query_part1 + condition1
+    query2 = query_part1 + condition2
+    print("query1")
+    print(query1)
+    print("query2")
+    print(query2)
+    
+    # Convert the queries into strings and add ' ;' at the end.
+    processed_query1 = " ".join(query1)
+    if (processed_query1[-1] != ';'):
+        processed_query1 += ' ;'
+    
+    processed_query2 = " ".join(query2)
+    if (processed_query2[-1] != ';'):
+        processed_query2 += ' ;'
+  
+    return processed_query1, processed_query2 
 
         
       
@@ -327,8 +397,33 @@ def interpret(query):
             return query_plans, operator_in_query # Return the query plans and the found operator
         
         elif (operator_in_query == 'or'):
-            # TO DO
-            return create_query_plan(query, kw_per_action[action]+[';'], action), operator_in_query
+            # Get the simpler queries for each condition
+            query1, query2 = unite(query)
+            
+            query_plans=[] # The list that will contain the query plan for each simpler query
+            
+            # For the query plan of the first query
+            for kw in kw_per_action.keys():
+                print(kw)
+                print(query1)
+                if query1.startswith(kw):
+                    action = kw
+                    print("inside")
+            
+            # For the query plan of the second query
+            for kw in kw_per_action.keys():
+                print("q2 " + kw)
+                print(query2)
+                if query2.startswith(kw):
+                    action = kw
+                    print("inside")
+            
+            # Create the query plans
+            query_plans.append(create_query_plan(query1, kw_per_action[action]+[';'], action))
+            query_plans.append(create_query_plan(query2, kw_per_action[action]+[';'], action))
+            
+            #query_plans.append(operator_in_query)
+            return query_plans, operator_in_query # Return the query plans and the found operator
 
     for kw in kw_per_action.keys():
         if query.startswith(kw):
@@ -461,9 +556,30 @@ if __name__ == "__main__":
                     final_results = list(intersection) # Convert the set to list
                     
                     print(tabulate(final_results[:None], headers=headers)+'\n') # Print the results 
-                elif (operator_in_query == 'or'):
-                    # To Do
-                    break
+                
+                elif (operator_in_query == 'or'): # If the query contains the 'or' operator
+                    results=[]
+                    for query_plan in dic: # For each query plan of each simpler query
+                        results.append(execute_dic(query_plan)) # Execute the dictionary and get the results
+                        
+                    non_none_rows=[]
+                    for query_result in results: # For the results of each simpler query
+                        rows, headers = query_result.results_rows_headers() # Get the header and the rows of the query results
+                        non_none_rows.append(rows) 
+                    
+                    condition1_results = []
+                    for row in non_none_rows[0]:
+                        condition1_results.append(row) # Find all the rows of records that the execution of the first simpler query returned
+                    
+                    condition2_results = []
+                    for row in non_none_rows[1]:
+                        condition2_results.append(row) # Find all the rows of records that the execution of the second simpler query returned
+                    
+                    # Return all the items from both sets
+                    union = set(tuple(x) for x in condition1_results).union(set(tuple(x) for x in condition2_results))
+                    final_results = list(union) # Convert the set to list
+                    
+                    print(tabulate(final_results[:None], headers=headers)+'\n') # Print the results 
                 else:
                     result = execute_dic(dic)
                     if isinstance(result,Table):
