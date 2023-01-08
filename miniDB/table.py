@@ -239,6 +239,9 @@ class Table:
 
             oppose = False
             condition, op = check_logops(condition)
+            if op == 'between ':
+                condition = condition[0] + '>= ' + condition[1][0] + 'and ' + condition[0] + '<= ' + condition[1][1]
+                condition, op = check_logops(condition)
             if op == 'not ':
                 oppose = True
                 condition, op = check_logops(condition)
@@ -272,6 +275,8 @@ class Table:
                 column2 = self.column_by_name(column_name2)
                 rows = [ind for ind, (x, x2) in enumerate(zip(column, column2)) if
                         get_op(operator, x, value) or get_op(operator2, x2, value2)]
+
+
 
 
 

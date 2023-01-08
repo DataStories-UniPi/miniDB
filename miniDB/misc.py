@@ -46,16 +46,23 @@ def split_condition(condition):
 
 
 def check_logops(condition):
-    log_ops = {'not ': operator.not_,
-               ' and': operator.and_,
-               ' or': operator.or_,
+    log_ops = {'between ',
+               'not ',
+               ' and',
+               ' or'
                }
 
-    for log_op in log_ops.keys():
+    for log_op in log_ops:
         logsplt = condition.split(log_op)
         if log_op == 'not ' and len(logsplt) > 1:
             logsplt.pop(0)
             logsplt = logsplt[0]
+            return logsplt, log_op
+        elif log_op == 'between ' and len(logsplt) > 1:
+            logsplt[1] = logsplt[1].split('and ')
+            if len(logsplt[1]) == 1:
+                raise ValueError(
+                    f'Invalid condition: {condition}\nBetween condition needs an and.')
             return logsplt, log_op
         elif len(logsplt) > 1:
             return logsplt, log_op

@@ -361,7 +361,9 @@ class Database:
             cnd, op = check_logops(condition)
             if op == 'not ':
                 cnd, op = check_logops(cnd)
-            condition_column = split_condition(cnd[0])[0]
+            elif op == 'between ':
+                cnd[0] = cnd[0] + '>=' + cnd[1][0]
+            condition_column = split_condition(cnd[0])
         else:
             condition_column = ''
 
