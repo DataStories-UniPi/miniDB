@@ -6,7 +6,7 @@ import sys
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
-from misc import get_op, split_condition
+from misc import get_op, split_condition , reverse_op
 
 
 class Table:
@@ -215,7 +215,8 @@ class Table:
             return_columns: list. The columns to be returned.
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+                'value[<,<=,==,>=,>]column' or
+                'Between , NOT, AND , OR'.
                 
                 Operatores supported: (<,<=,==,>=,>)
             distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
@@ -233,9 +234,66 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            if "BETWEEN" in condition.split() or "between" in condition.split():
+                split_con = condition.split()
+                if (split_con[3] != 'and'):  #vlepoume an o xristis egrapse swsta ton kwdika
+                    print('Prepei na xrisimopoihseis "and" anamesa stous arithmous')
+                    exit()
+                else:   
+                    left_val = split_con[2]  # aristerh
+                    right_val = split_con[4]  # deksia
+                    column_name = split_con[0]
+                    column = self.column_by_name(column_name)
+                    rows = []
+                    if (
+                            left_val.isdigit() and right_val.isdigit()):  # an oi times einai arithmoi
+                        for i, j in enumerate(column):
+                            if int(j) >= int(left_val) and int(j) <= int(right_val):
+                                rows.append(i)  # stelnei stin grammi gia emfanish tis times pou epalitheuoun tin sunthiki
+                    else:  # den dexetai string
+                        print('Cannot compare strings')
+                        exit()
+             # OR operator
+            elif "OR" in condition.split() or "or" in condition.split():
+                condition_list = condition.split("OR")
+                condition_list = condition_list[0].split("or")
+
+                row_lists = []
+                for cond in condition_list: # run every condition seperatly
+                    column_name, operator, value = self._parse_condition(cond)
+                    column = self.column_by_name(column_name)
+                    row_lists.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)])
+
+                rows = []
+                for l in row_lists: # move all rows into one 1d list
+                    for row in l:
+                        if not(row in rows):
+                            rows.append(row)
+            # AND operator
+            elif "AND" in condition.split() or "and" in condition.split():
+                condition_list = condition.split("AND")
+                condition_list = condition_list[0].split("and")
+
+                row_lists = []
+                for cond in condition_list: # run every condition seperatly
+                    column_name, operator, value = self._parse_condition(cond)
+                    column = self.column_by_name(column_name)
+                    row_lists.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)])
+
+                rows = set(row_lists[0]).intersection(*row_lists) # get the intersection of the seperate conditions
+            elif "NOT" in condition.split() or "not" in condition.split():
+                condition_list = condition.split("NOT")
+                condition_list = condition_list[0].split("not")                 
+                
+                column_name, operator, value = self._parse_condition(condition_list[1])
+                column = self.column_by_name(column_name)
+                operator2=reverse_op(operator)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator2, x, value)]
+
+            else:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)                
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -281,9 +339,10 @@ class Table:
 
         column_name, operator, value = self._parse_condition(condition)
 
-        # if the column in condition is not a primary key, abort the select
-        if column_name != self.column_names[self.pk_idx]:
-            print('Column is not PK. Aborting')
+        #DEN Yparxei pleon autos o periorismos
+        # if the column in condition is not a primary key, abort the select 
+        #if column_name != self.column_names[self.pk_idx]:
+            #print('Column is not PK. Aborting')
 
         # here we run the same select twice, sequentially and using the btree.
         # we then check the results match and compare performance (number of operation)
@@ -324,6 +383,73 @@ class Table:
 
         return s_table
 
+
+    def _select_where_with_hash(self, return_columns, hm, condition, distinct=False, order_by=None, desc=True, limit=None):  #FUnction gia select me hash
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
+        else:
+            return_cols = [self.column_names.index(colname) for colname in return_columns]
+
+        column_name, operator, value = self._parse_condition(condition)
+        
+        #if column_name != self.column_names[self.pk_idx]:  #DEN Yparxei pleon autos o periorismos
+            #print('Column is not PK. Aborting')
+
+        rows = []
+        if (operator == '<' or operator == '>'):
+            column = self.column_by_name(column_name)
+
+            # sequential
+            
+            opsseq = 0
+            for ind, x in enumerate(column):
+                opsseq+=1
+                if get_op(operator, x, value):
+                    rows.append(ind)
+
+        else:
+
+            # hash value
+            hash_sum = 0
+            for letter in value:
+                hash_sum += ord(letter)
+
+            hash_index = hash_sum % int(hm[0][0][0])
+            
+            # find in dictionary with hash_index
+            for item in hm[hash_index]:
+                if hm[hash_index][item][0] == hm[0][0][0]:
+                    continue
+                
+                if hm[hash_index][item][1] == value:
+                    rows.append(hm[hash_index][item][0])
+            
+        try:
+            k = int(limit)
+        except TypeError:
+            k = None
+        # same as simple select from now on
+        rows = rows[:k]
+        # TODO: this needs to be dumbed down
+        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+
+        dict['column_names'] = [self.column_names[i] for i in return_cols]
+        dict['column_types']   = [self.column_types[i] for i in return_cols]
+
+        s_table = Table(load=dict)
+
+        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+
+        if order_by:
+            s_table.order_by(order_by, desc)
+
+        if isinstance(limit,str):
+            s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
+
+        return s_table
+
+
+
     def order_by(self, column_name, desc=True):
         '''
         Order table based on column.
@@ -332,7 +458,7 @@ class Table:
             column_name: string. Name of column.
             desc: boolean. If True, order_by will return results in descending order (False by default).
         '''
-        column = [val if val is not None else 0 for val in self.column_by_name(column_name)]
+        column = self.column_by_name(column_name)
         idx = sorted(range(len(column)), key=lambda k: column[k], reverse=desc)
         # print(idx)
         self.data = [self.data[i] for i in idx]
@@ -346,7 +472,11 @@ class Table:
         Args:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+                'value[<,<=,==,>=,>]column' or
+                'Between value AND value ' or
+                'NOT' column[<,<=,==,>=,>]value  or
+                column[<,<=,==,>=,>]value 'AND'  column[<,<=,==,>=,>]valueor
+                column[<,<=,==,>=,>]value 'OR' column[<,<=,==,>=,>]value.
                 
                 Operators supported: (<,<=,==,>=,>)
         '''
