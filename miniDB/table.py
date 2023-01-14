@@ -607,3 +607,4 @@ class Table:
 
     #Auto einai ena testaki 
     #allo ena 
+    #kai ena allo
