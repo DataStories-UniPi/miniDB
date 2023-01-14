@@ -602,6 +602,9 @@ class Table:
         tmp_dict = pickle.load(f)
         f.close()
 
+
+
         self.__dict__.update(tmp_dict.__dict__)
+
 
     
