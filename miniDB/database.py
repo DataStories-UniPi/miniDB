@@ -351,16 +351,17 @@ class Database:
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
             distinct: boolean. If True, the resulting table will contain only unique rows.
         '''
-
+        '''
         # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
-
-        if condition is not None:
-            condition_column = split_condition(condition)[0]
-        else:
-            condition_column = ''
+        '''
+        condition_column = ''
+        if condition:
+            condition = condition.lower()
+            condition_column = (condition.split(" ")[0] if "between" in condition.split() or "not" in condition.split()
+                else split_condition(condition)[0])
 
         
         # self.lock_table(table_name, mode='x')
