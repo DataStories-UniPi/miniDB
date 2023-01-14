@@ -3,7 +3,7 @@ import os
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
-from database import Database
+from miniDB.database import Database
 
 
 db = Database(sys.argv[1])

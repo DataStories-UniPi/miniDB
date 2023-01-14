@@ -7,8 +7,8 @@ import traceback
 import shutil
 sys.path.append('miniDB')
 
-from database import Database
-from table import Table
+from miniDB.database import Database
+from miniDB.table import Table
 # art font is "big"
 art = '''
              _         _  _____   ____  
@@ -49,7 +49,7 @@ def create_query_plan(query, keywords, action):
 
     ql = [val for val in query.split(' ') if val !='']
 
-    kw_in_query = []
+    kw_in_query = [] 
     kw_positions = []
     i=0
     while i<len(ql):
@@ -76,7 +76,7 @@ def create_query_plan(query, keywords, action):
         dic['as'] = interpret(dic['as'])
 
     if action=='select':
-        dic = evaluate_from_clause(dic)
+        dic = evaluate_from_clause(dic) 
 
         if dic['distinct'] is not None:
             dic['select'] = dic['distinct']
@@ -125,7 +125,7 @@ def create_query_plan(query, keywords, action):
 
 
 
-def evaluate_from_clause(dic):
+def evaluate_from_clause(dic): 
     '''
     Evaluate the part of the query (argument or subquery) that is supplied as the 'from' argument
     '''
@@ -196,10 +196,10 @@ def execute_dic(dic):
     Execute the given dictionary
     '''
     for key in dic.keys():
-        if isinstance(dic[key],dict):
+        if isinstance(dic[key],dict): 
             dic[key] = execute_dic(dic[key])
     
-    action = list(dic.keys())[0].replace(' ','_')
+    action = list(dic.keys())[0].replace(' ','_') 
     return getattr(db, action)(*dic.values())
 
 def interpret_meta(command):
@@ -276,7 +276,7 @@ if __name__ == "__main__":
     while 1:
         try:
             line = session.prompt(f'({db._name})> ', auto_suggest=AutoSuggestFromHistory()).lower()
-            if line[-1]!=';':
+            if line[-1]!=';': 
                 line+=';'
         except (KeyboardInterrupt, EOFError):
             print('\nbye!')
@@ -284,7 +284,7 @@ if __name__ == "__main__":
         try:
             if line=='exit':
                 break
-            if line.split(' ')[0].removesuffix(';') in ['lsdb', 'lstb', 'cdb', 'rmdb']:
+            if line.split(' ')[0].removesuffix(';') in ['lsdb', 'lstb', 'cdb', 'rmdb']: 
                 interpret_meta(line)
             elif line.startswith('explain'):
                 dic = interpret(line.removeprefix('explain '))
@@ -292,7 +292,7 @@ if __name__ == "__main__":
             else:
                 dic = interpret(line)
                 result = execute_dic(dic)
-                if isinstance(result,Table):
+                if isinstance(result,Table): 
                     result.show()
         except Exception:
             print(traceback.format_exc())

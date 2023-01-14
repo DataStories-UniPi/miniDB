@@ -1,0 +1,5 @@
+Βήματα εκτέλεσης κώδικα:
+Για το Debug:
+Επιλέγεις το mdb.py
+Επιλέγεις πάνω δεξιά το Play button, debug python file
+cdb smdb -> to quickly load the database
