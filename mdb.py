@@ -77,7 +77,7 @@ def create_query_plan(query, keywords, action):
 
     if action=='select':
         dic = evaluate_from_clause(dic) 
-
+        dic = evaluate_where_clause(dic)
         if dic['distinct'] is not None:
             dic['select'] = dic['distinct']
             dic['distinct'] = True
@@ -135,8 +135,8 @@ def evaluate_from_clause(dic):
         subquery = ' '.join(from_split[1:-1])
         dic['from'] = interpret(subquery)
 
-    join_idx = [i for i,word in enumerate(from_split) if word=='join' and not in_paren(from_split,i)]
-    on_idx = [i for i,word in enumerate(from_split) if word=='on' and not in_paren(from_split,i)]
+    join_idx = [i for i,word in enumerate(from_split) if word=='join' and not in_paren(from_split,i)] 
+    on_idx = [i for i,word in enumerate(from_split) if word=='on' and not in_paren(from_split,i)] 
     if join_idx:
         join_idx = join_idx[0]
         on_idx = on_idx[0]
@@ -159,6 +159,35 @@ def evaluate_from_clause(dic):
         dic['from'] = join_dic
         
     return dic
+
+# to be added in create_query_plan
+def evaluate_where_clause(dic):
+    '''
+    Evaluate the part of the query (argument or subquery) that is supplied as the 'from' argument
+    '''
+    where_types = ['not', 'between', 'and', 'or']
+    where_split = dic['where'].split(' ')
+    if where_split[0] == '(' and where_split[-1] == ')':
+        subquery = ' '.join(where_split[1:-1])
+        dic['where'] = interpret(subquery)
+
+    not_idx = [i for i,word in enumerate(where_split) if word=='not' and not in_paren(where_split,i)]
+    between_idx = [i for i,word in enumerate(where_split) if word=='between' and not in_paren(where_split,i)]
+    and_idx = [i for i,word in enumerate(where_split) if word=='and' and not in_paren(where_split,i)]
+    or_idx = [i for i,word in enumerate(where_split) if word=='or' and not in_paren(where_split,i)]
+
+    if not_idx: #if there is a join keyword
+        not_idx = not_idx[0] #get the first one
+        not_dic = {} #create a dictionary to store the join information
+        not_dic['not'] = ' '.join(where_split[not_idx+1:]) #store the right table
+
+        if not_dic['not'].startswith('(') and not_dic['not'].endswith(')'): #if the right table is a subquery
+            not_dic['not'] = interpret(not_dic['not'][1:-1].strip()) #evaluate the subquery
+
+        dic['where'] = not_dic #store the join dictionary in the from key of the query dictionary
+    
+    return dic
+
 
 def interpret(query):
     '''
@@ -292,7 +321,7 @@ if __name__ == "__main__":
             else:
                 dic = interpret(line)
                 result = execute_dic(dic)
-                if isinstance(result,Table): 
+                if isinstance(result,Table):
                     result.show()
         except Exception:
             print(traceback.format_exc())
