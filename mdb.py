@@ -307,7 +307,7 @@ if __name__ == "__main__":
         except Exception:
             print(traceback.format_exc())
 
-def create_query_plan2(query, keywords, action): #query plan gia ulopoiish E1 ⊲⊳θ E2 = E2 ⊲⊳θ E1  KAI #σθ1∧θ2(E) = σθ1(σθ2(E))
+def create_query_plan2(query, keywords, action): #query plan gia  #σθ1∧θ2(E) = σθ1(σθ2(E))
     '''
     Given a query, the set of keywords that we expect to pe present and the overall action, return the query plan for this query.
 
@@ -380,7 +380,7 @@ def create_query_plan2(query, keywords, action): #query plan gia ulopoiish E1 �
         return dic    
 
 
-def create_query_plan3(query, keywords, action):  #query plan gia ulopoiish E1 ⊲⊳θ E2 = E2 ⊲⊳θ E1  KAI #σθ1∧θ2(E) = σθ2(σθ1(E))
+def create_query_plan3(query, keywords, action):  #query plan gia #σθ1∧θ2(E) = σθ2(σθ1(E))
     '''
     Given a query, the set of keywords that we expect to pe present and the overall action, return the query plan for this query.
 
