@@ -215,7 +215,8 @@ class Table:
             return_columns: list. The columns to be returned.
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+                'value[<,<=,==,>=,>]column' or
+                'Between , NOT, AND , OR'.
                 
                 Operatores supported: (<,<=,==,>=,>)
             distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
@@ -338,9 +339,10 @@ class Table:
 
         column_name, operator, value = self._parse_condition(condition)
 
-        # if the column in condition is not a primary key, abort the select
-        if column_name != self.column_names[self.pk_idx]:
-            print('Column is not PK. Aborting')
+        #DEN Yparxei pleon autos o periorismos
+        # if the column in condition is not a primary key, abort the select 
+        #if column_name != self.column_names[self.pk_idx]:
+            #print('Column is not PK. Aborting')
 
         # here we run the same select twice, sequentially and using the btree.
         # we then check the results match and compare performance (number of operation)
@@ -382,7 +384,7 @@ class Table:
         return s_table
 
 
-    def _select_where_with_hash(self, return_columns, hm, condition, distinct=False, order_by=None, desc=True, limit=None):
+    def _select_where_with_hash(self, return_columns, hm, condition, distinct=False, order_by=None, desc=True, limit=None):  #FUnction gia select me hash
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
         else:
@@ -390,8 +392,8 @@ class Table:
 
         column_name, operator, value = self._parse_condition(condition)
         
-        if column_name != self.column_names[self.pk_idx]:
-            print('Column is not PK. Aborting')
+        #if column_name != self.column_names[self.pk_idx]:  #DEN Yparxei pleon autos o periorismos
+            #print('Column is not PK. Aborting')
 
         rows = []
         if (operator == '<' or operator == '>'):
@@ -470,7 +472,11 @@ class Table:
         Args:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+                'value[<,<=,==,>=,>]column' or
+                'Between value AND value ' or
+                'NOT' column[<,<=,==,>=,>]value  or
+                column[<,<=,==,>=,>]value 'AND'  column[<,<=,==,>=,>]valueor
+                column[<,<=,==,>=,>]value 'OR' column[<,<=,==,>=,>]value.
                 
                 Operators supported: (<,<=,==,>=,>)
         '''

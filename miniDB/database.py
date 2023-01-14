@@ -338,7 +338,11 @@ class Database:
             columns: list. The columns that will be part of the output table (use '*' to select all available columns)
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+                'value[<,<=,==,>=,>]column' or
+                'Between value AND value ' or
+                'NOT' column[<,<=,==,>=,>]value  or
+                column[<,<=,==,>=,>]value 'AND'  column[<,<=,==,>=,>]valueor
+                column[<,<=,==,>=,>]value 'OR' column[<,<=,==,>=,>]value.
                 
                 Operatores supported: (<,<=,==,>=,>)
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
@@ -711,6 +715,7 @@ class Database:
         Args:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
+            column_name:string. Column name( must be part of database).
         '''
         bt = Btree(3)  # 3 is arbitrary
 
