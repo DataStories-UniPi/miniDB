@@ -177,19 +177,26 @@ def evaluate_where_clause(dic):
     #or_idx = [i for i,word in enumerate(where_split) if word=='or' and not in_paren(where_split,i)]
 
     if not_idx: #if there is a not keyword
-        not_idx = not_idx[0] #get the first one
-        not_dic = {} #create a dictionary to store the not information
+        # not_idx = not_idx[0] #get the first one
+        # not_dic = {} #create a dictionary to store the not information
 
-        not_dic['not_'] = 'simple'
+        # not_dic['not_'] = 'simple'
 
-        not_dic['table_name'] = dic['from'] # fix it
+        # not_dic['table_name'] = dic['from'] # fix it
 
-        not_dic['condition'] = ' '.join(where_split[not_idx+1:]) #store the right condition
+        # not_dic['condition'] = ' '.join(where_split[not_idx+1:]) #store the right condition
 
-        if not_dic['condition'].startswith('(') and not_dic['condition'].endswith(')'): #if the right condition is a subquery
-            not_dic['condition'] = interpret(not_dic['condition'][1:-1].strip()) #evaluate the subquery
+        # if not_dic['condition'].startswith('(') and not_dic['condition'].endswith(')'): #if the right condition is a subquery
+        #     not_dic['condition'] = interpret(not_dic['condition'][1:-1].strip()) #evaluate the subquery
+        
+        not_idx = not_idx[0] #get the not position
+        condition = ' '.join(where_split[not_idx+1:]) #get the right condition
 
-        dic['where'] = not_dic  #store the not dictionary in the from key of the query dictionary
+        eq_idx = [i for i,word in enumerate(condition) if word=='='] #get the position of the equal sign
+        if eq_idx:
+            condition = condition.replace('=', '!=') #replace the equal sign with not equal
+            condition = ' '.join(filter(lambda x: x != 'not', condition.split())) #remove the not keyword
+        dic['where'] =  condition #store the not dictionary in the from key of the query dictionary
     
     return dic
 

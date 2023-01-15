@@ -8,7 +8,8 @@ def get_op(op, a, b):
                 '<': operator.lt,
                 '>=': operator.ge,
                 '<=': operator.le,
-                '=': operator.eq}
+                '=': operator.eq,
+                '!=': operator.ne}
 
     try:
         return ops[op](a,b)
@@ -18,9 +19,11 @@ def get_op(op, a, b):
 def split_condition(condition):
     ops = {'>=': operator.ge,
            '<=': operator.le,
+           '!=': operator.ne,
            '=': operator.eq,
            '>': operator.gt,
-           '<': operator.lt}
+           '<': operator.lt
+           }
 
     for op_key in ops.keys():
         splt=condition.split(op_key)
@@ -46,5 +49,6 @@ def reverse_op(op):
         '>=' : '<=',
         '<' : '>',
         '<=' : '>=',
+        '!=' : '!=',
         '=' : '='
     }.get(op)

@@ -214,10 +214,10 @@ class Table:
         Args:
             return_columns: list. The columns to be returned.
             condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+                'column[<,<=,==,>=,>,!=]value' or
+                'value[<,<=,==,>=,>,!=]column'.
                 
-                Operatores supported: (<,<=,==,>=,>)
+                Operatores supported: (<,<=,==,>=,>,!=)
             distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (False by default).
@@ -331,11 +331,11 @@ class Table:
         Args:
             condition: string. A condition in the form 'column_name operator value'.
         '''
-        column_name, operator, value = self._parse_condition(condition) # parse condition
-        column = self.column_by_name(column_name)
-        rows = [ind for ind, x in enumerate(column) if not get_op(operator, x, value)]
-        dict = {(key):([[self.data[i][j] for j in range(len(self.column_names))] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
-        return Table(load=dict)
+        # column_name, operator, value = self._parse_condition(condition) # parse condition
+        # column = self.column_by_name(column_name)
+        # rows = [ind for ind, x in enumerate(column) if not get_op(operator, x, value)]
+        # dict = {(key):([[self.data[i][j] for j in range(len(self.column_names))] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+        # return Table(load=dict)
 
     def order_by(self, column_name, desc=True):
         '''
