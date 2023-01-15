@@ -73,7 +73,12 @@ def create_query_plan(query, keywords, action):
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
     
     if action == 'create view':
-        dic['as'] = interpret(dic['as'])
+        #dic['as'] = interpret(dic['as'])
+        temp = interpret(dic['as'])
+        if (type(temp) is tuple): # Keep only the dictionary
+            dic['as'] = temp[0]
+        else:
+            dic['as'] = temp
 
     if action=='select':
         dic = evaluate_from_clause(dic)
@@ -100,18 +105,23 @@ def create_query_plan(query, keywords, action):
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+        # For columns with UNIQUE constraint
+        dic['columns_unique'] = ','.join([val[0] for val in arglist if 'unique' in val]) if 'unique' in args else None
+        
+        
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
         
+        '''
         # Check if 'unique' keyword exists in the arguments and add it to the dictionary
         # Like 'primary_key'
         if 'unique' in args:  
             arglist = args[1:-1].split(' ')
             dic['unique'] = arglist[arglist.index('unique')-2]
-    
+        '''
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
@@ -139,7 +149,12 @@ def evaluate_from_clause(dic):
     from_split = dic['from'].split(' ')
     if from_split[0] == '(' and from_split[-1] == ')':
         subquery = ' '.join(from_split[1:-1])
-        dic['from'] = interpret(subquery)
+        #dic['from'] = interpret(subquery)
+        temp = interpret(subquery)
+        if (type(temp) is tuple):
+            dic['from'] = temp[0]
+        else:
+            dic['from'] = temp
 
     join_idx = [i for i,word in enumerate(from_split) if word=='join' and not in_paren(from_split,i)]
     on_idx = [i for i,word in enumerate(from_split) if word=='on' and not in_paren(from_split,i)]
@@ -157,11 +172,20 @@ def evaluate_from_clause(dic):
         join_dic['on'] = ''.join(from_split[on_idx+1:])
 
         if join_dic['left'].startswith('(') and join_dic['left'].endswith(')'):
-            join_dic['left'] = interpret(join_dic['left'][1:-1].strip())
+            #join_dic['left'] = interpret(join_dic['left'][1:-1].strip())
+            temp = interpret(join_dic['left'][1:-1].strip())
+            if (type(temp) is tuple):
+                join_dic['left'] = temp[0]
+            else:
+                join_dic['left'] = temp
 
         if join_dic['right'].startswith('(') and join_dic['right'].endswith(')'):
-            join_dic['right'] = interpret(join_dic['right'][1:-1].strip())
-
+            #join_dic['right'] = interpret(join_dic['right'][1:-1].strip())
+            temp = interpret(join_dic['right'][1:-1].strip())
+            if (type(temp) is tuple):
+                join_dic['right'] = temp[0]
+            else:
+                join_dic['right'] = temp
         dic['from'] = join_dic
         
     return dic
@@ -504,10 +528,20 @@ if __name__ == "__main__":
         for line in open(fname, 'r').read().splitlines():
             if line.startswith('--'): continue
             if line.startswith('explain'):
-                dic = interpret(line.removeprefix('explain '))
+                #dic = interpret(line.removeprefix('explain '))
+                temp = interpret(line.removeprefix('explain '))
+                if (type(temp) is tuple):
+                    dic = temp[0]
+                else:
+                    dic = temp
                 pprint(dic, sort_dicts=False)
             else :
                 dic = interpret(line.lower())
+                print(dic)
+                if (type(dic) is tuple): # Keep only the dictionary
+                    dic = dic[0]
+                
+                print(dic)
                 result = execute_dic(dic)
                 if isinstance(result,Table):
                     result.show()
@@ -534,6 +568,8 @@ if __name__ == "__main__":
                 interpret_meta(line)
             elif line.startswith('explain'):
                 dic = interpret(line.removeprefix('explain '))
+                if (type(dic) is tuple):
+                    dic = dic[0] # Keep only the dictionary
                 pprint(dic, sort_dicts=False)
             else:
                 dic, operator_in_query = interpret(line) # Get the query plan and the operator_in_query if found

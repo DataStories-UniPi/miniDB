@@ -26,8 +26,9 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
 
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None, 
+                 columns_unique=None): # Added UNIQUE constraint
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
             if isinstance(load, dict):
@@ -60,6 +61,9 @@ class Table:
 
             self.column_types = [eval(ct) if not isinstance(ct, type) else ct for ct in column_types]
             self.data = [] # data is a list of lists, a list of rows that is.
+
+            self.columns_unique = columns_unique if columns_unique is not None else [] # Initialize instance variable for UNIQUE constraint
+
 
             # if primary key is set, keep its index as an attribute
             if primary_key is not None:
@@ -114,6 +118,27 @@ class Table:
             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
 
         for i in range(len(row)):
+            
+            print("\n Inside insert in table.py")
+            print("self.column_names[i]: " + self.column_names[i])
+            print("self.columns_unique ")
+            print(self.columns_unique)
+            print("str(row[i]): ")
+            print(str(row[i]))
+            # If the column has the unique constraint, check if the value is unique
+            print("self.column_names[i] in self.columns_unique:")
+            condition1 = self.column_names[i] in self.columns_unique # If the column has the UNIQUE constraint
+            print(condition1)
+            print("str(row[i]) in [str(val) for val in self.column_by_name(self.column_names[i]): ")
+            condition2 = str(row[i]) in [str(val) for val in self.column_by_name(self.column_names[i])] # Check if the value is already in the table
+            print(condition2)
+            if (condition1 and condition2):  
+                print(f'ERROR -> Cannot insert duplicate value "{str(row[i])}" in column "{self.column_names[i]}" that has the UNIQUE constraint.')
+                raise ValueError(f'ERROR -> Cannot insert duplicate value "{str(row[i])}" in column "{self.column_names[i]}" that has the UNIQUE constraint.')
+            
+            
+            row[i] = self.column_types[i](row[i]) # Only this
+            '''
             # for each value, cast and replace it in row.
             try:
                 row[i] = self.column_types[i](row[i])
@@ -123,6 +148,7 @@ class Table:
             except TypeError as exc:
                 if row[i] != None:
                     print(exc)
+            '''
 
             # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
