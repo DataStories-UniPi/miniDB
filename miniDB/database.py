@@ -425,6 +425,21 @@ class Database:
         table._name = table_name
         self.table_from_object(table)
 
+    def not_(self, mode, table_name, condition):
+        '''
+         asdadas
+    
+        '''
+        if mode == 'simple':
+            self.load_database()
+            lock_ownership = self.lock_table(table_name, mode='x')
+            self.tables[table_name]._where_not(condition)
+            if lock_ownership:
+                self.unlock_table(table_name)
+            self._update()
+            self.save_database()
+
+
     def join(self, mode, left_table, right_table, condition, save_as=None, return_object=True):
         '''
         Join two tables that are part of the database where condition is met.
@@ -440,7 +455,7 @@ class Database:
         save_as: string. The output filename that will be used to save the resulting table in the database (won't save if None).
         return_object: boolean. If True, the result will be a table object (useful for internal usage - the result will be printed by default).
         '''
-        self.load_database()
+        self.load_database() 
         if self.is_locked(left_table) or self.is_locked(right_table):
             return
 

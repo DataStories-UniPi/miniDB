@@ -172,19 +172,24 @@ def evaluate_where_clause(dic):
         dic['where'] = interpret(subquery)
 
     not_idx = [i for i,word in enumerate(where_split) if word=='not' and not in_paren(where_split,i)]
-    between_idx = [i for i,word in enumerate(where_split) if word=='between' and not in_paren(where_split,i)]
-    and_idx = [i for i,word in enumerate(where_split) if word=='and' and not in_paren(where_split,i)]
-    or_idx = [i for i,word in enumerate(where_split) if word=='or' and not in_paren(where_split,i)]
+    #between_idx = [i for i,word in enumerate(where_split) if word=='between' and not in_paren(where_split,i)]
+    #and_idx = [i for i,word in enumerate(where_split) if word=='and' and not in_paren(where_split,i)]
+    #or_idx = [i for i,word in enumerate(where_split) if word=='or' and not in_paren(where_split,i)]
 
-    if not_idx: #if there is a join keyword
+    if not_idx: #if there is a not keyword
         not_idx = not_idx[0] #get the first one
-        not_dic = {} #create a dictionary to store the join information
-        not_dic['not'] = ' '.join(where_split[not_idx+1:]) #store the right table
+        not_dic = {} #create a dictionary to store the not information
 
-        if not_dic['not'].startswith('(') and not_dic['not'].endswith(')'): #if the right table is a subquery
-            not_dic['not'] = interpret(not_dic['not'][1:-1].strip()) #evaluate the subquery
+        not_dic['not_'] = 'simple'
 
-        dic['where'] = not_dic #store the join dictionary in the from key of the query dictionary
+        not_dic['table_name'] = dic['from'] # fix it
+
+        not_dic['condition'] = ' '.join(where_split[not_idx+1:]) #store the right condition
+
+        if not_dic['condition'].startswith('(') and not_dic['condition'].endswith(')'): #if the right condition is a subquery
+            not_dic['condition'] = interpret(not_dic['condition'][1:-1].strip()) #evaluate the subquery
+
+        dic['where'] = not_dic  #store the not dictionary in the from key of the query dictionary
     
     return dic
 
@@ -229,7 +234,8 @@ def execute_dic(dic):
             dic[key] = execute_dic(dic[key])
     
     action = list(dic.keys())[0].replace(' ','_') 
-    return getattr(db, action)(*dic.values())
+    return getattr(db, action)(*dic.values()) # to be changed
+
 
 def interpret_meta(command):
     """

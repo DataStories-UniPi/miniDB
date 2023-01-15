@@ -324,6 +324,19 @@ class Table:
 
         return s_table
 
+    def _where_not(self, condition):
+        '''
+        Returns a table with all the rows where the condition is not met.
+
+        Args:
+            condition: string. A condition in the form 'column_name operator value'.
+        '''
+        column_name, operator, value = self._parse_condition(condition) # parse condition
+        column = self.column_by_name(column_name)
+        rows = [ind for ind, x in enumerate(column) if not get_op(operator, x, value)]
+        dict = {(key):([[self.data[i][j] for j in range(len(self.column_names))] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+        return Table(load=dict)
+
     def order_by(self, column_name, desc=True):
         '''
         Order table based on column.
