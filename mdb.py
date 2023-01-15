@@ -77,7 +77,7 @@ def create_query_plan(query, keywords, action):
 
     if action=='select':
         dic = evaluate_from_clause(dic) 
-        dic = evaluate_where_clause(dic)
+        dic = evaluate_where_clause(dic) # for the where clause
         if dic['distinct'] is not None:
             dic['select'] = dic['distinct']
             dic['distinct'] = True
@@ -163,9 +163,10 @@ def evaluate_from_clause(dic):
 # to be added in create_query_plan
 def evaluate_where_clause(dic):
     '''
-    Evaluate the part of the query (argument or subquery) that is supplied as the 'from' argument
+    Evaluate the part of the query (argument or subquery) that is supplied as the 'where' argument
     '''
-    where_types = ['not', 'between', 'and', 'or']
+    if dic['where'] is None:
+        return dic
     where_split = dic['where'].split(' ')
     if where_split[0] == '(' and where_split[-1] == ')':
         subquery = ' '.join(where_split[1:-1])
@@ -177,18 +178,6 @@ def evaluate_where_clause(dic):
     #or_idx = [i for i,word in enumerate(where_split) if word=='or' and not in_paren(where_split,i)]
 
     if not_idx: #if there is a not keyword
-        # not_idx = not_idx[0] #get the first one
-        # not_dic = {} #create a dictionary to store the not information
-
-        # not_dic['not_'] = 'simple'
-
-        # not_dic['table_name'] = dic['from'] # fix it
-
-        # not_dic['condition'] = ' '.join(where_split[not_idx+1:]) #store the right condition
-
-        # if not_dic['condition'].startswith('(') and not_dic['condition'].endswith(')'): #if the right condition is a subquery
-        #     not_dic['condition'] = interpret(not_dic['condition'][1:-1].strip()) #evaluate the subquery
-        
         not_idx = not_idx[0] #get the not position
         condition = ' '.join(where_split[not_idx+1:]) #get the right condition
 

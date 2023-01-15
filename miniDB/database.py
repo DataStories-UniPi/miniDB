@@ -425,23 +425,6 @@ class Database:
         table._name = table_name
         self.table_from_object(table)
 
-    def not_(self, mode, table_name, condition):
-        '''
-         asdadas
-    
-        '''
-        self.select(table_name, '*', condition, return_object=True)
-
-        # if mode == 'simple':
-        #     self.load_database()
-        #     lock_ownership = self.lock_table(table_name, mode='x')
-        #     self.tables[table_name]._where_not(condition)
-        #     if lock_ownership:
-        #         self.unlock_table(table_name)
-        #     self._update()
-        #     self.save_database()
-
-
     def join(self, mode, left_table, right_table, condition, save_as=None, return_object=True):
         '''
         Join two tables that are part of the database where condition is met.
