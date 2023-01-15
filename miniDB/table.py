@@ -217,7 +217,7 @@ class Table:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
-                Operatores supported: (<,<=,==,>=,>)
+                Operators supported: (<,<=,==,>=,>)
             distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (False by default).
@@ -235,6 +235,7 @@ class Table:
         if condition is not None:
             column_name, operator, value = self._parse_condition(condition)
             column = self.column_by_name(column_name)
+
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
@@ -562,6 +563,8 @@ class Table:
             raise ValueError(f'Condition is not valid (cant find column name)')
         coltype = self.column_types[self.column_names.index(left)]
 
+        if op == 'between':
+            return left, op, right
         return left, op, coltype(right)
 
 
