@@ -115,13 +115,7 @@ def create_query_plan(query, keywords, action):
         else:
             dic['primary key'] = None
         
-        '''
-        # Check if 'unique' keyword exists in the arguments and add it to the dictionary
-        # Like 'primary_key'
-        if 'unique' in args:  
-            arglist = args[1:-1].split(' ')
-            dic['unique'] = arglist[arglist.index('unique')-2]
-        '''
+        
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
