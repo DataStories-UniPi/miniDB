@@ -7,8 +7,8 @@ import traceback
 import shutil
 sys.path.append('miniDB')
 
-from database import Database
-from table import Table
+from miniDB.database import Database
+from miniDB.table import Table
 # art font is "big"
 art = '''
              _         _  _____   ____  
@@ -49,7 +49,7 @@ def create_query_plan(query, keywords, action):
 
     ql = [val for val in query.split(' ') if val !='']
 
-    kw_in_query = []
+    kw_in_query = [] 
     kw_positions = []
     i=0
     while i<len(ql):
@@ -76,8 +76,8 @@ def create_query_plan(query, keywords, action):
         dic['as'] = interpret(dic['as'])
 
     if action=='select':
-        dic = evaluate_from_clause(dic)
-
+        dic = evaluate_from_clause(dic) 
+        dic = evaluate_where_clause(dic) # for the where clause
         if dic['distinct'] is not None:
             dic['select'] = dic['distinct']
             dic['distinct'] = True
@@ -125,7 +125,7 @@ def create_query_plan(query, keywords, action):
 
 
 
-def evaluate_from_clause(dic):
+def evaluate_from_clause(dic): 
     '''
     Evaluate the part of the query (argument or subquery) that is supplied as the 'from' argument
     '''
@@ -135,8 +135,8 @@ def evaluate_from_clause(dic):
         subquery = ' '.join(from_split[1:-1])
         dic['from'] = interpret(subquery)
 
-    join_idx = [i for i,word in enumerate(from_split) if word=='join' and not in_paren(from_split,i)]
-    on_idx = [i for i,word in enumerate(from_split) if word=='on' and not in_paren(from_split,i)]
+    join_idx = [i for i,word in enumerate(from_split) if word=='join' and not in_paren(from_split,i)] 
+    on_idx = [i for i,word in enumerate(from_split) if word=='on' and not in_paren(from_split,i)] 
     if join_idx:
         join_idx = join_idx[0]
         on_idx = on_idx[0]
@@ -159,6 +159,45 @@ def evaluate_from_clause(dic):
         dic['from'] = join_dic
         
     return dic
+
+# to be added in create_query_plan
+def evaluate_where_clause(dic):
+    '''
+    Evaluate the part of the query (argument or subquery) that is supplied as the 'where' argument
+    '''
+    if dic['where'] is None:
+        return dic
+    where_split = dic['where'].split(' ')
+    if where_split[0] == '(' and where_split[-1] == ')':
+        subquery = ' '.join(where_split[1:-1])
+        dic['where'] = interpret(subquery)
+
+    not_idx = [i for i,word in enumerate(where_split) if word=='not' and not in_paren(where_split,i)]
+    #between_idx = [i for i,word in enumerate(where_split) if word=='between' and not in_paren(where_split,i)]
+    #and_idx = [i for i,word in enumerate(where_split) if word=='and' and not in_paren(where_split,i)]
+    #or_idx = [i for i,word in enumerate(where_split) if word=='or' and not in_paren(where_split,i)]
+
+    if not_idx: #if there is a not keyword
+        not_idx = not_idx[0] #get the not position
+        condition = ' '.join(where_split[not_idx+1:]) #get the right condition
+        
+        operators = {'>=': '<',
+                     '<=': '>',
+                     '!=': '=',
+                     '>': '<=',
+                     '<': '>=',
+                     '=': '!=',
+                     }
+
+        for key, value in operators.items():
+            if key in condition:
+                condition = condition.replace(key, value)
+                break
+
+        dic['where'] =  condition #store the not dictionary in the from key of the query dictionary
+    
+    return dic
+
 
 def interpret(query):
     '''
@@ -196,11 +235,12 @@ def execute_dic(dic):
     Execute the given dictionary
     '''
     for key in dic.keys():
-        if isinstance(dic[key],dict):
+        if isinstance(dic[key],dict): 
             dic[key] = execute_dic(dic[key])
     
-    action = list(dic.keys())[0].replace(' ','_')
-    return getattr(db, action)(*dic.values())
+    action = list(dic.keys())[0].replace(' ','_') 
+    return getattr(db, action)(*dic.values()) # to be changed
+
 
 def interpret_meta(command):
     """
@@ -276,7 +316,7 @@ if __name__ == "__main__":
     while 1:
         try:
             line = session.prompt(f'({db._name})> ', auto_suggest=AutoSuggestFromHistory()).lower()
-            if line[-1]!=';':
+            if line[-1]!=';': 
                 line+=';'
         except (KeyboardInterrupt, EOFError):
             print('\nbye!')
@@ -284,7 +324,7 @@ if __name__ == "__main__":
         try:
             if line=='exit':
                 break
-            if line.split(' ')[0].removesuffix(';') in ['lsdb', 'lstb', 'cdb', 'rmdb']:
+            if line.split(' ')[0].removesuffix(';') in ['lsdb', 'lstb', 'cdb', 'rmdb']: 
                 interpret_meta(line)
             elif line.startswith('explain'):
                 dic = interpret(line.removeprefix('explain '))

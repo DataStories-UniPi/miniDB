@@ -440,7 +440,7 @@ class Database:
         save_as: string. The output filename that will be used to save the resulting table in the database (won't save if None).
         return_object: boolean. If True, the result will be a table object (useful for internal usage - the result will be printed by default).
         '''
-        self.load_database()
+        self.load_database() 
         if self.is_locked(left_table) or self.is_locked(right_table):
             return
 
