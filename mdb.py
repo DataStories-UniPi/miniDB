@@ -118,7 +118,7 @@ def create_query_plan(query, keywords, action):
         
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
-
+   
     if action=='insert into':
         if dic['values'][0] == '(' and dic['values'][-1] == ')':
             dic['values'] = dic['values'][1:-1]
@@ -130,6 +130,25 @@ def create_query_plan(query, keywords, action):
             dic['force'] = True
         else:
             dic['force'] = False
+
+    if action=='create index': 
+        '''
+        For creating the B+ Tree index on Unique columns and PK
+        '''
+        print("ql: ")
+        print(ql)
+        dic['on']=ql[3] # Table name
+        if "(" in ql: 
+            # If the user has specified the name of the column
+            # that will have the index
+            dic['column'] = ql[5] # The name of the specified column
+        else:
+            # The index will be created on the PK of the table
+            dic['column']=None 
+        
+        # The index will be B+ Tree
+        dic['using']='btree'
+
 
     return dic
 
@@ -376,7 +395,7 @@ def interpret(query):
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
-                     'create index': ['create index', 'on', 'using'],
+                     'create index': ['create index', 'on', 'column', 'using'], # For creating index on UNIQUE columns
                      'drop index': ['drop index'],
                      'create view' : ['create view', 'as']
                      }
