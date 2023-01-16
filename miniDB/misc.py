@@ -94,3 +94,4 @@ def split_not_condition(condition): # not salary > 50000
 
     return left, op_key, right
 
+
