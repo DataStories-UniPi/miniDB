@@ -14,6 +14,7 @@ sys.modules['table'] = table
 from joins import Inlj, Smj
 from btree import Btree
 from misc import split_condition
+from misc import split_not_condition
 from table import Table
 
 
@@ -292,6 +293,7 @@ class Database:
             set_column: string. The column to be altered.
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
+                'not column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
                 Operatores supported: (<,<=,==,>=,>)
@@ -314,6 +316,7 @@ class Database:
             table_name: string. Name of table (must be part of database).
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
+                'not column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
                 Operatores supported: (<,<=,==,>=,>)
@@ -341,6 +344,7 @@ class Database:
             columns: list. The columns that will be part of the output table (use '*' to select all available columns)
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
+                'not column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
                 Operatores supported: (<,<=,==,>=,>)
@@ -359,31 +363,123 @@ class Database:
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
+        flag = 0
         if condition is not None:
-            condition_column = split_condition(condition)[0]
+
+            initial_condition = condition
+            print("\nCondition is: " + condition)
+            
+            # or operator:
+            operator = ' or '
+            if (operator in condition): # salary = 2000 or salary > 6000
+                flag = 1
+                #self.tables[table_name]._select_where_or(columns, condition, distinct, order_by, desc, limit)
+                #return self.handle_or_op(columns, table_name, s, distinct, order_by, desc, limit)
+                #flag =1
+                
+                splt = condition.split(operator) # salary = 20000, salary > 6000
+                sum = 0
+                s_btree = 0
+                s = 0
+                for condition in splt:
+                    print("splt condition is: " + condition)
+                    #self.handle_or_op(columns, table_name, s, distinct, order_by, desc, limit)
+
+                    
+                    if(condition[:4] == 'not '):
+                        
+                        print("Not has been found in condition!")
+                        condition_column = split_not_condition(condition)[0]
+                        print("Column is: " + condition_column)
+                        print("Operator is: " + split_not_condition(condition)[1])
+                        print("Value is: " + split_not_condition(condition)[2] + '\n')
+
+                    else:
+                        print("i am here")
+                        print(condition)
+                        condition_column = split_condition(condition)[0]
+                        print("Column is: " + condition_column)
+                        print("Operator is: " + split_condition(condition)[1])
+                        print("Value is: " + split_condition(condition)[2] + '\n')
+
+                    
+                    if self.is_locked(table_name):
+                        return
+                    if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
+                        index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
+                        bt = self._load_idx(index_name)
+                        s_btree += 1
+                        #table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+                    else:
+                        s +=  1
+                        #table = self.tables[table_name]._select_where_or(columns, condition, distinct, order_by, desc, limit)
+                        # self.unlock_table(table_name)
+                #print(s)
+                
+                if (s_btree == 2):  
+                    table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+                elif (s == 2):
+                    #table = self.tables[table_name]._select_where_or(columns, condition, distinct, order_by, desc, limit)
+                    table = self.tables[table_name]._select_where_or(columns, initial_condition, distinct, order_by, desc, limit)
+                
+                       
+                if save_as is not None:
+                        table._name = save_as
+                        self.table_from_object(table)
+                else:
+                        if return_object:
+                            #sum +=1
+                            return table
+                        else:
+                            #continue
+                            #sum += 0
+                            return table.show()
+                
+            else:     
+                
+                if(condition[:4] == 'not '):
+                
+                #print("condition[0] is: " + condition[0])
+                #print("condition[1] is: " + condition[1])
+                #print("condition[2] is: " + condition[2])
+                #print("condition[3] is: " + condition[3])
+                  print("Not has been found in condition!")
+                  condition_column = split_not_condition(condition)[0]
+                  print("Column is: " + condition_column)
+                  print("Operator is: " + split_not_condition(condition)[1])
+                  print("Value is: " + split_not_condition(condition)[2] + '\n')
+
+                else:
+                    print("i am here")
+                    print(condition)
+                    condition_column = split_condition(condition)[0]
+                    print("Column is: " + condition_column)
+                    print("Operator is: " + split_condition(condition)[1])
+                    print("Value is: " + split_condition(condition)[2] + '\n')
+
         else:
             condition_column = ''
 
-        
-        # self.lock_table(table_name, mode='x')
-        if self.is_locked(table_name):
+        if (flag == 0): # not or in condition
+            # self.lock_table(table_name, mode='x')
+         if self.is_locked(table_name):
             return
-        if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
+         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:   
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
             table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
-        else:
+         else:
             table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
-        # self.unlock_table(table_name)
-        if save_as is not None:
+            # self.unlock_table(table_name)
+         if save_as is not None:
             table._name = save_as
             self.table_from_object(table)
-        else:
+         else:
             if return_object:
                 return table
             else:
                 return table.show()
-
+        
 
     def show_table(self, table_name, no_of_rows=None):
         '''
@@ -436,6 +532,7 @@ class Database:
             right_table: string. Name of the right table (must be in DB) or Table obj.
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
+                'not column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
                 Operators supported: (<,<=,==,>=,>)
@@ -747,4 +844,9 @@ class Database:
                 warnings.warn(f'"{self.savedir}/indexes/meta_{index_name}_index.pkl" not found.')
 
             self.save_database()
-        
+    
+    def handle_or_op(self, columns, table_name, s, distinct=None, order_by=None, \
+               limit=True, desc=None, save_as=None, return_object=True):
+
+        self.select(columns, table_name, s, distinct, order_by, desc, limit)
+    

@@ -6,7 +6,7 @@ import sys
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
-from misc import get_op, split_condition
+from misc import get_op, split_condition, split_not_condition
 
 
 class Table:
@@ -146,6 +146,7 @@ class Table:
             set_column: string. The column to be altered.
             condition: string. A condition using the following format:
                 'column[<,<=,=,>=,>]value' or
+                'not column[<,<=,=,>=,>]value' or
                 'value[<,<=,=,>=,>]column'.
                 
                 Operatores supported: (<,<=,=,>=,>)
@@ -178,6 +179,7 @@ class Table:
         Args:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
+                'not column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
                 Operatores supported: (<,<=,==,>=,>)
@@ -215,6 +217,7 @@ class Table:
             return_columns: list. The columns to be returned.
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
+                'not column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
                 Operatores supported: (<,<=,==,>=,>)
@@ -233,6 +236,25 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
+            #print("condition is: " + condition)
+            # if or in condition:
+            '''
+            operator = ' or '
+            if (operator in condition): # salary = 2000 or salary > 6000
+                splt = condition.split(operator) # salary = 20000, salary > 6000
+                #column_name = self._parse_condition(splt[0])[0] 
+                #column = self.column_by_name(column_name)
+
+                for s in splt:
+
+                    self._select_where(return_columns, s, distinct, order_by, desc, limit)
+                    
+                    column_name, operator, value = self._parse_condition(s)
+                    column = self.column_by_name(column_name)
+                    rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+                    
+            '''
+            #elif (' or ' not in condition):
             column_name, operator, value = self._parse_condition(condition)
             column = self.column_by_name(column_name)
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
@@ -267,6 +289,7 @@ class Table:
         if isinstance(limit,str):
             s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
 
+        #print(s_table.data)
         return s_table
 
 
@@ -346,6 +369,7 @@ class Table:
         Args:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
+                'not column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
                 Operators supported: (<,<=,==,>=,>)
@@ -390,6 +414,7 @@ class Table:
         Args:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
+                'not column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
                 Operators supported: (<,<=,==,>=,>)
@@ -419,6 +444,7 @@ class Table:
         Args:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
+                'not column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
                 Operators supported: (<,<=,==,>=,>)
@@ -449,6 +475,7 @@ class Table:
         Args:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
+                'not column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
                 Operators supported: (<,<=,==,>=,>)
@@ -479,6 +506,7 @@ class Table:
         Args:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
+                'not column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
                 Operators supported: (<,<=,==,>=,>)
@@ -547,6 +575,7 @@ class Table:
         Args:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
+                'not column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
                 Operatores supported: (<,<=,==,>=,>)
@@ -557,7 +586,13 @@ class Table:
             return split_condition(condition)
 
         # cast the value with the specified column's type and return the column name, the operator and the casted value
-        left, op, right = split_condition(condition)
+        
+        if (condition[:4] == 'not '):
+            left, op, right = split_not_condition(condition)
+        
+        else:
+            left, op, right = split_condition(condition)
+        
         if left not in self.column_names:
             raise ValueError(f'Condition is not valid (cant find column name)')
         coltype = self.column_types[self.column_names.index(left)]
@@ -577,3 +612,347 @@ class Table:
         f.close()
 
         self.__dict__.update(tmp_dict.__dict__)
+
+# try to handle or operator
+    def _select_where_or(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None, data=None):
+        '''
+        Select and return a table containing specified columns and rows where condition is met.
+
+        Args:
+            return_columns: list. The columns to be returned.
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'not column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+                
+                Operatores supported: (<,<=,==,>=,>)
+            distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
+            order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
+            desc: boolean. If True, order_by will return results in descending order (False by default).
+            limit: int. An integer that defines the number of rows that will be returned (all rows if None).
+        '''
+
+        # if * return all columns, else find the column indexes for the columns specified
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
+        else:
+            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+
+        # if condition is None, return all rows
+        # if not, return the rows with values where condition is met for value
+        if condition is not None:
+            flag = 0   # flag 4 or operator
+            operator = ' or ' 
+            # if or in condition
+            if (operator in condition): # salary = 2000 or salary > 6000
+                print("Inside or function.\n")
+                flag = 1
+                splt = condition.split(operator) # [salary = 20000, salary > 6000]
+            
+                list = []
+                #build temp variable
+
+                for s in splt:
+
+                    #self._select_where(return_columns, s, distinct, order_by, desc, limit)
+                    column_name, operator, value = self._parse_condition(s)
+                    column = self.column_by_name(column_name)
+                    rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+
+                    # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
+                    dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+                    # we need to set the new column names/types and no of columns, since we might
+                    # only return some columns
+                    dict['column_names'] = [self.column_names[i] for i in return_cols]
+                    dict['column_types']   = [self.column_types[i] for i in return_cols]
+
+                    s_table = Table(load=dict)
+                    #s_table_copy = Table(load=dict) # copy of table
+
+                    s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+                    #list = list(set(map(lambda x: tuple(x), list))) if distinct else list
+                    #print("list with data")
+                    #print(list)
+
+                    if order_by:
+                        s_table.order_by(order_by, desc)
+
+                    # if isinstance(limit, str):
+                    #     try:
+                    #         k = int(limit)
+                    #     except ValueError:
+                    #         raise Exception("The value following 'top' in the query should be a number.")
+            
+                    #     # Remove from the table's data all the None-filled rows, as they are not shown by default
+                    #     # Then, show the first k rows 
+                    #     s_table.data.remove(len(s_table.column_names) * [None])
+                    #     s_table.data = s_table.data[:k]
+
+                    if isinstance(limit,str):
+                        #list = list.append([row for row in s_table.data if any(row)][:int(limit)])
+                        s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
+
+                    #print("table data with or: ")
+                    #print(s_table.data)
+
+                    #s_table_copy.data.append(s_table.data)
+
+                    
+                    list.append(s_table.data)
+                print("Data table in list: ")
+                print(list)
+                print("\n\n\n")
+                #s_table.data = list
+                #print("list data")
+                #print(list)
+                #print("-----------")
+                #print("\nTable data with operator or are: ")
+                #print(s_table.data)
+
+                #print("-----------")
+                #print("\nTable copy data with operator or are: ")
+                #print(s_table_copy.data)
+                #print("-----------")
+
+
+                #s_table.data = list
+                #return s_table_copy
+                return s_table
+
+
+        else: # condition is null
+            rows = [i for i in range(len(self.data))]
+            
+            # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
+            dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+
+            # we need to set the new column names/types and no of columns, since we might
+            # only return some columns
+            dict['column_names'] = [self.column_names[i] for i in return_cols]
+            dict['column_types']   = [self.column_types[i] for i in return_cols]
+
+            s_table = Table(load=dict)
+
+            s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+
+            if order_by:
+                s_table.order_by(order_by, desc)
+
+            # if isinstance(limit, str):
+            #     try:
+            #         k = int(limit)
+            #     except ValueError:
+            #         raise Exception("The value following 'top' in the query should be a number.")
+            
+            #     # Remove from the table's data all the None-filled rows, as they are not shown by default
+            #     # Then, show the first k rows 
+            #     s_table.data.remove(len(s_table.column_names) * [None])
+            #     s_table.data = s_table.data[:k]
+            if isinstance(limit,str):
+                s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
+
+            #print(s_table.data)
+            return s_table
+
+
+
+
+
+    def _select_where_or2(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
+        '''
+        Select and return a table containing specified columns and rows where condition is met.
+
+        Args:
+            return_columns: list. The columns to be returned.
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'not column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+                
+                Operatores supported: (<,<=,==,>=,>)
+            distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
+            order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
+            desc: boolean. If True, order_by will return results in descending order (False by default).
+            limit: int. An integer that defines the number of rows that will be returned (all rows if None).
+        '''
+
+        # if * return all columns, else find the column indexes for the columns specified
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
+        else:
+            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+
+        # if condition is None, return all rows
+        # if not, return the rows with values where condition is met for value
+        if condition is not None:
+            #print("condition is: " + condition)
+            # if or in condition:
+            flag = 0
+            operator = ' or '
+            if (operator in condition): # salary = 2000 or salary > 6000
+                print("Inside or function.")
+                flag = 1
+                splt = condition.split(operator) # salary = 20000, salary > 6000
+            
+                list = []
+                #build temp variable
+
+                for s in splt:
+
+                    self._select_where(return_columns, s, distinct, order_by, desc, limit)
+                    
+                    column_name, operator, value = self._parse_condition(s)
+                    column = self.column_by_name(column_name)
+                    rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+
+                    # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
+                    dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+                    # we need to set the new column names/types and no of columns, since we might
+                    # only return some columns
+                    dict['column_names'] = [self.column_names[i] for i in return_cols]
+                    dict['column_types']   = [self.column_types[i] for i in return_cols]
+
+                    s_table = Table(load=dict)
+
+                    s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+                    #list = list(set(map(lambda x: tuple(x), list))) if distinct else list
+                    #print("list with data")
+                    #print(list)
+
+                    if order_by:
+                        s_table.order_by(order_by, desc)
+
+        # if isinstance(limit, str):
+        #     try:
+        #         k = int(limit)
+        #     except ValueError:
+        #         raise Exception("The value following 'top' in the query should be a number.")
+            
+        #     # Remove from the table's data all the None-filled rows, as they are not shown by default
+        #     # Then, show the first k rows 
+        #     s_table.data.remove(len(s_table.column_names) * [None])
+        #     s_table.data = s_table.data[:k]
+                    if isinstance(limit,str):
+                        #list = list.append([row for row in s_table.data if any(row)][:int(limit)])
+                        s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
+
+                    #print("table data with or: ")
+                    #print(s_table.data)
+
+                    
+                    list.append(s_table.data)
+                #print("or data list are: ")
+                #print(list)
+                #s_table.data = list
+                print("list data")
+                print(list)
+                print("-----------")
+                print("\nTable data with operator or are: ")
+                print(s_table.data)
+                s_table.data = list
+                return s_table
+
+            elif (' or ' not in condition):
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+        else:
+            rows = [i for i in range(len(self.data))]
+
+        if (flag == 0):
+         print("i am here")
+        # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
+         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+
+        # we need to set the new column names/types and no of columns, since we might
+        # only return some columns
+         dict['column_names'] = [self.column_names[i] for i in return_cols]
+         dict['column_types']   = [self.column_types[i] for i in return_cols]
+
+         s_table = Table(load=dict)
+
+         s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+
+         if order_by:
+            s_table.order_by(order_by, desc)
+
+        # if isinstance(limit, str):
+        #     try:
+        #         k = int(limit)
+        #     except ValueError:
+        #         raise Exception("The value following 'top' in the query should be a number.")
+            
+        #     # Remove from the table's data all the None-filled rows, as they are not shown by default
+        #     # Then, show the first k rows 
+        #     s_table.data.remove(len(s_table.column_names) * [None])
+        #     s_table.data = s_table.data[:k]
+         if isinstance(limit,str):
+            s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
+
+        #print(s_table.data)
+         return s_table
+
+    def _select_where_or3(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None, data=None):
+        '''
+        Select and return a table containing specified columns and rows where condition is met.
+
+        Args:
+            return_columns: list. The columns to be returned.
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'not column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+                
+                Operatores supported: (<,<=,==,>=,>)
+            distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
+            order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
+            desc: boolean. If True, order_by will return results in descending order (False by default).
+            limit: int. An integer that defines the number of rows that will be returned (all rows if None).
+        '''
+
+        # if * return all columns, else find the column indexes for the columns specified
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
+        else:
+            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+
+        # if condition is None, return all rows
+        # if not, return the rows with values where condition is met for value
+        if condition is not None:
+            # build a loop and check rows line 925
+            column_name, operator, value = self._parse_condition(condition)
+            column = self.column_by_name(column_name)
+            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)] #with the next oneee
+
+        else: # condition is null
+            rows = [i for i in range(len(self.data))]
+            
+        # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
+        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+
+        # we need to set the new column names/types and no of columns, since we might
+        # only return some columns
+        dict['column_names'] = [self.column_names[i] for i in return_cols]
+        dict['column_types']   = [self.column_types[i] for i in return_cols]
+
+        s_table = Table(load=dict)
+
+        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+
+        if order_by:
+            s_table.order_by(order_by, desc)
+
+        
+        if isinstance(limit,str):
+            s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
+            #print(s_table.data)
+
+
+        return s_table
+
+
+
+
