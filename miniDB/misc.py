@@ -88,6 +88,8 @@ def split_not_condition(condition): # not salary > 50000
         right = right.strip('"')
     elif ' ' in right: # If it has whitespaces but no leading and trailing double quotes, throw.
         raise ValueError(f'Invalid condition: {condition}\nValue must be enclosed in double quotation marks to include whitespaces.')
+
+
     if right.find('"') != -1: # If there are any double quotes in the value, throw. (Notice we've already removed the leading and trailing ones)
         raise ValueError(f'Invalid condition: {condition}\nDouble quotation marks are not allowed inside values.')
 
