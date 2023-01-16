@@ -374,8 +374,7 @@ class Database:
             if (operator in condition): # salary = 2000 or salary > 6000
                 flag = 1
                 #self.tables[table_name]._select_where_or(columns, condition, distinct, order_by, desc, limit)
-                #return self.handle_or_op(columns, table_name, s, distinct, order_by, desc, limit)
-                
+                #return self.handle_or_op(columns, table_name, s, distinct, order_by, desc, limit) 
                 splt = condition.split(operator) # salary = 20000, salary > 6000
                 sum = 0
                 s_btree = 0

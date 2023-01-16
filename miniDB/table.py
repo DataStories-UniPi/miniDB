@@ -914,7 +914,6 @@ class Table:
             limit: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
 
-
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
