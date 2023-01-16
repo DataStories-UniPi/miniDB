@@ -246,7 +246,7 @@ class Table:
                         value2=int(condition_list[4])
                         rows = [ind for ind, x in enumerate(column) if value1 <= x <= value2]#append index of row if x between value1 and value2
                     except:
-                        raise ValueError('You need to provide numeric values inside a between statement')
+                        raise TypeError('You need to provide numeric values inside a between statement')
                         #print("You need to provide only arithmetical values in order to evaluate between clause")
             else:
                 # NOT case
