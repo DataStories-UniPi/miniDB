@@ -701,6 +701,7 @@ class Table:
                     
                     list.append(s_table.data)
                 print("Data table in list: ")
+                
                 print(list)
                 print("\n\n\n")
                 #s_table.data = list
