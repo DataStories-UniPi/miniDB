@@ -238,15 +238,16 @@ class Table:
             if "between" in condition:
                 condition_list=condition.split(" ")
                 if len(condition_list)!=5 or condition_list[1]!="between" or condition_list[3]!="and":
-                    raise Exception("condition containing between keyword must have the following format: column between value1 and value2")
+                    raise Exception("Condition containing between keyword must have the following format: column between value1 and value2")
                 else:
                     try:
                         column=self.column_by_name(condition_list[0])
                         value1=int(condition_list[2])
                         value2=int(condition_list[4])
-                        rows = [ind for ind, x in enumerate(column) if ( get_op('>=', x, value) and get_op('<=', x, value) )]
+                        rows = [ind for ind, x in enumerate(column) if value1 <= x <= value2]#append index of row if x between value1 and value2
                     except:
-                        print("You need to provide only arithmetical values in order to evaluate between clause")
+                        raise ValueError('You need to provide numeric values inside a between statement')
+                        #print("You need to provide only arithmetical values in order to evaluate between clause")
             else:
                 # NOT case
                 containsNot=False # flag for not keyword
