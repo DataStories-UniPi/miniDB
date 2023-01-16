@@ -8,7 +8,9 @@ def get_op(op, a, b):
                 '<': operator.lt,
                 '>=': operator.ge,
                 '<=': operator.le,
-                '=': operator.eq}
+                '=': operator.eq,
+                '<>': operator.ne
+                }
 
     try:
         return ops[op](a,b)
@@ -20,12 +22,14 @@ def split_condition(condition):
            '<=': operator.le,
            '=': operator.eq,
            '>': operator.gt,
-           '<': operator.lt}
+           '<': operator.lt,
+           '<>': operator.ne
+           }
 
     for op_key in ops.keys():
-        splt=condition.split(op_key)
-        if len(splt)>1:
-            left, right = splt[0].strip(), splt[1].strip()
+        splt=condition.split(op_key) # split string on operator
+        if len(splt)>1: # if split successful
+            left, right = splt[0].strip(), splt[1].strip() # values for condition
 
             if right[0] == '"' == right[-1]: # If the value has leading and trailing quotes, remove them.
                 right = right.strip('"')
@@ -39,12 +43,12 @@ def split_condition(condition):
 
 def reverse_op(op):
     '''
-    Reverse the operator given
+    Reverse the operator given (REWORKED WITH NOT OPERATOR)
     '''
     return {
-        '>' : '<',
-        '>=' : '<=',
-        '<' : '>',
-        '<=' : '>=',
-        '=' : '='
+        '>' : '<=',
+        '>=' : '<',
+        '<' : '>=',
+        '<=' : '>',
+        '=' : '<>'
     }.get(op)

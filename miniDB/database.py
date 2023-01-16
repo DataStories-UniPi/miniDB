@@ -354,10 +354,10 @@ class Database:
 
         # print(table_name)
         self.load_database()
-        if isinstance(table_name,Table):
+        if isinstance(table_name,Table): # is table in database?
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
-        if condition is not None:
+        if condition is not None: # get column of where clause
             condition_column = split_condition(condition)[0]
         else:
             condition_column = ''

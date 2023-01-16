@@ -45,14 +45,14 @@ def create_query_plan(query, keywords, action):
     This can and will be used recursively
     '''
 
-    dic = {val: None for val in keywords if val!=';'}
+    dic = {val: None for val in keywords if val!=';'} # dict of query words
 
-    ql = [val for val in query.split(' ') if val !='']
+    ql = [val for val in query.split(' ') if val !=''] # list of query words
 
     kw_in_query = []
     kw_positions = []
     i=0
-    while i<len(ql):
+    while i<len(ql): # finds indexes of query keywords in the action format (eg. [0,2,4,6], 0:select)
         if in_paren(ql, i): 
             i+=1
             continue
@@ -68,7 +68,7 @@ def create_query_plan(query, keywords, action):
         i+=1
         
 
-
+    # Fill dict (eg. 'select':'*') excluding ;
     for i in range(len(kw_in_query)-1):
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
     
@@ -76,7 +76,7 @@ def create_query_plan(query, keywords, action):
         dic['as'] = interpret(dic['as'])
 
     if action=='select':
-        dic = evaluate_from_clause(dic)
+        dic = evaluate_from_clause(dic) # for subqueries using join statement
 
         if dic['distinct'] is not None:
             dic['select'] = dic['distinct']
@@ -95,7 +95,7 @@ def create_query_plan(query, keywords, action):
 
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
-        dic['create table'] = dic['create table'].removesuffix(args).strip()
+        dic['create table'] = dic['create table'].replace(args,"").strip()
         arg_nopk = args.replace('primary key', '')[1:-1]
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
@@ -130,7 +130,7 @@ def evaluate_from_clause(dic):
     Evaluate the part of the query (argument or subquery) that is supplied as the 'from' argument
     '''
     join_types = ['inner', 'left', 'right', 'full', 'sm', 'inl']
-    from_split = dic['from'].split(' ')
+    from_split = dic['from'].split(' ') # if from key in () then we have an inner query from the join_types
     if from_split[0] == '(' and from_split[-1] == ')':
         subquery = ' '.join(from_split[1:-1])
         dic['from'] = interpret(subquery)
@@ -162,7 +162,7 @@ def evaluate_from_clause(dic):
 
 def interpret(query):
     '''
-    Interpret the query.
+    Interpret the query. (keywords per action)
     '''
     kw_per_action = {'create table': ['create table'],
                      'drop table': ['drop table'],
@@ -180,11 +180,13 @@ def interpret(query):
                      'create view' : ['create view', 'as']
                      }
 
-    if query[-1]!=';':
+    if query[-1]!=';': # append ; to query if not there
         query+=';'
     
+    # format () and ; with one whitespace before and after
     query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip()
 
+    # find action from first word in query
     for kw in kw_per_action.keys():
         if query.startswith(kw):
             action = kw

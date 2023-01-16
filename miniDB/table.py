@@ -6,7 +6,7 @@ import sys
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
-from misc import get_op, split_condition
+from misc import get_op, reverse_op, split_condition
 
 
 class Table:
@@ -233,7 +233,14 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
+            # NOT case
+            containsNot=False # flag for not keyword
+            if len(condition.split(' '))>1: # split will have more than one item
+                condition=condition.replace('not ','') # remove not keyword
+                containsNot=True
             column_name, operator, value = self._parse_condition(condition)
+            if containsNot: # reverse operator if flag true
+                operator=reverse_op(operator)
             column = self.column_by_name(column_name)
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
