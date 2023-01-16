@@ -92,6 +92,12 @@ def create_query_plan(query, keywords, action):
             
         else:
             dic['desc'] = None
+    
+    if action=='update table':
+        dic = evaluate_where_clause(dic) # for the where clause
+
+    if action=='delete from':
+        dic = evaluate_where_clause(dic) # for the where clause
 
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
