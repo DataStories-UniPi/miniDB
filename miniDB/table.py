@@ -182,14 +182,65 @@ class Table:
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
-        column_name, operator, value = self._parse_condition(condition)
+        #column_name, operator, value = self._parse_condition(condition)
 
         indexes_to_del = []
 
-        column = self.column_by_name(column_name)
-        for index, row_value in enumerate(column):
-            if get_op(operator, row_value, value):
-                indexes_to_del.append(index)
+        if 'not ' in condition and ' between ' not in condition:
+                condition = condition.replace('not ', '')
+               # condition_columnn, op, value = split_condition(condition,True)
+                #print(condition_column)
+                print(condition)
+                column_name, operator, value = self._parse_condition(condition, False, True)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+        elif ' between ' and ' and ' in condition:
+                if 'not ' in condition:
+                    condition = condition.replace('not ', '') 
+                    notcheck = True
+                else:
+                    notcheck = False
+
+                splt = condition.split(' between ', 1) # split condition one time on between keyword
+
+                # if splt is more than 1 characters, split "splt" one time on the 'and' keyword
+                if len(splt)>1:
+                    if len(splt[1])>1:
+
+                        # column name, between ... and ...
+                        # splt[0], 'between', splt[1]
+                        splt_and = splt[1].split(' and ', 1)
+                        #value1 and value2
+                        #splt_and[0], 'and', splt_and[1]
+
+                        #remove whitespace
+                        condition_column = splt[0].replace(' ', '') # name of column
+                        value1 = splt_and[0].replace(' ', '') # name of the first value
+                        value2 = splt_and[1].replace(' ', '') # name of second value
+                
+                column = self.column_by_name(condition_column) # get column as a list
+                column_to_str = [str(x) for x in column] # make column list of strings
+
+                values = []
+                
+                if notcheck:
+                    values = [x for x in column_to_str if(x < value1 or x > value2)]
+                else:
+                     values = [x for x in column_to_str if(x >= value1 and x <= value2)]
+
+                column = self.column_by_name(column_name)
+                for index, row_value in enumerate(column):
+                    for i in range(len(values)):
+                        if row_value == values[i]:
+                            indexes_to_del.append(index)
+        
+        else:
+            column_name, operator, value = self._parse_condition(condition)
+            column = self.column_by_name(column_name)
+            for index, row_value in enumerate(column):
+                if get_op(operator, row_value, value):
+                    indexes_to_del.append(index)
 
         # we pop from highest to lowest index in order to avoid removing the wrong item
         # since we dont delete, we dont have to to pop in that order, but since delete is used
@@ -217,7 +268,7 @@ class Table:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
-                Operatores supported: (<,<=,==,>=,>)
+                Operatores supported: (<,<=,==,>=,>,not,between)
             distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (False by default).
@@ -233,13 +284,63 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            notcheck = False
+            if 'not ' in condition and ' between ' not in condition: 
+                condition = condition.replace('not ', '') # split condition one time on 'not' keyword
+                print(condition)
+                column_name, operator, value = self._parse_condition(condition, False, True) # thrid parameter is about 'notcheck', a variable set to true if 'not' exists in said condition
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+            elif ' between ' and ' and ' in condition:
+                if 'not ' in condition:
+                    condition = condition.replace('not ', '') # remove not from the condition
+                    notcheck = True # used to negate the operators
+                else:
+                    notcheck = False
+
+                splt = condition.split(' between ', 1) # split condition one time on between keyword
+
+                # if splt is more than 1 characters, split "splt" one time on the 'and' keyword
+                if len(splt)>1:
+                    if len(splt[1])>1:
+
+                        # column name, between ... and ...
+                        # splt[0], 'between', splt[1]
+                        splt_and = splt[1].split(' and ', 1)
+                        #value1 and value2
+                        #splt_and[0], 'and', splt_and[1]
+
+                        #remove whitespace
+                        condition_column = splt[0].replace(' ', '') # name of column
+                        value1 = splt_and[0].replace(' ', '') # name of the first value
+                        value2 = splt_and[1].replace(' ', '') # name of second value
+                
+                column = self.column_by_name(condition_column) # get column as a list
+                column_to_str = [str(x) for x in column] # make column list of strings
+
+                values = []
+                
+                if notcheck: # if 'not' keyword in query
+                   # negate the between check
+                   # not between 67000 and 75000 => value < 67000 or value > 75000
+                    values = [x for x in column_to_str if(x < value1 or x > value2)]
+                else:
+                    # normal between format
+                    # between 67000 and 75000 => value >= 67000 and value <= 75000
+                    values = [x for x in column_to_str if(x >= value1 and x <= value2)] 
+
+                rows = [ind for ind, x in enumerate(column_to_str) if(x in list(values))]
+            else:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+        
         else:
             rows = [i for i in range(len(self.data))]
 
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
+        
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
 
         # we need to set the new column names/types and no of columns, since we might
@@ -540,7 +641,7 @@ class Table:
         print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
 
 
-    def _parse_condition(self, condition, join=False):
+    def _parse_condition(self, condition, join=False, notcheck=False):
         '''
         Parse the single string condition and return the value of the column and the operator.
 
@@ -556,8 +657,13 @@ class Table:
         if join:
             return split_condition(condition)
 
+        if notcheck:
+            left, op, right = split_condition(condition, True) #added a parameter to the split_condition method
+        else:
+            left, op, right = split_condition(condition)
+
         # cast the value with the specified column's type and return the column name, the operator and the casted value
-        left, op, right = split_condition(condition)
+        
         if left not in self.column_names:
             raise ValueError(f'Condition is not valid (cant find column name)')
         coltype = self.column_types[self.column_names.index(left)]

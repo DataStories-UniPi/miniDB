@@ -358,7 +358,8 @@ class Database:
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
         if condition is not None:
-            condition_column = split_condition(condition)[0]
+            #condition_column = split_condition(condition)[0]
+            condition_column = condition.split()[0]
         else:
             condition_column = ''
 
