@@ -233,16 +233,32 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            # NOT case
-            containsNot=False # flag for not keyword
-            if len(condition.split(' '))>1: # split will have more than one item
-                condition=condition.replace('not ','') # remove not keyword
-                containsNot=True
-            column_name, operator, value = self._parse_condition(condition)
-            if containsNot: # reverse operator if flag true
-                operator=reverse_op(operator)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+            # BETWEEN case
+            if "between" in condition:
+                condition_list=condition.split(" ")
+                if len(condition_list)!=5 or condition_list[1]!="between" or condition_list[3]!="and":
+                    raise Exception("condition containing between keyword must have the following format: column between value1 and value2")
+                else:
+                    try:
+                        column=self.column_by_name(condition_list[0])
+                        value1=int(condition_list[2])
+                        value2=int(condition_list[4])
+                        rows = [ind for ind, x in enumerate(column) if ( get_op('>=', x, value) and get_op('<=', x, value) )]
+                    except:
+                        print("You need to provide only arithmetical values in order to evaluate between clause")
+            else:
+                # NOT case
+                containsNot=False # flag for not keyword
+                if len(condition.split(' '))>1: # split will have more than one item
+                    condition=condition.replace('not ','') # remove not keyword
+                    containsNot=True
+                column_name, operator, value = self._parse_condition(condition)
+                if containsNot: # reverse operator if flag true
+                    operator=reverse_op(operator)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
         else:
             rows = [i for i in range(len(self.data))]
 
