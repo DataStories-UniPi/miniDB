@@ -8,13 +8,9 @@ def get_op(op, a, b):
                 '<': operator.lt,
                 '>=': operator.ge,
                 '<=': operator.le,
-<<<<<<< HEAD
-                '!=': operator.ne, # not equal operator !=
-                '=': operator.eq,} 
-=======
                 '=': operator.eq,
                 '<>': operator.ne}
->>>>>>> bcace31 (or and not op)
+
 
     try:
         return ops[op](a,b)
@@ -31,16 +27,16 @@ def split_condition(condition):
 
     for op_key in ops.keys():
         splt=condition.split(op_key)
-<<<<<<< HEAD
-        print(splt)
+
+        #print(splt)
         if len(splt)>1: # operator has been found
             left, right = splt[0].strip(), splt[1].strip() 
-=======
+
         #print("split is: ")
         #print(splt)
         if len(splt)>1:
             left, right = splt[0].strip(), splt[1].strip()
->>>>>>> bcace31 (or and not op)
+
 
             if right[0] == '"' == right[-1]: # If the value has leading and trailing quotes, remove them.
                 right = right.strip('"')
