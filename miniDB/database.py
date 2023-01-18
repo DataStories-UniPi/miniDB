@@ -13,7 +13,7 @@ sys.modules['table'] = table
 
 from joins import Inlj, Smj
 from btree import Btree
-from misc import split_condition
+from misc import split_condition,convert_between_condition
 from table import Table
 
 
@@ -358,6 +358,8 @@ class Database:
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
         if condition is not None:
+            if ("between" in condition):
+                condition = convert_between_condition(condition)
             condition_column = split_condition(condition)[0]
         else:
             condition_column = ''
