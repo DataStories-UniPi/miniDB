@@ -360,6 +360,17 @@ class Database:
         if condition is not None:
             if ("between" in condition):
                 condition = convert_between_condition(condition)
+            if ("not" in condition): # Operator reverse
+                left,op_key,right = split_condition(condition)
+                op_key = {
+                    '>' : '<=',
+                    '>=' : '<',
+                    '<' : '>=',
+                    '<=' : '>',
+                    '=' : '!=',
+                    '!=' : '='
+                }.get(op_key)
+                condition = left + " " + op_key + " " + right
             condition_column = split_condition(condition)[0]
         else:
             condition_column = ''

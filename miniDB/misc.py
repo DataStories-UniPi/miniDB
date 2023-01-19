@@ -20,7 +20,8 @@ def split_condition(condition):
            '<=': operator.le,
            '=': operator.eq,
            '>': operator.gt,
-           '<': operator.lt}
+           '<': operator.lt,
+           '!=': operator.ne}
 
     for op_key in ops.keys():
         splt=condition.split(op_key)
@@ -66,4 +67,4 @@ def convert_between_condition(condition):
     for i in range(3, len(right)):
         new_condition += right[i] + " "
 
-    return new_condition
+    return new_condition.strip()
