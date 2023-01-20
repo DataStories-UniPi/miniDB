@@ -68,3 +68,16 @@ def convert_between_condition(condition):
         new_condition += right[i] + " "
 
     return new_condition.strip()
+
+def reverse_not (condition):
+    left, op_key, right = split_condition(condition)
+    op_key = {
+        '>': '<=',
+        '>=': '<',
+        '<': '>=',
+        '<=': '>',
+        '=': '!=',
+        '!=': '='
+    }.get(op_key)
+    condition = left + " " + op_key + " " + right
+    return condition

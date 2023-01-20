@@ -13,7 +13,7 @@ sys.modules['table'] = table
 
 from joins import Inlj, Smj
 from btree import Btree
-from misc import split_condition,convert_between_condition
+from misc import split_condition,convert_between_condition,reverse_not
 from table import Table
 
 
@@ -388,7 +388,13 @@ class Database:
                                 if item in table2.data:
                                     table2.data.remove(item)
                             s_table.data = dict1 + table2.data
-
+            elif ('not' in condition_list):
+                if condition_list[0]=='not':
+                    condition = " ".join(c for c in condition_list[1:])
+                    condition = reverse_not(condition)
+                    s_table = split_complex_condition(condition)
+                else:
+                    raise Exception(f'There is a problem with condition "{condition}".\n Wrong use of "Not" operator.')
             else:
                 s_table = execute_condition(condition)
 
@@ -438,17 +444,7 @@ class Database:
                 condition = convert_between_condition(condition)
             # condition_column = split_condition(condition)[0]
             table = split_complex_condition(condition)
-            if ("not" in condition): # Operator reverse
-                left,op_key,right = split_condition(condition)
-                op_key = {
-                    '>' : '<=',
-                    '>=' : '<',
-                    '<' : '>=',
-                    '<=' : '>',
-                    '=' : '!=',
-                    '!=' : '='
-                }.get(op_key)
-                condition = left + " " + op_key + " " + right
+
         else:
             # condition_column = ''
             table = execute_condition(None)
