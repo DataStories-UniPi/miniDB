@@ -352,6 +352,82 @@ class Database:
             distinct: boolean. If True, the resulting table will contain only unique rows.
         '''
 
+        def split_complex_condition(condition):
+            '''
+            Convert a complex condition to simple conditions. Execute queries with simple conditions and
+            then execute logical AND, OR, NOT operators to results.
+
+            Args:
+                condition: A string that contains one or more conditions that can be connected
+                           with AND, OR, NOT operators.
+            '''
+            condition_list = condition.split()
+            if ('and' in condition_list) or ('or' in condition_list):
+                kwords = ['and', 'or']
+                for kw in kwords:
+                    kw_positions = []
+                    for i in range(len(condition_list)):
+                        if condition_list[i] == kw:
+                            kw_positions.append(i)
+                    for pos in kw_positions:
+                        condition = " ".join(c for c in condition_list[:pos])
+                        s_table = split_complex_condition(condition)
+                        condition = " ".join(c for c in condition_list[pos + 1:])
+                        table2 = split_complex_condition(condition)
+                        if (s_table is None) or (table2 is None):
+                            return None
+                        if kw == 'and':
+                            dict1 = s_table.data
+                            for item in dict1:
+                                if item not in table2.data:
+                                    dict1.remove(item)
+                            s_table.data = dict1
+                        elif kw == 'or':
+                            dict1 = s_table.data
+                            for item in dict1:
+                                if item in table2.data:
+                                    table2.data.remove(item)
+                            s_table.data = dict1 + table2.data
+
+            else:
+                s_table = execute_condition(condition)
+
+            if s_table is None:
+                return None
+
+            s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+
+            if order_by:
+                s_table.order_by(order_by, desc)
+
+            return s_table
+
+        def execute_condition(condition):
+            '''
+            Executes a simple condition query
+            Args:
+                condition: A string that contains simple condition to be executed
+            '''
+            if condition is not None:
+                condition_column = split_condition(condition)[0]
+            else:
+                condition_column = ''
+
+            if self.is_locked(table_name):
+                return None
+            if self._has_index(table_name) and condition_column == self.tables[table_name].column_names[
+                self.tables[table_name].pk_idx]:
+                index_name = \
+                self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name(
+                    'index_name')[0]
+                bt = self._load_idx(index_name)
+                table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by,
+                                                                         desc, limit)
+            else:
+                table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+
+            return table
+
         # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
@@ -360,6 +436,8 @@ class Database:
         if condition is not None:
             if ("between" in condition):
                 condition = convert_between_condition(condition)
+            # condition_column = split_condition(condition)[0]
+            table = split_complex_condition(condition)
             if ("not" in condition): # Operator reverse
                 left,op_key,right = split_condition(condition)
                 op_key = {
@@ -371,20 +449,21 @@ class Database:
                     '!=' : '='
                 }.get(op_key)
                 condition = left + " " + op_key + " " + right
-            condition_column = split_condition(condition)[0]
         else:
-            condition_column = ''
+            # condition_column = ''
+            table = execute_condition(None)
 
-        
         # self.lock_table(table_name, mode='x')
-        if self.is_locked(table_name):
-            return
-        if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
-            index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
-            bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
-        else:
-            table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+### Included in execute_condition function from here
+        # if self.is_locked(table_name):
+        #     return
+        # if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
+        #     index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
+        #     bt = self._load_idx(index_name)
+        #     table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+        # else:
+        #     table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+### Included in execute_condition function up to here
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as
