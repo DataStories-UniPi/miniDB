@@ -233,31 +233,36 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            if "between" in condition.split():
-                split_con = condition.split()
-                if (split_con[3] != 'and'):  # if the condition is not correct 
-                    print('You have to use "and" between the values')
-                    exit()
-                else:  # everything is ok 
-                    left_val = split_con[2]  # left value 
-                    right_val = split_con[4]  # right value
-                    column_name = split_con[0]
-                    column = self.column_by_name(column_name)
-                    rows = []
-                    if (left_val.isdigit() and right_val.isdigit()):  # an oi times einai arithmoi
-                        for i, j in enumerate(column):
-                            if int(left_val) <= int(j) <= int(right_val):#the value is between the two values 
-                                rows.append(i) 
-                    else: 
-                        print('Cannot compare strings')
-                        exit()
-            elif "NOT" in condition.split() or "not" in condition.split():
-                condition_list = condition.split("NOT")
-                condition_list = condition_list[0].split("not")
-                column_name, operator, value = self._parse_condition(condition_list[1])
-                column = self.column_by_name(column_name)
-                operator2=reverse_op(operator)
-                rows = [ind for ind, x in enumerate(column) if get_op(operator2, x, value)]
+            #Between operator
+            condition_list = condition.split() # split the condition by spaces
+            between_the_values = condition_list[3] # the word "and" between the values
+            if "between" in condition_list: # if the condition is between
+                if between_the_values != 'and': # if the word "and" is not between the values
+                    print('You have to use "and" between the values') # print error
+                else: # if the word "and" is between the values
+                    column_name, left_value, right_value = condition_list[0], condition_list[2], condition_list[4] # get the column name, left value and right value
+                    column = self.column_by_name(column_name) # get the column
+                    rows = [i for i, j in enumerate(column) if int(left_value) <= int(j) <= int(right_value) and (left_value.isdigit() and right_value.isdigit())] # get the rows where the value is between the left and right values
+                    if not rows: # if there are no rows
+                        print("Cannot compare strings") # print error
+            #Not operator
+            elif "not" in condition_list: # if the condition is not
+                column_name, operator, value = self._parse_condition(condition.split("not")[1]) # get the column name, operator and value
+                column = self.column_by_name(column_name) # get the column 
+                rows = [ind for ind, x in enumerate(column) if get_op(reverse_op(operator), x, value)] # get the rows where the value is not the value
+            #Or operator
+            elif "or" in condition_list: # if the condition is or 
+                condition_list = condition.split("or") #  split the condition by "or"
+                rows = set() # create a set
+                for cond in condition_list: # for each condition
+                    column_name, operator, value = self._parse_condition(cond) # get the column name, operator and value
+                    column = self.column_by_name(column_name) # get the column
+                    rows.update([ind for ind, x in enumerate(column) if get_op(operator, x, value)]) # update the rows with the rows where the value is the value
+            #And operator
+            elif "and" in condition_list: # if the condition is and
+                condition_list = condition.split("and") # split the condition by "and"
+                row_lists = [{ind for ind, x in enumerate(self.column_by_name(self._parse_condition(cond)[0])) if get_op(self._parse_condition(cond)[1], x, self._parse_condition(cond)[2])} for cond in condition_list] # get the rows where the value is the value
+                rows = row_lists[0].intersection(*row_lists[1:]) # get the intersection of the rows
             else:
                 column_name, operator, value = self._parse_condition(condition)
                 column = self.column_by_name(column_name)
