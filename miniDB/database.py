@@ -13,6 +13,7 @@ sys.modules['table'] = table
 
 from joins import Inlj, Smj
 from btree import Btree
+from hash import Hash
 from misc import split_condition, check_logops, oppose_op
 from table import Table
 
@@ -357,6 +358,9 @@ class Database:
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
+        '''
+        Clears condition of extra operators for the following index check
+        '''
         if condition is not None:
             cnd, op = check_logops(condition)
             if op == 'not ':
@@ -672,13 +676,38 @@ class Database:
                 logging.info('Creating Btree index.')
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
                 self.tables['meta_indexes']._insert([table_name, index_name])
-                # crate the actual index
+                # create the actual index
                 self._construct_index(table_name, index_name)
                 self.save_database()
+            elif index_type=='hash':
+                logging.info('Creating Hash index.')
+                # insert a record with the name of the index and the table on which it's created to the meta_indexes table
+                self.tables['meta_indexes']._insert([table_name, index_name])
+                # create the actual index
+                self._construct_hash_index(table_name, index_name)
+                self.save_database()
+
+
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
+    def _construct_hash_index(self, table_name, index_name):
+
+        '''
+
+        '''
+        hash = Hash()
+
+        for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
+            if key is None:
+                continue
+            hash.create_hash_index(key)
+
+        # save the hash table
+        self._save_index(index_name, hash)
+
     def _construct_index(self, table_name, index_name):
+
         '''
         Construct a btree on a table and save.
 
