@@ -249,8 +249,35 @@ class Table:
                 else:
                     print("False syntax, forgot and operator in between numbers")
                     exit()
-
-
+            #NOT operator
+            elif "NOT" in condition.split() or "not" in condition.split() or "Not" in condition.split():
+                '''
+                    spliting for each possible user input
+                '''
+                condlist=condiiton.split("NOT")
+                condlist=condition_list[0].split("not")
+                condlist=condition_list[1].split("Not")
+                column_name,operator,value=self._parse_condition(condition_list[2])
+                column=self.column_by_name(column_name)
+                #reversing the operator
+                op=reverse_op(operator)
+                rows= [i for i,j in enumerate(column) if get_op(op,j,value)]
+            elif "AND" in condition.split() or "and" in condition.split() or "And" in condition.split():
+                '''
+                    spliting for each possible user input
+                '''
+                condlist=condiiton.split("AND")
+                condlist=condition_list[0].split("and")
+                condlist=condition_list[1].split("And")
+                rows2=[]
+                for c in condition_list:
+                    #running for each conditon
+                    column_name,op,value=self._parse_condition(c)
+                    column=self.column_by_name(column_name)
+                    rows2.append([i for i,j in enumerate(column) if get_op(op,j,value)])
+                #storing the conditions' intersection
+                rows=set(rows2[0].intersection(*rows2))
+                
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
