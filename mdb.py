@@ -165,6 +165,7 @@ def interpret(query):
     Interpret the query.
     '''
     #dictionary
+    # hi
     kw_per_action = {'create table': ['create table'],
                      'drop table': ['drop table'],
                      'cast': ['cast', 'from', 'to'],
