@@ -277,7 +277,28 @@ class Table:
                     rows2.append([i for i,j in enumerate(column) if get_op(op,j,value)])
                 #storing the conditions' intersection
                 rows=set(rows2[0].intersection(*rows2))
-                
+            elif "OR" in condition.split() or "or" in condition.split() or "Or" in condition.split():
+                '''
+                    spliting for each possible user input
+                '''
+                condlist=condiiton.split("OR")
+                condlist=condition_list[0].split("or")
+                condlist=condition_list[1].split("Or")
+                rows2=[]
+                for c in condition_list:
+                    #running for each conditon
+                    column_name,op,value=self._parse_condition(c)
+                    column=self.column_by_name(column_name)
+                    rows2.append([i for i,j in enumerate(column) if get_op(op,j,value)])
+                rows=[]
+                '''
+                    moving all row values into a one-dimension array
+                '''
+                for i in rows2:
+                    for j in i:
+                        if not(j in rows):#to avoid duplicates
+                            rows.append(j)
+
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
