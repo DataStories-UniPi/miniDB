@@ -246,7 +246,9 @@ class Table:
                         #strings cannot be compared
                         print("Between operator does not work on strings!")
                         exit()
-
+                else:
+                    print("False syntax, forgot and operator in between numbers")
+                    exit()
 
 
         # if * return all columns, else find the column indexes for the columns specified
