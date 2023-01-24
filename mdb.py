@@ -120,6 +120,7 @@ def create_query_plan(query, keywords, action):
             dic['force'] = True
         else:
             dic['force'] = False
+            # if action = create index
 
     return dic
 
