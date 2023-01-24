@@ -353,20 +353,20 @@ class Database:
         '''
 
 
-        
+
         if condition is not None:
             '''
             checking if the condition is one of OR, AND, BETWEEN, NOT operators
             and adding the 1st element of the condition after spliting " " in
             condition_column, that way we get the wanted operator
             '''
-            if "between" in condition.split():
+            if "between" in condition.split() or "BETWEEN" in condition.split() or "Between" in condition.split():
                 condition_column=condition.split(" ")[0]
-            elif "and" in condition.split():
+            elif "and" in condition.split() or "AND" in condition.split() or "And" in condition.split():
                 condition_column=condition.split(" ")[0]
-            elif "or" in condition.split():
+            elif "or" in condition.split() or "OR" in condition.split() or "Or" in condition.split():
                 condition_column=condition.split(" ")[0]
-            elif "not" in condition.split():
+            elif "not" in condition.split() or "NOT" in condition.split() or "Not" in condition.split():
                 condition_column=condition.split(" ")[0]
             else:
                 condition_column=split_condition(" ")[0]
