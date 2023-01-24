@@ -246,7 +246,7 @@ class Database:
             cast_type: type. Cast type (do not encapsulate in quotes).
         '''
         self.load_database()
-        
+
         lock_ownership = self.lock_table(table_name, mode='x')
         self.tables[table_name]._cast_column(column_name, eval(cast_type))
         if lock_ownership:
@@ -293,12 +293,12 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
         '''
         set_column, set_value = set_args.replace(' ','').split('=')
         self.load_database()
-        
+
         lock_ownership = self.lock_table(table_name, mode='x')
         self.tables[table_name]._update_rows(set_value, set_column, condition)
         if lock_ownership:
@@ -315,11 +315,11 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
         '''
         self.load_database()
-        
+
         lock_ownership = self.lock_table(table_name, mode='x')
         deleted = self.tables[table_name]._delete_where(condition)
         if lock_ownership:
@@ -342,7 +342,7 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (True by default).
@@ -351,6 +351,28 @@ class Database:
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
             distinct: boolean. If True, the resulting table will contain only unique rows.
         '''
+
+
+        
+        if condition is not None:
+            '''
+            checking if the condition is one of OR, AND, BETWEEN, NOT operators
+            and adding the 1st element of the condition after spliting " " in
+            condition_column, that way we get the wanted operator
+            '''
+            if "between" in condition.split():
+                condition_column=condition.split(" ")[0]
+            elif "and" in condition.split():
+                condition_column=condition.split(" ")[0]
+            elif "or" in condition.split():
+                condition_column=condition.split(" ")[0]
+            elif "not" in condition.split():
+                condition_column=condition.split(" ")[0]
+            else:
+                condition_column=split_condition(" ")[0]
+
+
+
 
         # print(table_name)
         self.load_database()
@@ -362,7 +384,7 @@ class Database:
         else:
             condition_column = ''
 
-        
+
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
@@ -391,7 +413,7 @@ class Database:
             table_name: string. Name of table (must be part of database).
         '''
         self.load_database()
-        
+
         self.tables[table_name].show(no_of_rows, self.is_locked(table_name))
 
 
@@ -406,7 +428,7 @@ class Database:
         '''
 
         self.load_database()
-        
+
         lock_ownership = self.lock_table(table_name, mode='x')
         self.tables[table_name]._sort(column_name, asc=asc)
         if lock_ownership:
@@ -435,7 +457,7 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operators supported: (<,<=,==,>=,>)
         save_as: string. The output filename that will be used to save the resulting table in the database (won't save if None).
         return_object: boolean. If True, the result will be a table object (useful for internal usage - the result will be printed by default).
@@ -444,19 +466,19 @@ class Database:
         if self.is_locked(left_table) or self.is_locked(right_table):
             return
 
-        left_table = left_table if isinstance(left_table, Table) else self.tables[left_table] 
-        right_table = right_table if isinstance(right_table, Table) else self.tables[right_table] 
+        left_table = left_table if isinstance(left_table, Table) else self.tables[left_table]
+        right_table = right_table if isinstance(right_table, Table) else self.tables[right_table]
 
 
         if mode=='inner':
             res = left_table._inner_join(right_table, condition)
-        
+
         elif mode=='left':
             res = left_table._left_join(right_table, condition)
-        
+
         elif mode=='right':
             res = left_table._right_join(right_table, condition)
-        
+
         elif mode=='full':
             res = left_table._full_join(right_table, condition)
 
@@ -745,4 +767,3 @@ class Database:
                 warnings.warn(f'"{self.savedir}/indexes/meta_{index_name}_index.pkl" not found.')
 
             self.save_database()
-        
