@@ -270,6 +270,33 @@ class Table:
         return s_table
 
 
+    def _select_where_with_hash_table(self,pk,return_columns=None):
+        hashtable=[]
+        for i in range(0,10):
+            hashtable.append([])
+        for i in self.data:
+            #10 buckets
+            h=int(i[0])%9
+            hashtable[h].append(i)
+
+        h=int(pk)%9
+        for i in hashtable[h]:
+            if(i[0]==pk):
+                if(return_columns is None):
+                    print(i)
+                else:
+                    indexes=[]
+                    return_columns=return_columns.split(',')
+                    for j in return_columns:
+                        indexes.append(self.column_names.index(j))
+                    for j in indexes:
+                        print(i[j],end='\t')
+                    print('\n')
+
+        
+
+
+
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
 
         # if * return all columns, else find the column indexes for the columns specified
@@ -540,6 +567,26 @@ class Table:
         print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
 
 
+    def get_result(self, no_of_rows=None, is_locked=False):
+        #THE SAME AS SHOW BUT IT JUST RETURNS THE TABLE
+        output = ""
+        # if the table is locked, add locked keyword to title
+        if is_locked:
+            output += f"\n## {self._name} (locked) ##\n"
+        else:
+            output += f"\n## {self._name} ##\n"
+
+        # headers -> "column name (column type)"
+        headers = [f'{col} ({tp.__name__})' for col, tp in zip(self.column_names, self.column_types)]
+        if self.pk_idx is not None:
+            # table has a primary key, add PK next to the appropriate column
+            headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
+        # detect the rows that are no tfull of nones (these rows have been deleted)
+        # if we dont skip these rows, the returning table has empty rows at the deleted positions
+        non_none_rows = [row for row in self.data if any(row)]
+        return non_none_rows
+
+
     def _parse_condition(self, condition, join=False):
         '''
         Parse the single string condition and return the value of the column and the operator.
@@ -561,7 +608,8 @@ class Table:
         if left not in self.column_names:
             raise ValueError(f'Condition is not valid (cant find column name)')
         coltype = self.column_types[self.column_names.index(left)]
-
+        if(op=='between'):
+            coltype=str
         return left, op, coltype(right)
 
 

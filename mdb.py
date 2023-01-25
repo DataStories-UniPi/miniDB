@@ -38,6 +38,7 @@ def in_paren(qsplit, ind):
     return qsplit[:ind].count('(')>qsplit[:ind].count(')')
 
 
+
 def create_query_plan(query, keywords, action):
     '''
     Given a query, the set of keywords that we expect to pe present and the overall action, return the query plan for this query.
@@ -264,8 +265,7 @@ if __name__ == "__main__":
                 dic = interpret(line.lower())
                 result = execute_dic(dic)
                 if isinstance(result,Table):
-                    result.show()
-        
+                    result.show()        
 
     from prompt_toolkit import PromptSession
     from prompt_toolkit.history import FileHistory
@@ -290,9 +290,76 @@ if __name__ == "__main__":
                 dic = interpret(line.removeprefix('explain '))
                 pprint(dic, sort_dicts=False)
             else:
-                dic = interpret(line)
-                result = execute_dic(dic)
-                if isinstance(result,Table):
-                    result.show()
+                #LINE THAT CHECKS FOR AND OR STATEMENTS
+                l=line.split()
+                queries=[]
+                initial_part=[]
+                conditions=[]
+                position=0
+                #THIS LOOP COLLECTS THE SELECT [CONDITION] FROM WHERE PART OF STATEMENT
+                for i in range(0,len(l)):
+                    initial_part.append(l[i])
+                    if(l[i]=='where'):
+                        position=i
+                        break
+                #THIS LOOP SPLITS THE CONDITIONS AND STORES THEM SEPERATELY,ALSO KEEPING THEIR CONDITION
+                q=[]
+                for i in range(position+1,len(l)):
+                    if(l[i]=='or'):
+                        queries.append(q)
+                        q=[]
+                        conditions.append('or')
+                    elif(l[i]=='and' and l[i-2]!='between'):
+                        queries.append(q)
+                        q=[]
+                        conditions.append('and')
+                    else:
+                        q.append(l[i])
+                queries.append(q)
+                #TURNING THE LISTS OF WORDS INTO STRINGS
+                for i in range(0,len(queries)):
+                    queries[i]=' '.join(queries[i])
+                    if(queries[i][-1]!=';'):
+                        queries[i]=queries[i]+';'
+
+                initial_part=' '.join(initial_part)
+                for i in range(0,len(queries)):
+                    queries[i]=initial_part+' '+queries[i]
+                if(len(queries)==1):
+                    #ONLY ONE CONDITION
+                    dic = interpret(line)
+                    result = execute_dic(dic)
+                    if isinstance(result,Table):
+                        result.show()
+                else:
+                    #MULTIPLE CONDITIONS
+                    dicts=[]
+                    for q in queries:
+                        dicts.append(interpret(q))
+                    results=[]
+                    for d in dicts:
+                        results.append(execute_dic(d).get_result())
+                    output=results[0]
+                    for i in range(1,len(results)):
+                        if(conditions[i-1]=='or'):
+                            for r in results[i]:
+                                if(r not in output):
+                                    output.append(r)
+                        elif(conditions[i-1]=='and'):
+                            positions=[]
+                            for r in results[i]:
+                                for j in range(0,len(output)):
+                                    if(r==output[j]):
+                                        positions.append(j)
+                            to_be_popped=[]
+                            for j in range(0,len(output)):
+                                if(j not in positions):
+                                    to_be_popped.append(j)
+                            for j in range(len(to_be_popped)-1,-1,-1):
+                                output.pop(to_be_popped[j])
+                    for i in output:
+                        print(i)
+                                
+                    
         except Exception:
             print(traceback.format_exc())

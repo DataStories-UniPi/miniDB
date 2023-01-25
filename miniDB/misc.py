@@ -8,7 +8,12 @@ def get_op(op, a, b):
                 '<': operator.lt,
                 '>=': operator.ge,
                 '<=': operator.le,
-                '=': operator.eq}
+                '=': operator.eq,
+                #OPERATOR FOR THE NOT CONDITION
+                'not':operator.ne,
+                #OPERATOR FOR THE BETWEEN CONDITION
+                'between':between
+                }
 
     try:
         return ops[op](a,b)
@@ -20,13 +25,19 @@ def split_condition(condition):
            '<=': operator.le,
            '=': operator.eq,
            '>': operator.gt,
-           '<': operator.lt}
+           '<': operator.lt,
+           #OPERATOR FOR THE NOT CONDITION
+           'not':operator.ne,
+           #OPERATOR FOR THE BETWEEN CONDITION
+           'between':between
+           }
 
     for op_key in ops.keys():
         splt=condition.split(op_key)
         if len(splt)>1:
             left, right = splt[0].strip(), splt[1].strip()
-
+            if(op_key=='between'):
+                right=right.replace(' ','')
             if right[0] == '"' == right[-1]: # If the value has leading and trailing quotes, remove them.
                 right = right.strip('"')
             elif ' ' in right: # If it has whitespaces but no leading and trailing double quotes, throw.
@@ -48,3 +59,24 @@ def reverse_op(op):
         '<=' : '>=',
         '=' : '='
     }.get(op)
+
+
+#FUNCTION USED IN BETWEEN FEATURE
+def between(v,condition):
+    condition=condition.replace('and',' ')
+    condition=condition.split()
+    if(condition[0].isnumeric()):
+        #FOR NUMERICAL CHECKS
+        low=float(condition[0])
+        high=float(condition[1])
+        v=float(v)
+        if(v>low and v<high):
+            return True
+        else:
+            return False
+    else:
+        #FOR STRING CHECKS
+        if(v>condition[0] and v<condition[1]):
+            return True
+        else:
+            return False
