@@ -108,7 +108,7 @@ def create_query_plan(query, keywords, action):
             dic['primary key'] = None
         if 'unique' in args:
             arglist = args[1:-1].split(' ')
-            matched_indexes = [i for i, kw in enumerate(arglist) if kw == 'unique']
+            matched_indexes = [i for i, kw in enumerate(arglist) if kw in ('unique', 'unique,')]
             dic['unique'] =[arglist[m-2] for m in matched_indexes] # list of columns with unique keyword
     
     if action=='import': 
@@ -265,7 +265,7 @@ if __name__ == "__main__":
         for line in open(fname, 'r').read().splitlines():
             if line.startswith('--'): continue
             if line.startswith('explain'):
-                dic = interpret(line.removeprefix('explain '))
+                dic = interpret(line.replace('explain ',''))
                 pprint(dic, sort_dicts=False)
             else :
                 dic = interpret(line.lower())
@@ -294,7 +294,7 @@ if __name__ == "__main__":
             if line.split(' ')[0].replace(';','') in ['lsdb', 'lstb', 'cdb', 'rmdb']:
                 interpret_meta(line)
             elif line.startswith('explain'):
-                dic = interpret(line.removeprefix('explain '))
+                dic = interpret(line.replace('explain ',''))
                 pprint(dic, sort_dicts=False)
             else:
                 dic = interpret(line)

@@ -72,7 +72,8 @@ class Table:
 
             # if unique is set, keep its index as an attribute
             if unique is not None:
-                self.unique_idx = self.column_names.index(unique)
+                for u in unique:
+                    self.unique_idx += self.column_names.index(u)
             else:
                 self.unique_idx = None
 
@@ -266,7 +267,8 @@ class Table:
                     column_name, operator, value = self._parse_condition(cond)
                     column = self.column_by_name(column_name)
                     all_rows+=[ind for ind, x in enumerate(column) if get_op(operator, x, value)]#add indexes to all_rows
-                rows=[i for i in all_rows if all_rows.count(i) > 1] #Remove unique values from all_rows list and keep only duplicates which match both conditions
+                # Keep the rows from the all_rows list that appear as many times as the number of conditions in the AND clauses
+                rows=[*set(i for i in all_rows if all_rows.count(i) > len(seperated_conditions)-1)] 
             # OR case
             elif "or" in condition:
                 all_rows=[]
