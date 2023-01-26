@@ -357,9 +357,16 @@ class Database:
         if isinstance(table_name,Table): # is table in database?
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
+        condition_AND=False
+        condition_OR=False
+
         if condition is not None: # get column of where clause
             if "between" in condition: #if condition contains the keyword "between",then condition has the format of table.column between value1 and value2
                 condition_column=condition.split(" ")[0]
+            elif "and" in condition:
+                condition_AND=True
+            elif "or" in condition:
+                condition_OR=True
             else:
                 condition_column = split_condition(condition)[0]
         else:
@@ -369,7 +376,10 @@ class Database:
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
-        if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
+
+        if condition_AND is True or condition_OR is True:
+            table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+        elif self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
             table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)

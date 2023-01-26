@@ -88,7 +88,7 @@ def create_query_plan(query, keywords, action):
                 dic['desc'] = True
             else:
                 dic['desc'] = False
-            dic['order by'] = dic['order by'].removesuffix(' asc').removesuffix(' desc')
+            dic['order by'] = dic['order by'].replace(' asc','').replace(' desc','')
             
         else:
             dic['desc'] = None
@@ -101,10 +101,15 @@ def create_query_plan(query, keywords, action):
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
         if 'primary key' in args:
-            arglist = args[1:-1].split(' ')
-            dic['primary key'] = arglist[arglist.index('primary')-2]
+            arglist = args[1:-1].split(' ') # remove () from create table arguments statement and split into keywords
+
+            dic['primary key'] = arglist[arglist.index('primary')-2] # search for index of keyword primary, and get index of the PK (-2 because -1 is type)
         else:
             dic['primary key'] = None
+        if 'unique' in args:
+            arglist = args[1:-1].split(' ')
+            matched_indexes = [i for i, kw in enumerate(arglist) if kw == 'unique']
+            dic['unique'] =[arglist[m-2] for m in matched_indexes] # list of columns with unique keyword
     
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
@@ -215,7 +220,7 @@ def interpret_meta(command):
     cdb - change/create database
     rmdb - delete database
     """
-    action = command.split(' ')[0].removesuffix(';')
+    action = command.split(' ')[0].replace(';')
 
     db_name = db._name if search_between(command, action,';')=='' else search_between(command, action,';')
 
@@ -225,10 +230,10 @@ def interpret_meta(command):
         verbose = False
 
     def list_databases(db_name):
-        [print(fold.removesuffix('_db')) for fold in os.listdir('dbdata')]
+        [print(fold.replace('_db','')) for fold in os.listdir('dbdata')]
     
     def list_tables(db_name):
-        [print(pklf.removesuffix('.pkl')) for pklf in os.listdir(f'dbdata/{db_name}_db') if pklf.endswith('.pkl')\
+        [print(pklf.replace('.pkl','')) for pklf in os.listdir(f'dbdata/{db_name}_db') if pklf.endswith('.pkl')\
             and not pklf.startswith('meta')]
 
     def change_db(db_name):
@@ -286,7 +291,7 @@ if __name__ == "__main__":
         try:
             if line=='exit':
                 break
-            if line.split(' ')[0].removesuffix(';') in ['lsdb', 'lstb', 'cdb', 'rmdb']:
+            if line.split(' ')[0].replace(';','') in ['lsdb', 'lstb', 'cdb', 'rmdb']:
                 interpret_meta(line)
             elif line.startswith('explain'):
                 dic = interpret(line.removeprefix('explain '))

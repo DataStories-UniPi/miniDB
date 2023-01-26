@@ -43,7 +43,19 @@ def split_condition(condition):
 
 def reverse_op(op):
     '''
-    Reverse the operator given (REWORKED WITH NOT OPERATOR)
+    Reverse the operator given 
+    '''
+    return {
+        '>' : '<',
+        '>=' : '<=',
+        '<' : '>',
+        '<=' : '>=',
+        '=' : '='
+    }.get(op)
+
+def reverse_op_not(op):
+    '''
+    Reverse the operator given for NOT keyword
     '''
     return {
         '>' : '<=',

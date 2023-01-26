@@ -6,7 +6,7 @@ import sys
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
-from misc import get_op, reverse_op, split_condition
+from misc import get_op, reverse_op_not, split_condition
 
 
 class Table:
@@ -26,7 +26,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None,unique=None, load=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -70,6 +70,13 @@ class Table:
             self.pk = primary_key
             # self._update()
 
+            # if unique is set, keep its index as an attribute
+            if unique is not None:
+                self.unique_idx = self.column_names.index(unique)
+            else:
+                self.unique_idx = None
+
+            self.unique = unique
     # if any of the name, columns_names and column types are none. return an empty table object
 
     def column_by_name(self, column_name):
@@ -125,10 +132,13 @@ class Table:
                     print(exc)
 
             # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
-            if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
-                raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
-            elif i==self.pk_idx and row[i] is None:
-                raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
+            try:
+                if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
+                    raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column "{self.pk}".')
+                elif i==self.pk_idx and row[i] is None:
+                    raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
+            except Exception as e: 
+                print(str(e))   #added this to print error
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
@@ -248,15 +258,33 @@ class Table:
                     except:
                         raise TypeError('You need to provide numeric values inside a between statement')
                         #print("You need to provide only arithmetical values in order to evaluate between clause")
-            else:
+            # AND case
+            elif "and" in condition:
+                all_rows=[]
+                seperated_conditions=condition.split(" and ")
+                for cond in seperated_conditions: #select all the rows that match each condition
+                    column_name, operator, value = self._parse_condition(cond)
+                    column = self.column_by_name(column_name)
+                    all_rows+=[ind for ind, x in enumerate(column) if get_op(operator, x, value)]#add indexes to all_rows
+                rows=[i for i in all_rows if all_rows.count(i) > 1] #Remove unique values from all_rows list and keep only duplicates which match both conditions
+            # OR case
+            elif "or" in condition:
+                all_rows=[]
+                seperated_conditions=condition.split(" or ")
+                for cond in seperated_conditions: #select all the rows that match each condition
+                    column_name, operator, value = self._parse_condition(cond)
+                    column = self.column_by_name(column_name)
+                    all_rows+=[ind for ind, x in enumerate(column) if get_op(operator, x, value)]#add indexes to all_rows
+                rows=[*set(all_rows)] #keep all rows that match either of the conditions but first remove the double values
+            elif "not" in condition:
                 # NOT case
-                containsNot=False # flag for not keyword
-                if len(condition.split(' '))>1: # split will have more than one item
-                    condition=condition.replace('not ','') # remove not keyword
-                    containsNot=True
+                condition=condition.replace('not ','') # remove not keyword
                 column_name, operator, value = self._parse_condition(condition)
-                if containsNot: # reverse operator if flag true
-                    operator=reverse_op(operator)
+                operator=reverse_op_not(operator) # reverse operator
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            else:
+                column_name, operator, value = self._parse_condition(condition)
                 column = self.column_by_name(column_name)
                 rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
 
@@ -292,7 +320,7 @@ class Table:
             s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
 
         return s_table
-
+        
 
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
 
