@@ -230,35 +230,30 @@ class Table:
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
-        # if condition is None, return all rows
-        # if not, return the rows with values where condition is met for value
         condition_list = []
         splitted_conditions_list = []
         conditions_columns = []
+        rows = set(range(len(self.data))) # get the length of the rows
+
+        # if condition is None, return all rows
+        # if not, return the rows with values where condition is met for value
         if condition is not None:
-             # find the end condition and split the condition into two parts
-
-            and_index = condition.index('AND') if 'AND' in condition else None
-            if and_index:
+            # find the end condition and split the condition into two parts
+            while 'and' in condition:
+                and_index = condition.index('and')
                 condition_list.append(condition[:and_index-1]) # get the first condition
-                condition_list.append(condition[and_index+4:]) # get the second condition
-                conditions_columns.append(split_condition(condition_list[0])[0]) # get the column name of the first condition
-                conditions_columns.append(split_condition(condition_list[1])[0]) # get the column name of the second condition
-                splitted_conditions_list.append(self._parse_condition(condition_list[0])) # get the first condition splitted
-                splitted_conditions_list.append(self._parse_condition(condition_list[1])) # get the second condition splitted
-                # we are making it for between only
-                column1 = self.column_by_name(conditions_columns[0])
-                column2 = self.column_by_name(conditions_columns[1])
+                conditions_columns.append(split_condition(condition_list[-1])[0]) # get the column name of the first condition
+                splitted_conditions_list.append(self._parse_condition(condition_list[-1])) # get the first condition splitted
+                condition = condition[and_index+4:] # remove the first condition from the condition along with the first AND
 
-                rows1 = [ind for ind, x in enumerate(column1) if get_op(splitted_conditions_list[0][1], x, splitted_conditions_list[0][2])]
-                rows2 = [ind for ind, x in enumerate(column2) if get_op(splitted_conditions_list[1][1], x, splitted_conditions_list[1][2])]
-                rows = [i for i in rows1 if i in rows2]
-            else:
-                condition_list.append(condition)
-                conditions_columns.append(split_condition(condition)[0])
-                column_name, operator, value = self._parse_condition(condition)
-                column = self.column_by_name(column_name)
-                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            # get the last condition
+            condition_list.append(condition)
+            conditions_columns.append(split_condition(condition_list[-1])[0]) # get the column name of the last condition
+            splitted_conditions_list.append(self._parse_condition(condition_list[-1])) # get the last condition splitted
+
+            for index in range(len(condition_list)):
+                column = self.column_by_name(conditions_columns[index])
+                rows = rows.intersection([ind for ind, x in enumerate(column) if get_op(splitted_conditions_list[index][1], x, splitted_conditions_list[index][2])])
         else:
             rows = [i for i in range(len(self.data))]
 

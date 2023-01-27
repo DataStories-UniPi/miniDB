@@ -77,7 +77,7 @@ def create_query_plan(query, keywords, action):
 
     if action=='select':
         dic = evaluate_from_clause(dic) 
-        dic = evaluate_where_clause(dic) # for the where clause
+        dic = evaluate_where_clause(dic)
         if dic['distinct'] is not None:
             dic['select'] = dic['distinct']
             dic['distinct'] = True
@@ -94,10 +94,10 @@ def create_query_plan(query, keywords, action):
             dic['desc'] = None
     
     if action=='update table':
-        dic = evaluate_where_clause(dic) # for the where clause
+        dic = evaluate_where_clause(dic)
 
     if action=='delete from':
-        dic = evaluate_where_clause(dic) # for the where clause
+        dic = evaluate_where_clause(dic)
 
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
@@ -180,13 +180,11 @@ def evaluate_where_clause(dic):
 
     not_idx = [i for i,word in enumerate(where_split) if word=='not' and not in_paren(where_split,i)]
     between_idx = [i for i,word in enumerate(where_split) if word=='between' and not in_paren(where_split,i)]
-    #and_idx = [i for i,word in enumerate(where_split) if word=='and' and not in_paren(where_split,i)]
-    #or_idx = [i for i,word in enumerate(where_split) if word=='or' and not in_paren(where_split,i)]
 
     if not_idx: #if there is a not keyword
         not_idx = not_idx[0] #get the not position
-        condition = ' '.join(where_split[not_idx+1:]) #get the right condition
-        
+        condition_left = ' '.join(where_split[not_idx+1:]) #get the right condition
+        condition_right = ' '.join(where_split[:not_idx]) #get the left condition
         operators = {'>=': '<',
                      '<=': '>',
                      '!=': '=',
@@ -196,8 +194,8 @@ def evaluate_where_clause(dic):
                      }
 
         for key, value in operators.items():
-            if key in condition:
-                condition = condition.replace(key, value)
+            if key in condition_left:
+                condition = condition_right + ' ' + condition_left.replace(key, value)
                 break
         dic['where'] =  condition #store the not dictionary in the from key of the query dictionary
     elif between_idx:
@@ -205,9 +203,8 @@ def evaluate_where_clause(dic):
         column_name = where_split[between_idx-1]
         value1= where_split[between_idx+1]
         value2= where_split[between_idx+3]
-        condition = column_name + ">=" + value1 + " AND " + column_name + "<=" + value2
-        dic['where'] =  condition #store the not dictionary in the from key of the query dictionary
-
+        condition = column_name + ">=" + value1 + " and " + column_name + "<=" + value2
+        dic['where'] = condition #store the not dictionary in the from key of the query dictionary
     return dic
 
 
@@ -251,7 +248,7 @@ def execute_dic(dic):
             dic[key] = execute_dic(dic[key])
     
     action = list(dic.keys())[0].replace(' ','_') 
-    return getattr(db, action)(*dic.values()) # to be changed
+    return getattr(db, action)(*dic.values())
 
 
 def interpret_meta(command):
