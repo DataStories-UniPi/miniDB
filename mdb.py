@@ -198,12 +198,28 @@ def evaluate_where_clause(dic):
             subquery_first_word = subquery.split()[0]
             if subquery_first_word in kw_per_action:
                 or_dic['left'] = interpret(subquery)
+            else:
+                '''
+                if the subquery_first_word is not in kw_per_action, then call evaluate_where_clause()
+                cause subquery is a where clause.
+                '''
+                temp_dic = {}
+                temp_dic['where'] = subquery
+                or_dic['left'] = evaluate_where_clause(temp_dic)['where']
         
         if or_dic['right'].startswith('(') and or_dic['right'].endswith(')'):
             subquery = or_dic['right'][1:-1].strip()
             subquery_first_word = subquery.split()[0]
             if subquery_first_word in kw_per_action:
                 or_dic['right'] = interpret(subquery)
+            else:
+                '''
+                if the subquery_first_word is not in kw_per_action, then call evaluate_where_clause()
+                cause subquery is a where clause.
+                '''
+                temp_dic = {}
+                temp_dic['where'] = subquery
+                or_dic['right'] = evaluate_where_clause(temp_dic)['where']
         
         where_dic['or'] = or_dic
     
@@ -263,9 +279,11 @@ def evaluate_where_clause(dic):
         not_idx = not_idx[0]
         where_dic['not'] = where_split[not_idx+1]
 
-    ################################### Πρέπει να προσθέσω και την πιο απλή περίπτωση πχ  where ID=5    
-    
-    dic['where'] = where_dic
+    if or_idx or and_idx or not_idx:
+        dic['where'] = where_dic
+    else:
+        dic['where'] = ''.join(where_split)
+        
     return dic
 
 def interpret(query):
