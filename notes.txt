@@ -83,3 +83,5 @@
 
 <> Είμαστε στην evaluate_where_clause() και ξανακαλούμε την evaluate_where_clause() ουσιαστικά δημιουργούμε dic με key 'where' και 
    value το σπασμένο subquery και βάζουμε το key 'left' του opperand ή το key 'right' του opperand αντίστοιχα να ισούται με το value του 'where'
+
+<> Στην evaluate_where_clause() στον πρώτο if προσθέσαμε έναν επιπλέον έλεγχο όπου ελέγχουμε εάν το where_split[1] δεν περιέχεται μέσα στη λίστα kw_per_action, για την αποφυγή της λανθασμένης κλήσης της μεθόδου interpret.
