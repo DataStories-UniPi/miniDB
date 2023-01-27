@@ -162,11 +162,6 @@ def evaluate_where_clause(dic):
     '''
     Evaluate the part of the query (argument or subquery) that is supplied as the 'where' argument
     '''
-    where_split = dic['where'].split(' ')
-    if where_split[0] == '(' and where_split[-1] == ')':
-        subquery = ' '.join(where_split[1:-1])
-        dic['where'] = interpret(subquery)
-        
     where_dic = {}
     kw_per_action = ['create table',
                      'drop table',
@@ -182,6 +177,11 @@ def evaluate_where_clause(dic):
                      'create index',
                      'drop index',
                      'create view']
+    
+    where_split = dic['where'].split(' ')
+    if where_split[0] == '(' and where_split[-1] == ')' and where_split[1] in kw_per_action:
+        subquery = ' '.join(where_split[1:-1])
+        dic['where'] = interpret(subquery)
     
     '''
     or operator
@@ -226,12 +226,28 @@ def evaluate_where_clause(dic):
             subquery_first_word = subquery.split()[0]
             if subquery_first_word in kw_per_action:
                 and_dic['left'] = interpret(subquery)
+            else:
+                '''
+                if the subquery_first_word is not in kw_per_action, then call evaluate_where_clause()
+                cause subquery is a where clause.
+                '''
+                temp_dic = {}
+                temp_dic['where'] = subquery
+                and_dic['left'] = evaluate_where_clause(temp_dic)['where']
         
         if and_dic['right'].startswith('(') and and_dic['right'].endswith(')'):
             subquery = and_dic['right'][1:-1].strip()
             subquery_first_word = subquery.split()[0]
             if subquery_first_word in kw_per_action:
                 and_dic['right'] = interpret(subquery)
+            else:
+                '''
+                if the subquery_first_word is not in kw_per_action, then call evaluate_where_clause()
+                cause subquery is a where clause.
+                '''
+                temp_dic = {}
+                temp_dic['where'] = subquery
+                and_dic['right'] = evaluate_where_clause(temp_dic)['where']
         
         btw_idx = [i for i,word in enumerate(where_split) if word=='between' and not in_paren(where_split,i)]
         if btw_idx:

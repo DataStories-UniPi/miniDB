@@ -80,3 +80,6 @@
 	select(self, '*', 'teaches', 'year=2009', None, None, None, None, None, True)
 
 <> Πρέπει να εκτελέσει ο καθένας μας ένα ερώτημα (π.χ explain select * from A join B on A.id=B.id where not A.id=5) και να το κάνουμε μόνοι μας debug για να δούμε πως γίνεται η όλη διαδικασία.
+
+<> Είμαστε στην evaluate_where_clause() και ξανακαλούμε την evaluate_where_clause() ουσιαστικά δημιουργούμε dic με key 'where' και 
+   value το σπασμένο subquery και βάζουμε το key 'left' του opperand ή το key 'right' του opperand αντίστοιχα να ισούται με το value του 'where'
