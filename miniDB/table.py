@@ -250,8 +250,8 @@ class Table:
                 column1 = self.column_by_name(conditions_columns[0])
                 column2 = self.column_by_name(conditions_columns[1])
 
-                rows1 = [ind for ind, x in enumerate(column1) if get_op(splitted_conditions_list[0][1], x, splitted_conditions_list[0][2])]
-                rows2 = [ind for ind, x in enumerate(column2) if get_op(splitted_conditions_list[1][1], x, splitted_conditions_list[1][2])]
+                rows1 = [ind for ind, x in enumerate(column1) if get_op(splitted_conditions_list[0][1], x, splitted_conditions_list[0][2]) and get_op(splitted_conditions_list[1][1], x, splitted_conditions_list[1][2])]
+                #rows2 = [ind for ind, x in enumerate(column2) if get_op(splitted_conditions_list[1][1], x, splitted_conditions_list[1][2])]
                 rows = [i for i in rows1 if i in rows2]
             else:
                 condition_list.append(condition)

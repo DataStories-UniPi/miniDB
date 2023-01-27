@@ -207,7 +207,6 @@ def evaluate_where_clause(dic):
         value2= where_split[between_idx+3]
         condition = column_name + ">=" + value1 + " AND " + column_name + "<=" + value2
         dic['where'] =  condition #store the not dictionary in the from key of the query dictionary
-
     return dic
 
 
