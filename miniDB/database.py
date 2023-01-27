@@ -357,16 +357,28 @@ class Database:
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
-        if condition is not None:
-            condition_column = split_condition(condition)[0]
-        else:
-            condition_column = ''
+        condition_list = []
+        conditions_columns = []
 
-        
+        if condition is not None:
+            # find the end condition and split the condition into two parts
+            and_index = condition.index('AND') if 'AND' in condition else None
+            if and_index:
+                condition_list.append(condition[:and_index-1]) # get the first condition
+                condition_list.append(condition[and_index+4:]) # get the second condition
+                conditions_columns.append(split_condition(condition_list[0])[0]) # get the column name of the first condition
+                conditions_columns.append(split_condition(condition_list[1])[0]) # get the column name of the second condition
+            else:
+                condition_list.append(condition)
+                conditions_columns.append(split_condition(condition)[0])
+            # condition_column = split_condition(condition)[0]
+        else:
+            conditions_columns = ''
+                    
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
-        if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
+        if self._has_index(table_name) and conditions_columns==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
             table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
