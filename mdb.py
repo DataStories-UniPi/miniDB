@@ -180,7 +180,7 @@ def evaluate_where_clause(dic):
 
     not_idx = [i for i,word in enumerate(where_split) if word=='not' and not in_paren(where_split,i)]
     between_idx = [i for i,word in enumerate(where_split) if word=='between' and not in_paren(where_split,i)]
-    #and_idx = [i for i,word in enumerate(where_split) if word=='and' and not in_paren(where_split,i)]
+    and_idx = [i for i,word in enumerate(where_split) if word=='and' and not in_paren(where_split,i)]
     #or_idx = [i for i,word in enumerate(where_split) if word=='or' and not in_paren(where_split,i)]
 
     if not_idx: #if there is a not keyword
@@ -205,8 +205,10 @@ def evaluate_where_clause(dic):
         column_name = where_split[between_idx-1]
         value1= where_split[between_idx+1]
         value2= where_split[between_idx+3]
-        condition = column_name + ">=" + value1 + " AND " + column_name + "<=" + value2
-        dic['where'] =  condition #store the not dictionary in the from key of the query dictionary
+        condition = column_name + ">=" + value1 + " and " + column_name + "<=" + value2
+        dic['where'] = condition #store the not dictionary in the from key of the query dictionary
+    elif and_idx:
+        return dic
     return dic
 
 

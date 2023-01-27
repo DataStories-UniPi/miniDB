@@ -362,7 +362,7 @@ class Database:
 
         if condition is not None:
             # find the end condition and split the condition into two parts
-            and_index = condition.index('AND') if 'AND' in condition else None
+            and_index = condition.index('and') if 'and' in condition else None
             if and_index:
                 condition_list.append(condition[:and_index-1]) # get the first condition
                 condition_list.append(condition[and_index+4:]) # get the second condition
