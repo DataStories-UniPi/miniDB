@@ -77,7 +77,7 @@ def create_query_plan(query, keywords, action):
 
     if action=='select':
         dic = evaluate_from_clause(dic) 
-        dic = evaluate_where_clause(dic) # for the where clause
+        dic = evaluate_where_clause(dic)
         if dic['distinct'] is not None:
             dic['select'] = dic['distinct']
             dic['distinct'] = True
@@ -94,10 +94,10 @@ def create_query_plan(query, keywords, action):
             dic['desc'] = None
     
     if action=='update table':
-        dic = evaluate_where_clause(dic) # for the where clause
+        dic = evaluate_where_clause(dic)
 
     if action=='delete from':
-        dic = evaluate_where_clause(dic) # for the where clause
+        dic = evaluate_where_clause(dic)
 
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
@@ -252,7 +252,7 @@ def execute_dic(dic):
             dic[key] = execute_dic(dic[key])
     
     action = list(dic.keys())[0].replace(' ','_') 
-    return getattr(db, action)(*dic.values()) # to be changed
+    return getattr(db, action)(*dic.values())
 
 
 def interpret_meta(command):

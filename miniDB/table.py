@@ -3,8 +3,6 @@ from tabulate import tabulate
 import pickle
 import os
 import sys
-# to be deleted
-import time
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
@@ -232,20 +230,16 @@ class Table:
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
-        # if condition is None, return all rows
-        # if not, return the rows with values where condition is met for value
-        
         condition_list = []
         splitted_conditions_list = []
         conditions_columns = []
         rows = set(range(len(self.data))) # get the length of the rows
 
+
+        # if condition is None, return all rows
+        # if not, return the rows with values where condition is met for value
         if condition is not None:
-             # find the end condition and split the condition into two parts
-
-            # for debugging purposes
-            start_time = time.process_time()
-
+            # find the end condition and split the condition into two parts
             while 'and' in condition:
                 and_index = condition.index('and')
                 condition_list.append(condition[:and_index-1]) # get the first condition
@@ -261,8 +255,6 @@ class Table:
             for index in range(len(condition_list)):
                 column = self.column_by_name(conditions_columns[index])
                 rows = rows.intersection([ind for ind, x in enumerate(column) if get_op(splitted_conditions_list[index][1], x, splitted_conditions_list[index][2])])
-           
-            print("Process finished --- %s seconds ---" % (time.time() - start_time))
         else:
             rows = [i for i in range(len(self.data))]
 

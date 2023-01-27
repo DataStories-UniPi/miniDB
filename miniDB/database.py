@@ -363,17 +363,14 @@ class Database:
 
         if condition is not None:
             # find the end condition and split the condition into two parts
- 
             while 'and' in condition_temp:
                 and_index = condition_temp.index('and')
-                condition_list.append(condition_temp[:and_index-1]) # get the first condition
-                conditions_columns.append(split_condition(condition_list[-1])[0]) # get the column name of the first condition
-                condition_temp = condition_temp[and_index+4:] # remove the first condition from the condition along with the first AND
-
+                condition_list.append(condition_temp[:and_index-1])
+                conditions_columns.append(split_condition(condition_list[-1])[0])
+                condition_temp = condition_temp[and_index+4:]
             # get the last condition
             condition_list.append(condition_temp)
-            conditions_columns.append(split_condition(condition_list[-1])[0]) # get the column name of the last condition
-
+            conditions_columns.append(split_condition(condition_list[-1])[0])
         else:
             conditions_columns = ''
                     
