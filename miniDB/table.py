@@ -235,7 +235,6 @@ class Table:
         conditions_columns = []
         rows = set(range(len(self.data))) # get the length of the rows
 
-
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
