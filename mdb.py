@@ -183,8 +183,8 @@ def evaluate_where_clause(dic):
 
     if not_idx: #if there is a not keyword
         not_idx = not_idx[0] #get the not position
-        condition = ' '.join(where_split[not_idx+1:]) #get the right condition
-        
+        condition_left = ' '.join(where_split[not_idx+1:]) #get the right condition
+        condition_right = ' '.join(where_split[:not_idx]) #get the left condition
         operators = {'>=': '<',
                      '<=': '>',
                      '!=': '=',
@@ -194,8 +194,8 @@ def evaluate_where_clause(dic):
                      }
 
         for key, value in operators.items():
-            if key in condition:
-                condition = condition.replace(key, value)
+            if key in condition_left:
+                condition = condition_right + ' ' + condition_left.replace(key, value)
                 break
         dic['where'] =  condition #store the not dictionary in the from key of the query dictionary
     elif between_idx:
