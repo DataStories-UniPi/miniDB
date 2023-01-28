@@ -334,6 +334,8 @@ class Database:
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
 
+
+
     def select(self, columns, table_name, condition, distinct=None, order_by=None, \
                limit=True, desc=None, save_as=None, return_object=True):
         '''
@@ -357,86 +359,45 @@ class Database:
         '''
 
         # print(table_name)
-        
         self.load_database()
-        print(condition)
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
         flag = 0
         if condition is not None:
 
-            initial_condition = condition
-            print("\nCondition is: " + condition)
+            print("Condition is: " + condition+"\n")
             
-            # or operator:
-            operator = ' or '
-            if (operator in condition): # salary = 2000 or salary > 6000
-                flag = 1
-                #self.tables[table_name]._select_where_or(columns, condition, distinct, order_by, desc, limit)
-                #return self.handle_or_op(columns, table_name, s, distinct, order_by, desc, limit)
-                
-                splt = condition.split(operator) # salary = 20000, salary > 6000
-                sum = 0
-                s_btree = 0
-                s = 0
-                for condition in splt:
-                    print("splt condition is: " + condition)
-                    #self.handle_or_op(columns, table_name, s, distinct, order_by, desc, limit)
+            operator = ' or ' 
+            if (operator in condition): # e.g salary = 2000 or salary > 6000
 
-                    
-                    if(condition[:4] == 'not '):
-                        
-                        print("Not has been found in condition!")
-                        condition_column = split_not_condition(condition)[0]
-                        print("Column is: " + condition_column)
-                        print("Operator is: " + split_not_condition(condition)[1])
-                        print("Value is: " + split_not_condition(condition)[2] + '\n')
+                flag = 1 # found
+                splt = condition.split(operator)
+                lst = [item[0] for item in splt] # condition_column list
 
-                    else:
-                        print("i am here")
-                        print(condition)
-                        condition_column = split_condition(condition)[0]
-                        print("Column is: " + condition_column)
-                        print("Operator is: " + split_condition(condition)[1])
-                        print("Value is: " + split_condition(condition)[2] + '\n')
-
-                    
-                    if self.is_locked(table_name):
-                        return
-                    if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
-                        index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
-                        bt = self._load_idx(index_name)
-                        s_btree += 1
-                        #table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
-                    else:
-                        s +=  1
-                        #table = self.tables[table_name]._select_where_or(columns, condition, distinct, order_by, desc, limit)
-                        # self.unlock_table(table_name)
-                #print(s)
-                
-                if (s_btree == 2):  
+                #table = self.tables[table_name]._select_where_or(columns, condition, distinct, order_by, desc, limit)
+    
+                if self.is_locked(table_name):
+                    return
+                if self._has_index(table_name) and [item for item in lst]==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
+                    index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
+                    bt = self._load_idx(index_name)
                     table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
-                elif (s == 2):
-                    #table = self.tables[table_name]._select_where_or(columns, condition, distinct, order_by, desc, limit)
-                    table = self.tables[table_name]._select_where_or(columns, initial_condition, distinct, order_by, desc, limit)
-                
-                       
-                if save_as is not None:
-                        table._name = save_as
-                        self.table_from_object(table)
                 else:
-                        if return_object:
-                            #sum +=1
-                            return table
-                        else:
-                            #continue
-                            #sum += 0
-                            return table.show()
-                
+                    table = self.tables[table_name]._select_where_or(columns, condition, distinct, order_by, desc, limit)
+                # self.unlock_table(table_name)
+                if save_as is not None:
+                    table._name = save_as
+                    self.table_from_object(table)
+                else:
+                    if return_object:
+                        return table
+                    else:
+                        return table.show()
+            
             else:     
                 
-                if(condition[:4] == 'not '):
+             if(condition[:4] == 'not '):
                 
                 #print("condition[0] is: " + condition[0])
                 #print("condition[1] is: " + condition[1])
@@ -448,7 +409,7 @@ class Database:
                   print("Operator is: " + split_not_condition(condition)[1])
                   print("Value is: " + split_not_condition(condition)[2] + '\n')
 
-                else:
+             else:
                     print("i am here")
                     print(condition)
                     condition_column = split_condition(condition)[0]
@@ -459,26 +420,26 @@ class Database:
         else:
             condition_column = ''
 
-        if (flag == 0): # not or in condition
+        if (flag == 0):  # or has not been found
             # self.lock_table(table_name, mode='x')
-         if self.is_locked(table_name):
-            return
-         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:   
-            index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
-            bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
-         else:
-            table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
-            # self.unlock_table(table_name)
-         if save_as is not None:
-            table._name = save_as
-            self.table_from_object(table)
-         else:
-            if return_object:
-                return table
+            if self.is_locked(table_name):
+                return
+            if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:   
+                index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
+                bt = self._load_idx(index_name)
+                table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
             else:
-                return table.show()
-        
+                table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+            # self.unlock_table(table_name)
+            if save_as is not None:
+                table._name = save_as
+                self.table_from_object(table)
+            else:
+                if return_object:
+                    return table
+                else:
+                    return table.show()
+
 
     def show_table(self, table_name, no_of_rows=None):
         '''

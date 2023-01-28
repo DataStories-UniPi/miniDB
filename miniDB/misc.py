@@ -10,8 +10,7 @@ def get_op(op, a, b):
                 '<=': operator.le,
                 '=': operator.eq,
                 '<>': operator.ne}
-
-
+                
     try:
         return ops[op](a,b)
     except TypeError:  # if a or b is None (deleted record), python3 raises typerror
