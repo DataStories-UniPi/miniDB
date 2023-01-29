@@ -543,12 +543,12 @@ class Table:
         or_bool = False
         
         # find the end condition and split the condition into two parts
-        while 'and' in condition:
-            and_index = condition.index('and')
-            condition_list.append(condition[:and_index-1]) # get the first condition
+        while ' and ' in condition:
+            and_index = condition.index(' and ')
+            condition_list.append(condition[:and_index]) # get the first condition
             conditions_columns.append(split_condition(condition_list[-1])[0]) # get the column name of the first condition
             splitted_conditions_list.append(self._parse_condition(condition_list[-1])) # get the first condition splitted
-            condition = condition[and_index+4:] # remove the first condition from the condition along with the first AND
+            condition = condition[and_index+5:] # remove the first condition from the condition along with the first AND
 
         if ' or ' in condition:
             or_bool = True
