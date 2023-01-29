@@ -369,10 +369,15 @@ class Database:
             print("Condition is: " + condition+"\n")
             
             operator = ' or ' 
-            if (operator in condition): # e.g salary = 2000 or salary > 6000
-
+            operator1 = ' and '
+            if (operator in condition or operator1 in condition): # e.g salary = 2000 or salary > 6000
+                
                 flag = 1 # found
-                splt = condition.split(operator)
+                if (operator in condition):
+                    splt = condition.split(operator)
+                else:
+                    splt = condition.split(operator1)
+
                 lst = [item[0] for item in splt] # condition_column list
 
                 #table = self.tables[table_name]._select_where_or(columns, condition, distinct, order_by, desc, limit)
@@ -384,7 +389,11 @@ class Database:
                     bt = self._load_idx(index_name)
                     table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
                 else:
-                    table = self.tables[table_name]._select_where_or(columns, condition, distinct, order_by, desc, limit)
+                    if (operator in condition):
+                        table = self.tables[table_name]._select_where_or(columns, condition, distinct, order_by, desc, limit)
+                    else:
+                        table = self.tables[table_name]._select_where_and(columns, condition, distinct, order_by, desc, limit)
+                  
                 # self.unlock_table(table_name)
                 if save_as is not None:
                     table._name = save_as
