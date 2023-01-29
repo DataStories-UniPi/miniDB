@@ -196,7 +196,7 @@ class Table:
                     if get_op(operator, column_value, value):
                         rows1.append(row_ind)
                 rows = [c for c in rows if c in rows1]
-                print(rows)
+                #print(rows)
                 if len(rows) == 0: # no common element
                         break
                    
