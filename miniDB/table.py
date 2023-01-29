@@ -183,48 +183,8 @@ class Table:
                 Operatores supported: (<,<=,==,>=,>)
         '''
 
-        condition_list = []
-        conditions_columns = []
-        splitted_conditions_list = []
-
-        set_and_indexes_to_del = set(range(len(self.data)))
-        set_or_indexes_to_del = set(range(0))
-        or_bool = False
-
-        while 'and' in condition:
-            and_index = condition.index('and')
-            condition_list.append(condition[:and_index-1]) # get the first condition
-            conditions_columns.append(split_condition(condition_list[-1])[0]) # get the column name of the first condition
-            splitted_conditions_list.append(self._parse_condition(condition_list[-1])) # get the first condition splitted
-            condition = condition[and_index+4:] # remove the first condition from the condition along with the first AND
-
-        if ' or ' in condition:
-            or_bool = True
-
-        while ' or ' in condition:
-            or_index = condition.index(' or ')
-            condition_list.append(condition[:or_index])
-            conditions_columns.append(split_condition(condition_list[-1])[0]) # get the column name of the first condition
-            splitted_conditions_list.append(self._parse_condition(condition_list[-1])) # get the first condition splitted
-            condition = condition[or_index+4:] # remove the first condition from the condition along with the first OR
-
-        # get the last condition
-        condition_list.append(condition)
-        conditions_columns.append(split_condition(condition_list[-1])[0]) # get the column name of the last condition
-        splitted_conditions_list.append(self._parse_condition(condition_list[-1])) # get the last condition splitted
-
-        for index in range(len(condition_list)):
-            if or_bool:
-                column = self.column_by_name(conditions_columns[index])
-                set_or_indexes_to_del = set_or_indexes_to_del.union([ind for ind, x in enumerate(column) if get_op(splitted_conditions_list[index][1], x, splitted_conditions_list[index][2])])
-            else:
-                column = self.column_by_name(conditions_columns[index])
-                set_and_indexes_to_del = set_and_indexes_to_del.intersection([ind for ind, x in enumerate(column) if get_op(splitted_conditions_list[index][1], x, splitted_conditions_list[index][2])])
-
-        if or_bool:
-            indexes_to_del = list(set_or_indexes_to_del)
-        else:    
-            indexes_to_del = list(set_and_indexes_to_del)
+        indexes_to_del = list(self._parse_multiple_conditions(condition))
+        
         # we pop from highest to lowest index in order to avoid removing the wrong item
         # since we dont delete, we dont have to to pop in that order, but since delete is used
         # to delete from meta tables too, we still implement it.
