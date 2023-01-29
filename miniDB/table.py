@@ -137,24 +137,13 @@ class Table:
                 raise ValueError(f'ERROR -> Cannot insert duplicate value "{str(row[i])}" in column "{self.column_names[i]}" that has the UNIQUE constraint.')
             
             
-            row[i] = self.column_types[i](row[i]) # Only this
-            '''
-            # for each value, cast and replace it in row.
-            try:
-                row[i] = self.column_types[i](row[i])
-            except ValueError:
-                if row[i] != 'NULL':
-                    raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
-            except TypeError as exc:
-                if row[i] != None:
-                    print(exc)
-            '''
-
-            # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
+            row[i] = self.column_types[i](row[i])
+            
+            # if value is to be appended to the primary_key column, check that it doesn't already exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
-                raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
+                raise ValueError(f'## ERROR -> Value {row[i]} already exists in PK column.')
             elif i==self.pk_idx and row[i] is None:
-                raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
+                raise ValueError(f'## ERROR -> The value of the PK cannot be None.')
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
@@ -292,7 +281,7 @@ class Table:
         #     s_table.data = s_table.data[:k]
         if isinstance(limit,str):
             s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
-
+        
         return s_table
 
 
@@ -347,7 +336,64 @@ class Table:
 
         if isinstance(limit,str):
             s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
+        print("Select with btree was used!")
+        return s_table
 
+    
+    def _select_where_with_hash(self, return_columns, eh, condition, distinct=False, order_by=None, desc=True, limit=None):
+        
+        # if * return all columns, else find the column indexes for the columns specified
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
+        else:
+            return_cols = [self.column_names.index(colname) for colname in return_columns]
+                        
+        column_name, operator, value = self._parse_condition(condition)
+        
+        print("column_name")
+        print(column_name)
+        print("operator")
+        print(operator)
+        print("value")
+        print(value)
+        
+        rows = []
+        # Check if it is a range query that is not supported by Hash index
+        if (operator == '<' or operator == '>' or operator == '<=' or operator == '>='):
+            # Sequential search
+            column = self.column_by_name(column_name)
+            opsseq = 0
+            for ind, x in enumerate(column):
+                opsseq+=1
+                if get_op(operator, x, value):
+                    rows.append(ind)
+        else:
+            # If the query is point query
+            idx = eh.get(value) # Find the index of the row of the column that is equal to value
+            rows.append(idx)
+
+        
+        try:
+            k = int(limit)
+        except TypeError:
+            k = None
+        # same as simple select from now on
+        rows = rows[:k]
+        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+
+        dict['column_names'] = [self.column_names[i] for i in return_cols]
+        dict['column_types']   = [self.column_types[i] for i in return_cols]
+
+        s_table = Table(load=dict)
+
+        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+
+        if order_by:
+            s_table.order_by(order_by, desc)
+
+        if isinstance(limit,str):
+            s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
+        print("Select with hash was used!")
         return s_table
 
     def order_by(self, column_name, desc=True):

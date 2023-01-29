@@ -146,8 +146,9 @@ def create_query_plan(query, keywords, action):
             # The index will be created on the PK of the table
             dic['column']=None 
         
+        print("Inside create index if in mdb.py, dic['using']= " + dic['using'])
         # The index will be B+ Tree
-        dic['using']='btree'
+        '''dic['using']='btree'''
 
 
     return dic
