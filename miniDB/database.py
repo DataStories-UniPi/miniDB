@@ -17,7 +17,7 @@ from misc import split_condition
 from table import Table
 
 
-# readline.clear_history()
+# readline.clear_history() Bbb
 
 class Database:
     '''
