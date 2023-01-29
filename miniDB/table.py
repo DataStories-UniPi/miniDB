@@ -150,19 +150,17 @@ class Table:
                 
                 Operatores supported: (<,<=,=,>=,>)
         '''
-        # parse the condition
-        column_name, operator, value = self._parse_condition(condition)
+        # parse multiple conditions
+        rows = self._parse_multiple_conditions(condition)
 
         # get the condition and the set column
-        column = self.column_by_name(column_name)
         set_column_idx = self.column_names.index(set_column)
 
         # set_columns_indx = [self.column_names.index(set_column_name) for set_column_name in set_column_names]
 
         # for each value in column, if condition, replace it with set_value
-        for row_ind, column_value in enumerate(column):
-            if get_op(operator, column_value, value):
-                self.data[row_ind][set_column_idx] = set_value
+        for row_ind in rows:
+            self.data[row_ind][set_column_idx] = set_value
 
         # self._update()
                 # print(f"Updated {len(indexes_to_del)} rows")
@@ -184,7 +182,7 @@ class Table:
         '''
 
         indexes_to_del = list(self._parse_multiple_conditions(condition))
-        
+
         # we pop from highest to lowest index in order to avoid removing the wrong item
         # since we dont delete, we dont have to to pop in that order, but since delete is used
         # to delete from meta tables too, we still implement it.
