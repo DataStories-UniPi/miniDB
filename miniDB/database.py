@@ -422,8 +422,12 @@ class Database:
                 table = self.tables[table_name]._select_where_with_btree(columns, loaded_index, condition, distinct, order_by, desc, limit)
                 print("After try!")
             except: # If _select_where_with_btree() triggers an exception then the loaded index is a Hash Index
-                print("_select_where_with_hash is called!")
-                table = self.tables[table_name]._select_where_with_hash(columns, loaded_index, condition, distinct, order_by, desc, limit) 
+                try:
+                    print("_select_where_with_hash is called!")
+                    table = self.tables[table_name]._select_where_with_hash(columns, loaded_index, condition, distinct, order_by, desc, limit) 
+                except:
+                    print("Inside except in except in select before select_where")
+                    table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
             
         
         # Check if the table has an index and if the column of the condition has the UNIQUE constraint.
@@ -437,9 +441,12 @@ class Database:
                 table = self.tables[table_name]._select_where_with_btree(columns, loaded_index, condition, distinct, order_by, desc, limit)
                 print("After try!")
             except: # If _select_where_with_btree() triggers an exception then the loaded index is a Hash Index
-                print("_select_where_with_hash is called!")
-                table = self.tables[table_name]._select_where_with_hash(columns, loaded_index, condition, distinct, order_by, desc, limit) 
-             
+                try:
+                    print("_select_where_with_hash is called!")
+                    table = self.tables[table_name]._select_where_with_hash(columns, loaded_index, condition, distinct, order_by, desc, limit) 
+                except:
+                    print("Inside except in except in select before select_where")
+                    table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
             
         else:
             print("Inside else in select before select_where")
