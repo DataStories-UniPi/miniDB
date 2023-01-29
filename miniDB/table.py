@@ -540,8 +540,6 @@ class Table:
         condition_list = []
         splitted_conditions_list = []
         conditions_columns = []
-        rows = set(range(len(self.data))) # get the length of the rows
-        rows1 = set(range(0))
         or_bool = False
         
         # find the end condition and split the condition into two parts
@@ -554,6 +552,9 @@ class Table:
 
         if ' or ' in condition:
             or_bool = True
+            rows = set(range(0))
+        else:
+            rows = set(range(len(self.data)))
 
         while ' or ' in condition:
             or_index = condition.index(' or ')
@@ -568,12 +569,10 @@ class Table:
         splitted_conditions_list.append(self._parse_condition(condition_list[-1])) # get the last condition splitted
 
         for index in range(len(condition_list)):
+            column = self.column_by_name(conditions_columns[index])
             if or_bool:
-                column = self.column_by_name(conditions_columns[index])
-                rows1 = rows1.union([ind for ind, x in enumerate(column) if get_op(splitted_conditions_list[index][1], x, splitted_conditions_list[index][2])])
-                rows = rows1
+                rows = rows.union([ind for ind, x in enumerate(column) if get_op(splitted_conditions_list[index][1], x, splitted_conditions_list[index][2])])
             else:
-                column = self.column_by_name(conditions_columns[index])
                 rows = rows.intersection([ind for ind, x in enumerate(column) if get_op(splitted_conditions_list[index][1], x, splitted_conditions_list[index][2])])
 
         return rows
