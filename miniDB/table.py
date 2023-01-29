@@ -153,6 +153,7 @@ class Table:
         '''
 
         operator = ' or ' 
+        operator1 = ' and '
         if (operator in condition): 
             splt = condition.split(operator)
             for s in splt:   
@@ -167,6 +168,41 @@ class Table:
                 for row_ind, column_value in enumerate(column):
                     if get_op(operator, column_value, value):
                         self.data[row_ind][set_column_idx] = set_value
+
+        elif(operator1 in condition): # and in condition
+            rows = []
+            rows1 = []
+            splt = condition.split(operator1)
+
+            column_name, operator, value = self._parse_condition(splt[0])
+            # get the condition and the set column
+            column = self.column_by_name(column_name)
+            set_column_idx = self.column_names.index(set_column)
+
+            # for each value in column, if condition, replace it with set_value
+            for row_ind, column_value in enumerate(column):
+                if get_op(operator, column_value, value):
+                    rows.append(row_ind)
+                   
+            for s in splt[1:]:   
+                # parse the condition
+                column_name, operator, value = self._parse_condition(s)
+                # get the condition and the set column
+                column = self.column_by_name(column_name)
+                set_column_idx = self.column_names.index(set_column)
+
+                # for each value in column, if condition, replace it with set_value
+                for row_ind, column_value in enumerate(column):
+                    if get_op(operator, column_value, value):
+                        rows1.append(row_ind)
+                rows = [c for c in rows if c in rows1]
+                print(rows)
+                if len(rows) == 0: # no common element
+                        break
+                   
+            for row_ind in rows:
+                self.data[row_ind][set_column_idx] = set_value
+                        
         else:
             # parse the condition
             column_name, operator, value = self._parse_condition(condition)
@@ -197,7 +233,15 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'not column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+                'value[<,<=,==,>=,>]column' or
+                
+                'column[<,<=,==,>=,>]value and column[<,<=,==,>=,>]value and... ' or
+                'not column[<,<=,==,>=,>]value and column[<,<=,==,>=,>]value and... ' or
+                'not column[<,<=,==,>=,>]value and not column[<,<=,==,>=,>]value and ...' or
+                 
+                'column[<,<=,==,>=,>]value or column[<,<=,==,>=,>]value and... ' or
+                'not column[<,<=,==,>=,>]value or column[<,<=,==,>=,>]value and... ' or
+                'not column[<,<=,==,>=,>]value or not column[<,<=,==,>=,>]value and ...' .
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
@@ -215,15 +259,26 @@ class Table:
 
         elif(operator1 in condition): # and in condition
                 splt = condition.split(operator1)
-                for s in splt:   
+                indexes_to_del1 = []
+                column_name, operator, value = self._parse_condition(splt[0])
+                column = self.column_by_name(column_name)
+                
+                for index, row_value in enumerate(column):
+                    if get_op(operator, row_value, value):
+                        indexes_to_del.append(index)
+                #print(indexes_to_del)
+     
+                for s in splt[1:]:   
                     column_name, operator, value = self._parse_condition(s)
                     column = self.column_by_name(column_name)
                     for index, row_value in enumerate(column):
-                        
                         if get_op(operator, row_value, value):
-                            print("index ")
-                            print(index)
-                            indexes_to_del.append(index)
+                            indexes_to_del1.append(index)
+                    #print(indexes_to_del1)
+                    indexes_to_del = [c for c in indexes_to_del if c in indexes_to_del1]
+                    #print(indexes_to_del)
+                    if len(indexes_to_del) == 0: # no common element
+                        break
         else:
             column_name, operator, value = self._parse_condition(condition)
             column = self.column_by_name(column_name)
@@ -693,7 +748,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value and column[<,<=,==,>=,>]value and... ' or
                 'not column[<,<=,==,>=,>]value and column[<,<=,==,>=,>]value and... ' or
-                'not column[<,<=,==,>=,>]value and 'not column[<,<=,==,>=,>]value and ...' .
+                'not column[<,<=,==,>=,>]value and not column[<,<=,==,>=,>]value and ...' .
                 
                 Operatores supported: (<,<=,==,>=,>)
             distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
