@@ -21,7 +21,7 @@ from table import Table
 
 class Database:
     '''
-    Main Database class, containing tables. Sylvia
+    Main Database class, containing tables. test123
     '''
 
     def __init__(self, name, load=True, verbose = True):
