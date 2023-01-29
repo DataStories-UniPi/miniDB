@@ -264,47 +264,10 @@ class Table:
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
-        condition_list = []
-        splitted_conditions_list = []
-        conditions_columns = []
-        rows = set(range(len(self.data))) # get the length of the rows
-        rows1 = set(range(0))
-        or_bool = False
-
-        # if condition is None, return all rows
+         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            # find the end condition and split the condition into two parts
-            while 'and' in condition:
-                and_index = condition.index('and')
-                condition_list.append(condition[:and_index-1]) # get the first condition
-                conditions_columns.append(split_condition(condition_list[-1])[0]) # get the column name of the first condition
-                splitted_conditions_list.append(self._parse_condition(condition_list[-1])) # get the first condition splitted
-                condition = condition[and_index+4:] # remove the first condition from the condition along with the first AND
-
-            if ' or ' in condition:
-                or_bool = True
-
-            while ' or ' in condition:
-                or_index = condition.index(' or ')
-                condition_list.append(condition[:or_index])
-                conditions_columns.append(split_condition(condition_list[-1])[0])
-                splitted_conditions_list.append(self._parse_condition(condition_list[-1]))
-                condition = condition[or_index+4:]
-
-            # get the last condition
-            condition_list.append(condition)
-            conditions_columns.append(split_condition(condition_list[-1])[0]) # get the column name of the last condition
-            splitted_conditions_list.append(self._parse_condition(condition_list[-1])) # get the last condition splitted
-
-            for index in range(len(condition_list)):
-                if or_bool:
-                    column = self.column_by_name(conditions_columns[index])
-                    rows1 = rows1.union([ind for ind, x in enumerate(column) if get_op(splitted_conditions_list[index][1], x, splitted_conditions_list[index][2])])
-                    rows = rows1
-                else:
-                    column = self.column_by_name(conditions_columns[index])
-                    rows = rows.intersection([ind for ind, x in enumerate(column) if get_op(splitted_conditions_list[index][1], x, splitted_conditions_list[index][2])])
+            rows = self._parse_multiple_conditions(condition)
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -607,6 +570,55 @@ class Table:
         non_none_rows = [row for row in self.data if any(row)]
         # print using tabulate
         print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
+
+    def _parse_multiple_conditions(self, condition):
+        '''
+        Manage multiple conditions and set the proper data in them
+        It also uses the _parse_condition
+        
+        THIS DEFINITION NEEDS TO BE CHANGED
+        '''
+        
+        condition_list = []
+        splitted_conditions_list = []
+        conditions_columns = []
+        rows = set(range(len(self.data))) # get the length of the rows
+        rows1 = set(range(0))
+        or_bool = False
+        
+        # find the end condition and split the condition into two parts
+        while 'and' in condition:
+            and_index = condition.index('and')
+            condition_list.append(condition[:and_index-1]) # get the first condition
+            conditions_columns.append(split_condition(condition_list[-1])[0]) # get the column name of the first condition
+            splitted_conditions_list.append(self._parse_condition(condition_list[-1])) # get the first condition splitted
+            condition = condition[and_index+4:] # remove the first condition from the condition along with the first AND
+
+        if ' or ' in condition:
+            or_bool = True
+
+        while ' or ' in condition:
+            or_index = condition.index(' or ')
+            condition_list.append(condition[:or_index])
+            conditions_columns.append(split_condition(condition_list[-1])[0])
+            splitted_conditions_list.append(self._parse_condition(condition_list[-1]))
+            condition = condition[or_index+4:]
+
+        # get the last condition
+        condition_list.append(condition)
+        conditions_columns.append(split_condition(condition_list[-1])[0]) # get the column name of the last condition
+        splitted_conditions_list.append(self._parse_condition(condition_list[-1])) # get the last condition splitted
+
+        for index in range(len(condition_list)):
+            if or_bool:
+                column = self.column_by_name(conditions_columns[index])
+                rows1 = rows1.union([ind for ind, x in enumerate(column) if get_op(splitted_conditions_list[index][1], x, splitted_conditions_list[index][2])])
+                rows = rows1
+            else:
+                column = self.column_by_name(conditions_columns[index])
+                rows = rows.intersection([ind for ind, x in enumerate(column) if get_op(splitted_conditions_list[index][1], x, splitted_conditions_list[index][2])])
+
+        return rows
 
 
     def _parse_condition(self, condition, join=False):
