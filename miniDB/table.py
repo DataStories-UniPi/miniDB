@@ -142,6 +142,18 @@ class Table:
             except Exception as e: 
                 print(str(e))   #added this to print error
 
+            # if value is to be appended to a unique column, check that it doesnt alrady exist (no duplicate values)
+            try:
+                if self.unique is not None:
+                    for count,uq_idx in enumerate(self.unique_idx):
+                        if i==uq_idx and row[i] in self.column_by_name(self.unique[count]):
+                            raise ValueError(f'## ERROR -> Value {row[i]} already exists in unique column "{self.unique[count]}".')
+                        elif i==uq_idx  and row[i] is None:
+                            raise ValueError(f'ERROR -> The value of a unique column cannot be None.')
+            except Exception as e: 
+                print(str(e))   #added this to print error
+                
+            
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
             self.data[insert_stack[-1]] = row
