@@ -126,6 +126,13 @@ def create_query_plan(query, keywords, action):
         else:
             dic['force'] = False
 
+    if action=='create index':
+        if '(' and ')' in dic['on']: #if user has specified a column on which we will create the index
+            l=dic['on'].split(' ')
+            dic['index_column']=l[2] #key is the specified column
+            dic['on']=l[0] #now the key contains only the table name
+        else:
+            dic['index_column']=None #default case->index column is not specified
     return dic
 
 
@@ -220,7 +227,7 @@ def interpret_meta(command):
     cdb - change/create database
     rmdb - delete database
     """
-    action = command.split(' ')[0].replace(';')
+    action = command.split(' ')[0].replace(';','')
 
     db_name = db._name if search_between(command, action,';')=='' else search_between(command, action,';')
 

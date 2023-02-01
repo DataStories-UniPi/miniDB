@@ -54,7 +54,7 @@ class Database:
         self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
-        self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
+        self.create_table('meta_indexes', 'table_name,index_name,index_column', 'str,str,str')#added index_colum column in order to keep the column on which index is created
         self.save_database()
 
     def save_database(self):
@@ -379,7 +379,10 @@ class Database:
 
         if condition_AND is True or condition_OR is True:
             table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
-        elif self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
+        #comment!!!!!
+        
+        #elif self._has_index(table_name) and (condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx] or condition_column in self.tables[table_name].column_names[self.tables[table_name].unique_idx]):
+        elif self._has_index(table_name,condition_column):
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
             table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
@@ -663,7 +666,7 @@ class Database:
 
 
     # indexes
-    def create_index(self, index_name, table_name, index_type='btree'):
+    def create_index(self, index_name, table_name, index_type='btree',index_column=None):
         '''
         Creates an index on a specified table with a given name.
         Important: An index can only be created on a primary key (the user does not specify the column).
@@ -671,33 +674,48 @@ class Database:
         Args:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
+            index_column: string. Name of the column on which we create the index
         '''
-        if self.tables[table_name].pk_idx is None: # if no primary key, no index
-            raise Exception('Cannot create index. Table has no primary key.')
-        if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
+
+        #if index_column not specified by user,index creation on primary key
+        if index_column is None:
+            if self.tables[table_name].pk_idx is not None: 
+                index_column=self.tables[table_name].pk
+            else:
+                raise Exception('Cannot create index. Table has no primary key.')# if no primary key, no index
+        else:
+            try:
+                col_names=self.tables[table_name].column_names #we find the column names of the table
+                index_column_idx=col_names.index(index_column) #the index of the given column(on which we create the index) in the list of column names
+                if index_column_idx not in self.tables[table_name].unique_idx:
+                    raise Exception('Cannot create index on a column that is not unique.')
+            except:
+                raise ValueError('The requested column to index does not exist in the table.')
+
+        if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):#if there isn't already an index with the same name
             # currently only btree is supported. This can be changed by adding another if.
             if index_type=='btree':
                 logging.info('Creating Btree index.')
-                # insert a record with the name of the index and the table on which it's created to the meta_indexes table
-                self.tables['meta_indexes']._insert([table_name, index_name])
+                # insert a record with the name of the index,the table and the column on which it's created to the meta_indexes table
+                self.tables['meta_indexes']._insert([table_name, index_name,index_column])
                 # crate the actual index
-                self._construct_index(table_name, index_name)
+                self._construct_index(table_name, index_name,index_column)
                 self.save_database()
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
-    def _construct_index(self, table_name, index_name):
+    def _construct_index(self, table_name, index_name,index_column):
         '''
         Construct a btree on a table and save.
 
         Args:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
+            index_column: string. Name of the column on which we create the index
         '''
         bt = Btree(3) # 3 is arbitrary
-
-        # for each record in the primary key of the table, insert its value and index to the btree
-        for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
+        # for each record of the table, insert its column value and index to the btree
+        for idx, key in enumerate(self.tables[table_name].column_by_name(index_column)):
             if key is None:
                 continue
             bt.insert(key, idx)
@@ -705,14 +723,14 @@ class Database:
         self._save_index(index_name, bt)
 
 
-    def _has_index(self, table_name):
+    def _has_index(self, table_name,index_column):
         '''
         Check whether the specified table's primary key column is indexed.
 
         Args:
             table_name: string. Table name (must be part of database).
         '''
-        return table_name in self.tables['meta_indexes'].column_by_name('table_name')
+        return table_name in self.tables['meta_indexes'].column_by_name('table_name') 
 
     def _save_index(self, index_name, index):
         '''
