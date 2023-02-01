@@ -725,12 +725,21 @@ class Database:
 
     def _has_index(self, table_name,index_column):
         '''
-        Check whether the specified table's primary key column is indexed.
+        Check whether the specified table's column is indexed.
 
         Args:
             table_name: string. Table name (must be part of database).
+            index_column: string. Column name to be checked for index.
+
+        Returns:
+            The index column if it is indexed, None otherwise.
         '''
-        return table_name in self.tables['meta_indexes'].column_by_name('table_name') 
+        # This is probably wrong, should be tested after bug fixes in index creation
+        index_columns = self.tables['meta_indexes'] # load meta_indexes table as array
+        for row in index_columns:
+            if row['table_name']==table_name and row['index_column']==index_column: # check for our table and index
+                return table_name,row['index_column']
+        return False
 
     def _save_index(self, index_name, index):
         '''
