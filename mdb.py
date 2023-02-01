@@ -173,50 +173,25 @@ def evaluate_where_clause(dic):
     Evaluate the part of the query (argument or subquery) that is supplied as the 'where' argument
     '''
     where_dic = {}
-    kw_per_action = ['create table',
-                     'drop table',
-                     'cast',
-                     'import',
-                     'export',
-                     'insert into',
-                     'select',
-                     'lock table',
-                     'unlock table',
-                     'delete from',
-                     'update table',
-                     'create index',
-                     'drop index',
-                     'create view']
-    
     where_split = dic['where'].split(' ')
     
+    '''
+    not/between/and/or operators not in parentheses.
+    '''
     not_idx = [i for i, word in enumerate(where_split) if word == 'not' and not in_paren(where_split, i)]
+    btwn_idx = [i for i, word in enumerate(where_split) if word == 'between' and not in_paren(where_split, i)]
     and_idx = [i for i,word in enumerate(where_split) if word=='and' and not in_paren(where_split,i)]
     or_idx = [i for i,word in enumerate(where_split) if word=='or' and not in_paren(where_split,i)]
-    oprt_idx = and_idx + or_idx  # list of indexes of operators ('and' or 'or')
+    oprt_idx = and_idx + or_idx # oprt_idx contains the indices of operators 'and' and 'or'.
     
-    """try:
-        if where_split.count('(') != where_split.count(')'):
-            print("Wrong input")
-            raise ValueError('Your parens are not right m8')
-    except ValueError as e:
-        print(e)"""
-
-    if not oprt_idx and where_split[0] == '(' and where_split[-1] == ')' and where_split.count('(') == where_split.count(')'):
-        if where_split[1] in kw_per_action:
-            subquery = ' '.join(where_split[1:-1])
-            dic['where'] = interpret(subquery)
-        elif not_idx:
-            #dic['where'] = { 'not': }
-            # ΔΕΝ ΘΑ ΜΠΕΙ ΠΟΤΕ ΕΔΩ ΛΟΓΩ ΤΟΥ ΕΛΕΓΧΟΥ  where_split[0] == '('
-            pass
+    if not oprt_idx and (where_split[0] == '(' or where_split[0] == 'not') and where_split[-1] == ')':
+        if not_idx and where_split[0] == 'not':
+            dic['where'] = { 'not': evaluate_where_clause( { 'where': ' '.join(where_split).removeprefix('not ') } )['where'] }
+            return dic
         else:
-            dic['where'] = evaluate_where_clause( { 'where':  ' '.join(where_split[1:-1]) } )['where']
+            dic['where'] = evaluate_where_clause( { 'where': ' '.join(where_split[1:-1]) } )['where']
             return dic
     
-    '''
-    and/or operators.
-    '''
     def build_list(oprt_idx, where_split):
         '''
         Building a list of dictionaries where in every recursive call,
@@ -226,48 +201,19 @@ def evaluate_where_clause(dic):
         if oprt_idx:            
             oprt_dic = {}
             
-            oprt_dic['left'] = ' '.join(where_split[oprt_idx[0]-1:oprt_idx[0]])
-            if oprt_dic['left'] == ')':
-                pos  = where_split[:oprt_idx[0]].index('(')
-                oprt_dic['left'] = ' '.join(where_split[pos:oprt_idx[0]])
-                
-            if oprt_dic['left'].startswith('not'):
-                pass#####################################
-                
+            if ' '.join(where_split[:oprt_idx[0]]).startswith('not '):
+                oprt_dic['left'] = {'not':  ' '.join(where_split[:oprt_idx[0]]).removeprefix('not ') }
+            
+            else:
+                oprt_dic['left'] = ' '.join(where_split[oprt_idx[0]-1:oprt_idx[0]])
+                if oprt_dic['left'] == ')':
+                    pos  = where_split[:oprt_idx[0]].index('(')
+                    oprt_dic['left'] = ' '.join(where_split[pos:oprt_idx[0]])              
+            
+            
+            oprt_dic['left'] = evaluate_where_clause({'where':  oprt_dic['left']})['where']
             oprt_dic['right'] = ' '.join(where_split[oprt_idx[0]+1:])
-            
-            if '(' in oprt_dic['left']:
-                subquery = ''
-                pos = oprt_dic['left'].find('(')
-                reps = oprt_dic['left'].count(')')
-                i = 0
-                # αν και μονο αν υπαρχει ( τοτε τρεχω while αλλιως subquery == oprt_dic['left']
-                while i < len(oprt_dic['left']):
-                    if oprt_dic['left'][i] == ')':
-                        reps -= 1
-                    if i == pos or reps == 0:
-                        i += 2
-                        if reps == 0:
-                            reps = -1
-                        continue
-                    subquery += oprt_dic['left'][i]
-                    i += 1
-                if subquery.endswith(' '):
-                    subquery = subquery[:-1]
-                subquery_first_word = subquery.split()[0]
-                if subquery_first_word in kw_per_action:
-                    oprt_dic['left'] = interpret(subquery)
-                else:
-                    '''
-                    if the subquery_first_word is not in kw_per_action, then call evaluate_where_clause()
-                    cause subquery is a where clause.
-                    '''
-                    oprt_dic['left'] = evaluate_where_clause({'where':  oprt_dic['left']})['where']
-            
-            if oprt_dic['right'].startswith('not'):
-                oprt_dic['right'] = {'not': evaluate_where_clause( {'where': oprt_dic['right'].removeprefix('not ') } )['where'] }
-            else: # right which is not 'not'
-                oprt_dic['right'] = evaluate_where_clause( { 'where':  oprt_dic['right'] } )['where']
+            oprt_dic['right'] = evaluate_where_clause( { 'where':  oprt_dic['right'] } )['where']
 
             value = oprt_idx.pop(0)+1
             List.append(oprt_dic)
@@ -293,7 +239,7 @@ def evaluate_where_clause(dic):
 
         dic['where'] = dict(eval(oprt_dic))
         return dic
-
+    
     if not_idx:
         '''
         Case that there is only one simple not condition.
@@ -301,7 +247,7 @@ def evaluate_where_clause(dic):
         not_idx = not_idx[0]
         dic['where'] = { 'not': where_split[not_idx+1] }
         return dic
-
+    
     dic['where'] = ''.join(where_split)
     return dic
 
