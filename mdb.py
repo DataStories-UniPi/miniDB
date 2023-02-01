@@ -170,26 +170,49 @@ def evaluate_where_clause(dic):
     if(where_dic == None):
         return dic
 
-    logical_operators = ['and', 'or']
-    # TODO: chech for parenthesis
-    where_split = where_dic.split(' ')
+    where_dic = form_where_clause(where_dic)
+    dic['where'] = where_dic
 
+    return dic
+
+def form_where_clause(where_split):
+
+    logical_operators = ['and', 'or']
+
+    if(type(where_split) != list):
+        where_split = where_split.split(' ')
+    
     operator_idx = [i for i,word in enumerate(where_split) if word in logical_operators and not in_paren(where_split,i)]
-    print(where_split)
-    print(operator_idx)
+
+    if((len(operator_idx) == 0) and (where_split[0]=='(' and where_split[-1]==')')):
+        where_split = where_split[1:-1]
+        operator_idx = [i for i,word in enumerate(where_split) if word in logical_operators and not in_paren(where_split,i)]
+
+    # TODO: implement for the form of test=1 AND test2=2 AND test3=3 
+
     if operator_idx:
         operator_idx = operator_idx[0]
+        
         where_dic = {}
-        where_dic['left'] = ''.join(where_split[:operator_idx])
-        where_dic['right'] = ''.join(where_split[operator_idx+1:])
+        left = where_split[:operator_idx]
+        right = where_split[operator_idx+1:]
+        
+        if(left[0] == '(' and left[-1] == ')'):
+            left = form_where_clause(left)
+        else:
+            left = ' '.join(left)
+
+        if(right[0] == '(' and right[-1] == ')'):
+            right = form_where_clause(right)
+        else:
+            right = ' '.join(right)      
+
+        where_dic['left'] = left
         where_dic['operator'] = ''.join(where_split[operator_idx])
-        dic['where'] = where_dic
+        where_dic['right'] = right
+        
+        return where_dic
 
-
-    print(where_split)
-    print(operator_idx)
-    return dic
-    
 def interpret(query):
     '''
     Interpret the query.
