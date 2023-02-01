@@ -76,6 +76,7 @@ def create_query_plan(query, keywords, action):
 
     if action=='select':
         dic = evaluate_from_clause(dic)
+        dic = evaluate_where_clause(dic)
 
         if dic['distinct'] is not None:
             dic['select'] = dic['distinct']
@@ -158,8 +159,14 @@ def evaluate_from_clause(dic):
     return dic
 
 def evaluate_where_clause(dic):
-    # to be implemented
-    print("Hello, World!")
+    '''
+    Evaluate the part of the query that is supplied as the 'where' argument
+    '''
+
+    operators = ['and', 'or']
+    where_split = dic['where'].split(' ')
+
+    print(where_split)
     
 def interpret(query):
     '''
@@ -185,7 +192,7 @@ def interpret(query):
         query+=';'
     
     query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip()
-
+    
     for kw in kw_per_action.keys():
         if query.startswith(kw):
             action = kw
@@ -261,7 +268,7 @@ if __name__ == "__main__":
             if line.startswith('explain'):
                 dic = interpret(line.removeprefix('explain '))
                 pprint(dic, sort_dicts=False)
-            else :
+            else:
                 dic = interpret(line.lower())
                 result = execute_dic(dic)
                 if isinstance(result,Table):
