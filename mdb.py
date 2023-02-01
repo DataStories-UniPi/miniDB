@@ -158,6 +158,16 @@ def evaluate_from_clause(dic):
         
     return dic
 
+def transform_list_to_dict(lst):
+    '''
+    Transforming the list of dictionaries to the desired dictionary, where each key
+    afterwards will be replaced with an operator ('and' or 'or').
+    '''
+    if len(lst) == 1:
+        return {'OPR': lst[0]}
+    else:
+        return {'OPR': {'left': lst[0]['left'], 'right': transform_list_to_dict(lst[1:])}}
+
 def evaluate_where_clause(dic):
     '''
     Evaluate the part of the query (argument or subquery) that is supplied as the 'where' argument
@@ -179,111 +189,120 @@ def evaluate_where_clause(dic):
                      'create view']
     
     where_split = dic['where'].split(' ')
-    if where_split[0] == '(' and where_split[-1] == ')' and where_split[1] in kw_per_action:
-        subquery = ' '.join(where_split[1:-1])
-        dic['where'] = interpret(subquery)
     
-    '''
-    or operator
-    '''
-    or_idx = [i for i,word in enumerate(where_split) if word=='or' and not in_paren(where_split,i)]
-    if or_idx:
-        or_dic = {}
-        or_idx = or_idx[0]
-        or_dic['left'] = ' '.join(where_split[:or_idx])
-        or_dic['right'] = ' '.join(where_split[or_idx+1:])
-        
-        if or_dic['left'].startswith('(') and or_dic['left'].endswith(')'):
-            subquery = or_dic['left'][1:-1].strip()
-            subquery_first_word = subquery.split()[0]
-            if subquery_first_word in kw_per_action:
-                or_dic['left'] = interpret(subquery)
-            else:
-                '''
-                if the subquery_first_word is not in kw_per_action, then call evaluate_where_clause()
-                cause subquery is a where clause.
-                '''
-                temp_dic = {}
-                temp_dic['where'] = subquery
-                or_dic['left'] = evaluate_where_clause(temp_dic)['where']
-        
-        if or_dic['right'].startswith('(') and or_dic['right'].endswith(')'):
-            subquery = or_dic['right'][1:-1].strip()
-            subquery_first_word = subquery.split()[0]
-            if subquery_first_word in kw_per_action:
-                or_dic['right'] = interpret(subquery)
-            else:
-                '''
-                if the subquery_first_word is not in kw_per_action, then call evaluate_where_clause()
-                cause subquery is a where clause.
-                '''
-                temp_dic = {}
-                temp_dic['where'] = subquery
-                or_dic['right'] = evaluate_where_clause(temp_dic)['where']
-        
-        where_dic['or'] = or_dic
-    
-    '''
-    and/between operator
-    When 'between' operator exists, then it contains an 'and' operator.
-    '''
+    not_idx = [i for i, word in enumerate(where_split) if word == 'not' and not in_paren(where_split, i)]
     and_idx = [i for i,word in enumerate(where_split) if word=='and' and not in_paren(where_split,i)]
-    if and_idx:
-        '''
-        if and_idx exists, then it may exists inside 'between' operator.
-        '''
-        and_dic = {}
-        and_idx = and_idx[0]
-        and_dic['left'] = ' '.join(where_split[:and_idx])
-        and_dic['right'] = ' '.join(where_split[and_idx+1:])
-        
-        if and_dic['left'].startswith('(') and and_dic['left'].endswith(')'):
-            subquery = and_dic['left'][1:-1].strip()
-            subquery_first_word = subquery.split()[0]
-            if subquery_first_word in kw_per_action:
-                and_dic['left'] = interpret(subquery)
-            else:
-                '''
-                if the subquery_first_word is not in kw_per_action, then call evaluate_where_clause()
-                cause subquery is a where clause.
-                '''
-                temp_dic = {}
-                temp_dic['where'] = subquery
-                and_dic['left'] = evaluate_where_clause(temp_dic)['where']
-        
-        if and_dic['right'].startswith('(') and and_dic['right'].endswith(')'):
-            subquery = and_dic['right'][1:-1].strip()
-            subquery_first_word = subquery.split()[0]
-            if subquery_first_word in kw_per_action:
-                and_dic['right'] = interpret(subquery)
-            else:
-                '''
-                if the subquery_first_word is not in kw_per_action, then call evaluate_where_clause()
-                cause subquery is a where clause.
-                '''
-                temp_dic = {}
-                temp_dic['where'] = subquery
-                and_dic['right'] = evaluate_where_clause(temp_dic)['where']
-        
-        btw_idx = [i for i,word in enumerate(where_split) if word=='between' and not in_paren(where_split,i)]
-        if btw_idx:
-            where_dic['between'] = {'and': and_dic}
-        else:
-            where_dic['and'] = and_dic
-        
-    '''
-    not operator
-    '''
-    not_idx = [i for i,word in enumerate(where_split) if word=='not' and not in_paren(where_split,i)]
-    if not_idx:
-        not_idx = not_idx[0]
-        where_dic['not'] = where_split[not_idx+1]
+    or_idx = [i for i,word in enumerate(where_split) if word=='or' and not in_paren(where_split,i)]
+    oprt_idx = and_idx + or_idx  # list of indexes of operators ('and' or 'or')
+    
+    """try:
+        if where_split.count('(') != where_split.count(')'):
+            print("Wrong input")
+            raise ValueError('Your parens are not right m8')
+    except ValueError as e:
+        print(e)"""
 
-    if or_idx or and_idx or not_idx:
-        dic['where'] = where_dic
-    else:
-        dic['where'] = ''.join(where_split)
+    if not oprt_idx and where_split[0] == '(' and where_split[-1] == ')' and where_split.count('(') == where_split.count(')'):
+        if where_split[1] in kw_per_action:
+            subquery = ' '.join(where_split[1:-1])
+            dic['where'] = interpret(subquery)
+        elif not_idx:
+            #dic['where'] = { 'not': }
+            # ΔΕΝ ΘΑ ΜΠΕΙ ΠΟΤΕ ΕΔΩ ΛΟΓΩ ΤΟΥ ΕΛΕΓΧΟΥ  where_split[0] == '('
+            pass
+        else:
+            dic['where'] = evaluate_where_clause( { 'where':  ' '.join(where_split[1:-1]) } )['where']
+            return dic
+    
+    '''
+    and/or operators.
+    '''
+    def build_list(oprt_idx, where_split):
+        '''
+        Building a list of dictionaries where in every recursive call,
+        the left side equals to the left condition of the current operator ('and' or 'or')
+        and the right side equals to the rest of the where clause.
+        '''
+        if oprt_idx:            
+            oprt_dic = {}
+            
+            oprt_dic['left'] = ' '.join(where_split[oprt_idx[0]-1:oprt_idx[0]])
+            if oprt_dic['left'] == ')':
+                pos  = where_split[:oprt_idx[0]].index('(')
+                oprt_dic['left'] = ' '.join(where_split[pos:oprt_idx[0]])
+                
+            if oprt_dic['left'].startswith('not'):
+                pass#####################################
+                
+            oprt_dic['right'] = ' '.join(where_split[oprt_idx[0]+1:])
+            
+            if '(' in oprt_dic['left']:
+                subquery = ''
+                pos = oprt_dic['left'].find('(')
+                reps = oprt_dic['left'].count(')')
+                i = 0
+                # αν και μονο αν υπαρχει ( τοτε τρεχω while αλλιως subquery == oprt_dic['left']
+                while i < len(oprt_dic['left']):
+                    if oprt_dic['left'][i] == ')':
+                        reps -= 1
+                    if i == pos or reps == 0:
+                        i += 2
+                        if reps == 0:
+                            reps = -1
+                        continue
+                    subquery += oprt_dic['left'][i]
+                    i += 1
+                if subquery.endswith(' '):
+                    subquery = subquery[:-1]
+                subquery_first_word = subquery.split()[0]
+                if subquery_first_word in kw_per_action:
+                    oprt_dic['left'] = interpret(subquery)
+                else:
+                    '''
+                    if the subquery_first_word is not in kw_per_action, then call evaluate_where_clause()
+                    cause subquery is a where clause.
+                    '''
+                    oprt_dic['left'] = evaluate_where_clause({'where':  oprt_dic['left']})['where']
+            
+            if oprt_dic['right'].startswith('not'):
+                oprt_dic['right'] = {'not': evaluate_where_clause( {'where': oprt_dic['right'].removeprefix('not ') } )['where'] }
+            else: # right which is not 'not'
+                oprt_dic['right'] = evaluate_where_clause( { 'where':  oprt_dic['right'] } )['where']
+
+            value = oprt_idx.pop(0)+1
+            List.append(oprt_dic)
+            try:
+                return build_list([x-value for x in oprt_idx], oprt_dic['right'].split())
+            except:
+                return # return back to the previous call
+        return # return back to the previous call
+            
+    if oprt_idx:
+        oprt_idx.sort()
+        List = []
         
+        build_list(oprt_idx.copy(), where_split)
+        
+        oprt_dic = transform_list_to_dict(List)
+        oprt_dic = str(oprt_dic)
+        oprt_words = [where_split[i] for i in oprt_idx]
+
+        # replacing the key 'OPR' with the operator ('and' or 'or')
+        for x in oprt_words:
+            oprt_dic = oprt_dic.replace('OPR', x, 1)
+
+        dic['where'] = dict(eval(oprt_dic))
+        return dic
+
+    if not_idx:
+        '''
+        Case that there is only one simple not condition.
+        '''
+        not_idx = not_idx[0]
+        dic['where'] = { 'not': where_split[not_idx+1] }
+        return dic
+
+    dic['where'] = ''.join(where_split)
     return dic
 
 def interpret(query):
@@ -329,7 +348,7 @@ def execute_dic(dic):
     return getattr(db, action)(*dic.values())
 
 def interpret_meta(command):
-    """
+    '''
     Interpret meta commands. These commands are used to handle DB stuff, something that can not be easily handled with mSQL given the current architecture.
 
     The available meta commands are:
@@ -338,7 +357,7 @@ def interpret_meta(command):
     lstb - list tables
     cdb - change/create database
     rmdb - delete database
-    """
+    '''
     action = command.split(' ')[0].removesuffix(';')
 
     db_name = db._name if search_between(command, action,';')=='' else search_between(command, action,';')
