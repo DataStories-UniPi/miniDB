@@ -5,6 +5,7 @@ import sys
 import readline
 import traceback
 import shutil
+
 sys.path.append('miniDB')
 
 from database import Database
@@ -163,10 +164,31 @@ def evaluate_where_clause(dic):
     Evaluate the part of the query that is supplied as the 'where' argument
     '''
 
-    operators = ['and', 'or']
-    where_split = dic['where'].split(' ')
+    where_dic = dic['where']
+
+    # Returns if the where is empty
+    if(where_dic == None):
+        return dic
+
+    logical_operators = ['and', 'or']
+    # TODO: chech for parenthesis
+    where_split = where_dic.split(' ')
+
+    operator_idx = [i for i,word in enumerate(where_split) if word in logical_operators and not in_paren(where_split,i)]
+    print(where_split)
+    print(operator_idx)
+    if operator_idx:
+        operator_idx = operator_idx[0]
+        where_dic = {}
+        where_dic['left'] = ''.join(where_split[:operator_idx])
+        where_dic['right'] = ''.join(where_split[operator_idx+1:])
+        where_dic['operator'] = ''.join(where_split[operator_idx])
+        dic['where'] = where_dic
+
 
     print(where_split)
+    print(operator_idx)
+    return dic
     
 def interpret(query):
     '''
@@ -290,7 +312,7 @@ if __name__ == "__main__":
             print('\nbye!')
             break
         try:
-            if line=='exit':
+            if line=='exit ;':
                 break
             if line.split(' ')[0].removesuffix(';') in ['lsdb', 'lstb', 'cdb', 'rmdb']:
                 interpret_meta(line)
