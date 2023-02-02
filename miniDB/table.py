@@ -155,7 +155,12 @@ class Table:
 
         operator = ' or ' 
         operator1 = ' and '
-        if (operator in condition): 
+        if (operator in condition and operator1 in condition):
+            splt = condition.split(operator)
+            for s in splt:
+                self._update_rows(set_value, set_column, s)
+
+        elif (operator in condition):  # or in condition
             splt = condition.split(operator)
             for s in splt:   
                 # parse the condition
@@ -170,7 +175,7 @@ class Table:
                     if get_op(operator, column_value, value):
                         self.data[row_ind][set_column_idx] = set_value
 
-        elif(operator1 in condition): # and in condition
+        elif (operator1 in condition): # and in condition
             rows = []
             rows1 = []
             splt = condition.split(operator1)
@@ -255,8 +260,7 @@ class Table:
         if (operator in condition and operator1 in condition):
             print("complex AND and OR found!")
             print(condition)
-            operator2 = ' or '
-            splt = condition.split(operator2)
+            splt = condition.split(operator)
             for s in splt:
                 self._delete_where(s)
             #self._delete_where_and_or(condition)
@@ -314,8 +318,8 @@ class Table:
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
     
-
-    def _delete_where_and_or(self, condition):
+    '''
+    def _delete_where_and_or(self, condition):   # uselless has to be deleted!
         #t_indexes = [] 
         #operator1 = ' and '
         operator2 = ' or '
@@ -326,7 +330,7 @@ class Table:
             #print(s)
         #print(t_indexes)
         #return t_indexes
-
+    '''
 
     def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None, flag = False):
         '''
