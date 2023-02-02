@@ -1,4 +1,5 @@
 from __future__ import annotations
+import itertools
 from tabulate import tabulate
 import pickle
 import os
@@ -248,7 +249,22 @@ class Table:
         indexes_to_del = []
         operator = ' or ' 
         operator1 = ' and '
-        if (operator in condition): # or in condition
+        indexes_to_del_and_or = []
+        indexes_to_del1 = []
+
+        if (operator, operator1 in condition):
+            splt = condition.split(operator)
+            
+            for cond in splt:
+                indexes_to_del_and_or.append(self._delete_where(cond))
+            print("indexes:")
+            print(indexes_to_del_and_or)
+
+            res = list(set(tuple(sorted(sub)) for sub in indexes_to_del_and_or))
+            print("res")
+            print(res)
+
+        elif (operator in condition): # or in condition
             splt = condition.split(operator)
             for s in splt:   
                 column_name, operator, value = self._parse_condition(s)
@@ -259,7 +275,7 @@ class Table:
 
         elif(operator1 in condition): # and in condition
                 splt = condition.split(operator1)
-                indexes_to_del1 = []
+                #indexes_to_del1 = []
                 column_name, operator, value = self._parse_condition(splt[0])
                 column = self.column_by_name(column_name)
                 
@@ -302,7 +318,7 @@ class Table:
         return indexes_to_del
 
 
-    def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
+    def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None, flag = False):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -319,13 +335,15 @@ class Table:
             desc: boolean. If True, order_by will return results in descending order (False by default).
             limit: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
-
+        
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
-
+        #print(return_columns)
+        #print("return cols in select")
+        #print(return_cols)
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
@@ -339,12 +357,14 @@ class Table:
 
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
-
+        
+        
         # we need to set the new column names/types and no of columns, since we might
         # only return some columns
         dict['column_names'] = [self.column_names[i] for i in return_cols]
         dict['column_types']   = [self.column_types[i] for i in return_cols]
 
+        #print(dict['column_names'])
         s_table = Table(load=dict)
 
         s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
@@ -366,7 +386,10 @@ class Table:
             s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
 
         #print(s_table.data)
-        return s_table
+        if (flag):
+            return s_table.data, dict
+        else:
+            return s_table
 
 
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
@@ -696,7 +719,23 @@ class Table:
 
 
     def _select_where_or(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
-       
+        '''
+        Select and return a table containing specified columns and rows where condition is met.
+
+        Args:
+            return_columns: list. The columns to be returned.
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value or column[<,<=,==,>=,>]value and... ' or
+                'not column[<,<=,==,>=,>]value or column[<,<=,==,>=,>]value and... ' or
+                'not column[<,<=,==,>=,>]value or not column[<,<=,==,>=,>]value and ...' .
+                
+                Operatores supported: (<,<=,==,>=,>)
+            distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
+            order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
+            desc: boolean. If True, order_by will return results in descending order (False by default).
+            limit: int. An integer that defines the number of rows that will be returned (all rows if None).
+        '''
+
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
@@ -739,7 +778,7 @@ class Table:
 
             return s_table
         
-    def _select_where_and(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
+    def _select_where_and(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None, flag = False):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -763,9 +802,10 @@ class Table:
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
+        #print(return_cols)
         operator = ' and ' 
         splt = condition.split(operator) 
-        print(splt)
+        #print(splt)
         if (len(splt)!=0):   # if there are any conditions on the left and on the right side of and operator
             
             #print(s)
@@ -800,8 +840,59 @@ class Table:
             if isinstance(limit,str):
                 s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
 
-            #print(s_table.data)
-            return s_table
+            #print(s_table.column_names)
+            if (flag):
+                return s_table.data, dict
+            else:
+                return s_table
+        
+    
+    def _select_where_and_or(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
+        
+        # if * return all columns, else find the column indexes for the columns specified
+        '''
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
+        else:
+            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+        '''
+        data = []
+        operator1 = ' and ' 
+        operator2 = ' or '
+        
+        splt = condition.split(operator2)
+        #print(splt)
+
+        # dict -> in order to get the new column names, since we might only return some columns
+        if (operator1 in splt[0]): # and in condition -> call it's method
+            dict = self._select_where_and(return_columns, splt[0], distinct, order_by, desc, limit, True)[1]
+        else: 
+            dict = self._select_where(return_columns, splt[0], distinct, order_by, desc, limit, True)[1]
+        
+        for cond in splt:
+            if (operator1 in cond):
+                data.append(self._select_where_and(return_columns, cond, distinct, order_by, desc, limit, True)[0])
+                #dict = self._select_where_and(return_columns, cond, distinct, order_by, desc, limit, True)[1]
+            else:
+                data.append(self._select_where(return_columns, cond, distinct, order_by, desc, limit, True)[0])
+                #dict = self._select_where(return_columns, cond, distinct, order_by, desc, limit, True)[1]
+        
+        self = Table(load=dict)
+        #print(data)
+        data1 = [elem for twod in data for elem in twod] # convert 3D list into a 2D list
+        
+        # remove duplicate records but first sort the list
+        data1.sort()
+        new_list = list(l for l, _ in itertools.groupby(data1)) 
+
+        self.data = new_list # final data
+        return self
+        
+
+
+    
+        
+      
         
 
 
