@@ -265,8 +265,12 @@ class Table:
             print("res")
             print(res)
         '''
+        if (operator and operator1 in condition):
+            print("complex AND and OR found!")
+            print(condition)
+            self._delete_where_and_or(condition)
 
-        if (operator in condition): # or in condition
+        elif (operator in condition): # or in condition
             splt = condition.split(operator)
             for s in splt:   
                 column_name, operator, value = self._parse_condition(s)
@@ -321,11 +325,13 @@ class Table:
     
     def _delete_where_and_or(self, condition):
         t_indexes = [] 
-        operator = ' and '
-        splt = condition.split(operator)
+        #operator1 = ' and '
+        operator2 = ' or '
+        splt = condition.split(operator2)
         for s in splt:
-            t_indexes.append(self._delete_where(s))
-        print(t_indexes)
+            #t_indexes.append(self._delete_where(s))
+            print(s)
+        #print(t_indexes)
 
 
     def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None, flag = False):
