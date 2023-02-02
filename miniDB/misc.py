@@ -58,8 +58,8 @@ def split_condition(condition):
         #print(">>",condition)
         if len(splt)>1:
             left, right = splt[0].strip(), splt[1].strip()
-            #print(">>>",left,right)
-            if 'and' in right:
+            
+            if ' and ' in right:
                 begin,end = right.split('and')
                 begin = begin.strip()
                 end = end.strip()
@@ -92,6 +92,5 @@ def reverse_op(op):
         '>=' : '<=',
         '<' : '>',
         '<=' : '>=',
-        '=' : '=',
-        'between': operator_between
+        '=' : '='
     }.get(op)
