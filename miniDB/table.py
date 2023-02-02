@@ -529,53 +529,103 @@ class Table:
         # print using tabulate
         print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
 
-    def _parse_multiple_conditions(self, condition):
+    def _parse_multiple_conditions(self, conditions):
         '''
         Manage multiple conditions and set the proper data in them
         It also uses the _parse_condition
         
         THIS DEFINITION NEEDS TO BE CHANGED
         '''
+        conditions_temp = conditions
         
-        condition_list = []
-        splitted_conditions_list = []
-        conditions_columns = []
-        or_bool = False
+        if ' or ' in conditions_temp:
         
-        # find the end condition and split the condition into two parts
-        while ' and ' in condition:
-            and_index = condition.index(' and ')
-            condition_list.append(condition[:and_index]) # get the first condition
-            conditions_columns.append(split_condition(condition_list[-1])[0]) # get the column name of the first condition
-            splitted_conditions_list.append(self._parse_condition(condition_list[-1])) # get the first condition splitted
-            condition = condition[and_index+5:] # remove the first condition from the condition along with the first AND
+            conditions_list_of_or = []
+            rows_for_or = set(range(0))
+            rows_for_and = set(range(len(self.data)))
 
-        if ' or ' in condition:
-            or_bool = True
-            rows = set(range(0))
+            
+            # we add all sub_conditions left and right for every or operator
+            while ' or ' in conditions_temp:
+                or_index = conditions_temp.index(' or ')
+                conditions_list_of_or.append(conditions_temp[:or_index])
+                #conditions_columns.append(split_condition(conditions_list_of_or[-1])[0])
+                #splitted_conditions_list.append(self._parse_condition(conditions_list_of_or[-1]))
+                conditions_temp = conditions_temp[or_index+4:]
+            
+            # get the last condition
+            conditions_list_of_or.append(conditions_temp)
+            #conditions_columns.append(split_condition(conditions_list_of_or[-1])[0]) # get the column name of the last condition
+            #splitted_conditions_list.append(self._parse_condition(conditions_list_of_or[-1])) # get the last condition splitted
+            
+            
+            conditions_list_of_and = []
+            conditions_columns_of_and = []
+            splitted_conditions_list_of_and = []
+            sub_conditions_rows_list = []
+            
+            for sub_conditions in conditions_list_of_or: # for each sub-condition in conditions_list of the or
+                # we find all the subconditions of the string, if any
+                while ' and ' in sub_conditions:
+                    and_index = sub_conditions.index(' and ')
+                    conditions_list_of_and.append(sub_conditions[:and_index]) # get the first condition
+                    conditions_columns_of_and.append(split_condition(conditions_list_of_and[-1])[0]) # get the column name of the first condition
+                    splitted_conditions_list_of_and.append(self._parse_condition(conditions_list_of_and[-1])) # get the first condition splitted
+                    sub_conditions = sub_conditions[and_index+5:] # remove the first condition from the condition along with the first AND
+                
+                # get the last condition
+                conditions_list_of_and.append(sub_conditions)
+                conditions_columns_of_and.append(split_condition(conditions_list_of_and[-1])[0]) # get the column name of the last condition
+                splitted_conditions_list_of_and.append(self._parse_condition(conditions_list_of_and[-1])) # get the last condition splitted
+                
+                #found all the rows that meet the above mission
+                rows_for_and_temp = rows_for_and
+                
+                for index in range(len(conditions_list_of_and)):
+                    column = self.column_by_name(conditions_columns_of_and[index])
+                    rows_for_and_temp = rows_for_and_temp.intersection([ind for ind, x in enumerate(column) if get_op(splitted_conditions_list_of_and[index][1], x, splitted_conditions_list_of_and[index][2])])
+                
+                # after we have found all the necessary rows we added them to the sub_conditions_rows_list
+                sub_conditions_rows_list.append(rows_for_and_temp)
+                
+                # we return the default values for our varaibles
+                conditions_list_of_and = []
+                conditions_columns_of_and = []
+                splitted_conditions_list_of_and = []
+                
+            # when all the sub-conditions are checked union them
+            for rows in sub_conditions_rows_list:
+                rows_for_or = rows_for_or.union(rows)
+            
+            # return the final rows
+            return rows_for_or
         else:
-            rows = set(range(len(self.data)))
+            # if the conditions does not have ' or ', it maybe has ' and ' or no operator...
+            rows_for_and = set(range(len(self.data)))
+            conditions_list_of_and = []
+            conditions_columns_of_and = []
+            splitted_conditions_list_of_and = []
+            
+            rows_for_and = set(range(len(self.data)))
 
-        while ' or ' in condition:
-            or_index = condition.index(' or ')
-            condition_list.append(condition[:or_index])
-            conditions_columns.append(split_condition(condition_list[-1])[0])
-            splitted_conditions_list.append(self._parse_condition(condition_list[-1]))
-            condition = condition[or_index+4:]
+            
+            while ' and ' in conditions_temp:
+                and_index = conditions_temp.index(' and ')
+                conditions_list_of_and.append(conditions_temp[:and_index]) # get the first condition
+                conditions_columns_of_and.append(split_condition(conditions_list_of_and[-1])[0]) # get the column name of the first condition
+                splitted_conditions_list_of_and.append(self._parse_condition(conditions_list_of_and[-1])) # get the first condition splitted
+                conditions_temp = conditions_temp[and_index+5:] # remove the first condition from the condition along with the first AND
 
-        # get the last condition
-        condition_list.append(condition)
-        conditions_columns.append(split_condition(condition_list[-1])[0]) # get the column name of the last condition
-        splitted_conditions_list.append(self._parse_condition(condition_list[-1])) # get the last condition splitted
+            # get the last condition
+            conditions_list_of_and.append(conditions_temp)
+            conditions_columns_of_and.append(split_condition(conditions_list_of_and[-1])[0]) # get the column name of the last condition
+            splitted_conditions_list_of_and.append(self._parse_condition(conditions_list_of_and[-1])) # get the last condition splitted
 
-        for index in range(len(condition_list)):
-            column = self.column_by_name(conditions_columns[index])
-            if or_bool:
-                rows = rows.union([ind for ind, x in enumerate(column) if get_op(splitted_conditions_list[index][1], x, splitted_conditions_list[index][2])])
-            else:
-                rows = rows.intersection([ind for ind, x in enumerate(column) if get_op(splitted_conditions_list[index][1], x, splitted_conditions_list[index][2])])
+            for index in range(len(conditions_list_of_and)):
+                column = self.column_by_name(conditions_columns_of_and[index])
+                rows_for_and = rows_for_and.intersection([ind for ind, x in enumerate(column) if get_op(splitted_conditions_list_of_and[index][1], x, splitted_conditions_list_of_and[index][2])])
 
-        return rows
+            return rows_for_and
 
 
     def _parse_condition(self, condition, join=False):
