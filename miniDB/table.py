@@ -323,6 +323,7 @@ class Table:
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
     
+
     def _delete_where_and_or(self, condition):
         t_indexes = [] 
         #operator1 = ' and '
@@ -331,7 +332,9 @@ class Table:
         for s in splt:
             #t_indexes.append(self._delete_where(s))
             print(s)
-        #print(t_indexes)
+        #t_indexes.append(self._delete_where(splt[0]))
+        t_indexes.append(self._delete_where(splt[1]))
+        print(t_indexes)
 
 
     def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None, flag = False):
