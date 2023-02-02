@@ -246,29 +246,20 @@ class Table:
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
-        indexes_to_del = []
+
         operator = ' or ' 
         operator1 = ' and '
-        indexes_to_del_and_or = []
+        indexes_to_del = []
         indexes_to_del1 = []
 
-        
-        '''
-            splt = condition.split(operator)
-            
-            for cond in splt:
-                indexes_to_del_and_or.append(self._delete_where(cond))
-            print("indexes:")
-            print(indexes_to_del_and_or)
-
-            res = list(set(tuple(sorted(sub)) for sub in indexes_to_del_and_or))
-            print("res")
-            print(res)
-        '''
-        if (operator and operator1 in condition):
+        if (operator in condition and operator1 in condition):
             print("complex AND and OR found!")
             print(condition)
-            self._delete_where_and_or(condition)
+            operator2 = ' or '
+            splt = condition.split(operator2)
+            for s in splt:
+                self._delete_where(s)
+            #self._delete_where_and_or(condition)
 
         elif (operator in condition): # or in condition
             splt = condition.split(operator)
@@ -325,16 +316,16 @@ class Table:
     
 
     def _delete_where_and_or(self, condition):
-        t_indexes = [] 
+        #t_indexes = [] 
         #operator1 = ' and '
         operator2 = ' or '
         splt = condition.split(operator2)
         for s in splt:
+            self._delete_where(s)
             #t_indexes.append(self._delete_where(s))
-            print(s)
-        #t_indexes.append(self._delete_where(splt[0]))
-        t_indexes.append(self._delete_where(splt[1]))
-        print(t_indexes)
+            #print(s)
+        #print(t_indexes)
+        #return t_indexes
 
 
     def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None, flag = False):
