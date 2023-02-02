@@ -253,6 +253,9 @@ class Table:
         indexes_to_del1 = []
 
         if (operator, operator1 in condition):
+
+            self._delete_where_and_or(condition)
+            '''
             splt = condition.split(operator)
             
             for cond in splt:
@@ -263,6 +266,7 @@ class Table:
             res = list(set(tuple(sorted(sub)) for sub in indexes_to_del_and_or))
             print("res")
             print(res)
+            '''
 
         elif (operator in condition): # or in condition
             splt = condition.split(operator)
@@ -316,6 +320,14 @@ class Table:
         # self._update()
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
+    
+    def _delete_where_and_or(self, condition):
+        t_indexes = [] 
+        operator = ' and '
+        splt = condition(operator)
+        for s in splt:
+            t_indexes.append(self._delete_where(s))
+        print(t_indexes)
 
 
     def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None, flag = False):
