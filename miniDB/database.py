@@ -734,11 +734,13 @@ class Database:
         Returns:
             The index column if it is indexed, None otherwise.
         '''
-        # This is probably wrong, should be tested after bug fixes in index creation
-        index_columns = self.tables['meta_indexes'] # load meta_indexes table as array
-        for row in index_columns:
-            if row['table_name']==table_name and row['index_column']==index_column: # check for our table and index
-                return table_name,row['index_column']
+        # Get all the data from meta_indexes - this is most likely a small table so this is not a problem
+        data=self.tables['meta_indexes'].data
+        for row in data:
+            # Check rows that have a corresponding index to the selected table and column combination
+            if row[0]==table_name and row[2]==index_column:
+                print(table_name,"has an index on",index_column)
+                return True
         return False
 
     def _save_index(self, index_name, index):
