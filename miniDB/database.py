@@ -370,7 +370,30 @@ class Database:
             
             operator = ' or ' 
             operator1 = ' and '
-            if (operator in condition or operator1 in condition): # e.g salary = 2000 or salary > 6000
+
+            if(operator in condition and operator1 in condition):
+                flag = 1
+                if self.is_locked(table_name):
+                    return
+                if self._has_index(table_name) and [item for item in lst]==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
+                    index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
+                    bt = self._load_idx(index_name)
+                    table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+                else:
+                   table = self.tables[table_name]._select_where_and_or(columns, condition, distinct, order_by, desc, limit)
+                
+                # self.unlock_table(table_name)
+                if save_as is not None:
+                    table._name = save_as
+                    self.table_from_object(table)
+                else:
+                    if return_object:
+                        return table
+                    else:
+                        return table.show()
+                    
+
+            elif (operator in condition or operator1 in condition): # e.g salary = 2000 or salary > 6000
                 
                 flag = 1 # found
                 if (operator in condition):
@@ -380,8 +403,6 @@ class Database:
 
                 lst = [item[0] for item in splt] # condition_column list
 
-                #table = self.tables[table_name]._select_where_or(columns, condition, distinct, order_by, desc, limit)
-    
                 if self.is_locked(table_name):
                     return
                 if self._has_index(table_name) and [item for item in lst]==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
@@ -393,7 +414,7 @@ class Database:
                         table = self.tables[table_name]._select_where_or(columns, condition, distinct, order_by, desc, limit)
                     else:
                         table = self.tables[table_name]._select_where_and(columns, condition, distinct, order_by, desc, limit)
-                  
+
                 # self.unlock_table(table_name)
                 if save_as is not None:
                     table._name = save_as
@@ -403,7 +424,7 @@ class Database:
                         return table
                     else:
                         return table.show()
-            
+                         
             else:     
                 
              if(condition[:4] == 'not '):
