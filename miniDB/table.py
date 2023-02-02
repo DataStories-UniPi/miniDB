@@ -252,10 +252,8 @@ class Table:
         indexes_to_del_and_or = []
         indexes_to_del1 = []
 
-        if (operator, operator1 in condition):
-
-            self._delete_where_and_or(condition)
-            '''
+        
+        '''
             splt = condition.split(operator)
             
             for cond in splt:
@@ -266,9 +264,9 @@ class Table:
             res = list(set(tuple(sorted(sub)) for sub in indexes_to_del_and_or))
             print("res")
             print(res)
-            '''
+        '''
 
-        elif (operator in condition): # or in condition
+        if (operator in condition): # or in condition
             splt = condition.split(operator)
             for s in splt:   
                 column_name, operator, value = self._parse_condition(s)
@@ -324,7 +322,7 @@ class Table:
     def _delete_where_and_or(self, condition):
         t_indexes = [] 
         operator = ' and '
-        splt = condition(operator)
+        splt = condition.split(operator)
         for s in splt:
             t_indexes.append(self._delete_where(s))
         print(t_indexes)
