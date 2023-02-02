@@ -1,4 +1,3 @@
-
 import os
 import re
 from pprint import pprint
@@ -42,7 +41,6 @@ def in_paren(qsplit, ind):
 def create_query_plan(query, keywords, action):
     '''
     Given a query, the set of keywords that we expect to pe present and the overall action, return the query plan for this query.
-
     This can and will be used recursively
     '''
 
@@ -206,9 +204,7 @@ def execute_dic(dic):
 def interpret_meta(command):
     """
     Interpret meta commands. These commands are used to handle DB stuff, something that can not be easily handled with mSQL given the current architecture.
-
     The available meta commands are:
-
     lsdb - list databases
     lstb - list tables
     cdb - change/create database

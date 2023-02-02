@@ -54,12 +54,10 @@ def split_condition(condition):
 
     for op_key in ops.keys():
         splt=condition.split(op_key)
-        #print(splt)
-        #print(">>",condition)
         if len(splt)>1:
             left, right = splt[0].strip(), splt[1].strip()
-            
-            if ' and ' in right:
+        
+            if op_key == 'between':
                 begin,end = right.split('and')
                 begin = begin.strip()
                 end = end.strip()

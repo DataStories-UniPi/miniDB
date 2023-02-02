@@ -183,12 +183,12 @@ class Table:
                 Operatores supported: (<,<=,==,>=,>)
         '''
         column_name, operator, value = self._parse_condition(condition)
-
         indexes_to_del = []
 
         column = self.column_by_name(column_name)
         for index, row_value in enumerate(column):
             if get_op(operator, row_value, value):
+                print(">>>>",index,">>>>",row_value,">>>",value)
                 indexes_to_del.append(index)
 
         # we pop from highest to lowest index in order to avoid removing the wrong item

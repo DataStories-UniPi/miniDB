@@ -257,7 +257,6 @@ class Database:
     def insert_into(self, table_name, row_str):
         '''
         Inserts data to given table.
-
         Args:
             table_name: string. Name of table (must be part of database).
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
@@ -319,9 +318,9 @@ class Database:
                 Operatores supported: (<,<=,==,>=,>)
         '''
         self.load_database()
-        
         lock_ownership = self.lock_table(table_name, mode='x')
         deleted = self.tables[table_name]._delete_where(condition)
+
         if lock_ownership:
             self.unlock_table(table_name)
         self._update()
@@ -363,7 +362,7 @@ class Database:
             condition_column = ''
 
         
-        # self.lock_table(table_name, mode='x')
+        self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
