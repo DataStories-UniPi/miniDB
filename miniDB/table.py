@@ -549,14 +549,10 @@ class Table:
             while ' or ' in conditions_temp:
                 or_index = conditions_temp.index(' or ')
                 conditions_list_of_or.append(conditions_temp[:or_index])
-                #conditions_columns.append(split_condition(conditions_list_of_or[-1])[0])
-                #splitted_conditions_list.append(self._parse_condition(conditions_list_of_or[-1]))
                 conditions_temp = conditions_temp[or_index+4:]
             
             # get the last condition
             conditions_list_of_or.append(conditions_temp)
-            #conditions_columns.append(split_condition(conditions_list_of_or[-1])[0]) # get the column name of the last condition
-            #splitted_conditions_list.append(self._parse_condition(conditions_list_of_or[-1])) # get the last condition splitted
             
             
             conditions_list_of_and = []
