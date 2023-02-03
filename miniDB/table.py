@@ -155,12 +155,13 @@ class Table:
 
         operator = ' or ' 
         operator1 = ' and '
-        if (operator in condition and operator1 in condition):
+        operator3 = ' between '
+        if (operator in condition and operator1 in condition and operator3 not in condition):
             splt = condition.split(operator)
             for s in splt:
                 self._update_rows(set_value, set_column, s)
 
-        elif (operator in condition):  # or in condition
+        elif (operator in condition and operator3 not in condition):  # or in condition
             splt = condition.split(operator)
             for s in splt:   
                 # parse the condition
@@ -175,7 +176,7 @@ class Table:
                     if get_op(operator, column_value, value):
                         self.data[row_ind][set_column_idx] = set_value
 
-        elif (operator1 in condition): # and in condition
+        elif (operator1 in condition and operator3 not in condition): # and in condition
             rows = []
             rows1 = []
             splt = condition.split(operator1)
@@ -254,10 +255,11 @@ class Table:
 
         operator = ' or ' 
         operator1 = ' and '
+        operator3 = ' between '
         indexes_to_del = []
         indexes_to_del1 = []
 
-        if (operator in condition and operator1 in condition):
+        if (operator in condition and operator1 in condition and operator3 not in condition):
             print("complex AND and OR found!")
             print(condition)
             splt = condition.split(operator)
@@ -265,7 +267,7 @@ class Table:
                 self._delete_where(s)
             #self._delete_where_and_or(condition)
 
-        elif (operator in condition): # or in condition
+        elif (operator in condition and operator3 not in condition): # or in condition
             splt = condition.split(operator)
             for s in splt:   
                 column_name, operator, value = self._parse_condition(s)
@@ -274,7 +276,7 @@ class Table:
                     if get_op(operator, row_value, value):
                         indexes_to_del.append(index) 
 
-        elif(operator1 in condition): # and in condition
+        elif(operator1 in condition and operator3 not in condition): # and in condition
                 splt = condition.split(operator1)
                 #indexes_to_del1 = []
                 column_name, operator, value = self._parse_condition(splt[0])

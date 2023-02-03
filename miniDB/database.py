@@ -369,8 +369,9 @@ class Database:
             
             operator = ' or ' 
             operator1 = ' and '
+            operator3 = ' between '
 
-            if(operator in condition and operator1 in condition):
+            if(operator in condition and operator1 in condition and operator3 not in condition):
                 flag = 1
                 if self.is_locked(table_name):
                     return
@@ -392,7 +393,7 @@ class Database:
                         return table.show()
                     
 
-            elif (operator in condition or operator1 in condition): # e.g salary = 2000 or salary > 6000
+            elif (operator in condition or operator1 in condition and operator3 not in condition): # e.g salary = 2000 or salary > 6000
                 
                 flag = 1 # found
                 if (operator in condition):

@@ -34,7 +34,7 @@ def get_op(op, a, b):
                 '>=': operator.ge,
                 '<=': operator.le,
                 '=': operator.eq,
-                '<>': operator.ne,
+                '!>': operator.ne,
                 'between': operator_between
                 }
 
@@ -51,7 +51,6 @@ def split_condition(condition):
            '=': operator.eq,
            '>': operator.gt,
            '<': operator.lt,
-           '<': operator.lt,
            'between': operator_between
            }
 
@@ -67,7 +66,7 @@ def split_condition(condition):
         if len(splt)>1:
             left, right = splt[0].strip(), splt[1].strip()
         
-            if op_key == 'between':
+            if op_key == 'between': # between in condition
                 begin,end = right.split('and')
                 begin = begin.strip()
                 end = end.strip()
@@ -81,7 +80,6 @@ def split_condition(condition):
                     raise ValueError(f'Invalid condition: {condition}\nDouble quotation marks are not allowed inside values.')
                 return left, op_key, right
                 
-            
             if right[0] == '"' == right[-1]: # If the value has leading and trailing quotes, remove them.
                 right = right.strip('"')
             elif ' ' in right: # If it has whitespaces but no leading and trailing double quotes, throw.
@@ -116,6 +114,7 @@ def not_op(op):
         '<=' : '>',
         '=' : '<>'
     }.get(op)
+
 
 def split_not_condition(condition): # not salary > 50000 
     #condition = condition[4:]       # salary > 50000
