@@ -158,21 +158,48 @@ def evaluate_from_clause(dic):
         
     return dic
 
-def transform_list_to_dict(lst):
-    '''
-    Transforming the list of dictionaries to the desired dictionary, where each key
-    afterwards will be replaced with an operator ('and' or 'or').
-    '''
-    if len(lst) == 1:
-        return {'OPR': lst[0]}
-    else:
-        return {'OPR': {'left': lst[0]['left'], 'right': transform_list_to_dict(lst[1:])}}
-
 def evaluate_where_clause(dic):
     '''
     Evaluate the part of the query (argument or subquery) that is supplied as the 'where' argument
     '''
-    where_dic = {}
+    
+    def convert_list_to_dict(lst):
+        '''
+        Converting the list of dictionaries to the desired dictionary,
+        where each key will later be replaced with an operator ('and' or 'or').
+        '''
+        if len(lst) == 1:
+            return {'OPR': lst[0]}
+        else:
+            return {'OPR': {'left': lst[0]['left'], 'right': convert_list_to_dict(lst[1:])}}
+    
+    def build_list(oprt_idx, where_split):
+        '''
+        Building a list of dictionaries, where each dictionary contains
+        the left and right sides of the operator ('and' or 'or').
+        '''
+        if oprt_idx:
+            oprt_dic = {}
+            
+            if ' '.join(where_split[:oprt_idx[0]]).startswith('not '):
+                oprt_dic['left'] = ' '.join(where_split[:oprt_idx[0]])
+            else:
+                oprt_dic['left'] = ' '.join(where_split[oprt_idx[0]-1:oprt_idx[0]])
+                if oprt_dic['left'] == ')':
+                    pos  = where_split[:oprt_idx[0]].index('(')
+                    oprt_dic['left'] = ' '.join(where_split[pos:oprt_idx[0]])
+                if ' '.join(where_split[:oprt_idx[0]]).__contains__('between'):
+                    btwn_idx = where_split[:oprt_idx[0]].index('between')
+                    if not in_paren(where_split, btwn_idx):
+                        raise Exception(
+                            '\nWrong syntax: "between" clause must be in parentheses -> "' + ' '.join(where_split[:oprt_idx[1]])
+                            + '"\n\tHint:' + ' "(' + ' '.join(where_split[:oprt_idx[1]]) + ')"\n')
+
+            oprt_dic['left'] = evaluate_where_clause( { 'where':  oprt_dic['left'] } )['where']
+            oprt_dic['right'] = ' '.join(where_split[oprt_idx[0]+1:])
+            oprt_dic['right'] = evaluate_where_clause( { 'where':  oprt_dic['right'] } )['where']
+            List.append(oprt_dic)
+    
     where_split = dic['where'].split(' ')
     
     '''
@@ -184,68 +211,56 @@ def evaluate_where_clause(dic):
     or_idx = [i for i,word in enumerate(where_split) if word=='or' and not in_paren(where_split,i)]
     oprt_idx = and_idx + or_idx # oprt_idx contains the indices of operators 'and' and 'or'.
     
-    if not oprt_idx and (where_split[0] == '(' or where_split[0] == 'not') and where_split[-1] == ')':
-        if not_idx and where_split[0] == 'not':
+    '''
+    Checking if the 'where' clause is within parentheses or if it starts with
+    'not' operator outside of parentheses and is followed by parentheses.
+    '''
+    if not oprt_idx and (where_split[0] == '(' or where_split[0] == 'not' and where_split[1] == '(') and where_split[-1] == ')':
+        if not_idx:
             dic['where'] = { 'not': evaluate_where_clause( { 'where': ' '.join(where_split).removeprefix('not ') } )['where'] }
             return dic
         else:
             dic['where'] = evaluate_where_clause( { 'where': ' '.join(where_split[1:-1]) } )['where']
             return dic
-    
-    def build_list(oprt_idx, where_split):
+      
+    if btwn_idx and len(oprt_idx) == 1:
         '''
-        Building a list of dictionaries where in every recursive call,
-        the left side equals to the left condition of the current operator ('and' or 'or')
-        and the right side equals to the rest of the where clause.
+        If the 'between' operator exists and there is only one operator ('and'),
+        evaluate the 'between' clause and return the result.
         '''
-        if oprt_idx:            
-            oprt_dic = {}
-            
-            if ' '.join(where_split[:oprt_idx[0]]).startswith('not '):
-                oprt_dic['left'] = {'not':  ' '.join(where_split[:oprt_idx[0]]).removeprefix('not ') }
-            
-            else:
-                oprt_dic['left'] = ' '.join(where_split[oprt_idx[0]-1:oprt_idx[0]])
-                if oprt_dic['left'] == ')':
-                    pos  = where_split[:oprt_idx[0]].index('(')
-                    oprt_dic['left'] = ' '.join(where_split[pos:oprt_idx[0]])              
-            
-            
-            oprt_dic['left'] = evaluate_where_clause({'where':  oprt_dic['left']})['where']
-            oprt_dic['right'] = ' '.join(where_split[oprt_idx[0]+1:])
-            oprt_dic['right'] = evaluate_where_clause( { 'where':  oprt_dic['right'] } )['where']
+        if len(where_split) < 5:
+            raise Exception('\nWrong syntax of "between" clause.\n')
+        dic['where'] = { 'column': where_split[btwn_idx[0]-1], 'between': evaluate_where_clause( { 'where':  ' '.join(where_split[btwn_idx[0]+1:]) } )['where'] }
+        return dic
 
-            value = oprt_idx.pop(0)+1
-            List.append(oprt_dic)
-            try:
-                return build_list([x-value for x in oprt_idx], oprt_dic['right'].split())
-            except:
-                return # return back to the previous call
-        return # return back to the previous call
-            
     if oprt_idx:
+        '''
+        If there are operators ('and' or 'or'), we build a list of dictionaries and then convert
+        it into a dictionary (within the convert_list_to_dict function). The 'OPR' string is used
+        as a placeholder for the actual operator. We also sort the indexes of the operators because
+        we will use them later to split the 'where' clause (within the build_list function) and evaluate
+        both sides of the operators. Additionally, we will replace the 'OPR' string with the exact operator
+        from left to right.
+        '''
         oprt_idx.sort()
         List = []
-        
         build_list(oprt_idx.copy(), where_split)
-        
-        oprt_dic = transform_list_to_dict(List)
-        oprt_dic = str(oprt_dic)
+        oprt_dic = str(convert_list_to_dict(List))
         oprt_words = [where_split[i] for i in oprt_idx]
 
-        # replacing the key 'OPR' with the operator ('and' or 'or')
-        for x in oprt_words:
-            oprt_dic = oprt_dic.replace('OPR', x, 1)
-
+        '''
+        Replace the 'OPR' string with the actual operator ('and' or 'or').
+        '''
+        oprt_dic = oprt_dic.replace('OPR', oprt_words[0], 1)
         dic['where'] = dict(eval(oprt_dic))
         return dic
     
     if not_idx:
         '''
-        Case that there is only one simple not condition.
+        If the simple 'not' operator exists, create a dictionary with the 'not' operator
+        where the key is 'not' and the value is the right side of the 'not' operator.
         '''
-        not_idx = not_idx[0]
-        dic['where'] = { 'not': where_split[not_idx+1] }
+        dic['where'] = {'not': where_split[not_idx[0]+1]}
         return dic
     
     dic['where'] = ''.join(where_split)
@@ -385,5 +400,6 @@ if __name__ == "__main__":
                 result = execute_dic(dic)
                 if isinstance(result,Table):
                     result.show()
-        except Exception:
-            print(traceback.format_exc())
+        except Exception as e:
+            #print(traceback.format_exc())
+            print(e)
