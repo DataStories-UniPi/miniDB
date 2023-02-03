@@ -98,7 +98,7 @@ def create_query_plan(query, keywords, action):
         dic['create table'] = dic['create table'].removesuffix(args).strip()
         arg_nopk = args.replace('primary key', '')[1:-1]
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
-        #print(arglist) # see the type of the arguments e.g str, int etc
+        #print(arglist) #  see the type of the arguments e.g str, int etc
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
         if 'primary key' in args:
