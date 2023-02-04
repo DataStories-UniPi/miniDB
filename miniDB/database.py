@@ -351,18 +351,24 @@ class Database:
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
             distinct: boolean. If True, the resulting table will contain only unique rows.
         '''
-
+        
         # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
-        if condition is not None:
+        # Debug
+        print(f'condition: {condition}')
+
+        if type(condition) is dict:
+            condition_column = "where clause is a dict"
+        elif condition is not None:
             condition_column = split_condition(condition)[0]
+            print(f'splitted condition: {condition_column}')
         else:
             condition_column = ''
 
-        
+        print(condition_column)
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
@@ -372,6 +378,7 @@ class Database:
             table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
         else:
             table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as
