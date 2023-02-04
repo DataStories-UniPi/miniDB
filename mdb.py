@@ -166,26 +166,32 @@ def evaluate_where_clause(dic):
     Evaluate the part of the query that is supplied as the 'where' argument
     '''
 
-    where_dic = dic['where']
-    where_dic = form_where_clause(where_dic)
+    where_clause = dic['where']
+    where_dic = form_where_clause(where_clause)
     dic['where'] = where_dic
 
     return dic
 
 def form_where_clause(where_split):
+    '''
+    Evaluate the recursive part of the where clause. Returns a dictionary
+    '''
 
     logical_operators = ['and', 'or']
 
     if(type(where_split) != list):
         where_split = where_split.split(' ')
-    
+
     operator_idx = [i for i,word in enumerate(where_split) if word in logical_operators and not in_paren(where_split,i)]
 
+    # TODO: check for ((())) multiple parenthesis
     if((len(operator_idx) == 0) and (where_split[0]=='(' and where_split[-1]==')')):
         where_split = where_split[1:-1]
         operator_idx = [i for i,word in enumerate(where_split) if word in logical_operators and not in_paren(where_split,i)]
 
-    if(len(operator_idx) == 0):
+    # TODO: check if works
+    if(len(where_split) == 1):
+        # TODO: Remove parenthesis if needed
         return ''.join(where_split)
 
     if operator_idx:
@@ -246,12 +252,20 @@ def execute_dic(dic):
     '''
     Execute the given dictionary
     '''
+
     for key in dic.keys():
-        if isinstance(dic[key],dict):
+        print(f'key: {key}')
+        # Skip the where key
+        if key != 'where' and isinstance(dic[key],dict):
             dic[key] = execute_dic(dic[key])
+            print(f'dic[key]: {dic[key]}')
     
     action = list(dic.keys())[0].replace(' ','_')
+    print(list(dic.keys()))
+    print(f'action: {action}')
+
     return getattr(db, action)(*dic.values())
+    
 
 def interpret_meta(command):
     """
