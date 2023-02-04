@@ -77,7 +77,9 @@ def create_query_plan(query, keywords, action):
 
     if action=='select':
         dic = evaluate_from_clause(dic)
-        dic = evaluate_where_clause(dic)
+
+        if dic['where'] is not None:
+            dic = evaluate_where_clause(dic)
 
         if dic['distinct'] is not None:
             dic['select'] = dic['distinct']
@@ -165,11 +167,6 @@ def evaluate_where_clause(dic):
     '''
 
     where_dic = dic['where']
-
-    # Returns if the where is empty
-    if(where_dic == None):
-        return dic
-
     where_dic = form_where_clause(where_dic)
     dic['where'] = where_dic
 
@@ -188,27 +185,28 @@ def form_where_clause(where_split):
         where_split = where_split[1:-1]
         operator_idx = [i for i,word in enumerate(where_split) if word in logical_operators and not in_paren(where_split,i)]
 
-    # TODO: implement for the form of test=1 AND test2=2 AND test3=3 
+    if(len(operator_idx) == 0):
+        return ''.join(where_split)
 
     if operator_idx:
-        operator_idx = operator_idx[0]
+        operator_idx_f = operator_idx[0]
         
         where_dic = {}
-        left = where_split[:operator_idx]
-        right = where_split[operator_idx+1:]
-        
+        left = where_split[:operator_idx_f]
+        right = where_split[operator_idx_f+1:]
+
         if(left[0] == '(' and left[-1] == ')'):
             left = form_where_clause(left)
         else:
             left = ' '.join(left)
 
-        if(right[0] == '(' and right[-1] == ')'):
+        if(right[0] == '(' and right[-1] == ')' or len(operator_idx) > 0):
             right = form_where_clause(right)
         else:
             right = ' '.join(right)      
 
         where_dic['left'] = left
-        where_dic['operator'] = ''.join(where_split[operator_idx])
+        where_dic['operator'] = ''.join(where_split[operator_idx_f])
         where_dic['right'] = right
         
         return where_dic
