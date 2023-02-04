@@ -249,11 +249,26 @@ class Table:
             column2 = self.column_by_name(column_name2)
             rows2 = [ind for ind, x in enumerate(column2) if get_op(operator2, x, value2)]
             dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows2] if key=="data" else value2) for key,value2 in self.__dict__.items()}
+
+            temp=dict['data']
+            print(temp)
+
+            print("  ")
+            dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+
+            for data in dict['data']:
+                print(data)
+
+            print(" ")
+
+            if (operator =='='):
+                dict['data']=dict['data']+temp #PROSTHETO TA DATA TOU VALUE1 KAI VALUE2 MAZI
+
+            print(dict)
         else:
             #copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
             dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
-       
-
+        
         # we need to set the new column names/types and no of columns, since we might
         # only return some columns
         dict['column_names'] = [self.column_names[i] for i in return_cols]
