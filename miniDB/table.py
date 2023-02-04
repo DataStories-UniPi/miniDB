@@ -232,32 +232,33 @@ class Table:
                     left=splitcond[2] #the first value to be compared
                     right=splitcond[4] #the second value to be compared
                     column_name=splitcond[0]
+                    column=self.column_by_name(column_name)
                     rows=[]
-                    if (left.isdigit() && right.isdigit()):
+                    if (left.isdigit() and right.isdigit()):
                         #if the comparing values are numbers
                         for i,j in enumerate(column):
                             '''
                                 using 2 tracking numbers to find if the number is within the wanted range
                             '''
-                            if int(i)>=left && int(j)<=int(right):
+                            if int(i)>=int(left) and int(j)<=int(right):
                                 #adding to the array the values for which the condition is true
                                 rows.append(i)
                     else:
                         #strings cannot be compared
                         print("Between operator does not work on strings!")
-                        exit()
+
                 else:
                     print("False syntax, forgot and operator in between numbers")
-                    exit()
+
             #NOT operator
-            elif "NOT" in condition.split() or "not" in condition.split() or "Not" in condition.split():
+            elif "NOT" in condition.split() or "not" in condition.split() :
                 '''
                     spliting for each possible user input
                 '''
-                condlist=condiiton.split("NOT")
-                condlist=condition_list[0].split("not")
-                condlist=condition_list[1].split("Not")
-                column_name,operator,value=self._parse_condition(condition_list[2])
+                condlist=condition.split("NOT")
+                condlist=condlist[0].split("not")
+
+                column_name,operator,value=self._parse_condition(condlist[1])
                 column=self.column_by_name(column_name)
                 #reversing the operator
                 op=reverse_op(operator)
@@ -266,26 +267,27 @@ class Table:
                 '''
                     spliting for each possible user input
                 '''
-                condlist=condiiton.split("AND")
-                condlist=condition_list[0].split("and")
-                condlist=condition_list[1].split("And")
+                condlist=condition.split("AND")
+                condlist=condlist[0].split("and")
+                condlist=condlist[1].split("And")
+
                 rows2=[]
-                for c in condition_list:
+                for c in condlist:
                     #running for each conditon
-                    column_name,op,value=self._parse_condition(c)
+                    column_name,operator,value=self._parse_condition(c)
                     column=self.column_by_name(column_name)
-                    rows2.append([i for i,j in enumerate(column) if get_op(op,j,value)])
+                    rows2.append([i for i,j in enumerate(column) if get_op(operator,j,value)])
                 #storing the conditions' intersection
-                rows=set(rows2[0].intersection(*rows2))
+                rows=set(rows2[0].intersection(*rows2)) #error here
             elif "OR" in condition.split() or "or" in condition.split() or "Or" in condition.split():
                 '''
                     spliting for each possible user input
                 '''
-                condlist=condiiton.split("OR")
-                condlist=condition_list[0].split("or")
-                condlist=condition_list[1].split("Or")
+                condlist=condition.split("OR")
+                condlist=condlist[0].split("or")
+                condlist=condlist[1].split("Or")
                 rows2=[]
-                for c in condition_list:
+                for c in condlist:
                     #running for each conditon
                     column_name,op,value=self._parse_condition(c)
                     column=self.column_by_name(column_name)
