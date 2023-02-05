@@ -94,6 +94,7 @@ def create_query_plan(query, keywords, action):
 
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
+        print("\n")
         #print("\nargs") # uncomment
         #print(type(args))
         #print(args[0]) -> olo mazi 1 string
@@ -106,9 +107,10 @@ def create_query_plan(query, keywords, action):
         arg_nopk = args.replace('primary key', '')[1:-1]
         #print(arg_nopk) # uncomment
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
-        #print("argslist without pk") #uncomment
-        #print(arglist) #  see the type of the arguments e.g str, int etc #uncomment
-
+        '''
+        print("argslist without pk") #uncomment
+        print(arglist) #  see the type of the arguments e.g str, int etc #uncomment
+        '''
         # 4 unique columns
         arg_nounique = args.replace('unique', '')[1:-1]
         #print(arg_nounique) # uncomment
@@ -117,8 +119,10 @@ def create_query_plan(query, keywords, action):
         #print(arglist1)  # uncomment
 
 
-        dic['column_names'] = ','.join([val[0] for val in arglist])
-        dic['column_types'] = ','.join([val[1] for val in arglist])
+        dic['column_names'] = ','.join([val[0] for val in arglist1])
+        #print(dic['column_names'])
+        dic['column_types'] = ','.join([val[1] for val in arglist1])
+        #print(dic['column_types'])
         #print("dic b4") # uncomment
         #print(dic)   # same 
 
@@ -139,7 +143,7 @@ def create_query_plan(query, keywords, action):
         if 'unique' in args:
             #for a in arg_list:
                 #if (' unique ' in a and ' primary key' not in a):
-            print("unique column found")
+            #print("unique column(s) here")
             arglist1 = args[1:-1].split(' ')
             '''
             print("arglist1 is")

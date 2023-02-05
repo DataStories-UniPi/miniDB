@@ -27,9 +27,11 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, unique=None, load=None):
 
+        
         if load is not None:
+            #print("here")
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
             if isinstance(load, dict):
                 self.__dict__.update(load)
@@ -41,15 +43,33 @@ class Table:
         # if name, columns_names and column types are not none
         elif (name is not None) and (column_names is not None) and (column_types is not None):
 
+            #print("here1")
             self._name = name
 
             if len(column_names)!=len(column_types):
                 raise ValueError('Need same number of column names and types.')
 
             self.column_names = column_names
+            self.unique = unique
 
             self.columns = []
+            self.unique_cols_idx = []
+            #self.unique_cols = []
+            
 
+            #self.unique_cols= []
+            #print(self.unique)
+            #print(self.column_names)
+            '''
+            for c in self.unique:
+                if c not in self.__dir__():
+                    # this is used in order to be able to call a column using its name as an attribute.
+                    # example: instead of table.columns['column_name'], we do table.column_name
+                    setattr(self, c, [])
+                    self.unique.append([])
+                else:
+                    raise Exception(f'"{c}" attribute already exists in "{self.__class__.__name__} "class.')
+            '''
             for col in self.column_names:
                 if col not in self.__dir__():
                     # this is used in order to be able to call a column using its name as an attribute.
@@ -67,8 +87,18 @@ class Table:
                 self.pk_idx = self.column_names.index(primary_key)
             else:
                 self.pk_idx = None
-
+            
+            if unique is not None:
+                for c in unique:
+                    self.unique_cols_idx.append(self.column_names.index(c))
+            else:
+                self.unique_cols_idx = []
+            
             self.pk = primary_key
+            print("pk is: ",self.pk)
+            self.unique = unique
+            print("unique cols are: ",self.unique)
+            print("unique cols indexes are: ",self.unique_cols_idx)
             # self._update()
 
     # if any of the name, columns_names and column types are none. return an empty table object
