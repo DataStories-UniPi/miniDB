@@ -21,13 +21,15 @@ from table import Table
 
 class Database:
     '''
-    Main Database class, containing tables.1234
+    Main Database class, containing tables.
     '''
 
     def __init__(self, name, load=True, verbose = True):
         self.tables = {}
         self._name = name
         self.verbose = verbose
+        #-----------------------
+        self.indexing_global = 'hash_indexing'  # btree or hash_indexing new
 
         self.savedir = f'dbdata/{name}_db'
 
@@ -100,8 +102,8 @@ class Database:
         self._update_meta_length()
         self._update_meta_insert_stack()
 
-
-    def create_table(self, name, column_names, column_types, primary_key=None, load=None):
+    #unique key is added to the create table function parameters.
+    def create_table(self, name, column_names, column_types, primary_key=None, unique_key=None, load=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
 
@@ -120,6 +122,14 @@ class Database:
         self._update()
         self.save_database()
         # (self.tables[name])
+        #----------------------------------------------
+        #indexes(hash or btree)
+        if primary_key != None:
+            self.create_index(name + "__" + primary_key + "___pk", name, self.indexing_global)
+
+        if unique_key != None:
+            self.create_index(name + "__" + unique_key + "___unique", name, self.indexing_global)
+        #-----------------------------------------------
         if self.verbose:
             print(f'Created table "{name}".')
 
