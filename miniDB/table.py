@@ -119,19 +119,10 @@ class Table:
 
         for i in range(len(row)):
             
-            print("\n Inside insert in table.py")
-            print("self.column_names[i]: " + self.column_names[i])
-            print("self.columns_unique ")
-            print(self.columns_unique)
-            print("str(row[i]): ")
-            print(str(row[i]))
+            
             # If the column has the unique constraint, check if the value is unique
-            print("self.column_names[i] in self.columns_unique:")
             condition1 = self.column_names[i] in self.columns_unique # If the column has the UNIQUE constraint
-            print(condition1)
-            print("str(row[i]) in [str(val) for val in self.column_by_name(self.column_names[i]): ")
             condition2 = str(row[i]) in [str(val) for val in self.column_by_name(self.column_names[i])] # Check if the value is already in the table
-            print(condition2)
             if (condition1 and condition2):  
                 print(f'ERROR -> Cannot insert duplicate value "{str(row[i])}" in column "{self.column_names[i]}" that has the UNIQUE constraint.')
                 raise ValueError(f'ERROR -> Cannot insert duplicate value "{str(row[i])}" in column "{self.column_names[i]}" that has the UNIQUE constraint.')
@@ -250,6 +241,7 @@ class Table:
         if condition is not None:
             column_name, operator, value = self._parse_condition(condition)
             column = self.column_by_name(column_name)
+
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
@@ -295,11 +287,13 @@ class Table:
 
 
         column_name, operator, value = self._parse_condition(condition)
-
+        
+        '''
         # if the column in condition is not a primary key, abort the select
         if column_name != self.column_names[self.pk_idx]:
             print('Column is not PK. Aborting')
-
+        '''
+        
         # here we run the same select twice, sequentially and using the btree.
         # we then check the results match and compare performance (number of operation)
         column = self.column_by_name(column_name)
@@ -314,7 +308,11 @@ class Table:
 
         # btree find
         rows = bt.find(operator, value)
-
+        if column_name != self.column_names[self.pk_idx]:
+            print(rows[0])
+            if(rows[0] != 0):
+                rows[0] = rows[0] + 1
+            print(rows[0])
         try:
             k = int(limit)
         except TypeError:
@@ -336,7 +334,7 @@ class Table:
 
         if isinstance(limit,str):
             s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
-        print("Select with btree was used!")
+        
         return s_table
 
     
@@ -350,12 +348,6 @@ class Table:
                         
         column_name, operator, value = self._parse_condition(condition)
         
-        print("column_name")
-        print(column_name)
-        print("operator")
-        print(operator)
-        print("value")
-        print(value)
         
         rows = []
         # Check if it is a range query that is not supported by Hash index
@@ -393,7 +385,7 @@ class Table:
 
         if isinstance(limit,str):
             s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
-        print("Select with hash was used!")
+        print("Hash index was used for select.")
         return s_table
 
     def order_by(self, column_name, desc=True):

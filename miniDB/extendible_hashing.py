@@ -26,13 +26,13 @@ class ExtendibleHashing:
             p1 = Page()
             p0.local_depth = p1.local_depth = page.local_depth + 1 # Increment the local depth for the new pages/buckets by 1
             high_bit = page.get_local_high_bit() # Find the highest bit of local depth
-            for k2, v2 in page.map:
+            for k2, v2 in page.map: # For every tuple in the bucket/page
                 h = hash(k2)
                 
                 if (h % (high_bit + 1)): # Find the modulo
-                    new_p = p1 # Page p1 will contain the new value
+                    new_p = p1 # The value will go to p1
                 else:
-                    new_p = p0 # Page p0 will contain the new value
+                    new_p = p0 # The value will go to p0
                 new_p.put(k2, v2) # Put the value to one of the two new pages/buckets
 
             # Add the pages/buckets to the directory list

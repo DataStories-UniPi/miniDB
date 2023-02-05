@@ -135,8 +135,7 @@ def create_query_plan(query, keywords, action):
         '''
         For creating the B+ Tree index on Unique columns and PK
         '''
-        print("ql: ")
-        print(ql)
+        
         dic['on']=ql[3] # Table name
         if "(" in ql: 
             # If the user has specified the name of the column
@@ -146,7 +145,6 @@ def create_query_plan(query, keywords, action):
             # The index will be created on the PK of the table
             dic['column']=None 
         
-        print("Inside create index if in mdb.py, dic['using']= " + dic['using'])
         # The index will be B+ Tree
         '''dic['using']='btree'''
 
@@ -249,25 +247,17 @@ def intersect(query):
     processed_query2 : string with the query that contains the second simpler condition.
     '''
     words_list = query.split() #split the query string to get the words
-    print(words_list)
+    
     # Using dropwhile to split into the second part of the query that contains the conditions
     query_part2 = list(dropwhile(lambda x: x != 'where', words_list))[1:]
-    print("query_part2")
-    print(query_part2)
 
     
     # Get difference between two lists (query_part1 = words_list - query_part2)
     query_part1 = [x for x in words_list if x not in query_part2]
 
-    print("query_part1")
-    print(query_part1)
     # converting to list
     query_part1 = list(query_part1)
     query_part2 = list(query_part2)
-    print("query_part1_list")
-    print(query_part1)
-    print("query_part2List")
-    print(query_part1)
     
     # Using dropwhile to split into the conditions
     condition2 = list(dropwhile(lambda x: x != 'and', query_part2))[1:]
@@ -282,18 +272,10 @@ def intersect(query):
     # Converting to list
     condition1 = list(condition1)
     condition2 = list(condition2)
-    print("condition1list")
-    print(condition1)
-    print("condition2list")
-    print(condition2)
     
     # Create the new queries
     query1 = query_part1 + condition1
     query2 = query_part1 + condition2
-    print("query1")
-    print(query1)
-    print("query2")
-    print(query2)
     
     # Convert the queries into strings and add ' ;' at the end.
     processed_query1 = " ".join(query1)
@@ -322,25 +304,17 @@ def unite(query):
     processed_query2 : string with the query that contains the second simpler condition.
     '''
     words_list = query.split() #split the query string to get the words
-    print(words_list)
+
     # Using dropwhile to split into the second part of the query that contains the conditions
     query_part2 = list(dropwhile(lambda x: x != 'where', words_list))[1:]
-    print("query_part2")
-    print(query_part2)
 
     
     # Get difference between two lists (query_part1 = words_list - query_part2)
     query_part1 = [x for x in words_list if x not in query_part2]
 
-    print("query_part1")
-    print(query_part1)
     # converting to list
     query_part1 = list(query_part1)
     query_part2 = list(query_part2)
-    print("query_part1_list")
-    print(query_part1)
-    print("query_part2List")
-    print(query_part1)
     
     # Using dropwhile to split into the conditions
     condition2 = list(dropwhile(lambda x: x != 'or', query_part2))[1:]
@@ -355,18 +329,10 @@ def unite(query):
     # Converting to list
     condition1 = list(condition1)
     condition2 = list(condition2)
-    print("condition1list")
-    print(condition1)
-    print("condition2list")
-    print(condition2)
     
     # Create the new queries
     query1 = query_part1 + condition1
     query2 = query_part1 + condition2
-    print("query1")
-    print(query1)
-    print("query2")
-    print(query2)
     
     # Convert the queries into strings and add ' ;' at the end.
     processed_query1 = " ".join(query1)
@@ -419,19 +385,13 @@ def interpret(query):
             
             # For the query plan of the first query
             for kw in kw_per_action.keys():
-                print(kw)
-                print(query1)
                 if query1.startswith(kw):
                     action = kw
-                    print("inside")
             
             # For the query plan of the second query
             for kw in kw_per_action.keys():
-                print("q2 " + kw)
-                print(query2)
                 if query2.startswith(kw):
                     action = kw
-                    print("inside")
             
             # Create the query plans
             query_plans.append(create_query_plan(query1, kw_per_action[action]+[';'], action))
@@ -448,19 +408,13 @@ def interpret(query):
             
             # For the query plan of the first query
             for kw in kw_per_action.keys():
-                print(kw)
-                print(query1)
                 if query1.startswith(kw):
                     action = kw
-                    print("inside")
             
             # For the query plan of the second query
             for kw in kw_per_action.keys():
-                print("q2 " + kw)
-                print(query2)
                 if query2.startswith(kw):
                     action = kw
-                    print("inside")
             
             # Create the query plans
             query_plans.append(create_query_plan(query1, kw_per_action[action]+[';'], action))

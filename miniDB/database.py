@@ -371,86 +371,50 @@ class Database:
         if self.is_locked(table_name):
             return
         
-        '''
-        print("(condition_column in self.tables[table_name].columns_unique)")
-        #print((condition_column in self.tables[table_name].columns_unique))
         
         
-        unique_condition = False
-        if (condition_column in self.tables[table_name].columns_unique):
-            unique_condition = True
-            print("Swsto" + str(unique_condition))
-           
-        if (condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]):
-            print("Condition 2 True")
-            
-        if (any(condition_column in x for x in self.tables[table_name].columns_unique)):
-            print("Any True")
-            
-            
-        if(self._has_index(table_name)):
-            print("Condition 1 True")
-            
-        if (unique_condition):
-            print("Condition 3 True")
-        
-        
-        condition1 = self._has_index(table_name)
-        pk_id = self.tables[table_name].column_names[self.tables[table_name].pk_idx]
-        print(self.tables[table_name].column_names[self.tables[table_name].pk_idx])
-        print(condition_column)
-        condition2 = (condition_column==pk_id)
-        
-        condition3 = any(condition_column in x for x in self.tables[table_name].columns_unique)
-                         
-        #print("Condition1 " + str(condition1))
-        #print("Condition2 " + str(condition2))
-        #print("Condition3 " + str(condition3))
-        '''
-        
-           
         # Check if the table has an index and if the column of the condition is Primary Key.
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
-            print("Inside pk and before selects!")
+            
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
-            print("Index name: " + index_name)
+            
+            
             loaded_index = self._load_idx(index_name)
             
             
             try: # Try to use the B+Tree index
-                print("Before try!")
+                
                 table = self.tables[table_name]._select_where_with_btree(columns, loaded_index, condition, distinct, order_by, desc, limit)
-                print("After try!")
+                
+                
             except: # If _select_where_with_btree() triggers an exception then the loaded index is a Hash Index
                 try:
-                    print("_select_where_with_hash is called!")
                     table = self.tables[table_name]._select_where_with_hash(columns, loaded_index, condition, distinct, order_by, desc, limit) 
+                    
                 except:
-                    print("Inside except in except in select before select_where")
                     table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+                    
             
-        
         # Check if the table has an index and if the column of the condition has the UNIQUE constraint.
-        elif (self._has_index(table_name) and any(condition_column in x for x in self.tables[table_name].columns_unique) and condition_column != ''):
-            print("Column is Unique.")
+        if (self._has_index(table_name) and any(condition_column in x for x in self.tables[table_name].columns_unique) and condition_column != ''):
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
+           
             loaded_index = self._load_idx(index_name)
             
             try: # Try to use the B+Tree index
-                print("Before try!")
                 table = self.tables[table_name]._select_where_with_btree(columns, loaded_index, condition, distinct, order_by, desc, limit)
-                print("After try!")
             except: # If _select_where_with_btree() triggers an exception then the loaded index is a Hash Index
                 try:
-                    print("_select_where_with_hash is called!")
                     table = self.tables[table_name]._select_where_with_hash(columns, loaded_index, condition, distinct, order_by, desc, limit) 
+                    return table.show()
                 except:
-                    print("Inside except in except in select before select_where")
                     table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
-            
+                        
         else:
-            print("Inside else in select before select_where")
             table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+        
+        
+        
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as
@@ -460,7 +424,7 @@ class Database:
                 return table
             else:
                 return table.show()
-
+        
 
     def show_table(self, table_name, no_of_rows=None):
         '''
@@ -752,12 +716,7 @@ class Database:
                 print('The index cannot be created because the table does not have a Primary Key.')
                 raise Exception('The index cannot be created because the table does not have a Primary Key.')
         else:
-            
-            
-            print("column_name: " + str(column_name))
-            print("self.tables[table_name].columns_unique: ")
-            print(self.tables[table_name].columns_unique)
-            
+                       
             # Check if the specified column has the UNIQUE constraint
             # and check if it is the PK of the table
             if column_name not in self.tables[table_name].columns_unique and column_name!=self.tables[table_name].pk: #if not unique
@@ -809,7 +768,8 @@ class Database:
             #for each record in the specified column of the table, insert its value and index to the btree
             for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
                 bt.insert(key, idx)
-                print("Created BTree index on column: " + column_name + ".")
+            
+        print("Created BTree index on column: " + column_name + ".")
         
         
         # save the btree
@@ -825,16 +785,14 @@ class Database:
             column_name: string. Name of the column that will have the created index.
         '''
         
-        print("Inside _construct_index_hash")
+
         
         eh = ExtendibleHashing() # Create an object of the ExtendibleHashing Class that is inside the extensible_hashing.py
         for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
             if key is None:
                 continue
-            print("idx: " + str(idx))
-            print("idx: " + str(key))
             eh.put(key, idx) # Put the key and the value in the hash index
-        
+        print("Created Hash index on column: " + column_name + ".")
         # Save the hash index
         self._save_index(index_name, eh)
 
