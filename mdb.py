@@ -6,7 +6,6 @@ import readline
 import traceback
 import shutil
 sys.path.append('miniDB')
-
 from database import Database
 from table import Table
 # art font is "big"
@@ -105,7 +104,18 @@ def create_query_plan(query, keywords, action):
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
-    
+
+        #--------------------------------------------------------------------
+        #case for unique keys
+        if 'unique' in args:
+            arglist = args[1:-1].split(' ')
+            try:
+                dic['unique key'] = arglist[arglist.index('unique,') - 2]
+            except:
+                dic['unique key'] = arglist[arglist.index('unique') - 2]
+        else:
+            dic['unique key'] = None
+       #------------------------------------------------------------------------
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
