@@ -174,9 +174,6 @@ def evaluate_where_clause(dic):
     if dic['where'] is None:
         return dic
     where_split = dic['where'].split(' ')
-    if where_split[0] == '(' and where_split[-1] == ')':
-        subquery = ' '.join(where_split[1:-1])
-        dic['where'] = interpret(subquery)
 
     not_idx = [i for i,word in enumerate(where_split) if word=='not' and not in_paren(where_split,i)]
     between_idx = [i for i,word in enumerate(where_split) if word=='between' and not in_paren(where_split,i)]
@@ -204,7 +201,7 @@ def evaluate_where_clause(dic):
         value1= where_split[between_idx+1]
         value2= where_split[between_idx+3]
         condition = column_name + ">=" + value1 + " and " + column_name + "<=" + value2
-        dic['where'] = condition #store the not dictionary in the from key of the query dictionary
+        dic['where'] = condition #store the not dictionary in the from key of the query dictionary 
     return dic
 
 

@@ -362,22 +362,9 @@ class Database:
         condition_temp = condition
 
         if condition is not None:
-            # find the end condition and split the condition into two parts
-            while 'and' in condition_temp:
-                and_index = condition_temp.index('and')
-                condition_list.append(condition_temp[:and_index-1])
+            if ' and ' not in condition and ' or ' not in condition:
+                condition_list.append(condition_temp)
                 conditions_columns.append(split_condition(condition_list[-1])[0])
-                condition_temp = condition_temp[and_index+4:]
-
-            while ' or ' in condition_temp:
-                or_index = condition_temp.index(' or ')
-                condition_list.append(condition_temp[:or_index])
-                conditions_columns.append(split_condition(condition_list[-1])[0])
-                condition_temp = condition_temp[or_index+4:]
-                
-            # get the last condition
-            condition_list.append(condition_temp)
-            conditions_columns.append(split_condition(condition_list[-1])[0])
         else:
             conditions_columns = ''
                     

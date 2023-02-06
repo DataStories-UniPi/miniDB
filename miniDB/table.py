@@ -150,19 +150,17 @@ class Table:
                 
                 Operatores supported: (<,<=,=,>=,>)
         '''
-        # parse the condition
-        column_name, operator, value = self._parse_condition(condition)
+        # parse multiple conditions
+        rows = self._parse_multiple_conditions(condition)
 
         # get the condition and the set column
-        column = self.column_by_name(column_name)
         set_column_idx = self.column_names.index(set_column)
 
         # set_columns_indx = [self.column_names.index(set_column_name) for set_column_name in set_column_names]
 
         # for each value in column, if condition, replace it with set_value
-        for row_ind, column_value in enumerate(column):
-            if get_op(operator, column_value, value):
-                self.data[row_ind][set_column_idx] = set_value
+        for row_ind in rows:
+            self.data[row_ind][set_column_idx] = set_value
 
         # self._update()
                 # print(f"Updated {len(indexes_to_del)} rows")
@@ -182,14 +180,8 @@ class Table:
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
-        column_name, operator, value = self._parse_condition(condition)
 
-        indexes_to_del = []
-
-        column = self.column_by_name(column_name)
-        for index, row_value in enumerate(column):
-            if get_op(operator, row_value, value):
-                indexes_to_del.append(index)
+        indexes_to_del = list(self._parse_multiple_conditions(condition))
 
         # we pop from highest to lowest index in order to avoid removing the wrong item
         # since we dont delete, we dont have to to pop in that order, but since delete is used
@@ -230,47 +222,10 @@ class Table:
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
-        condition_list = []
-        splitted_conditions_list = []
-        conditions_columns = []
-        rows = set(range(len(self.data))) # get the length of the rows
-        rows1 = set(range(0))
-        or_bool = False
-
-        # if condition is None, return all rows
+         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            # find the end condition and split the condition into two parts
-            while 'and' in condition:
-                and_index = condition.index('and')
-                condition_list.append(condition[:and_index-1]) # get the first condition
-                conditions_columns.append(split_condition(condition_list[-1])[0]) # get the column name of the first condition
-                splitted_conditions_list.append(self._parse_condition(condition_list[-1])) # get the first condition splitted
-                condition = condition[and_index+4:] # remove the first condition from the condition along with the first AND
-
-            if ' or ' in condition:
-                or_bool = True
-
-            while ' or ' in condition:
-                or_index = condition.index(' or ')
-                condition_list.append(condition[:or_index])
-                conditions_columns.append(split_condition(condition_list[-1])[0])
-                splitted_conditions_list.append(self._parse_condition(condition_list[-1]))
-                condition = condition[or_index+4:]
-
-            # get the last condition
-            condition_list.append(condition)
-            conditions_columns.append(split_condition(condition_list[-1])[0]) # get the column name of the last condition
-            splitted_conditions_list.append(self._parse_condition(condition_list[-1])) # get the last condition splitted
-
-            for index in range(len(condition_list)):
-                if or_bool:
-                    column = self.column_by_name(conditions_columns[index])
-                    rows1 = rows1.union([ind for ind, x in enumerate(column) if get_op(splitted_conditions_list[index][1], x, splitted_conditions_list[index][2])])
-                    rows = rows1
-                else:
-                    column = self.column_by_name(conditions_columns[index])
-                    rows = rows.intersection([ind for ind, x in enumerate(column) if get_op(splitted_conditions_list[index][1], x, splitted_conditions_list[index][2])])
+            rows = self._parse_multiple_conditions(condition)
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -574,6 +529,45 @@ class Table:
         # print using tabulate
         print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
 
+    
+    def get_rows_for_and(self, conditions_list_of_and):
+        '''
+        Get the rows that satisfy "and" conditions in the list of conditions and then return them.
+        '''
+        conditions_columns_of_and = []
+        splitted_conditions_list_of_and = []
+        rows_for_and = set(range(len(self.data)))
+
+        for sub_conditions in conditions_list_of_and:
+            conditions_columns_of_and.append(split_condition(sub_conditions)[0])
+            splitted_conditions_list_of_and.append(self._parse_condition(sub_conditions))
+
+        for index in range(len(conditions_list_of_and)):
+            column = self.column_by_name(conditions_columns_of_and[index])
+            rows_for_and = rows_for_and.intersection([ind for ind, x in enumerate(column) if get_op(splitted_conditions_list_of_and[index][1], x, splitted_conditions_list_of_and[index][2])])
+
+        return rows_for_and
+
+    def _parse_multiple_conditions(self, conditions):
+        '''
+        Get the rows that satisfy "where" statement for "or" and "and" operators.
+        '''
+        conditions_temp = conditions
+
+        if ' or ' in conditions_temp:
+            conditions_list_of_or = conditions_temp.split(' or ')
+            rows_for_or = set(range(0))
+            sub_conditions_rows_list = []
+
+            for sub_conditions in conditions_list_of_or:
+                sub_conditions_rows_list.append(self.get_rows_for_and(sub_conditions.split(' and ')))
+
+            for rows in sub_conditions_rows_list:
+                rows_for_or = rows_for_or.union(rows)
+
+            return rows_for_or
+        else:
+            return self.get_rows_for_and(conditions_temp.split(' and '))
 
     def _parse_condition(self, condition, join=False):
         '''
