@@ -308,11 +308,7 @@ class Table:
 
         # btree find
         rows = bt.find(operator, value)
-        if column_name != self.column_names[self.pk_idx]:
-            print(rows[0])
-            if(rows[0] != 0):
-                rows[0] = rows[0] + 1
-            print(rows[0])
+
         try:
             k = int(limit)
         except TypeError:
@@ -334,7 +330,7 @@ class Table:
 
         if isinstance(limit,str):
             s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
-        
+        print("Btree index was used for select.")
         return s_table
 
     
