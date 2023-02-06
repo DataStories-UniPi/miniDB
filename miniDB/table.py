@@ -324,6 +324,17 @@ class Table:
 
         return s_table
 
+    def _select_where_with_hash_indexing(self, return_columns, hash, condition, distinct=False, order_by=None,
+                                         desc=True, limit=None):
+        # if * return all columns, else find the column indexes for the columns specified
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
+        else:
+            return_cols = [self.column_names.index(colname) for colname in return_columns]
+
+        column_name, operator, value = self._parse_condition(condition)
+
+
     def order_by(self, column_name, desc=True):
         '''
         Order table based on column.
