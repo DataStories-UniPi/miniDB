@@ -33,6 +33,38 @@ class Hash:
 
         if len(b.data) <= self.bucket_max_size: #If the bucket has space append the value and return
             return
+        elif len(b.data) > self.bucket_max_size:  # if there is no more space in the bucket
+            if b.local_depth == self.global_depth:  # if local_depth=global_depth
+                self.global_depth += 1  # increase global depth
+                b.local_depth = self.global_depth  # increase local depth
+                for i in range(pow(2, self.global_depth - 1), pow(2, self.global_depth)):  # double directory
+                    self.dict[i] = self.dict[i - pow(2, self.global_depth - 1)]
+
+                nh = h + pow(2,self.global_depth - 1)# the cell that created the conflict points to a new bucket ( to nb )
+                nb = Bucket(self.global_depth)
+                self.buckets.append(nb)
+                self.dict[nh] = nb
+
+                b_data = b.data.copy()  # split the data to 2 buckets
+
+                b.data = []
+
+                for val in b_data:
+                    hash_ = hash_func(val["value"], pow(2, self.global_depth))
+                    self.dict[hash_].data.append(val)
+
+                if len(b.data) >= self.bucket_max_size or len(nb.data) >= self.bucket_max_size:
+                    try:
+                        b.data.remove({"value": value, "ptr": ptr})
+                    except:
+                        pass
+                    try:
+                        nb.data.remove({"value": value, "ptr": ptr})
+                    except:
+                        pass
+
+                    return self.insert(value, ptr)
+
 
 #class for buckets creation
 class Bucket:
