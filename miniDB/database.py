@@ -725,12 +725,13 @@ class Database:
             raise Exception('Cannot create index. Table has no primary key.')
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
             # currently only btree is supported. This can be changed by adding another if.
-            if index_type=='btree':
-                logging.info('Creating Btree index.')
+
+            if index_type=='btree' or index_type=='hash_indexing': #added hash index case
+                logging.info('Creating Btree index or hash index.')
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
                 self.tables['meta_indexes']._insert([table_name, index_name])
-                # crate the actual index
-                self._construct_index(table_name, index_name)
+                # create the actual index
+                self._construct_index(table_name, index_name, index_type)
                 self.save_database()
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
