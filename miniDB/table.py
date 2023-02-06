@@ -75,7 +75,6 @@ class Table:
     def column_by_name(self, column_name):
         return [row[self.column_names.index(column_name)] for row in self.data]
 
-
     def _update(self):
         '''
         Update all the available columns with the appended rows.
@@ -100,7 +99,6 @@ class Table:
         # change the type of the column
         self.column_types[column_idx] = cast_type
         # self._update()
-
 
     def _insert(self, row, insert_stack=[]):
         '''
@@ -206,7 +204,6 @@ class Table:
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
 
-
     def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
@@ -249,7 +246,7 @@ class Table:
 
         s_table = Table(load=dict)
 
-        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data # remove duplicates
 
         if order_by:
             s_table.order_by(order_by, desc)
@@ -268,7 +265,6 @@ class Table:
             s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
 
         return s_table
-
 
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
 
@@ -338,7 +334,6 @@ class Table:
         self.data = [self.data[i] for i in idx]
         # self._update()
 
-
     def _general_join_processing(self, table_right:Table, condition, join_type):
         '''
         Performs the processes all the join operations need (regardless of type) so that there is no code repetition.
@@ -378,10 +373,9 @@ class Table:
         join_table_name = ''
         join_table_colnames = left_names+right_names
         join_table_coltypes = self.column_types+table_right.column_types
-        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
+        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types=join_table_coltypes)
 
         return join_table, column_index_left, column_index_right, operator
-
 
     def _inner_join(self, table_right: Table, condition):
         '''
@@ -539,7 +533,6 @@ class Table:
         # print using tabulate
         print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
 
-
     def _parse_condition(self, condition, join=False):
         '''
         Parse the single string condition and return the value of the column and the operator.
@@ -563,7 +556,6 @@ class Table:
         coltype = self.column_types[self.column_names.index(left)]
 
         return left, op, coltype(right)
-
 
     def _load_from_file(self, filename):
         '''
