@@ -1,7 +1,7 @@
-Σολανάκης Σπυρίδων Π18141
-Εργασία 2022-23 ΣΔΒΣ
-Υπάρχουν αρχεία επεξήγησης (pdf και docx) στον φάκελο miniDB.
-
+<h2><b> Σολανάκης Σπυρίδων Π18141 </b></h2> 
+<p><b> Εργασία 2022-23 ΣΔΒΣ </b></p> 
+<p><b><i> Υπάρχουν αρχεία επεξήγησης (pdf και docx) στον φάκελο miniDB. </i></b></p> 
+<br><br><br><br><br><br><br><br><br><br><br><br>
 <p align=center>
   <img width="550" alt="mdblogo" src="https://user-images.githubusercontent.com/15364873/146045747-5dbdce9c-a70a-494b-8fdd-52ba932cdd19.png">
 </p>
