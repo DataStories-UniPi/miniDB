@@ -191,9 +191,7 @@ def evaluate_where_clause(dic):
                 if ' '.join(where_split[:oprt_idx[0]]).__contains__('between'):
                     btwn_idx = where_split[:oprt_idx[0]].index('between')
                     if not in_paren(where_split, btwn_idx):
-                        raise Exception(
-                            '\nWrong syntax: "between" clause must be in parentheses -> "' + ' '.join(where_split[:oprt_idx[1]])
-                            + '"\n\tHint:' + ' "(' + ' '.join(where_split[:oprt_idx[1]]) + ')"\n')
+                        raise Exception(f'\nWrong syntax: "between" clause must be in parentheses -> " {" ".join(where_split[:oprt_idx[1]])} "\n\tHint: "( {" ".join(where_split[:oprt_idx[1]])} )"\n')
 
             oprt_dic['left'] = evaluate_where_clause( { 'where':  oprt_dic['left'] } )['where']
             oprt_dic['right'] = ' '.join(where_split[oprt_idx[0]+1:])
@@ -301,6 +299,40 @@ def execute_dic(dic):
     '''
     Execute the given dictionary
     '''
+    def execute_from_dic(dic):
+        '''
+        Execute the 'from' clause
+        '''
+        for key in dic.keys():
+            if isinstance(dic[key],dict):
+                dic[key] = execute_from_dic(dic[key])
+                
+        action = list(dic.keys())[0].replace(' ','_')
+        return getattr(db, action)(*dic.values())
+    
+    def execute_where_dic(dic):
+        '''
+        Execute the 'where' clause
+        '''
+        for key in dic.keys():
+            if isinstance(dic[key],dict):
+                dic[key] = execute_where_dic(dic[key])
+     
+    def execute_select_dic(dic):
+        '''
+        Execute the 'select' clause
+        '''
+        for key in dic.keys():
+            if isinstance(dic[key],dict):
+                dic[key] = execute_select_dic(dic[key])
+    
+    """dic['from'] = execute_from_dic(dic['from'])
+    
+    if dic['where'] != None:
+        table = execute_where_dic(dic['where'])
+        
+    table = execute_select_dic(dic['select'])"""
+    
     for key in dic.keys():
         if isinstance(dic[key],dict):
             dic[key] = execute_dic(dic[key])
@@ -388,7 +420,8 @@ if __name__ == "__main__":
             print('\nbye!')
             break
         try:
-            if line=='exit':
+            if line=='exit;':
+                print('\nbye!')
                 break
             if line.split(' ')[0].removesuffix(';') in ['lsdb', 'lstb', 'cdb', 'rmdb']:
                 interpret_meta(line)
