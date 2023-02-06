@@ -18,6 +18,21 @@ class Hash:
             b = Bucket(global_depth)
             self.buckets.append(b)
             self.dict[i] = b
+    #Show the constructed index
+    def show(self):
+        print("[", self.global_depth, "]")
+        for i in range(pow(2, self.global_depth)):
+            print("|| ", i, " || -> ", self.dict[i])
+
+    #Create function hash insert, case 1:There is space in the bucket for a record
+    def insert(self, value, ptr=-1):
+
+        h = hash_func(value, pow(2, self.global_depth)) # dictionary cell
+        b = self.dict[h]  # Find the right bucket from dictionary
+        b.data.append({"value": value, "ptr": ptr})   # temporarily put the value in bucket
+
+        if len(b.data) <= self.bucket_max_size: #If the bucket has space append the value and return
+            return
 
 #class for buckets creation
 class Bucket:
@@ -34,3 +49,5 @@ def hash_func(value, m):
     hex_dig = hash_object.hexdigest()
     res = int(hex_dig, 32)
     return res % m
+
+
