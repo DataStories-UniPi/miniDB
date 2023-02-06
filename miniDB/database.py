@@ -341,8 +341,7 @@ class Database:
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
 
-    def select(self, columns, table_name, condition, distinct=None, order_by=None, \
-               limit=True, desc=None, save_as=None, return_object=True):
+    def select(self, columns, table_name, condition, distinct=None, order_by=None,limit=True, desc=None, save_as=None, return_object=True):
         '''
         Selects and outputs a table's data where condtion is met.
 
@@ -372,17 +371,70 @@ class Database:
         else:
             condition_column = ''
 
+
         
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
+        # --------------------------------------------------------------------------
+        #Check if the condition column is supported by btree or hash index use this index to search
+        #If not linear search
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
-            index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
-            bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+            index_names = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
+
+            #Btree primary key
+            for name in index_names:
+                if name.endswith("___pk"):
+                    index_name = name
+
+            self._construct_index(table_name, index_name, self.indexing_global)
+
+            if self.indexing_global == 'btree':
+                print(f"[+] Search with Btree (primary key)  -> ", table_name)
+                bt = self._load_idx(index_name)
+                table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+            else:
+                _, op, _ = self.tables[table_name]._parse_condition(condition)
+                if op == '=':
+                    print(f"[+] Search with Hash indexing (primary key)  -> ", table_name)
+                    h = self._load_idx(index_name)
+                    table = self.tables[table_name]._select_where_with_hash_indexing(columns, h, condition, distinct,order_by, desc, limit)
+                else:
+                    print("[+] Search linear  -> ", table_name)
+                    table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+
+        elif self._has_index(table_name) and self.tables[table_name].un_idx is not None and condition_column == self.tables[table_name].column_names[self.tables[table_name].un_idx]:
+            index_names = self.select('*', 'meta_indexes', f'table_name={table_name}',return_object=True).column_by_name('index_name')
+
+            for name in index_names:
+                if name.endswith("___unique"):
+                    index_name = name
+
+            self._construct_index(table_name, index_name, self.indexing_global)
+
+            if self.indexing_global == 'btree':
+                print(f"[+] Search with Btree (unique key)  -> ", table_name)
+                bt = self._load_idx(index_name)
+                table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by,desc, limit)
+            else:
+                _, op, _ = self.tables[table_name]._parse_condition(condition)
+                if op == '=':
+                    print(f"[+] Search with Hash indexing (unique key)  -> ", table_name)
+                    h = self._load_idx(index_name)
+                    table = self.tables[table_name]._select_where_with_hash_indexing(columns, h, condition, distinct, order_by, desc, limit)
+                else:
+                    print("[+] Search linear  -> ", table_name)
+                    table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+
         else:
+            if table_name is not 'meta_indexes':
+                print("[+] Search linear  -> ", table_name)
             table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+
+        # -----------------------------------------------------------------------------------------------------------
+
         # self.unlock_table(table_name)
+
         if save_as is not None:
             table._name = save_as
             self.table_from_object(table)
@@ -394,15 +446,15 @@ class Database:
 
 
     def show_table(self, table_name, no_of_rows=None):
-        '''
-        Print table in a readable tabular design (using tabulate).
+            '''
+            Print table in a readable tabular design (using tabulate).
 
-        Args:
-            table_name: string. Name of table (must be part of database).
-        '''
-        self.load_database()
-        
-        self.tables[table_name].show(no_of_rows, self.is_locked(table_name))
+            Args:
+                table_name: string. Name of table (must be part of database).
+            '''
+            self.load_database()
+
+            self.tables[table_name].show(no_of_rows, self.is_locked(table_name))
 
 
     def sort(self, table_name, column_name, asc=False):
