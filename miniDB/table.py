@@ -26,7 +26,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None,unique_key=None, load=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -67,8 +67,16 @@ class Table:
             else:
                 self.pk_idx = None
 
-            self.pk = primary_key
+
             # self._update()
+            #---------------------------
+            if unique_key is not None:
+                self.un_idx = self.column_names.index(unique_key)
+            else:
+                self.un_idx = None
+
+            self.pk = primary_key
+            self.unique = unique_key
 
     # if any of the name, columns_names and column types are none. return an empty table object
 
@@ -130,12 +138,21 @@ class Table:
             elif i==self.pk_idx and row[i] is None:
                 raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
 
+            #----------------
+            if i == self.un_idx and row[i] in self.column_by_name(self.unique):
+                raise ValueError(f'## ERROR -> Value {row[i]} already exists in unique key column.')
+            elif i == self.un_idx and row[i] is None:
+                raise ValueError(f'ERROR -> The value of the unique key cannot be None.')
+            #-----------------
+
+
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
             self.data[insert_stack[-1]] = row
         else: # else append to the end
             self.data.append(row)
         # self._update()
+
 
     def _update_rows(self, set_value, set_column, condition):
         '''
