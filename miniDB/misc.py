@@ -51,7 +51,7 @@ def reverse_op(op):
         }.get(op)
 
 
-# Conversion of "between" operator into "greater or equal AND less or equal"
+# Conversion of "between" operator into "greater than or equal AND less than or equal"
 def convert_between_condition(condition):
     betweens = condition.split('between')
     new_condition=""
