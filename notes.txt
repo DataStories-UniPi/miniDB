@@ -85,3 +85,30 @@
    value το σπασμένο subquery και βάζουμε το key 'left' του opperand ή το key 'right' του opperand αντίστοιχα να ισούται με το value του 'where'
 
 <> Στην evaluate_where_clause() στον πρώτο if προσθέσαμε έναν επιπλέον έλεγχο όπου ελέγχουμε εάν το where_split[1] δεν περιέχεται μέσα στη λίστα kw_per_action, για την αποφυγή της λανθασμένης κλήσης της μεθόδου interpret.
+
+<> return getattr(db, action)(*dic.values()) -> από το αντικείμενο db (Database instance) καλούμε την μέθοδο action(πχ select) και στη συνέχεια στη συγκεκριμένη μέθοδο στέλνουμε ως όρισμα τα *dic.values().
+
+<> Στο execute_dic ελέγχω την περίπτωση του dic['where'], βλέπω πως παίρνει διαχωρίζει το λεξικό.
+
+<> dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+Επεξήγηση: 
+The code is creating a dictionary dict that contains the values of the attributes of an object self. The key-value pairs in the dictionary are constructed as follows:
+
+The keys are the names of the attributes and are taken from the self.__dict__.items() dictionary, which contains all the attributes of an object.
+
+The values are constructed based on the key:
+
+If the key is "data", then the value is a nested list comprehension that creates a 2D list of the values in the self.data attribute. The 2D list has dimensions len(rows) x len(return_cols).
+If the key is not "data", then the value is simply the corresponding value from self.__dict__.items().
+So, in essence, the code is creating a new dictionary that contains only the values of the specified columns (return_cols) and rows (rows) of the data attribute, as well as any other attributes that are stored in self.__dict__.items().
+
+<> s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+This line of code is using the map and set functions to make the s_table.data list unique, and store the result in s_table.data.
+
+The map function is applied to the s_table.data list, and applies the lambda function to each element. The lambda function takes a list x as input and returns its tuple form, tuple(x).
+
+The set function is then applied to the result of the map function, which converts the list into a set, and the duplicates are automatically removed.
+
+Finally, the result is cast back to a list using the list function. The resulting list is then assigned back to s_table.data.
+
+If the distinct variable is set to False, then the line of code has no effect and s_table.data is unchanged.
