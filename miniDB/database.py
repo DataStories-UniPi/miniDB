@@ -376,7 +376,7 @@ class Database:
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
-        # --------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
         #Check if the condition column is supported by btree or hash index use this index to search
         #If not linear search
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
