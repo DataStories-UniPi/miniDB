@@ -93,6 +93,15 @@ class Hash:
         else:
             raise ("critical error: more data in bucket than accepted")
 
+    def find(self, value):
+        h = hash_func(value, pow(2, self.global_depth))  # to cell tou dictionary
+        b = self.dict[h]  # apo to dictionary vriskw to swsto bucket
+
+        for val in b.data:
+            if value == val["value"]:
+                return [val["ptr"]]
+        return []
+
 #class for buckets creation
 class Bucket:
     def __init__(self, local_depth):
