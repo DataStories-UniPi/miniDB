@@ -100,7 +100,6 @@ class Database:
         self._update_meta_length()
         self._update_meta_insert_stack()
 
-
     def create_table(self, name, column_names, column_types, primary_key=None, load=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
@@ -122,7 +121,6 @@ class Database:
         # (self.tables[name])
         if self.verbose:
             print(f'Created table "{name}".')
-
 
     def drop_table(self, table_name):
         '''
@@ -159,7 +157,6 @@ class Database:
         # self._update()
         self.save_database()
 
-
     def import_table(self, table_name, filename, column_types=None, primary_key=None):
         '''
         Creates table from CSV file.
@@ -187,7 +184,6 @@ class Database:
              self.unlock_table(table_name)
         self._update()
         self.save_database()
-
 
     def export(self, table_name, filename=None):
         '''
@@ -280,7 +276,6 @@ class Database:
             self.unlock_table(table_name)
         self._update()
         self.save_database()
-
 
     def update_table(self, table_name, set_args, condition):
         '''
@@ -382,7 +377,6 @@ class Database:
             else:
                 return table.show()
 
-
     def show_table(self, table_name, no_of_rows=None):
         '''
         Print table in a readable tabular design (using tabulate).
@@ -393,7 +387,6 @@ class Database:
         self.load_database()
         
         self.tables[table_name].show(no_of_rows, self.is_locked(table_name))
-
 
     def sort(self, table_name, column_name, asc=False):
         '''
@@ -495,6 +488,13 @@ class Database:
         else:
             res.show()
 
+    def where(self, table_name, condition, save_as=None, return_object=True):
+        self.load_database()
+        if self.is_locked(table_name):
+            return
+        else:
+            self.lock_table(table_name, mode='x')
+        
     def lock_table(self, table_name, mode='x'):
         '''
         Locks the specified table using the exclusive lock (X).
@@ -615,7 +615,6 @@ class Database:
             if table._name not in self.tables['meta_insert_stack'].column_by_name('table_name'):
                 self.tables['meta_insert_stack']._insert([table._name, []])
 
-
     def _add_to_insert_stack(self, table_name, indexes):
         '''
         Adds provided indices to the insert stack of the specified table.
@@ -690,7 +689,6 @@ class Database:
             bt.insert(key, idx)
         # save the btree
         self._save_index(index_name, bt)
-
 
     def _has_index(self, table_name):
         '''
