@@ -736,7 +736,7 @@ class Database:
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
-    def _construct_index(self, table_name, index_name):
+    def _construct_index(self, table_name, index_name,index_type):
         '''
         Construct a btree on a table and save.
 
@@ -744,16 +744,37 @@ class Database:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
         '''
-        bt = Btree(3) # 3 is arbitrary
 
         # for each record in the primary key of the table, insert its value and index to the btree
-        for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
-            if key is None:
-                continue
-            bt.insert(key, idx)
-        # save the btree
-        self._save_index(index_name, bt)
+        if index_type == 'btree':
+            bt = Btree(3)  # 3 is arbitrary
+            if index_name.endswith("___pk"):
+                for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
+                    if key is None:
+                        continue
+                    bt.insert(key, idx)
 
+            elif index_name.endswith("___unique"):
+                for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].unique)):
+                    if key is None:
+                        continue
+                    bt.insert(key, idx)
+            self._save_index(index_name, bt)
+
+        else:
+            h = Hash(2)
+            if index_name.endswith("___pk"):
+                for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
+                    if key is None:
+                        continue
+                    h.insert(key, idx)
+
+            elif index_name.endswith("___unique"):
+                for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].unique)):
+                    if key is None:
+                        continue
+                    h.insert(key, idx)
+            self._save_index(index_name, h)
 
     def _has_index(self, table_name):
         '''
