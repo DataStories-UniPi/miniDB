@@ -26,7 +26,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None,unique_key=None, load=None):
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, unique_key=None, load=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -67,9 +67,8 @@ class Table:
             else:
                 self.pk_idx = None
 
-
             # self._update()
-            #---------------------------
+            #------------------------------
             if unique_key is not None:
                 self.un_idx = self.column_names.index(unique_key)
             else:
