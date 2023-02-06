@@ -282,9 +282,10 @@ class Table:
         column_name, operator, value = self._parse_condition(condition)
 
         # if the column in condition is not a primary key, abort the select
-        if column_name != self.column_names[self.pk_idx]:
-            print('Column is not PK. Aborting')
-
+        #-------------------------
+        if column_name != self.column_names[self.pk_idx] and (self.un_idx != None and column_name != self.column_names[self.un_idx]):
+            print('Column is not PK. or unique Aborting')
+        #--------------------------
         # here we run the same select twice, sequentially and using the btree.
         # we then check the results match and compare performance (number of operation)
         column = self.column_by_name(column_name)
