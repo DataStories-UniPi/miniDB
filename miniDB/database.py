@@ -7,6 +7,8 @@ import warnings
 import readline
 from tabulate import tabulate
 
+#test
+
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 from miniDB import table
 sys.modules['table'] = table
