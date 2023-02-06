@@ -112,9 +112,10 @@ def create_query_plan(query, keywords, action):
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
+
+        unique_idx_list = [i for i, val in enumerate(arglist) if val=='unique' or val=='unique,']
         if 'unique' in args:
-            arglist = args[1:-1].split(' ')
-            dic['unique'] = arglist[arglist.index('unique,')-2]
+            dic['unique'] = ','.join(arglist[i-2] for i in unique_idx_list)
         else:
             dic['unique'] = None
     
