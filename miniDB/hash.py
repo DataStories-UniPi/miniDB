@@ -64,7 +64,34 @@ class Hash:
                         pass
 
                     return self.insert(value, ptr)
+            else:  # an to local depth < global depth
 
+                nb = Bucket(self.global_depth)
+                self.buckets.append(nb)
+                self.dict[h] = nb
+
+                b.local_depth = self.global_depth
+
+                b_data = b.data.copy()
+                b.data = []
+
+                for val in b_data:
+                    hash_ = hash_func(val["value"], pow(2, self.global_depth))
+                    self.dict[hash_].data.append(val)
+
+                if len(b.data) >= self.bucket_max_size or len(nb.data) >= self.bucket_max_size:
+                    try:
+                        b.data.remove({"value": value, "ptr": ptr})
+                    except:
+                        pass
+                    try:
+                        nb.data.remove({"value": value, "ptr": ptr})
+                    except:
+                        pass
+
+                    return self.insert(value, ptr)
+        else:
+            raise ("critical error: more data in bucket than accepted")
 
 #class for buckets creation
 class Bucket:
