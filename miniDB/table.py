@@ -531,6 +531,9 @@ class Table:
 
     
     def get_rows_for_and(self, conditions_list_of_and):
+        '''
+        Get the rows that satisfy "and" conditions in the list of conditions and then return them.
+        '''
         conditions_columns_of_and = []
         splitted_conditions_list_of_and = []
         rows_for_and = set(range(len(self.data)))
@@ -546,6 +549,9 @@ class Table:
         return rows_for_and
 
     def _parse_multiple_conditions(self, conditions):
+        '''
+        Get the rows that satisfy "where" statement for "or" and "and" operators.
+        '''
         conditions_temp = conditions
 
         if ' or ' in conditions_temp:
