@@ -51,7 +51,7 @@ def create_query_plan(query, keywords, action):
     kw_in_query = []
     kw_positions = []
     i=0
-    while i<len(ql):
+    while i < len(ql):
         if in_paren(ql, i): 
             i+=1
             continue

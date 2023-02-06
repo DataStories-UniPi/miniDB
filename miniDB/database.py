@@ -15,6 +15,7 @@ from joins import Inlj, Smj
 from btree import Btree
 from misc import split_condition
 from table import Table
+from hash  import Hash
 
 
 # readline.clear_history() Bbb
