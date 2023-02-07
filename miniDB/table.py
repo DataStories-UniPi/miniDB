@@ -6,7 +6,7 @@ import sys
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
-from misc import get_op, split_condition
+from misc import get_op, split_condition, reverse_op
 
 
 class Table:
@@ -224,6 +224,16 @@ class Table:
             limit: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
 
+
+
+        # if * return all columns, else find the column indexes for the columns specified
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
+        else:
+            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+
+        # if condition is None, return all rows
+        # if not, return the rows with values where condition is met for value
         if condition is not None:
             if "Between" in condition.split() or "BETWEEN" in condition.split() or "between" in condition.split():
                 #storing the condition split in a variable
@@ -278,7 +288,7 @@ class Table:
                     column=self.column_by_name(column_name)
                     rows2.append([i for i,j in enumerate(column) if get_op(operator,j,value)])
                 #storing the conditions' intersection
-                rows=set(rows2[0].intersection(*rows2)) #error here
+                rows=set(rows2[0]).intersection(*rows2) #error here
             elif "OR" in condition.split() or "or" in condition.split() or "Or" in condition.split():
                 '''
                     spliting for each possible user input
@@ -300,19 +310,10 @@ class Table:
                     for j in i:
                         if not(j in rows):#to avoid duplicates
                             rows.append(j)
-
-        # if * return all columns, else find the column indexes for the columns specified
-        if return_columns == '*':
-            return_cols = [i for i in range(len(self.column_names))]
-        else:
-            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
-
-        # if condition is None, return all rows
-        # if not, return the rows with values where condition is met for value
-        if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            else:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
 
