@@ -334,7 +334,7 @@ class Database:
         Args:
             table_name: string. Name of table (must be part of database).
             columns: list. The columns that will be part of the output table (use '*' to select all available columns)
-            condition: string. A condition using the following format:
+            condition: string if operators 'and' or 'or' don't exist, else dict (from query plan). A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
@@ -349,7 +349,7 @@ class Database:
 
         # print(table_name)
         self.load_database()
-        if isinstance(table_name,Table): # if table_name is a table object
+        if isinstance(table_name, Table): # if table_name is a table object
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
         if condition is not None:
@@ -487,13 +487,6 @@ class Database:
             return res
         else:
             res.show()
-
-    """def where(self, table_name, condition, save_as=None, return_object=True):
-        self.load_database()
-        if self.is_locked(table_name):
-            return
-        else:
-            self.lock_table(table_name, mode='x')"""
         
     def lock_table(self, table_name, mode='x'):
         '''
