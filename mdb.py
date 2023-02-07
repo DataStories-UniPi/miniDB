@@ -73,7 +73,12 @@ def create_query_plan(query, keywords, action):
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
     
     if action == 'create view':
-        dic['as'] = interpret(dic['as'])
+        #dic['as'] = interpret(dic['as'])
+        temp = interpret(dic['as'])
+        if (type(temp) is tuple): # Keep only the dictionary
+            dic['as'] = temp[0]
+        else:
+            dic['as'] = temp
 
     if action=='select':
         dic = evaluate_from_clause(dic)
@@ -100,15 +105,20 @@ def create_query_plan(query, keywords, action):
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+        # For columns with UNIQUE constraint
+        dic['columns_unique'] = ','.join([val[0] for val in arglist if 'unique' in val]) if 'unique' in args else None
+        
+        
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
-    
+        
+        
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
-
+   
     if action=='insert into':
         if dic['values'][0] == '(' and dic['values'][-1] == ')':
             dic['values'] = dic['values'][1:-1]
@@ -120,6 +130,24 @@ def create_query_plan(query, keywords, action):
             dic['force'] = True
         else:
             dic['force'] = False
+
+    if action=='create index': 
+        '''
+        For creating the B+ Tree index on Unique columns and PK
+        '''
+        
+        dic['on']=ql[3] # Table name
+        if "(" in ql: 
+            # If the user has specified the name of the column
+            # that will have the index
+            dic['column'] = ql[5] # The name of the specified column
+        else:
+            # The index will be created on the PK of the table
+            dic['column']=None 
+        
+        # The index will be B+ Tree
+        '''dic['using']='btree'''
+
 
     return dic
 
@@ -133,7 +161,12 @@ def evaluate_from_clause(dic):
     from_split = dic['from'].split(' ')
     if from_split[0] == '(' and from_split[-1] == ')':
         subquery = ' '.join(from_split[1:-1])
-        dic['from'] = interpret(subquery)
+        #dic['from'] = interpret(subquery)
+        temp = interpret(subquery)
+        if (type(temp) is tuple):
+            dic['from'] = temp[0]
+        else:
+            dic['from'] = temp
 
     join_idx = [i for i,word in enumerate(from_split) if word=='join' and not in_paren(from_split,i)]
     on_idx = [i for i,word in enumerate(from_split) if word=='on' and not in_paren(from_split,i)]
@@ -151,15 +184,169 @@ def evaluate_from_clause(dic):
         join_dic['on'] = ''.join(from_split[on_idx+1:])
 
         if join_dic['left'].startswith('(') and join_dic['left'].endswith(')'):
-            join_dic['left'] = interpret(join_dic['left'][1:-1].strip())
+            #join_dic['left'] = interpret(join_dic['left'][1:-1].strip())
+            temp = interpret(join_dic['left'][1:-1].strip())
+            if (type(temp) is tuple):
+                join_dic['left'] = temp[0]
+            else:
+                join_dic['left'] = temp
 
         if join_dic['right'].startswith('(') and join_dic['right'].endswith(')'):
-            join_dic['right'] = interpret(join_dic['right'][1:-1].strip())
-
+            #join_dic['right'] = interpret(join_dic['right'][1:-1].strip())
+            temp = interpret(join_dic['right'][1:-1].strip())
+            if (type(temp) is tuple):
+                join_dic['right'] = temp[0]
+            else:
+                join_dic['right'] = temp
         dic['from'] = join_dic
         
     return dic
 
+def check_operator(query):
+    '''
+    Checks the query for the 'and' and 'or' operators.
+
+    Parameters
+    ----------
+    query : string that contains the words of a query
+
+    Returns
+    -------
+    operator : string that contains the 'and' or 'or' operator if found, else it contains None.
+
+    '''
+    words_list = query.split()
+    found = False
+    for word in words_list:
+        if (word == "and"):          
+            operator = "and"
+            found = True
+        elif (word == "or"):
+            operator = "or"
+            found = True
+    
+    if (found):
+        return operator
+    else:
+        return None 
+  
+
+from itertools import dropwhile # Used for splitting the lists of words
+def intersect(query):
+    '''
+    Converts a query that has a complex where conditions combined with 'and' operator
+    into two separate queries with simpler conditions.
+
+    Parameters
+    ----------
+    query : string that contains the query
+
+    Returns
+    -------
+    processed_query1 : string with the query that contains the first simpler condition.
+    processed_query2 : string with the query that contains the second simpler condition.
+    '''
+    words_list = query.split() #split the query string to get the words
+    
+    # Using dropwhile to split into the second part of the query that contains the conditions
+    query_part2 = list(dropwhile(lambda x: x != 'where', words_list))[1:]
+
+    
+    # Get difference between two lists (query_part1 = words_list - query_part2)
+    query_part1 = [x for x in words_list if x not in query_part2]
+
+    # converting to list
+    query_part1 = list(query_part1)
+    query_part2 = list(query_part2)
+    
+    # Using dropwhile to split into the conditions
+    condition2 = list(dropwhile(lambda x: x != 'and', query_part2))[1:]
+    
+    
+    # Get difference between two lists (condition1 = query_part2 - condition2)
+    condition1 = [x for x in query_part2 if x not in condition2]
+    
+    # Removing 'split' string
+    condition1.remove('and')
+    
+    # Converting to list
+    condition1 = list(condition1)
+    condition2 = list(condition2)
+    
+    # Create the new queries
+    query1 = query_part1 + condition1
+    query2 = query_part1 + condition2
+    
+    # Convert the queries into strings and add ' ;' at the end.
+    processed_query1 = " ".join(query1)
+    if (processed_query1[-1] != ';'):
+        processed_query1 += ' ;'
+    
+    processed_query2 = " ".join(query2)
+    if (processed_query2[-1] != ';'):
+        processed_query2 += ' ;'
+  
+    return processed_query1, processed_query2
+
+    
+def unite(query):
+    '''
+    Converts a query that has a complex where conditions combined with 'or' operator
+    into two separate queries with simpler conditions.
+
+    Parameters
+    ----------
+    query : string that contains the query
+
+    Returns
+    -------
+    processed_query1 : string with the query that contains the first simpler condition.
+    processed_query2 : string with the query that contains the second simpler condition.
+    '''
+    words_list = query.split() #split the query string to get the words
+
+    # Using dropwhile to split into the second part of the query that contains the conditions
+    query_part2 = list(dropwhile(lambda x: x != 'where', words_list))[1:]
+
+    
+    # Get difference between two lists (query_part1 = words_list - query_part2)
+    query_part1 = [x for x in words_list if x not in query_part2]
+
+    # converting to list
+    query_part1 = list(query_part1)
+    query_part2 = list(query_part2)
+    
+    # Using dropwhile to split into the conditions
+    condition2 = list(dropwhile(lambda x: x != 'or', query_part2))[1:]
+    
+    
+    # Get difference between two lists (condition1 = query_part2 - condition2)
+    condition1 = [x for x in query_part2 if x not in condition2]
+    
+    # Removing 'split' string
+    condition1.remove('or')
+    
+    # Converting to list
+    condition1 = list(condition1)
+    condition2 = list(condition2)
+    
+    # Create the new queries
+    query1 = query_part1 + condition1
+    query2 = query_part1 + condition2
+    
+    # Convert the queries into strings and add ' ;' at the end.
+    processed_query1 = " ".join(query1)
+    if (processed_query1[-1] != ';'):
+        processed_query1 += ' ;'
+    
+    processed_query2 = " ".join(query2)
+    if (processed_query2[-1] != ';'):
+        processed_query2 += ' ;'
+  
+    return processed_query1, processed_query2 
+
+        
+      
 def interpret(query):
     '''
     Interpret the query.
@@ -175,7 +362,7 @@ def interpret(query):
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
-                     'create index': ['create index', 'on', 'using'],
+                     'create index': ['create index', 'on', 'column', 'using'], # For creating index on UNIQUE columns
                      'drop index': ['drop index'],
                      'create view' : ['create view', 'as']
                      }
@@ -185,11 +372,62 @@ def interpret(query):
     
     query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip()
 
+    # Find if there is either 'and' or 'or' operator.
+    operator_in_query = check_operator(query)
+    
+    # If the operator == 'and' or 'or'
+    if (operator_in_query != None):
+        if (operator_in_query == 'and'):
+            # Get the simpler queries for each condition
+            query1, query2 = intersect(query)
+            
+            query_plans=[] # The list that will contain the query plan for each simpler query
+            
+            # For the query plan of the first query
+            for kw in kw_per_action.keys():
+                if query1.startswith(kw):
+                    action = kw
+            
+            # For the query plan of the second query
+            for kw in kw_per_action.keys():
+                if query2.startswith(kw):
+                    action = kw
+            
+            # Create the query plans
+            query_plans.append(create_query_plan(query1, kw_per_action[action]+[';'], action))
+            query_plans.append(create_query_plan(query2, kw_per_action[action]+[';'], action))
+            
+            #query_plans.append(operator_in_query)
+            return query_plans, operator_in_query # Return the query plans and the found operator
+        
+        elif (operator_in_query == 'or'):
+            # Get the simpler queries for each condition
+            query1, query2 = unite(query)
+            
+            query_plans=[] # The list that will contain the query plan for each simpler query
+            
+            # For the query plan of the first query
+            for kw in kw_per_action.keys():
+                if query1.startswith(kw):
+                    action = kw
+            
+            # For the query plan of the second query
+            for kw in kw_per_action.keys():
+                if query2.startswith(kw):
+                    action = kw
+            
+            # Create the query plans
+            query_plans.append(create_query_plan(query1, kw_per_action[action]+[';'], action))
+            query_plans.append(create_query_plan(query2, kw_per_action[action]+[';'], action))
+            
+            #query_plans.append(operator_in_query)
+            return query_plans, operator_in_query # Return the query plans and the found operator
+
     for kw in kw_per_action.keys():
         if query.startswith(kw):
             action = kw
 
-    return create_query_plan(query, kw_per_action[action]+[';'], action)
+    return create_query_plan(query, kw_per_action[action]+[';'], action), operator_in_query # Return the query plan and None for the operator_in_query variable
 
 def execute_dic(dic):
     '''
@@ -245,7 +483,7 @@ def interpret_meta(command):
 
     commands_dict[action](db_name)
 
-
+from tabulate import tabulate # for 'AND', 'OR' to print results
 if __name__ == "__main__":
     fname = os.getenv('SQL')
     dbname = os.getenv('DB')
@@ -258,10 +496,20 @@ if __name__ == "__main__":
         for line in open(fname, 'r').read().splitlines():
             if line.startswith('--'): continue
             if line.startswith('explain'):
-                dic = interpret(line.removeprefix('explain '))
+                #dic = interpret(line.removeprefix('explain '))
+                temp = interpret(line.removeprefix('explain '))
+                if (type(temp) is tuple):
+                    dic = temp[0]
+                else:
+                    dic = temp
                 pprint(dic, sort_dicts=False)
             else :
                 dic = interpret(line.lower())
+                print(dic)
+                if (type(dic) is tuple): # Keep only the dictionary
+                    dic = dic[0]
+                
+                print(dic)
                 result = execute_dic(dic)
                 if isinstance(result,Table):
                     result.show()
@@ -288,11 +536,65 @@ if __name__ == "__main__":
                 interpret_meta(line)
             elif line.startswith('explain'):
                 dic = interpret(line.removeprefix('explain '))
+                if (type(dic) is tuple):
+                    dic = dic[0] # Keep only the dictionary
                 pprint(dic, sort_dicts=False)
             else:
-                dic = interpret(line)
-                result = execute_dic(dic)
-                if isinstance(result,Table):
-                    result.show()
+                dic, operator_in_query = interpret(line) # Get the query plan and the operator_in_query if found
+                
+                # If the query contains the 'and' operator
+                if (operator_in_query == 'and'):
+                    results=[]
+                    for query_plan in dic: # For each query plan of each simpler query
+                        results.append(execute_dic(query_plan)) # Execute the dictionary and get the results
+                        
+                    non_none_rows=[]
+                    for query_result in results: # For the results of each simpler query
+                        rows, headers = query_result.results_rows_headers() # Get the header and the rows of the query results
+                        non_none_rows.append(rows) 
+                    
+                    condition1_results = []
+                    for row in non_none_rows[0]:
+                        condition1_results.append(row) # Find all the rows of records that the execution of the first simpler query returned
+                    
+                    condition2_results = []
+                    for row in non_none_rows[1]:
+                        condition2_results.append(row) # Find all the rows of records that the execution of the second simpler query returned
+                    
+                    # Find the common rows between the simpler queries
+                    intersection = set(tuple(x) for x in condition1_results).intersection(set(tuple(x) for x in condition2_results))
+                    final_results = list(intersection) # Convert the set to list
+                    
+                    print(tabulate(final_results[:None], headers=headers)+'\n') # Print the results 
+                
+                elif (operator_in_query == 'or'): # If the query contains the 'or' operator
+                    results=[]
+                    for query_plan in dic: # For each query plan of each simpler query
+                        results.append(execute_dic(query_plan)) # Execute the dictionary and get the results
+                        
+                    non_none_rows=[]
+                    for query_result in results: # For the results of each simpler query
+                        rows, headers = query_result.results_rows_headers() # Get the header and the rows of the query results
+                        non_none_rows.append(rows) 
+                    
+                    condition1_results = []
+                    for row in non_none_rows[0]:
+                        condition1_results.append(row) # Find all the rows of records that the execution of the first simpler query returned
+                    
+                    condition2_results = []
+                    for row in non_none_rows[1]:
+                        condition2_results.append(row) # Find all the rows of records that the execution of the second simpler query returned
+                    
+                    # Return all the items from both sets
+                    union = set(tuple(x) for x in condition1_results).union(set(tuple(x) for x in condition2_results))
+                    final_results = list(union) # Convert the set to list
+                    
+                    print(tabulate(final_results[:None], headers=headers)+'\n') # Print the results 
+                else:
+                    result = execute_dic(dic)
+                    if isinstance(result,Table):
+                        result.show()
+                
+                
         except Exception:
             print(traceback.format_exc())

@@ -26,8 +26,9 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
 
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None, 
+                 columns_unique=None): # Added UNIQUE constraint
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
             if isinstance(load, dict):
@@ -60,6 +61,9 @@ class Table:
 
             self.column_types = [eval(ct) if not isinstance(ct, type) else ct for ct in column_types]
             self.data = [] # data is a list of lists, a list of rows that is.
+
+            self.columns_unique = columns_unique if columns_unique is not None else [] # Initialize instance variable for UNIQUE constraint
+
 
             # if primary key is set, keep its index as an attribute
             if primary_key is not None:
@@ -114,21 +118,23 @@ class Table:
             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
 
         for i in range(len(row)):
-            # for each value, cast and replace it in row.
-            try:
-                row[i] = self.column_types[i](row[i])
-            except ValueError:
-                if row[i] != 'NULL':
-                    raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
-            except TypeError as exc:
-                if row[i] != None:
-                    print(exc)
-
-            # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
+            
+            
+            # If the column has the unique constraint, check if the value is unique
+            condition1 = self.column_names[i] in self.columns_unique # If the column has the UNIQUE constraint
+            condition2 = str(row[i]) in [str(val) for val in self.column_by_name(self.column_names[i])] # Check if the value is already in the table
+            if (condition1 and condition2):  
+                print(f'ERROR -> Cannot insert duplicate value "{str(row[i])}" in column "{self.column_names[i]}" that has the UNIQUE constraint.')
+                raise ValueError(f'ERROR -> Cannot insert duplicate value "{str(row[i])}" in column "{self.column_names[i]}" that has the UNIQUE constraint.')
+            
+            
+            row[i] = self.column_types[i](row[i])
+            
+            # if value is to be appended to the primary_key column, check that it doesn't already exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
-                raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
+                raise ValueError(f'## ERROR -> Value {row[i]} already exists in PK column.')
             elif i==self.pk_idx and row[i] is None:
-                raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
+                raise ValueError(f'## ERROR -> The value of the PK cannot be None.')
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
@@ -235,6 +241,7 @@ class Table:
         if condition is not None:
             column_name, operator, value = self._parse_condition(condition)
             column = self.column_by_name(column_name)
+
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
@@ -266,7 +273,7 @@ class Table:
         #     s_table.data = s_table.data[:k]
         if isinstance(limit,str):
             s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
-
+        
         return s_table
 
 
@@ -280,11 +287,13 @@ class Table:
 
 
         column_name, operator, value = self._parse_condition(condition)
-
+        
+        '''
         # if the column in condition is not a primary key, abort the select
         if column_name != self.column_names[self.pk_idx]:
             print('Column is not PK. Aborting')
-
+        '''
+        
         # here we run the same select twice, sequentially and using the btree.
         # we then check the results match and compare performance (number of operation)
         column = self.column_by_name(column_name)
@@ -321,7 +330,58 @@ class Table:
 
         if isinstance(limit,str):
             s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
+        print("Btree index was used for select.")
+        return s_table
 
+    
+    def _select_where_with_hash(self, return_columns, eh, condition, distinct=False, order_by=None, desc=True, limit=None):
+        
+        # if * return all columns, else find the column indexes for the columns specified
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
+        else:
+            return_cols = [self.column_names.index(colname) for colname in return_columns]
+                        
+        column_name, operator, value = self._parse_condition(condition)
+        
+        
+        rows = []
+        # Check if it is a range query that is not supported by Hash index
+        if (operator == '<' or operator == '>' or operator == '<=' or operator == '>='):
+            # Sequential search
+            column = self.column_by_name(column_name)
+            opsseq = 0
+            for ind, x in enumerate(column):
+                opsseq+=1
+                if get_op(operator, x, value):
+                    rows.append(ind)
+        else:
+            # If the query is point query
+            idx = eh.get(value) # Find the index of the row of the column that is equal to value
+            rows.append(idx)
+
+        
+        try:
+            k = int(limit)
+        except TypeError:
+            k = None
+        # same as simple select from now on
+        rows = rows[:k]
+        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+
+        dict['column_names'] = [self.column_names[i] for i in return_cols]
+        dict['column_types']   = [self.column_types[i] for i in return_cols]
+
+        s_table = Table(load=dict)
+
+        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+
+        if order_by:
+            s_table.order_by(order_by, desc)
+
+        if isinstance(limit,str):
+            s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
+        print("Hash index was used for select.")
         return s_table
 
     def order_by(self, column_name, desc=True):
@@ -534,12 +594,27 @@ class Table:
             # table has a primary key, add PK next to the appropriate column
             headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
         # detect the rows that are no tfull of nones (these rows have been deleted)
-        # if we dont skip these rows, the returning table has empty rows at the deleted positions
+        # if we don't skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]
         # print using tabulate
         print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
 
+    def results_rows_headers(self):
+        '''
+        Return the rows and the headers of the result. It's based on show() funtion.
 
+        '''
+        
+        # headers -> "column name (column type)"
+        headers = [f'{col} ({tp.__name__})' for col, tp in zip(self.column_names, self.column_types)]
+        if self.pk_idx is not None:
+            # table has a primary key, add PK next to the appropriate column
+            headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
+        # detect the rows that are no full of nones (these rows have been deleted)
+        # if we don't skip these rows, the returning table has empty rows at the deleted positions
+        non_none_rows = [row for row in self.data if any(row)]
+        return non_none_rows, headers 
+        
     def _parse_condition(self, condition, join=False):
         '''
         Parse the single string condition and return the value of the column and the operator.
@@ -562,7 +637,11 @@ class Table:
             raise ValueError(f'Condition is not valid (cant find column name)')
         coltype = self.column_types[self.column_names.index(left)]
 
-        return left, op, coltype(right)
+
+        if (op == 'between'): # Check if operator is 'between'
+            return left, op, right #  
+            
+        return left, op, coltype(right) 
 
 
     def _load_from_file(self, filename):
