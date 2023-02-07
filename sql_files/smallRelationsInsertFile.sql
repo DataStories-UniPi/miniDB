@@ -1,4 +1,4 @@
-create table classroom (building str, room_number str, capacity int);
+create table classroom (building str, room_number str, capacity int unique);
 create table department (dept_name str primary key, building str, budget int);
 create table course (course_id str primary key, title str, dept_name str, credits int);
 create table instructor (ID str primary key, name str, dept_name str, salary int);

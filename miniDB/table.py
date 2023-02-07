@@ -134,25 +134,18 @@ class Table:
                     print(exc)
 
             # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
-            try:
-                if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
-                    raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column "{self.pk}".')
-                elif i==self.pk_idx and row[i] is None:
-                    raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
-            except Exception as e: 
-                print(str(e))   #added this to print error
-
-            # if value is to be appended to a unique column, check that it doesnt alrady exist (no duplicate values)
-            try:
-                if self.unique is not None:
-                    for count,uq_idx in enumerate(self.unique_idx):
-                        if i==uq_idx and row[i] in self.column_by_name(self.unique[count]):
-                            raise ValueError(f'## ERROR -> Value {row[i]} already exists in unique column "{self.unique[count]}".')
-                        elif i==uq_idx  and row[i] is None:
-                            raise ValueError(f'ERROR -> The value of a unique column cannot be None.')
-            except Exception as e: 
-                print(str(e))   #added this to print error
-                
+            
+            if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
+                raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column "{self.pk}".')
+            elif i==self.pk_idx and row[i] is None:
+                raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
+            
+            # if value is to be appended to a unique column, check that it doesnt alrady exist
+            if self.unique_idx is not None:
+                if i in self.unique_idx and row[i] in self.column_by_name(self.unique[self.unique_idx.index(i)]):
+                    raise ValueError(f'## ERROR -> Value {row[i]} already exists in unique column.')
+                elif i in self.unique_idx and row[i] is None:
+                    raise ValueError(f'ERROR -> The value of a unique field cannot be None.')
             
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
@@ -348,52 +341,50 @@ class Table:
 
         column_name, operator, value = self._parse_condition(condition)
 
-        unique_col_names=[]
-        for n in self.column_names[self.unique_idx]:
-            unique_col_names.append(self.column_names[n]) #find all unique column names 
+        #if the column in condition is a primary key or a unique column,continue the select
+        if column_name in self.unique or (self.pk is not None and column_name==self.pk) : 
+            # here we run the same select twice, sequentially and using the btree.
+            # we then check the results match and compare performance (number of operation)
+            column = self.column_by_name(column_name)
 
-        # if the column in condition is not a primary key or a unique column, abort the select
-        if column_name != self.column_names[self.pk_idx] or column_name not in unique_col_names:
-            print('Column is neither a PK nor unique. Aborting')
+            # sequential
+            rows1 = []
+            opsseq = 0
+            for ind, x in enumerate(column):
+                opsseq+=1
+                if get_op(operator, x, value):
+                    rows1.append(ind)
 
-        # here we run the same select twice, sequentially and using the btree.
-        # we then check the results match and compare performance (number of operation)
-        column = self.column_by_name(column_name)
+            # btree find
+            bt.show()
+            rows = bt.find(operator, value)
 
-        # sequential
-        rows1 = []
-        opsseq = 0
-        for ind, x in enumerate(column):
-            opsseq+=1
-            if get_op(operator, x, value):
-                rows1.append(ind)
+            try:
+                k = int(limit)
+            except TypeError:
+                k = None
+            # same as simple select from now on
+            rows = rows[:k]
+            # TODO: this needs to be dumbed down
+            dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
 
-        # btree find
-        rows = bt.find(operator, value)
+            dict['column_names'] = [self.column_names[i] for i in return_cols]
+            dict['column_types']   = [self.column_types[i] for i in return_cols]
 
-        try:
-            k = int(limit)
-        except TypeError:
-            k = None
-        # same as simple select from now on
-        rows = rows[:k]
-        # TODO: this needs to be dumbed down
-        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+            s_table = Table(load=dict)
 
-        dict['column_names'] = [self.column_names[i] for i in return_cols]
-        dict['column_types']   = [self.column_types[i] for i in return_cols]
+            s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
 
-        s_table = Table(load=dict)
+            if order_by:
+                s_table.order_by(order_by, desc)
 
-        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+            if isinstance(limit,str):
+                s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
 
-        if order_by:
-            s_table.order_by(order_by, desc)
-
-        if isinstance(limit,str):
-            s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
-
-        return s_table
+            return s_table
+        else:
+            print('Column is neither a PK nor unique. Aborting')# if the column in condition is not a primary key or a unique column, abort the select
+            return
 
     def order_by(self, column_name, desc=True):
         '''
