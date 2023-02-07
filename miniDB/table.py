@@ -274,7 +274,7 @@ class Table:
             desc: boolean. If True, order_by will return results in descending order (False by default).
             limit: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
-
+        multiple = False        
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
@@ -292,7 +292,7 @@ class Table:
                 column = self.column_by_name(column_name)
                 rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
 
-            elif ' between ' and ' and ' in condition:
+            elif ' between ' in condition and ' and ' in condition:
                 if 'not ' in condition:
                     condition = condition.replace('not ', '') # remove not from the condition
                     notcheck = True # used to negate the operators
@@ -320,17 +320,56 @@ class Table:
                 column_to_str = [str(x) for x in column] # make column list of strings
 
                 values = []
-                
-                if notcheck: # if 'not' keyword in query
-                   # negate the between check
-                   # not between 67000 and 75000 => value < 67000 or value > 75000
-                    values = [x for x in column_to_str if(x < value1 or x > value2)]
-                else:
-                    # normal between format
+
+                if notcheck: # we reverse the operators in case there is the 'not' keyword in front of the 'between' keyowrd
+                    # not between 67000 and 75000 => value < 67000 or value > 75000
+                    if value1.isdigit() and value2.isdigit(): #if values are numbers
+                        values = [x for x in column_to_str if(x!='None' and int(x) < int(value1) or int(x) > int(value2))] # exclude None in case of deleted record
+                    else: # else if we compare strings, it kinda works if we check: name between a and k
+                        values = [x for x in column_to_str if(x < value1 or x > value2)]
+                else: # normal between format
                     # between 67000 and 75000 => value >= 67000 and value <= 75000
-                    values = [x for x in column_to_str if(x >= value1 and x <= value2)] 
+                    if value1.isdigit() and value2.isdigit():
+                        values = [x for x in column_to_str if(x!='None' and int(x) >= int(value1) and int(x) <= int(value2))]
+                    else:
+                        values = [x for x in column_to_str if(x >= value1 and x <= value2)] 
+                
 
                 rows = [ind for ind, x in enumerate(column_to_str) if(x in list(values))]
+            elif ' and ' in condition:
+                list_conditions = [] # create a list for all the conditions
+                list_rows = [] # list containing the rows that correspond with the conditon
+                rows = []           
+                splt = condition.split(' and ') # split the condition in the 'and' keyword
+
+                for i in range(len(splt)):
+                    list_conditions.append(splt[i]) # add the condition to the list
+                
+                for i in range(len(list_conditions)): # for each condition in the list with the conditions
+                    column_name, operator, value = self._parse_condition(list_conditions[i]) # parse the condition as usual
+                    column = self.column_by_name(column_name)
+                    list_rows.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)]) # add them to the list of total rows
+                                 
+                rows = set(list_rows[0]).intersection(*list_rows) # create an intersection to get the records that match all the conditions              
+                
+            elif ' or ' in condition:
+                list_conditions = [] # create a list for all the conditions
+                list_rows = [] # list containing the rows that correspond with the conditon
+                rows = []              
+                splt = condition.split(' or ') # split the condition in the 'or' keyword
+                for i in range(len(splt)):
+                    list_conditions.append(splt[i]) # add the condition to the list
+
+                for i in range(len(list_conditions)): # for each condition in the list with the conditions
+                    column_name, operator, value = self._parse_condition(list_conditions[i]) # parse the condition as usual
+                    column = self.column_by_name(column_name)
+                    list_rows.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)]) # add them to the list of total rows
+
+                for li in list_rows: # for each index in the list of rows
+                    for row in li: # and for each row of that index
+                        if not row in rows: 
+                            rows.append(row) 
+
             else:
                 column_name, operator, value = self._parse_condition(condition)
                 column = self.column_by_name(column_name)
