@@ -10,6 +10,7 @@ sys.path.append('miniDB')
 
 from miniDB.database import Database
 from miniDB.table import Table
+from miniDB.query_plans import multiple_query_plans
 # art font is "big"
 art = '''
              _         _  _____   ____  
@@ -20,7 +21,7 @@ art = '''
  |_| |_| |_||_||_| |_||_||_____/ |____/   2022                              
 '''   
 
-Query_Plan_List=[]
+
 
 def search_between(s, first, last):
     '''
@@ -122,7 +123,6 @@ def create_query_plan(query, keywords, action):
             dic['force'] = True
         else:
             dic['force'] = False
-    Query_Plan_List.append(dic)
     return dic
 
 def evaluate_from_clause(dic):
@@ -310,29 +310,6 @@ def execute_dic(dic):
     
     action = list(dic.keys())[0].replace(' ','_')
     return getattr(db, action)(*dic.values())
-
-def multiple_query_plans(List):
-    query_plan = List[0].copy()
-    tempo = query_plan.copy()
-
-    query_plan = {k: v for k, v in query_plan.items() if v is not None} #Φτιάχνω ξανά το query_plan μόνο με τα key-value pairs που δεν έχουν None
-
-    and_idx = [i for i,word in enumerate(query_plan['where'].keys()) if word=='and']
-    if query_plan['where'] and query_plan['from'] is None:
-        return List
-    if and_idx:
-        dic={}
-        dic = tempo
-        dic['where'] = query_plan['where']['and']['left']
-        dic['from'] = query_plan
-        dic['from']['where'] = query_plan['where']['and']['right']
-        Query_Plan_List.append(dic)
-        for index, dictionary in enumerate(Query_Plan_List):
-            print(f"Dictionary {index + 1}:")
-            print(dictionary)
-    if 'select' in query_plan['from'].keys():
-        dic={}
-        
     
 
 def interpret_meta(command):
@@ -421,9 +398,8 @@ if __name__ == "__main__":
                 interpret_meta(line)
             elif line.startswith('explain'):
                 dic = interpret(line.removeprefix('explain '))
-                multiple_query_plans(Query_Plan_List)
-                Query_Plan_List.clear()
-                pprint(dic, sort_dicts=False)
+                multiple_query_plans(dic)
+                #pprint(dic, sort_dicts=False)
             else:
                 dic = interpret(line)
                 result = execute_dic(dic)
