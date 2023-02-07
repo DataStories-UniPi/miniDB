@@ -349,14 +349,14 @@ class Database:
 
         # print(table_name)
         self.load_database()
-        if isinstance(table_name,Table):
+        if isinstance(table_name,Table): # if table_name is a table object
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
         if condition is not None:
             condition_column = split_condition(condition)[0]
         else:
             condition_column = ''
-
+        
         
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
@@ -488,12 +488,12 @@ class Database:
         else:
             res.show()
 
-    def where(self, table_name, condition, save_as=None, return_object=True):
+    """def where(self, table_name, condition, save_as=None, return_object=True):
         self.load_database()
         if self.is_locked(table_name):
             return
         else:
-            self.lock_table(table_name, mode='x')
+            self.lock_table(table_name, mode='x')"""
         
     def lock_table(self, table_name, mode='x'):
         '''
