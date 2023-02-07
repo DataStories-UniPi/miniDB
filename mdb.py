@@ -124,6 +124,8 @@ def create_query_plan(query, keywords, action):
         if len(args) == 2:
             dic['on'] = args[0]
             dic['column'] = args[1].strip().replace('(','').replace(')','').replace(' ','')
+        else:
+            dic['column'] = None
 
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
