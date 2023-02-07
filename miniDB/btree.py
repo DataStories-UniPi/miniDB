@@ -28,10 +28,20 @@ class Node:
         ops = 0 # number of operations (<>= etc). Used for benchmarking
         if self.is_leaf: #
             return
-
+        
+        '''
+        if (isinstance(value, int)):
+            value = float(value)
+        '''
+        #print(value)
         # for each value in the node, if the user supplied value is smaller, return the btrees value index
         # else (no value in the node is larger) return the last ptr
+        #print(self.values)
+        #for index, existing_val in enumerate(self.values):
+            #print("existing val: ", existing_val)
+            #print("index: ", index)
         for index, existing_val in enumerate(self.values):
+            #print("existing val: ", existing_val)
             ops+=1
             if value is None or existing_val is None:
                 continue
@@ -288,7 +298,14 @@ class Btree:
             operator: string. The provided evaluation operator.
             value: float. The value being searched for.
         '''
+
+        '''
+        if (isinstance(value, int)):
+            value = float(value)
+        '''   
         results = []
+        
+
         # find the index of the node that the element should exist in
         leaf_idx, ops = self._search(value, True)
         target_node = self.nodes[leaf_idx]
@@ -343,6 +360,7 @@ class Btree:
                 target_node = self.nodes[target_node.left_sibling]
                 results.extend(target_node.ptrs)
 
+    
         # print the number of operations (usefull for benchamrking)
         # print(f'With BTree -> {ops} comparison operations')
         return results

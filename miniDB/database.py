@@ -372,11 +372,14 @@ class Database:
             operator1 = ' and '
             operator3 = ' between '
 
+            # case: complex AND and OR conditions
             if(operator in condition and operator1 in condition and operator3 not in condition):
                 flag = 1
                 if self.is_locked(table_name):
                     return
+                # has to be changed
                 if self._has_index(table_name) and [item for item in lst]==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
+                    print("handle complex AND and OR btree")
                     index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
                     bt = self._load_idx(index_name)
                     table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
@@ -406,6 +409,7 @@ class Database:
 
                 if self.is_locked(table_name):
                     return
+                #has to be changed
                 if self._has_index(table_name) and [item for item in lst]==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
                     index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
                     bt = self._load_idx(index_name)
@@ -429,33 +433,37 @@ class Database:
             else:     
                 
              if(condition[:4] == 'not '):
-                
-                #print("condition[0] is: " + condition[0])
-                #print("condition[1] is: " + condition[1])
-                #print("condition[2] is: " + condition[2])
-                #print("condition[3] is: " + condition[3])
+                  
                   print("Not has been found in condition!")
                   condition_column = split_not_condition(condition)[0]
+                  '''
                   print("Column is: " + condition_column)
                   print("Operator is: " + split_not_condition(condition)[1])
                   print("Value is: " + split_not_condition(condition)[2] + '\n')
-
+                  '''
              else:
-                    print("i am here")
-                    print(condition)
+                    #print("Not not in condition")
+                    #print(condition)
                     condition_column = split_condition(condition)[0]
+                    '''
                     print("Column is: " + condition_column)
                     print("Operator is: " + split_condition(condition)[1])
                     print("Value is: " + split_condition(condition)[2] + '\n')
-
-        else:
+                    '''
+        else: # just a simple select query
             condition_column = ''
 
         if (flag == 0):  # or has not been found
             # self.lock_table(table_name, mode='x')
             if self.is_locked(table_name):
                 return
-            if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:   
+            #print(self.tables[table_name].unique)
+            #print(self._has_index(table_name))
+            #print(condition_column in self.tables[table_name].unique)
+            if (self._has_index(table_name) and ((self.tables[table_name].pk_idx is not None and 
+                                                  condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx])  or 
+                                                  condition_column in self.tables[table_name].unique)): 
+                print("btree here")  
                 index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
                 bt = self._load_idx(index_name)
                 table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
@@ -740,56 +748,74 @@ class Database:
 
 
     # indexes
-    def create_index(self, index_name, table_name, index_type='btree'):
+    def create_index(self, index_name, table_name, column_name, index_type='btree'):
         '''
         Creates an index on a specified table with a given name.
-        Important: An index can only be created on a primary key (the user does not specify the column).
-
+        The index is created over a primary key or over a unique column
+        (the user has to specify the column).
+            
         Args:
-            table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
+            table_name: string with the following format: 
+                        TableName 'column' columnName index_type 
+                        IMPORTANT: The TableName (must be part of database)
+            column_name: string. Name of the column where the index is created over (must be part of database).  
+       
         '''
-        if (self.tables[table_name].pk_idx is None and self.tables[table_name].unique_cols_idx is None): # if no primary key, no index
-            raise Exception('Cannot create index. Table has no primary key or unique columns.')
-        if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
-            # currently only btree is supported. This can be changed by adding another if.
-            if index_type=='btree':
-                logging.info('Creating Btree index.')
-                # insert a record with the name of the index and the table on which it's created to the meta_indexes table
-                self.tables['meta_indexes']._insert([table_name, self.tables[table_name].pk , index_name])
-                # crate the actual index
-                self._construct_index(table_name, index_name)
-                self.save_database()
-        else:
-            raise Exception('Cannot create index. Another index with the same name already exists.')
 
-    def _construct_index(self, table_name, index_name):
+        if (column_name != None): # look 4 unique columns 
+            print("case: look 4 pk or 4 unique  column")
+            #print(self.tables[table_name].pk)
+            if (column_name != self.tables[table_name].pk):
+                print("case: search 4 unique column")
+                
+                if (column_name not in self.tables[table_name].unique):
+                    raise Exception('Cannot create index. The column you specified is not unique.')
+                
+            if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
+            # currently only btree is supported. This can be changed by adding another if.
+                if index_type == 'btree': # case1 : index btree
+                    logging.info('Creating Btree index.')
+                    # insert a record with the name of the index and the table on which it's created to the meta_indexes table
+                    self.tables['meta_indexes']._insert([table_name, column_name , index_name])
+                    # crate the actual index
+                    self._construct_index(table_name, column_name, index_name)
+                    self.save_database()
+            else:
+                raise Exception('Cannot create index. Another index with the same name already exists.')
+     
+     
+    def _construct_index(self, table_name, column_name, index_name):
         '''
         Construct a btree on a table and save.
 
         Args:
             table_name: string. Table name (must be part of database).
+            column_name: string. Name of the table's column where the index is created over (must be part of database).
             index_name: string. Name of the created index.
         '''
         bt = Btree(3) # 3 is arbitrary
 
         # for each record in the primary key of the table, insert its value and index to the btree
-        for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
+        # for each record in the specified unique column of the table, insert its value and index to the btree
+        for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
             if key is None:
                 continue
             bt.insert(key, idx)
         # save the btree
-        self._save_index(index_name, bt)
+        self._save_index( index_name, bt)
 
 
     def _has_index(self, table_name):
         '''
         Check whether the specified table's primary key column is indexed.
+        Check whether the specified table's unique column is indexed.
 
         Args:
             table_name: string. Table name (must be part of database).
         '''
         return table_name in self.tables['meta_indexes'].column_by_name('table_name')
+
 
     def _save_index(self, index_name, index):
         '''
@@ -807,6 +833,7 @@ class Database:
         with open(f'{self.savedir}/indexes/meta_{index_name}_index.pkl', 'wb') as f:
             pickle.dump(index, f)
 
+
     def _load_idx(self, index_name):
         '''
         Load and return the specified index.
@@ -818,6 +845,7 @@ class Database:
         index = pickle.load(f)
         f.close()
         return index
+
 
     def drop_index(self, index_name):
         '''
@@ -836,6 +864,7 @@ class Database:
 
             self.save_database()
     
+
     def handle_or_op(self, columns, table_name, s, distinct=None, order_by=None, \
                limit=True, desc=None, save_as=None, return_object=True):
 

@@ -96,6 +96,7 @@ class Table:
             
             self.pk = primary_key
             print("pk is: ",self.pk)
+            print("pk index: ",self.pk_idx)
             self.unique = unique
             print("unique cols are: ",self.unique)
             print("unique cols indexes are: ",self.unique_cols_idx)
@@ -387,9 +388,7 @@ class Table:
             return_cols = [i for i in range(len(self.column_names))]
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
-        #print(return_columns)
-        #print("return cols in select")
-        #print(return_cols)
+        
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
@@ -449,9 +448,22 @@ class Table:
 
 
         column_name, operator, value = self._parse_condition(condition)
+        #table_name = condition.split(' where')[0]
 
+        #print(self.column_names[0])
+        #print(self.unique_cols_idx)
+        #print(self.column_names[i] for i in self.unique_cols_idx)
+
+        flag = False
+        for i in self.unique_cols_idx:
+            if column_name == self.column_names[i]:
+                flag = True
+                break
+
+        if (flag is False):
+            print('Column is not unique. Aborting')
         # if the column in condition is not a primary key, abort the select
-        if column_name != self.column_names[self.pk_idx]:
+        elif (self.pk_idx and column_name != self.column_names[self.pk_idx]):
             print('Column is not PK. Aborting')
 
         # here we run the same select twice, sequentially and using the btree.
@@ -468,12 +480,14 @@ class Table:
 
         # btree find
         rows = bt.find(operator, value)
+        print(operator)
 
         try:
             k = int(limit)
         except TypeError:
             k = None
         # same as simple select from now on
+
         rows = rows[:k]
         # TODO: this needs to be dumbed down
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
@@ -749,6 +763,7 @@ class Table:
         coltype = self.column_types[self.column_names.index(left)]
 
         if op == 'between':
+            print("between has been found")
             return left, op, right
         return left, op, coltype(right)
 

@@ -12,6 +12,7 @@ def operator_between(value, condition):
     if (begin.isnumeric() and end.isnumeric()):
         begin = int(begin)
         end = int(end)
+        value = int(value)
         if (value >= begin) and (value <= end):
             return True
 
@@ -34,7 +35,7 @@ def get_op(op, a, b):
                 '>=': operator.ge,
                 '<=': operator.le,
                 '=': operator.eq,
-                '!>': operator.ne,
+                '<>': operator.ne,
                 'between': operator_between
                 }
 
@@ -47,7 +48,6 @@ def split_condition(condition):
     
     ops = {'>=': operator.ge,
            '<=': operator.le,
-           '!=': operator.ne,
            '=': operator.eq,
            '>': operator.gt,
            '<': operator.lt,
