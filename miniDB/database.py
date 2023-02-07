@@ -55,6 +55,9 @@ class Database:
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
         self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
+
+        #adding the column's name of the index
+        self.create_table('meta_indexes', 'table_name, index_name, column_name', 'str, str, str')
         self.save_database()
 
     def save_database(self):
@@ -358,7 +361,7 @@ class Database:
         if condition is not None:
             '''
             checking if the condition is one of OR, AND, BETWEEN, NOT operators
-            and adding the 1st element of the condition after spliting " " in
+            and adding the operator of the condition after spliting " " in
             condition_column, that way we get the wanted operator
             '''
             if "between" in condition.split() or "BETWEEN" in condition.split() or "Between" in condition.split():
@@ -659,7 +662,7 @@ class Database:
 
 
     # indexes
-    def create_index(self, index_name, table_name, index_type='btree'):
+    def create_index(self, index_name, table_name, column_name, index_type='btree'):
         '''
         Creates an index on a specified table with a given name.
         Important: An index can only be created on a primary key (the user does not specify the column).
@@ -668,21 +671,27 @@ class Database:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
         '''
-        if self.tables[table_name].pk_idx is None: # if no primary key, no index
+
+        '''
+            Removing the pk exception so we can create an index on all columns
+            if self.tables[table_name].pk_idx is None: # if no primary key, no index
             raise Exception('Cannot create index. Table has no primary key.')
+        '''
+
+
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
             # currently only btree is supported. This can be changed by adding another if.
             if index_type=='btree':
                 logging.info('Creating Btree index.')
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
-                self.tables['meta_indexes']._insert([table_name, index_name])
+                self.tables['meta_indexes']._insert([table_name, index_name, column_name])
                 # crate the actual index
-                self._construct_index(table_name, index_name)
+                self._construct_index(table_name, index_name, column_name)
                 self.save_database()
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
-    def _construct_index(self, table_name, index_name):
+    def _construct_index(self, table_name, index_name, column_name):
         '''
         Construct a btree on a table and save.
 
@@ -693,7 +702,7 @@ class Database:
         bt = Btree(3) # 3 is arbitrary
 
         # for each record in the primary key of the table, insert its value and index to the btree
-        for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
+        for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
             if key is None:
                 continue
             bt.insert(key, idx)
