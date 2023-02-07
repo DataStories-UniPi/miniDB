@@ -783,8 +783,9 @@ class Database:
                     self.save_database()
             else:
                 raise Exception('Cannot create index. Another index with the same name already exists.')
-     
-     
+        else:
+            raise Exception('Cannot create index. You have to specify the column first.')
+
     def _construct_index(self, table_name, column_name, index_name):
         '''
         Construct a btree on a table and save.
