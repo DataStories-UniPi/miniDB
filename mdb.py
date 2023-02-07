@@ -119,6 +119,11 @@ def create_query_plan(query, keywords, action):
         else:
             dic['unique'] = None
     
+    if action=='create index':
+        args = dic['on'].split(' ', 1)
+        dic['on'] = args[0]
+        dic['column'] = args[1].strip().replace('(','').replace(')','').replace(' ','')
+
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
