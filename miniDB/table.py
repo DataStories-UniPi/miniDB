@@ -71,7 +71,8 @@ class Table:
 
             # if unique is set, keep its index as an attribute
             if unique is not None:
-                self.unique_idx = self.column_names.index(unique)
+                unique = unique.split(',')
+                self.unique_idx = [self.column_names.index(column) for column in unique]
             else:
                 self.unique_idx = None
 
@@ -138,11 +139,13 @@ class Table:
             elif i==self.pk_idx and row[i] is None:
                 raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
 
-            # if value is to be appended to the unique column, check that it doesnt already exist (no duplicate unique)
-            if i==self.unique_idx and row[i] in self.column_by_name(self.unique):
-                raise ValueError(f'## ERROR -> Value {row[i]} already exists in unique column.')
-            elif i==self.unique_idx and row[i] is None:
-                raise ValueError(f'ERROR -> The value of the unique cannot be None.')
+            # if value is to be appended to a unique column, check that it doesnt alrady exist (no duplicate unique values)
+            if self.unique is not None:
+                for j in range(len(self.unique)):
+                    if i==self.unique_idx[j] and row[i] in self.column_by_name(self.unique[j]):
+                        raise ValueError(f'## ERROR -> Value {row[i]} already exists in unique {self.unique[j]} column.')
+                    elif i==self.unique_idx[j] and row[i] is None:
+                        raise ValueError(f'ERROR -> The value of the unique column {self.unique[j]} cannot be None.')
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
@@ -539,7 +542,8 @@ class Table:
             headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
         if self.unique_idx is not None:
             # table has a unique index, add UI next to the appropriate column
-            headers[self.unique_idx] = headers[self.unique_idx]+' #UI#'
+            for i in self.unique_idx:
+                headers[i] = headers[i]+' #UI#'
         # detect the rows that are no tfull of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]
