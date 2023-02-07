@@ -162,11 +162,10 @@ def evaluate_where_clause(dic):
     '''
     Evaluate the part of the query (argument or subquery) that is supplied as the 'where' argument
     '''
-    
     def convert_list_to_dict(lst):
         '''
         Converting the list of dictionaries to the desired dictionary,
-        where each key will later be replaced with an operator ('and' or 'or').
+        where each key ('OPR') will later be replaced with an operator ('and' or 'or').
         '''
         if len(lst) == 1:
             return {'OPR': lst[0]}
@@ -191,23 +190,61 @@ def evaluate_where_clause(dic):
                 if ' '.join(where_split[:oprt_idx[0]]).__contains__('between'):
                     btwn_idx = where_split[:oprt_idx[0]].index('between')
                     if not in_paren(where_split, btwn_idx):
-                        raise Exception(f'\nWrong syntax: "between" clause must be in parentheses -> " {" ".join(where_split[:oprt_idx[1]])} "\n\tHint: "( {" ".join(where_split[:oprt_idx[1]])} )"\n')
+                        raise Exception(f'\nWrong syntax: "between" clause must be in parentheses.\n')
 
             oprt_dic['left'] = evaluate_where_clause( { 'where':  oprt_dic['left'] } )['where']
             oprt_dic['right'] = ' '.join(where_split[oprt_idx[0]+1:])
             oprt_dic['right'] = evaluate_where_clause( { 'where':  oprt_dic['right'] } )['where']
             List.append(oprt_dic)
     
-    where_split = dic['where'].split(' ')
+    def put_paren_in_oprt_and(where_split):
+        '''
+        Placing parentheses around the 'and' operator, if it is not already within parentheses, when an 'or' operator exists,
+        helps ensure the proper priority of the operators ('and' and 'or'). This also works for some 'between' clauses, 
+        but it is recommended to always put parentheses around the 'between' clause.
+        '''
+        def find_idx():
+            '''
+            Finding the indices of the 'and' and 'or' operators.
+            '''
+            and_idx = [i for i,word in enumerate(where_split) if word=='and' and not in_paren(where_split,i)]
+            or_idx = [i for i,word in enumerate(where_split) if word=='or' and not in_paren(where_split,i)]
+            oprt_idx = and_idx + or_idx
+            oprt_idx.sort()
+            return oprt_idx, and_idx, or_idx
+        
+        oprt_idx, and_idx, or_idx = find_idx()
+        previous_and = False
+        idx_for_paren = 0
+        while len(oprt_idx) > 0 and and_idx and or_idx:
+            idx = oprt_idx.pop(0)
+            if where_split[idx] == 'and' and previous_and == False:
+                previous_and = True
+                where_split.insert(idx_for_paren, '(')
+                if len(oprt_idx) == 0:
+                    where_split.append(')')
+                    break
+                elif where_split[idx+2] == 'not':
+                    where_split.insert(idx+4, ')')
+                else:
+                    where_split.insert(idx+3, ')')
+                oprt_idx, and_idx, or_idx = find_idx()
+            elif where_split[idx] == 'and' and previous_and == True:
+                where_split.pop(idx-1)
+                where_split.insert(idx+1, ')')
+            else:
+                previous_and = False
+                idx_for_paren = idx+1
+        return where_split
+    
+    where_split = put_paren_in_oprt_and(dic['where'].split(' '))
     
     '''
     not/between/and/or operators not in parentheses.
     '''
     not_idx = [i for i, word in enumerate(where_split) if word == 'not' and not in_paren(where_split, i)]
     btwn_idx = [i for i, word in enumerate(where_split) if word == 'between' and not in_paren(where_split, i)]
-    and_idx = [i for i,word in enumerate(where_split) if word=='and' and not in_paren(where_split,i)]
-    or_idx = [i for i,word in enumerate(where_split) if word=='or' and not in_paren(where_split,i)]
-    oprt_idx = and_idx + or_idx # oprt_idx contains the indices of operators 'and' and 'or'.
+    oprt_idx = [i for i,word in enumerate(where_split) if (word=='or' or word=='and') and not in_paren(where_split,i)] # oprt_idx contains the indices of operators 'and' and 'or'.
     
     '''
     Checking if the 'where' clause is within parentheses or if it starts with
@@ -233,16 +270,11 @@ def evaluate_where_clause(dic):
 
     if oprt_idx:
         '''
-        If there are operators ('and' or 'or'), we build a list of dictionaries and then convert
-        it into a dictionary (within the convert_list_to_dict function). The 'OPR' string is used
-        as a placeholder for the actual operator. We also sort the indexes of the operators because
-        we will use them later to split the 'where' clause (within the build_list function) and evaluate
-        both sides of the operators. Additionally, we will replace the 'OPR' string with the exact operator
-        from left to right.
+        If there are operators ('and' or 'or'), we build a list of dictionaries and then convert it into a dictionary.
+        The 'OPR' string is used as a placeholder for the actual operator and then is replaced with the correct operator from left to right.
         '''
-        oprt_idx.sort()
         List = []
-        build_list(oprt_idx.copy(), where_split)
+        build_list(oprt_idx, where_split)
         oprt_dic = str(convert_list_to_dict(List))
         oprt_words = [where_split[i] for i in oprt_idx]
 
@@ -299,42 +331,8 @@ def execute_dic(dic):
     '''
     Execute the given dictionary
     '''
-    def execute_from_dic(dic):
-        '''
-        Execute the 'from' clause
-        '''
-        for key in dic.keys():
-            if isinstance(dic[key],dict):
-                dic[key] = execute_from_dic(dic[key])
-                
-        action = list(dic.keys())[0].replace(' ','_')
-        return getattr(db, action)(*dic.values())
-    
-    def execute_where_dic(dic):
-        '''
-        Execute the 'where' clause
-        '''
-        for key in dic.keys():
-            if isinstance(dic[key],dict):
-                dic[key] = execute_where_dic(dic[key])
-     
-    def execute_select_dic(dic):
-        '''
-        Execute the 'select' clause
-        '''
-        for key in dic.keys():
-            if isinstance(dic[key],dict):
-                dic[key] = execute_select_dic(dic[key])
-    
-    """dic['from'] = execute_from_dic(dic['from'])
-    
-    if dic['where'] != None:
-        table = execute_where_dic(dic['where'])
-        
-    table = execute_select_dic(dic['select'])"""
-    
     for key in dic.keys():
-        if isinstance(dic[key],dict):
+        if isinstance(dic[key], dict) and key != 'where':
             dic[key] = execute_dic(dic[key])
     
     action = list(dic.keys())[0].replace(' ','_')
