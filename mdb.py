@@ -218,7 +218,7 @@ def evaluate_where_clause(dic):
         idx_for_paren = 0
         while len(oprt_idx) > 0 and and_idx and or_idx:
             idx = oprt_idx.pop(0)
-            if where_split[idx] == 'and' and previous_and == False:
+            if where_split[idx] == 'and' and not previous_and:
                 previous_and = True
                 where_split.insert(idx_for_paren, '(')
                 if len(oprt_idx) == 0:
@@ -229,7 +229,7 @@ def evaluate_where_clause(dic):
                 else:
                     where_split.insert(idx+3, ')')
                 oprt_idx, and_idx, or_idx = find_idx()
-            elif where_split[idx] == 'and' and previous_and == True:
+            elif where_split[idx] == 'and' and previous_and:
                 where_split.pop(idx-1)
                 where_split.insert(idx+1, ')')
             else:
