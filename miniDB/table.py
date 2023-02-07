@@ -230,21 +230,27 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            if isinstance(condition, dict): # if condition is a dict
+                key = list(condition.keys())[0]
+                while isinstance(condition[key], dict):
+                    key = list(condition[key])[0]
+                pass
+            else: # if condition is a string
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
 
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
-        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+        dic = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
 
         # we need to set the new column names/types and no of columns, since we might
         # only return some columns
-        dict['column_names'] = [self.column_names[i] for i in return_cols]
-        dict['column_types']   = [self.column_types[i] for i in return_cols]
+        dic['column_names'] = [self.column_names[i] for i in return_cols]
+        dic['column_types'] = [self.column_types[i] for i in return_cols]
 
-        s_table = Table(load=dict)
+        s_table = Table(load=dic)
 
         s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data # remove duplicates
 
