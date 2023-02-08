@@ -254,22 +254,21 @@ class Table:
                         print('Cannot compare strings')
                         exit()
                         # code for OR 
-                elif "OR" in condition.split() or "or" in condition.split():
-                    condition_list = condition.split("OR")
-                    condition_list = condition_list[0].split("or")
+            elif "OR" in condition.split() or "or" in condition.split():
+                condition_list = condition.split("OR")
+                condition_list = condition_list[0].split("or")
 
-                    row_lists = []
+                row_lists = []
                 for cond in condition_list: # one condition at a time
                     column_name, operator, value = self._parse_condition(cond)
                     column = self.column_by_name(column_name)
                     row_lists.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)])
 
-                    rows = []
+                rows = []
                 for l in row_lists: 
                     for row in l:
                         if not(row in rows):
                             rows.append(row)
-
 
             else:
                 column_name, operator, value = self._parse_condition(condition)
