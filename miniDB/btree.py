@@ -306,10 +306,23 @@ class Btree:
         # for > and >= (btree value is >/>= of user supplied value), we return all the right siblings (all values are larger than current cell)
         # for < and <= (btree value is </<= of user supplied value), we return all the left siblings (all values are smaller than current cell)
         
+
         if operator == '!=':
-            values = target_node.values
-            filtered_values = [v for v in values if v != value]
-            results.extend([target_node.ptrs[i] for i in range(len(values)) if values[i] in filtered_values])
+            try:
+                target_node.values.index(value)
+            except ValueError:
+                results = [ptr for node in self.nodes for ptr in node.ptrs]
+            else:
+                for idx, node_value in enumerate(target_node.values):
+                    if node_value != value:
+                        results.append(target_node.ptrs[idx])
+                while target_node.left_sibling is not None:
+                    target_node = self.nodes[target_node.left_sibling]
+                    results.extend(target_node.ptrs)
+                target_node = self.nodes[leaf_idx]
+                while target_node.right_sibling is not None:
+                    target_node = self.nodes[target_node.right_sibling]
+                    results.extend(target_node.ptrs)
 
         if operator == '>':
             for idx, node_value in enumerate(target_node.values):
