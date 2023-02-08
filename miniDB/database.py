@@ -23,6 +23,7 @@ class Database:
     '''
     Main Database class, containing tables.
     '''
+    
 
     def __init__(self, name, load=True, verbose = True):
         self.tables = {}

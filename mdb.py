@@ -7,8 +7,8 @@ import traceback
 import shutil
 sys.path.append('miniDB')
 
-from database import Database
-from table import Table
+from miniDB.database import Database
+from miniDB.table import Table
 # art font is "big"
 art = '''
              _         _  _____   ____  
@@ -48,6 +48,8 @@ def create_query_plan(query, keywords, action):
     dic = {val: None for val in keywords if val!=';'}
 
     ql = [val for val in query.split(' ') if val !='']
+
+    
 
     kw_in_query = []
     kw_positions = []
