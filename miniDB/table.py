@@ -233,9 +233,31 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            if "BETWEEN" in condition.split() or "between" in condition.split():
+                split_con = condition.split()
+                if (split_con[3] != 'and'): 
+                    print('Put "and" between numbers')
+                    exit()
+                else:   
+                    left_val = split_con[2]  
+                    right_val = split_con[4]  
+                    column_name = split_con[0]
+                    column = self.column_by_name(column_name)
+                    rows = []
+                    # on condition that values are numbers
+                    if (
+                            left_val.isdigit() and right_val.isdigit()):  
+                        for i, j in enumerate(column):
+                            if int(j) >= int(left_val) and int(j) <= int(right_val):
+                                rows.append(i)  
+                    else:  
+                        print('Cannot compare strings')
+                        exit()
+            else:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
         else:
             rows = [i for i in range(len(self.data))]
 
