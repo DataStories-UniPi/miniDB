@@ -658,16 +658,26 @@ class Database:
     # indexes
     def create_index(self, index_name, table_name, column_name, index_type='btree'):
         '''
-        Creates an index on a specified table with a given name.
-        Important: An index can only be created on a primary key (the user does not specify the column).
+        Creates an index on a specified column in table with a given name.
 
         Args:
             table_name: string. Table name (must be part of database).
-            index_name: string. Name of the created index.
+            column_name:string.Column name (must be part of database)
+            index_name: string. Name of the created index.        
+        
+        #remove the exception
+
         '''
         if self.tables[table_name].pk_idx is None: # if no primary key, no index
             raise Exception('Cannot create index. Table has no primary key.')
-        if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
+        if table_name not in self.tables:   
+            raise Exception('Index is not created. Table does not exist')
+
+        if column_name not in self.tables[table_name].column_names:   
+            raise Exception('Index is not created. Column does not exist')    
+
+        if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):  
+
             # currently only btree is supported. This can be changed by adding another if.
             if index_type=='btree':
                 logging.info('Creating Btree index.')
