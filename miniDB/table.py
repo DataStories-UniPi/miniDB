@@ -6,7 +6,7 @@ import sys
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
-from misc import get_op, split_condition
+from misc import get_op, split_condition, reverse_op
 
 
 class Table:
@@ -251,7 +251,7 @@ class Table:
                             if int(j) >= int(left_val) and int(j) <= int(right_val):
                                 rows.append(i)  
                     else:  
-                        print('Cannot compare strings')
+                        ('Cannot compare strings')
                         exit()
             else:
                 column_name, operator, value = self._parse_condition(condition)
