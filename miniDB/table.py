@@ -230,15 +230,35 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            if isinstance(condition, dict): # if condition is a dict
-                key = list(condition.keys())[0]
-                while isinstance(condition[key], dict):
-                    key = list(condition[key])[0]
-                pass
-            else: # if condition is a string
+            #f isinstance(condition, dict): # if condition is a dict
+            def traverse_dic(clause):
+                if isinstance(clause, str):
+                    column_name, operator, value = self._parse_condition(clause)
+                    column = self.column_by_name(column_name)
+                    rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+                    return rows
+                elif 'and' in clause:
+                    left = traverse_dic(clause['and']['left'])
+                    right = traverse_dic(clause['and']['right'])
+                    intersection = set(left).intersection(set(right)) # get the intersection of left and right
+                    return list(intersection)
+                elif 'or' in clause:
+                    left = traverse_dic(clause['or']['left'])
+                    right = traverse_dic(clause['or']['right'])
+                    union = set(left).union(set(right)) # get the union of left and right
+                    return list(union)                    
+                elif 'not' in clause:
+                    all_rows = [i for i in range(len(self.data))] # get all rows
+                    result = traverse_dic(clause['not'])
+                    not_result = set(all_rows) - set(result) # get the difference of all rows and result
+                    return list(not_result)
+                elif 'between' in clause:
+                    return clause['column'] + ' between ' + traverse_dic(clause['between'])
+            rows = traverse_dic(condition)
+            """else: # if condition is a string
                 column_name, operator, value = self._parse_condition(condition)
                 column = self.column_by_name(column_name)
-                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]"""
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -257,7 +277,7 @@ class Table:
         if order_by:
             s_table.order_by(order_by, desc)
 
-        # if isinstance(limit, str):
+        '''# if isinstance(limit, str):
         #     try:
         #         k = int(limit)
         #     except ValueError:
@@ -266,7 +286,7 @@ class Table:
         #     # Remove from the table's data all the None-filled rows, as they are not shown by default
         #     # Then, show the first k rows 
         #     s_table.data.remove(len(s_table.column_names) * [None])
-        #     s_table.data = s_table.data[:k]
+        #     s_table.data = s_table.data[:k]'''
         if isinstance(limit,str):
             s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
 
