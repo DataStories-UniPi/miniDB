@@ -71,7 +71,10 @@ class Table:
 
             # if unique is set, keep its index as an attribute
             if unique is not None:
-                unique = unique.split(',')
+                if ',' in unique:
+                    unique = unique.split(',')
+                else:
+                    unique = [unique]
                 self.unique_idx = [self.column_names.index(column) for column in unique]
             else:
                 self.unique_idx = None
