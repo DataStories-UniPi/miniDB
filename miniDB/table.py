@@ -353,7 +353,40 @@ class Table:
         if isinstance(limit,str):
             s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
 
-        return s_table
+        return s_table 
+
+    def _select_where_with_hash(self, return_columns, hash_map, condition, distinct=False, order_by=None, desc=True, limit=None): # select with hash map 
+        col_name, op, value = self._parse_condition(condition) # parse the condition
+        if col_name != self.column_names[self.pk_idx]: # if the column is not a primary key, abort the select
+            print('The specified column is not a primary key. Aborting operation.') # print error message
+            return
+
+        if return_columns == '*': # if * return all columns, else find the column indexes for the columns specified
+            return_cols = list(range(len(self.column_names))) # return all columns
+        else: # return the specified columns
+            return_cols = [self.column_names.index(col) for col in return_columns] # return the specified columns
+
+        hash_sum = sum(ord(c) for c in value) # get the hash sum of the value
+        hash_idx = hash_sum % int(hash_map[0][0][0]) # get the hash index of the value 
+
+        rows = [item[0] for item in hash_map[hash_idx] if item[1] == value]  # get the rows that match the condition 
+        s_table = Table({ # create a new table with the selected rows
+            'data': [[self.data[i][j] for j in return_cols] for i in rows], 
+            'column_names': [self.column_names[i] for i in return_cols],
+            'column_types': [self.column_types[i] for i in return_cols]
+        })
+
+        if isinstance(limit, str): # if the limit is a string   
+            s_table.data = s_table.data[:int(limit)] # get the first k rows
+
+        if order_by: # if order by is specified 
+            s_table.order_by(order_by, desc) # order the table by the specified column
+
+        if distinct: # if distinct is specified 
+            s_table.data = list(set(tuple(row) for row in s_table.data)) # remove duplicate rows 
+
+        return s_table # return the table 
+
 
     def order_by(self, column_name, desc=True):
         '''

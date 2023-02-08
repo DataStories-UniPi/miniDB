@@ -121,9 +121,20 @@ def create_query_plan(query, keywords, action):
         else:
             dic['force'] = False
 
+    if action=='create index': #if the query is a create index query 
+        split_con=dic[kw_in_query[1]].split() #split the condition
+        split_con.remove("(")
+        split_con.remove(")")  #remove the parentheses
+
+        dic.update({
+            'create index': dic[kw_in_query[0]],#update the dictionary with the index name
+            'on': split_con[0], #update the dictionary with the table name
+            'column': split_con[1], #update the dictionary with the column name
+            'using': dic[kw_in_query[2]] #update the dictionary with the index type
+        })
+
+
     return dic
-
-
 
 def evaluate_from_clause(dic):
     '''
@@ -162,6 +173,7 @@ def evaluate_from_clause(dic):
 
 def interpret(query):
     '''
+    Dimiourgisame extra keyword gia to create index wste na dilonoume kai stilh
     Interpret the query.
     '''
     kw_per_action = {'create table': ['create table'],
@@ -175,7 +187,7 @@ def interpret(query):
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
-                     'create index': ['create index', 'on', 'using'],
+                     'create index': ['create index', 'on', 'column', 'using'],
                      'drop index': ['drop index'],
                      'create view' : ['create view', 'as']
                      }

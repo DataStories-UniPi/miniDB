@@ -9,6 +9,7 @@ create table takes (ID str, course_id str, sec_id str, semester str, year int, g
 create table advisor (s_ID str primary key, i_ID str);
 create table time_slot (time_slot_id str, day str, start_hr int, start_min int, end_hr str, end_min str);
 create table prereq (course_id str, prereq_id str);
+create table meta_indexes (table_name str,index_name str,column_name str)
 insert into classroom values (Packard,101,500);
 insert into classroom values (Painter,514,10);
 insert into classroom values (Taylor,3128,70);
