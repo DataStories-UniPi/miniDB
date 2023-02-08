@@ -761,4 +761,7 @@ class Database:
                 warnings.warn(f'"{self.savedir}/indexes/meta_{index_name}_index.pkl" not found.')
 
             self.save_database()
+        else:
+            raise Exception('Index does not exist')  
+
         
