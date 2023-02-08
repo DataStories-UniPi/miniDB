@@ -253,7 +253,7 @@ class Table:
                     else:  
                         ('Cannot compare strings')
                         exit()
-                        # code for OR 
+            # code for OR 
             elif "OR" in condition.split() or "or" in condition.split():
                 condition_list = condition.split("OR")
                 condition_list = condition_list[0].split("or")
@@ -269,9 +269,31 @@ class Table:
                     for row in l:
                         if not(row in rows):
                             rows.append(row)
-            print('Cannot compare strings')
-            exit ()
+            #print('Cannot compare strings')
+            #exit ()
 
+            # Acode for AND
+            elif "AND" in condition.split() or "and" in condition.split():
+                condition_list = condition.split("AND")
+                condition_list = condition_list[0].split("and")
+                row_lists = []
+                for cond in condition_list: # run every condition seperatly
+                    column_name, operator, value = self._parse_condition(cond)
+                    column = self.column_by_name(column_name)
+                    row_lists.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)])
+
+                rows = set(row_lists[0]).intersection(*row_lists) # get the intersection of the seperate conditions                
+
+                rows = set(row_lists[0]).intersection(*row_lists) # get the intersection of the seperate conditions
+                
+            elif "NOT" in condition.split() or "not" in condition.split():
+                condition_list = condition.split("NOT")
+                condition_list = condition_list[0].split("not")                 
+
+                column_name, operator, value = self._parse_condition(condition_list[1])
+                column = self.column_by_name(column_name)
+                operator2=reverse_op(operator)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator2, x, value)]
 
 
             else:
