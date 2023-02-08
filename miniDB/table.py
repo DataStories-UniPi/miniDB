@@ -233,11 +233,20 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            if 'between' in condition:
+                splt=condition.split()
+                condition1 = splt[0].strip() + '>=' + splt[2].strip()
+                column_name, operator1, value1 = self._parse_condition(condition1)
+                condition2 = splt[0].strip() + '<=' + splt[4].strip()
+                column_name, operator2, value2 = self._parse_condition(condition2)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator1, x, value1) and get_op(operator2, x, value2)]
+            else:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
-            rows = [i for i in range(len(self.data))]
+                rows = [i for i in range(len(self.data))]
 
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
