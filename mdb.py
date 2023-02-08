@@ -121,7 +121,19 @@ def create_query_plan(query, keywords, action):
         else:
             dic['force'] = False
 
+    #create index
+    if action=='create index':
+        split_con=dic[kw_in_query[1]].split() 
+        split_con.remove("(")
+        split_con.remove(")")
+
+        dic['create index'] = dic[kw_in_query[0]]
+        dic['on'] = split_con[0]
+        dic['column'] = split_con[1]
+        dic['using'] = dic[kw_in_query[2]]
+
     return dic
+
 
 
 
