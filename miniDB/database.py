@@ -371,11 +371,14 @@ class Database:
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name): # to be fixed
             return
-        if len(conditions_columns) >= 1:
+        if len(conditions_columns) != 0:
             if self._has_index(table_name) and (conditions_columns[0]==self.tables[table_name].column_names[self.tables[table_name].pk_idx] or conditions_columns[0] in self.tables[table_name].unique[0]):
-                index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0] 
-                bt = self._load_idx(index_name)
-                table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+                index_name = self.select('*', 'meta_indexes', f'table_name={table_name} and column_name={conditions_columns[0]}', return_object=True).column_by_name('index_name')[0]
+                if index_name is not None:
+                    bt = self._load_idx(index_name)
+                    table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+                else:
+                    table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
             else:
                 table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
         else:
@@ -738,7 +741,7 @@ class Database:
             index_name: string. Name of created index.
         '''
         f = open(f'{self.savedir}/indexes/meta_{index_name}_index.pkl', 'rb')
-        index = pickle.load(f)
+        index = pickle.load(f)['index']
         f.close()
         return index
 
