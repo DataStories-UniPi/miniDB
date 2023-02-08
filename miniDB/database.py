@@ -54,7 +54,7 @@ class Database:
         self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
-        self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
+        self.create_table('meta_indexes', 'table_name,index_name,column_name', 'str,str,str')
         self.save_database()
 
     def save_database(self):
@@ -674,7 +674,7 @@ class Database:
             if index_type=='btree':
                 logging.info('Creating Btree index.')
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
-                self.tables['meta_indexes']._insert([table_name, index_name])
+                self.tables['meta_indexes']._insert([table_name, index_name, column])
                 # crate the actual index
                 self._construct_index(table_name, index_name, column)
                 self.save_database()
@@ -701,7 +701,7 @@ class Database:
                     continue
                 bt.insert(key, idx)
         # save the btree
-        self._save_index(index_name, bt)
+        self._save_index(index_name, bt, column_name)
 
 
     def _has_index(self, table_name):
@@ -713,7 +713,7 @@ class Database:
         '''
         return table_name in self.tables['meta_indexes'].column_by_name('table_name')
 
-    def _save_index(self, index_name, index):
+    def _save_index(self, index_name, index, column_name):
         '''
         Save the index object.
 
@@ -725,9 +725,10 @@ class Database:
             os.mkdir(f'{self.savedir}/indexes')
         except:
             pass
-
+        
+        index_info = {'index': index, 'column_name': column_name}
         with open(f'{self.savedir}/indexes/meta_{index_name}_index.pkl', 'wb') as f:
-            pickle.dump(index, f)
+            pickle.dump(index_info, f)
 
     def _load_idx(self, index_name):
         '''
