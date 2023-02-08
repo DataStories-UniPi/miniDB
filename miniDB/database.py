@@ -13,6 +13,7 @@ sys.modules['table'] = table
 
 from joins import Inlj, Smj
 from btree import Btree
+from hash import Hash # file name might need change
 from misc import split_condition
 from table import Table
 
@@ -693,13 +694,19 @@ class Database:
                 raise ValueError('The requested column to index does not exist in the table.')
 
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):#if there isn't already an index with the same name
-            # currently only btree is supported. This can be changed by adding another if.
             if index_type=='btree':
                 logging.info('Creating Btree index.')
                 # insert a record with the name of the index,the table and the column on which it's created to the meta_indexes table
                 self.tables['meta_indexes']._insert([table_name, index_name,index_column])
-                # crate the actual index
+                # create the actual index
                 self._construct_index(table_name, index_name,index_column)
+                self.save_database()
+            if index_type=='hash':
+                logging.info('Creating Hash index.')
+                # insert a record with the name of the index,the table and the column on which it's created to the meta_indexes table
+                self.tables['meta_indexes']._insert([table_name, index_name,index_column])
+                # create the actual index
+                self._construct_hash_index(table_name, index_name,index_column)
                 self.save_database()
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
@@ -722,6 +729,23 @@ class Database:
         # save the btree
         self._save_index(index_name, bt)
 
+    def _construct_hash_index(self, table_name, index_name,index_column):
+        '''
+        Construct a hash index on a table and save.
+
+        Args:
+            table_name: string. Table name (must be part of database).
+            index_name: string. Name of the created index.
+            index_column: string. Name of the column on which we create the index
+        '''
+        hash_table=Hash(15) # argument is blocking factor
+        # for each record of the table, insert its column value and index to the btree
+        for idx, key in enumerate(self.tables[table_name].column_by_name(index_column)):
+            if key is None:
+                continue
+            hash_table.insert(key, idx)
+        # save the hashtable
+        self._save_index(index_name, hash_table)
 
     def _has_index(self, table_name,index_column):
         '''
