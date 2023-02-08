@@ -305,6 +305,11 @@ class Btree:
         # for all other ops, the code is the same, only the operations themselves and the sibling indexes change
         # for > and >= (btree value is >/>= of user supplied value), we return all the right siblings (all values are larger than current cell)
         # for < and <= (btree value is </<= of user supplied value), we return all the left siblings (all values are smaller than current cell)
+        
+        if operator == '!=':
+            values = target_node.values
+            filtered_values = [v for v in values if v != value]
+            results.extend([target_node.ptrs[i] for i in range(len(values)) if values[i] in filtered_values])
 
         if operator == '>':
             for idx, node_value in enumerate(target_node.values):
