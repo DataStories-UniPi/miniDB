@@ -372,7 +372,7 @@ class Table:
             column_name: string. Name of column.
             desc: boolean. If True, order_by will return results in descending order (False by default).
         '''
-        column = [val if val is not None else 0 for val in self.column_by_name(column_name)]
+        column = self.column_by_name(column_name)
         idx = sorted(range(len(column)), key=lambda k: column[k], reverse=desc)
         # print(idx)
         self.data = [self.data[i] for i in idx]
