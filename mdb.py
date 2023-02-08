@@ -355,11 +355,11 @@ def create_query_plan(query, keywords, action):
             split_con.remove("(")
             split_con.remove(")")
 
-            query_s2 = ''.join(split_con[0]) 
-            query_s1 = ''.join(split_con[2])    
-            query_s1_E= interpret("select" + dic[kw_in_query[0]] + "from" + dic[kw_in_query[1]] + "where" + subquery ) # execute s1(E)
+            query_s1 = ''.join(split_con[0]) 
+            query_s2 = ''.join(split_con[2])    
+            query_s1_E= interpret("select" + dic[kw_in_query[0]] + "from" + dic[kw_in_query[1]] + "where" + query_s1 ) # execute s1(E)
 
-            query_se_e= interpret("select" + dic[kw_in_query[0]] + "from" + dic[kw_in_query[1]] + "where" +  query_s1 +  "and" + query_s2_E) # final execution 
+            query_se_e= interpret("select" + dic[kw_in_query[0]] + "from" + query_s1_E + "where" +  query_s2 ) # final execution 
 
             dic['where'] = query_se_e 
 
@@ -427,13 +427,14 @@ def create_query_plan2(query, keywords, action):
 
             query_s1 = ''.join(split_con[0]) 
             query_s2 = ''.join(split_con[2])    
-# execute s2(E)
-            query_s2_E= interpret("select" + dic[kw_in_query[0]] + "from" + dic[kw_in_query[1]] + "where" + subquery ) 
+            # execute s2(E)
+            query_s2_E= interpret("select" + dic[kw_in_query[0]] + "from" + dic[kw_in_query[1]] + "where" + query_s2 ) 
 
-# final execution
-            query_se_e= interpret("select" + dic[kw_in_query[0]] + "from" + dic[kw_in_query[1]] + "where" +  query_s1 +  "and" + query_s2_E) 
+            # final execution
+            query_se_e= interpret("select" + dic[kw_in_query[0]] + "from" + query_s2_E + "where" +  query_s1 ) 
 
-            dic['where'] = query_se_e #to apotelesmaa twn 2 praksewn to vazoume to dic['where'] 
+            #the final outcome
+            dic['where'] = query_se_e 
 
         if dic['distinct'] is not None:
             dic['select'] = dic['distinct']
