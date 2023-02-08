@@ -677,7 +677,12 @@ class Database:
             if self.tables[table_name].pk_idx is None: # if no primary key, no index
             raise Exception('Cannot create index. Table has no primary key.')
         '''
-
+        if table_name not in self.tables:
+            #if the table does not exist
+            raise Exception('Table does not exist')
+        if column_name not in self.tables[table_name].column_names:
+            #if the column does not exist
+            raise Exception('Column does not exist')
 
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
             # currently only btree is supported. This can be changed by adding another if.

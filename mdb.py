@@ -66,21 +66,10 @@ def create_query_plan(query, keywords, action):
             ql.pop(i+1)
             kw_positions.append(i)
         i+=1
-    '''
-        adding the create index query to the dictionary
-    '''
-    if action=='create index':
-        splitcond=dic[kw_in_query[1]].split()
-        #removing the parenthesis
-        splitcond.remove("(")
-        splitcond.remove(")")
-        dic['create index']=dic[kw_in_query[0]]
-        dic['on']=splitcond[0]
-        dic['column']=splitcond[1]
-        dic['using']=dic[kw_in_query[2]]
 
 
-        
+
+
     for i in range(len(kw_in_query)-1):
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
 
@@ -133,6 +122,19 @@ def create_query_plan(query, keywords, action):
         else:
             dic['force'] = False
 
+    '''
+        adding the create index query to the dictionary
+    '''
+    if action=='create index':
+        splitcond=dic[kw_in_query[1]].split()
+        #removing the parenthesis
+        splitcond.remove("(")
+        splitcond.remove(")")
+        dic['create index']=dic[kw_in_query[0]]
+        dic['on']=splitcond[0]
+        dic['column']=splitcond[1]
+        dic['using']=dic[kw_in_query[2]]
+        
     return dic
 
 
