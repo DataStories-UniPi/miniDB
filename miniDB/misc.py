@@ -87,7 +87,7 @@ def reverse_op(op):
         '=': '='
     }.get(op)
 
-def oppose_op(op):
+def oppose_op(op): # NOT operator
     '''
     Oppose the operator given
     '''
