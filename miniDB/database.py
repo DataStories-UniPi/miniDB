@@ -354,24 +354,23 @@ class Database:
         
         # print(table_name)
         self.load_database()
-        if isinstance(table_name,Table):
+        if isinstance(table_name, Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
-        # Debug
         print(f'condition: {condition}')
 
         if type(condition) is dict:
-            condition_column = "where clause is a dict"
+            print("dict")
         elif condition is not None:
             condition_column = split_condition(condition)[0]
             print(f'splitted condition: {condition_column}')
         else:
             condition_column = ''
 
-        print(condition_column)
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
+        # implement this to work with columns inside dicts 
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)

@@ -233,10 +233,9 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            row_indexes = self._find_rows(condition)
+            rows = self._find_rows(condition)
         else:
             rows = [i for i in range(len(self.data))]
-
 
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
@@ -269,16 +268,72 @@ class Table:
         return s_table
 
     def _find_rows(self, condition):
-        rows = [0, 1]
-        if type(condition) is str:
+
+        if isinstance(condition, str):
+            final_rows = self._in_depth(condition)
+        if isinstance(condition, dict):
+            print("It is a dict, so split left and right")
+
+            left_part = condition['left']
+            right_part = condition['right']
+            operator = condition['operator']
+
+            left_rows = self._in_depth(left_part)
+            right_rows = self._in_depth(right_part)
+
+            print(f'left rows: {left_rows}')
+            print(f'operator: {operator}')
+            print(f'right rows: {right_rows}')
+
+            if(operator == 'and'):
+                final_rows = list(set(left_rows).intersection(right_rows))
+            elif(operator == 'or'):
+                final_rows = list(set(left_rows).union(set(right_rows)))
+            else:
+                raise Exception('Not a valid logical operator.')
+        
+        print(f'the final rows are {final_rows}')
+        return final_rows
+
+    def _in_depth(self, condition):
+        print(f'Find rows for: {condition}')
+        
+        if isinstance(condition,str):
             column_name, operator, value = self._parse_condition(condition)
             column = self.column_by_name(column_name)
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
-        elif type(condition) is dict:
-            print("Not implemented yet.")
+            print(f'returning rows {rows}')
+            return rows
+
+        elif isinstance(condition,dict):
+            print("It is a dict, so split left and right")
+
+            left_part = condition['left']
+            right_part = condition['right']
+            operator = condition['operator']
+
+            left_rows = self._in_depth(left_part)
+            right_rows = self._find_rows(right_part)
+            
+            print(f'left rows: {left_rows} operator: {operator} right rows: {right_rows}')
+
+            if(operator == 'and'):
+                rows = list(set(left_rows).intersection(right_rows))
+            elif(operator == 'or'):
+                rows = list(set(left_rows).union(set(right_rows)))
+            else:
+                raise Exception('Not a valid logical operator.')
+
+            print(f'returning {rows}')
+            
         else:
-            raise Exception('Not a valid where type')
+            raise Exception('Not a valid where type.')
+
         return rows
+        
+        
+
+        
 
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
 
@@ -549,11 +604,10 @@ class Table:
         # print using tabulate
         print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
 
-
+    # not finished
     def _parse_condition(self, condition, join=False):
         '''
         Parse the single string condition and return the value of the column and the operator.
-
         Args:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
@@ -562,6 +616,7 @@ class Table:
                 Operatores supported: (<,<=,==,>=,>)
             join: boolean. Whether to join or not (False by default).
         '''
+
         # if both_columns (used by the join function) return the names of the names of the columns (left first)
         if join:
             return split_condition(condition)
@@ -573,6 +628,7 @@ class Table:
         coltype = self.column_types[self.column_names.index(left)]
 
         return left, op, coltype(right)
+
 
 
     def _load_from_file(self, filename):

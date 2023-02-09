@@ -11,8 +11,6 @@ def get_op(op, a, b):
                 '=': operator.eq}
 
     try:
-        print(ops[op](a,b))
-        print(f'{a} {op} {b}')
         return ops[op](a,b)
     except TypeError:  # if a or b is None (deleted record), python3 raises typerror
         return False
@@ -26,7 +24,7 @@ def split_condition(condition):
 
     for op_key in ops.keys():
         splt=condition.split(op_key)
-        print(f'splt: {splt}')
+
         if len(splt)>1:
             left, right = splt[0].strip(), splt[1].strip()
 
