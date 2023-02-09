@@ -78,8 +78,8 @@ class Table:
                     self.uk_idxs.append(self.column_names.index(u_key))
                     self.uks.append(u_key)
             else:
-                self.uks=None
-                self.uk_idxs=None
+                self.uks=[]
+                self.uk_idxs=[]
 
             # self._update()
 
@@ -137,11 +137,19 @@ class Table:
                 if row[i] != None:
                     print(exc)
 
-            # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
+            # if value is to be appended to the primary_key column, check that it doesn't alrady exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
             elif i==self.pk_idx and row[i] is None:
                 raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
+
+            # if value is to be appended to a unique_key column, check that it doesn't alrady exist (no duplicate unique keys)
+            if self.uk_idxs is not None:
+                for j in range(len(self.uk_idxs)):
+                    if i==self.uk_idxs[j] and row[i] in self.column_by_name(self.uks[j]):
+                        raise ValueError(f'## ERROR -> Value {row[i]} already exists in unique key column {self.uks[j]}.')
+                    elif i==self.uk_idxs[j] and row[i] is None:
+                        raise ValueError(f'ERROR -> The value in unique key column {self.uks[j]} cannot be None.')
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
@@ -294,9 +302,9 @@ class Table:
 
         column_name, operator, value = self._parse_condition(condition)
 
-        # if the column in condition is not a primary key, abort the select
-        if column_name != self.column_names[self.pk_idx]:
-            print('Column is not PK. Aborting')
+        # if the column in condition is not a primary or unique key, abort the select
+        if (column_name != self.column_names[self.pk_idx]) and (column_name not in self.uks):
+            print('Column is not PK or UK. Aborting')
 
         # here we run the same select twice, sequentially and using the btree.
         # we then check the results match and compare performance (number of operation)
