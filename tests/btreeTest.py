@@ -1,4 +1,4 @@
-from ..db.btree import Btree
+from miniDB.btree import Btree
 from random import randrange
 import sys
 

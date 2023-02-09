@@ -4,3 +4,10 @@ dbdata/
 __pycache__/
 .idea/
 .pytest_cache
+*.exe
+*.dll
+include/
+lib/
+share/
+bin/config6
+bin/gvmap.sh
