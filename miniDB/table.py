@@ -268,7 +268,11 @@ class Table:
         return s_table
 
     def _find_rows(self, condition):
-
+        """
+        TODO: 
+        1. add comments to methods
+        2. correct the priority of logical operations
+        """
         if isinstance(condition, str):
             final_rows = self._in_depth(condition)
         if isinstance(condition, dict):
