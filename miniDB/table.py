@@ -147,15 +147,15 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,=,>=,>]value' or
                 'value[<,<=,=,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,=,>=,>)
         '''
         # parse the condition
-        column_name, operator, value = self._parse_condition(condition)
+        #column_name, operator, value = self._parse_condition(condition)
 
         # get the condition and the set column
-        column = self.column_by_name(column_name)
-        set_column_idx = self.column_names.index(set_column)
+        #column = self.column_by_name(column_name)
+
 
         # set_columns_indx = [self.column_names.index(set_column_name) for set_column_name in set_column_names]
 
@@ -182,14 +182,62 @@ class Table:
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
-        column_name, operator, value = self._parse_condition(condition)
 
         indexes_to_del = []
 
-        column = self.column_by_name(column_name)
-        for index, row_value in enumerate(column):
-            if get_op(operator, row_value, value):
-                indexes_to_del.append(index)
+        oppose = False
+        condition, op = check_logops(condition)
+        if op == 'between ':
+            condition = condition[0] + '>= ' + condition[1][0] + 'and ' + condition[0] + '<= ' + condition[1][1]
+            condition, op = check_logops(condition)
+        if op == 'not ':
+            oppose = True
+            condition, op = check_logops(condition)
+            op = oppose_op(op)
+
+        '''
+        Implementing 'none', 'and' and 'or' ops
+        '''
+        if op == 'none':
+            column_name, operator, value = self._parse_condition(condition)
+            if oppose:
+                operator = oppose_op(operator)
+            column = self.column_by_name(column_name)
+
+            for index, x in enumerate(column):
+                if get_op(operator, x, value):
+                    indexes_to_del.append(index)
+        elif op == ' and':
+            column_name, operator, value = self._parse_condition(condition[0])
+            column_name2, operator2, value2 = self._parse_condition(condition[1])
+            if oppose:
+                operator = oppose_op(operator)
+                operator2 = oppose_op(operator2)
+            column = self.column_by_name(column_name)
+            column2 = self.column_by_name(column_name2)
+            for index, (x, x2) in enumerate(zip(column, column2)):
+                if get_op(operator, x, value) and get_op(operator2, x2, value2):
+                    indexes_to_del.append(index)
+        elif op == ' or':
+            column_name, operator, value = self._parse_condition(condition[0])
+            column_name2, operator2, value2 = self._parse_condition(condition[1])
+            if oppose:
+                operator = oppose_op(operator)
+                operator2 = oppose_op(operator2)
+            column = self.column_by_name(column_name)
+            column2 = self.column_by_name(column_name2)
+            for index, (x, x2) in enumerate(zip(column, column2)):
+                if get_op(operator, x, value) or get_op(operator2, x2, value2):
+                    indexes_to_del.append(index)
+
+        #column_name, operator, value = self._parse_condition(condition)
+
+        
+
+        #column = self.column_by_name(column_name)
+        #for index, row_value in enumerate(column):
+        #    if get_op(operator, row_value, value):
+        #        indexes_to_del.append(index)
 
         # we pop from highest to lowest index in order to avoid removing the wrong item
         # since we dont delete, we dont have to to pop in that order, but since delete is used
