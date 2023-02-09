@@ -440,6 +440,7 @@ class Table:
 
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
 
+        print("Select where with btree hereee")
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
@@ -448,6 +449,9 @@ class Table:
 
 
         column_name, operator, value = self._parse_condition(condition)
+        print("column name is: ",column_name)
+        print("operator is: ",operator)
+        print("value is: ",value)
         #table_name = condition.split(' where')[0]
 
         #print(self.column_names[0])
@@ -459,17 +463,19 @@ class Table:
             if column_name == self.column_names[i]:
                 flag = True
                 break
-
-        if (flag is False):
-            print('Column is not unique. Aborting')
-        # if the column in condition is not a primary key, abort the select
+        
+        # if the column in condition is not a primary key or unique, abort the select
+        if (flag is False and self.pk_idx and column_name != self.column_names[self.pk_idx]):
+            print('Column is not unique or PK. Aborting')
+        '''
         elif (self.pk_idx and column_name != self.column_names[self.pk_idx]):
             print('Column is not PK. Aborting')
-
+        '''
+        
         # here we run the same select twice, sequentially and using the btree.
         # we then check the results match and compare performance (number of operation)
         column = self.column_by_name(column_name)
-
+        #print(column)
         # sequential
         rows1 = []
         opsseq = 0
@@ -477,11 +483,19 @@ class Table:
             opsseq+=1
             if get_op(operator, x, value):
                 rows1.append(ind)
+        #print("rows1 are: ", rows1)
 
         # btree find
+        print(bt.show())
         rows = bt.find(operator, value)
-        print(operator)
 
+        print("rows1 are: ", rows1)
+        print("rows from btree are: ", rows)
+        '''
+        print("rows are: ", rows)
+        print("value is: ",value)
+        print("operator is: ",operator)
+        '''
         try:
             k = int(limit)
         except TypeError:
@@ -506,6 +520,123 @@ class Table:
             s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
 
         return s_table
+    
+
+    #-------------------------------------------------------------------------------------
+    
+    def _select_where_or_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
+        
+        print("Select where OR with btree here!")
+
+        # if * return all columns, else find the column indexes for the columns specified
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
+        else:
+            #return_cols = [self.column_names.index(colname) for colname in return_columns.split(',')]
+            #else:
+            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+       
+        operator = ' or ' # e.g salary = 20000 or salary > 60000
+        splt = condition.split(operator) # salary = 20000, salary > 6000
+        print("split is: ",splt)
+        if (len(splt)!=0):   # if there are any conditions on the left and on the right side of or operator
+            rows1 = []
+            rows = []
+            for s in splt:
+                #print(s)
+                column_name, operator, value = self._parse_condition(s)
+                print(column_name)
+                # column_name, operator, value = self._parse_condition(condition)
+                # here we run the same select twice, sequentially and using the btree.
+                # we then check the results match and compare performance (number of operation)
+                column = self.column_by_name(column_name)
+                # sequential
+                
+                opsseq = 0
+                for ind, x in enumerate(column):
+                    opsseq+=1
+                    if get_op(operator, x, value):
+                        rows1.append(ind)
+
+                print(operator)
+                # btree find
+                # btree find
+                print(bt.show())
+                rows.append(bt.find(operator, value))
+                flatten_list = [j for sub in rows for j in sub]
+    
+        print("rows1 are: ", rows1)  # table rows
+        print("rows are: ", flatten_list) # btree indexes
+        
+        try:
+            k = int(limit)
+        except TypeError:
+            k = None
+            
+        # same as select OR  from now on
+        rows = flatten_list[:k]
+        # TODO: this needs to be dumbed down
+        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+
+        dict['column_names'] = [self.column_names[i] for i in return_cols]
+        dict['column_types']   = [self.column_types[i] for i in return_cols]
+
+        s_table = Table(load=dict)
+
+        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+
+        if order_by:
+            s_table.order_by(order_by, desc)
+
+        if isinstance(limit,str):
+            s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
+
+        return s_table
+       
+        
+    def _select_where_and_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
+        
+        print("select where AND with btree here!")
+
+        # if * return all columns, else find the column indexes for the columns specified
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
+        else:
+            #return_cols = [self.column_names.index(colname) for colname in return_columns.split(',')]
+            #else:
+            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+
+        
+        operator = ' and ' 
+        splt = condition.split(operator) 
+        if (len(splt)!=0):   # if there are any conditions on the left and on the right side of or operator
+            
+            column_name, operator, value = self._parse_condition(splt[0])
+            column = self.column_by_name(column_name)
+
+            rows = bt.find(operator, value)
+        
+            print(bt.show())
+            print(rows)
+        
+            #print("rows are: ", rows)
+            '''
+            rows1 = []
+            rows = []
+            for s in splt[1:]:
+                column_name, operator, value = self._parse_condition(s)
+                column = self.column_by_name(column_name)
+                
+                #opsseq = 0
+              
+
+
+                # btree find
+                rows.append(bt.find(operator, value))
+                flatten_list = [j for sub in rows for j in sub]
+            '''
+        #print("rows1 are: ", rows1)  # table rows
+        #print("rows are: ", flatten_list) # btree indexes
 
 
     def order_by(self, column_name, desc=True):
@@ -805,43 +936,45 @@ class Table:
             return_cols = [i for i in range(len(self.column_names))]
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
-
-        lst = []
-        operator = ' or ' # e.g salary = 20000 or salary > 60000
-        splt = condition.split(operator) # salary = 20000, salary > 6000
+        
+        operator = ' or ' 
+        splt = condition.split(operator) 
         if (len(splt)!=0):   # if there are any conditions on the left and on the right side of or operator
+            rows = []
             for s in splt:
-                #print(s)
                 column_name, operator, value = self._parse_condition(s)
                 column = self.column_by_name(column_name)
-                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
 
-                # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
-                dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
-                # we need to set the new column names/types and no of columns, since we might
-                # only return some columns
-                dict['column_names'] = [self.column_names[i] for i in return_cols]
-                dict['column_types']   = [self.column_types[i] for i in return_cols]
-                
-                s_table = Table(load=dict)
-                s_table.data = (list(set(map(lambda x: tuple(x), s_table.data)))) if distinct else s_table.data
-                lst.append(s_table.data)
-                
+                #rows.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)])
+                for ind, x in enumerate(column):
+                    if get_op(operator, x, value) and ind not in rows:
+                        rows.append(ind)
+
+            #print("rows are: ",rows)
+            try:
+                k = int(limit)
+            except TypeError:
+                k = None
+     
+            rows = rows[:k]
+
+            dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+
+            dict['column_names'] = [self.column_names[i] for i in return_cols]
+            dict['column_types']   = [self.column_types[i] for i in return_cols]
+
+            s_table = Table(load=dict)
+            s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+
             if order_by:
                 s_table.order_by(order_by, desc)
-                    
-            if isinstance(limit,str):
-                s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
 
-            #print(lst)
-            output = [elem for twod in lst for elem in twod]
-            #print("output")
-            #print(output)
-            s_table.data = output
-            #print(s_table.data)
+            if isinstance(limit,str):
+                s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
 
             return s_table
-        
+
+
     def _select_where_and(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None, flag = False):
         '''
         Select and return a table containing specified columns and rows where condition is met.
@@ -866,13 +999,12 @@ class Table:
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
-        #print(return_cols)
+
         operator = ' and ' 
         splt = condition.split(operator) 
-        #print(splt)
+
         if (len(splt)!=0):   # if there are any conditions on the left and on the right side of and operator
             
-            #print(s)
             column_name, operator, value = self._parse_condition(splt[0])
             column = self.column_by_name(column_name)
 
@@ -904,22 +1036,23 @@ class Table:
             if isinstance(limit,str):
                 s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
 
-            #print(s_table.column_names)
             if (flag):
                 return s_table.data, dict
             else:
                 return s_table
         
-    
+
     def _select_where_and_or(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
         
         # if * return all columns, else find the column indexes for the columns specified
+        
         '''
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
         '''
+
         data = []
         operator1 = ' and ' 
         operator2 = ' or '
@@ -934,13 +1067,11 @@ class Table:
             dict = self._select_where(return_columns, splt[0], distinct, order_by, desc, limit, True)[1]
         
         for cond in splt:
-            if (operator1 in cond):
+            if (operator1 in cond): # and in condition
                 data.append(self._select_where_and(return_columns, cond, distinct, order_by, desc, limit, True)[0])
-                #dict = self._select_where_and(return_columns, cond, distinct, order_by, desc, limit, True)[1]
-            else:
+            else: 
                 data.append(self._select_where(return_columns, cond, distinct, order_by, desc, limit, True)[0])
-                #dict = self._select_where(return_columns, cond, distinct, order_by, desc, limit, True)[1]
-        
+               
         self = Table(load=dict)
         #print(data)
         data1 = [elem for twod in data for elem in twod] # convert 3D list into a 2D list
