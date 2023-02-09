@@ -160,12 +160,13 @@ class Table:
         # set_columns_indx = [self.column_names.index(set_column_name) for set_column_name in set_column_names]
 
         # for each value in column, if condition, replace it with set_value
-        for row_ind, column_value in enumerate(column):
-            if get_op(operator, column_value, value):
-                self.data[row_ind][set_column_idx] = set_value
+        #for row_ind, column_value in enumerate(column):
+        #    if get_op(operator, column_value, value):
+        #       self.data[row_ind][set_column_idx] = set_value
 
         # self._update()
                 # print(f"Updated {len(indexes_to_del)} rows")
+
 
 
     def _delete_where(self, condition):
