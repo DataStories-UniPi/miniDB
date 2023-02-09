@@ -239,9 +239,8 @@ class Table:
         # if not, return the rows with values where condition is met for value
         if condition is not None:
 
-            '''
-            First check for logic operators, second check for 'between' and 'not'
-            '''
+            #edit
+
             oppose = False
             condition, op = check_logops(condition)
             if op == 'between ':
@@ -252,9 +251,8 @@ class Table:
                 condition, op = check_logops(condition)
                 op = oppose_op(op)
 
-            '''
-            Implementing 'none', 'and' and 'or' ops
-            '''
+            #edit
+
             if op == 'none':
                 column_name, operator, value = self._parse_condition(condition)
                 if oppose:
@@ -281,6 +279,10 @@ class Table:
                 column2 = self.column_by_name(column_name2)
                 rows = [ind for ind, (x, x2) in enumerate(zip(column, column2)) if
                         get_op(operator, x, value) or get_op(operator2, x2, value2)]
+
+
+
+
 
         else:
             rows = [i for i in range(len(self.data))]

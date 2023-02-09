@@ -45,16 +45,12 @@ def split_condition(condition):
             return left, op_key, right
 
 
-
 def check_logops(condition):
-    '''
-    Checks the condition for logic operators, removes them and returns them
-    '''
-    log_ops = ['between ',
+    log_ops = {'between ',
                'not ',
                ' and',
                ' or'
-               ]
+               }
 
     for log_op in log_ops:
         logsplt = condition.split(log_op)
