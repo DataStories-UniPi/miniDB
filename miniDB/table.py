@@ -217,11 +217,15 @@ class Table:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
-                Operatores supported: (<,<=,==,>=,>)
+                Operators supported: (<,<=,==,>=,>)
             distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (False by default).
             limit: int. An integer that defines the number of rows that will be returned (all rows if None).
+
+        Added support for "and", "or", "not", "between"
+        Correct syntax: select "columns" from "table_name" where "not" condition1 "and" "or" condition2 /
+        select "columns" from "table_name" where "not" "between" condition1 and condition2
         '''
 
         # if * return all columns, else find the column indexes for the columns specified
