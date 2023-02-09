@@ -332,7 +332,7 @@ def execute_dic(dic):
     Execute the given dictionary
     '''
     for key in dic.keys():
-        if isinstance(dic[key], dict) and key != 'where':
+        if isinstance(dic[key], dict) and key == 'from':
             dic[key] = execute_dic(dic[key])
     
     action = list(dic.keys())[0].replace(' ','_')
@@ -432,5 +432,5 @@ if __name__ == "__main__":
                 if isinstance(result,Table):
                     result.show()
         except Exception as e:
-            #print(traceback.format_exc())
+            print(traceback.format_exc())
             print(e)
