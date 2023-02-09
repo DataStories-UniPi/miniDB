@@ -11,7 +11,7 @@ sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/
 from miniDB import table
 sys.modules['table'] = table
 
-from extendiblehash import ExtendibleHash
+from extendiblehash import ExtendibleHashIndex
 from joins import Inlj, Smj
 from btree import Btree
 from misc import split_condition
@@ -727,8 +727,7 @@ class Database:
             index_name: string. Name of the created index.
             column_name: string. Name of the column on which the index will be created.
         '''
-        number_of_rows = len(self.tables[table_name].data)
-        ht = ExtendibleHash(number_of_rows)
+        ht = ExtendibleHashIndex(3)
 
         if column_name is None:
             column_name = self.tables[table_name].pk

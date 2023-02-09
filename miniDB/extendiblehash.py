@@ -1,50 +1,51 @@
 class Bucket:
-    def __init__(self):
-        self.records = []
-    
-    def insert(self, record):
-        self.records.append(record)
-    
-    def search(self, key):
-        for record in self.records:
-            if record[0] == key:
-                return record
-        return None
-    
-class ExtendibleHash:
-    def __init__(self, num_records, bucket_size=2):
-        self.bucket_size = bucket_size
-        self.global_depth = 1
-        while (2 ** self.global_depth) < num_records:
-            self.global_depth += 1
-        self.directory = [Bucket() for i in range(2 ** self.global_depth)]
-        self.bucket_size = (num_records + len(self.directory) - 1) // len(self.directory)
-        
-    def hash(self, key): # hash function
-        return hash(key) % (2 ** self.global_depth)
-    
-    def insert(self, record):
-        key, value = record
-        bucket = self.directory[self.hash(key)]
-        if len(bucket.records) < self.bucket_size:
-            bucket.insert(record)
-        else:
-            size = len(bucket.records)
-            self.split(bucket)
-            if len(bucket.records) > size:
-                bucket.insert(record)
-    
-    def split(self, bucket):
-        self.global_depth += 1
-        new_directory = [Bucket() for i in range(2 ** self.global_depth)]
-        for record in bucket.records:
-            key, value = record
-            if self.hash(key) >= len(new_directory) // 2:
-                new_directory[self.hash(key) - len(new_directory) // 2].insert(record)
+    def __init__(self, max_bucket_size):
+        self.data = []
+        self.max_bucket_size = max_bucket_size
+
+    def insert(self, data):
+        self.data.append(data)
+        if len(self.data) > self.max_bucket_size:
+            return True
+        return False
+
+    def delete(self, data):
+        self.data.remove(data)
+
+# Define a hash function for the data
+def hash_function(key, max_bucket_size):
+    return hash(key) % max_bucket_size
+
+class ExtendibleHashIndex:
+    def __init__(self, max_bucket_size):
+        self.buckets = {}
+        self.max_bucket_size = max_bucket_size
+
+    def insert(self, data):
+        key, idx = data
+        hash_value = hash_function(key, self.max_bucket_size)
+        if hash_value not in self.buckets:
+            self.buckets[hash_value] = Bucket(self.max_bucket_size) # Create a new bucket
+        if self.buckets[hash_value].insert(data):
+            self.split_bucket(hash_value)
+
+    def delete(self, data):
+        hash_value = hash_function(data, self.max_bucket_size)
+        if hash_value in self.buckets:
+            self.buckets[hash_value].delete(data)
+
+    def split_bucket(self, hash_value):
+        original_bucket = self.buckets[hash_value]
+        new_bucket_1 = Bucket(self.max_bucket_size)
+        new_bucket_2 = Bucket(self.max_bucket_size)
+
+        for data in original_bucket.data:
+            new_hash_value = hash_function(data, self.max_bucket_size * 2)
+            if new_hash_value & 1:
+                new_bucket_1.insert(data)
             else:
-                new_directory[self.hash(key)].insert(record)
-        self.directory = new_directory
-        bucket.records = []
-    
-    def search(self, key):
-        return self.directory[self.hash(key)].search(key)
+                new_bucket_2.insert(data)
+
+        self.buckets[hash_value] = new_bucket_1
+        self.buckets[hash_value + self.max_bucket_size] = new_bucket_2
+
