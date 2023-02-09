@@ -26,7 +26,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, unique=None, load=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -68,6 +68,18 @@ class Table:
                 self.pk_idx = None
 
             self.pk = primary_key
+
+            # if unique is set, keep its index as an attribute
+            if unique is not None:
+                if ',' in unique:
+                    unique = unique.split(',')
+                else:
+                    unique = [unique]
+                self.unique_idx = [self.column_names.index(column) for column in unique]
+            else:
+                self.unique_idx = None
+
+            self.unique = unique
             # self._update()
 
     # if any of the name, columns_names and column types are none. return an empty table object
@@ -129,6 +141,14 @@ class Table:
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
             elif i==self.pk_idx and row[i] is None:
                 raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
+
+            # if value is to be appended to a unique column, check that it doesnt alrady exist (no duplicate unique values)
+            if self.unique is not None:
+                for j in range(len(self.unique)):
+                    if i==self.unique_idx[j] and row[i] in self.column_by_name(self.unique[j]):
+                        raise ValueError(f'## ERROR -> Value {row[i]} already exists in unique {self.unique[j]} column.')
+                    elif i==self.unique_idx[j] and row[i] is None:
+                        raise ValueError(f'ERROR -> The value of the unique column {self.unique[j]} cannot be None.')
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
@@ -271,8 +291,10 @@ class Table:
 
         column_name, operator, value = self._parse_condition(condition)
 
-        # if the column in condition is not a primary key, abort the select
-        if column_name != self.column_names[self.pk_idx]:
+        # if the column in condition is not a primary key and unique, abort the select
+        if self.unique is not None and column_name != self.column_names[self.pk_idx] and column_name not in self.unique:
+            print('Column is not PK or unique. Aborting')
+        elif self.unique is None and column_name != self.column_names[self.pk_idx]:
             print('Column is not PK. Aborting')
 
         # here we run the same select twice, sequentially and using the btree.
@@ -523,6 +545,10 @@ class Table:
         if self.pk_idx is not None:
             # table has a primary key, add PK next to the appropriate column
             headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
+        if self.unique_idx is not None:
+            # table has a unique index, add UI next to the appropriate column
+            for i in self.unique_idx:
+                headers[i] = headers[i]+' #UI#'
         # detect the rows that are no tfull of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]

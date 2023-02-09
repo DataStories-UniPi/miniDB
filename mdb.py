@@ -102,8 +102,9 @@ def create_query_plan(query, keywords, action):
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
-        arg_nopk = args.replace('primary key', '')[1:-1]
-        arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
+
+        arg_nopk_nounique = args.replace('primary key', '').replace('unique', '')[1:-1]
+        arglist = [val.strip().split(' ') for val in arg_nopk_nounique.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
         if 'primary key' in args:
@@ -111,7 +112,21 @@ def create_query_plan(query, keywords, action):
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
+
+        if 'unique' in args:
+            unique_list = [i for i, x in enumerate(arglist) if x=='unique' or x=='unique,']
+            dic['unique'] = ','.join(arglist[i-2] for i in unique_list)
+        else:
+            dic['unique'] = None
     
+    if action=='create index':
+        args = dic['on'].split(' ', 1)
+        if len(args) == 2:
+            dic['on'] = args[0]
+            dic['column'] = args[1].strip().replace('(','').replace(')','').replace(' ','')
+        else:
+            dic['column'] = None
+
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
