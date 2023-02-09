@@ -308,6 +308,8 @@ class Btree:
 
         # find the index of the node that the element should exist in
         leaf_idx, ops = self._search(value, True)
+        print("lead idx: ",leaf_idx)
+        print("ops: ", ops)
         target_node = self.nodes[leaf_idx]
 
         if operator == '=':
