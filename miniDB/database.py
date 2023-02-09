@@ -357,6 +357,9 @@ class Database:
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
+        '''
+        Clears condition of extra operators for the following index check
+        '''
         if condition is not None:
             cnd, op = check_logops(condition)
             if op == 'not ':
@@ -679,6 +682,7 @@ class Database:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
     def _construct_index(self, table_name, index_name):
+
         '''
         Construct a btree on a table and save.
 
