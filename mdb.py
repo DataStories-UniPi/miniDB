@@ -2,7 +2,7 @@ import os
 import re
 from pprint import pprint
 import sys
-import readline
+# import pyreadline
 import traceback
 import shutil
 sys.path.append('miniDB')
@@ -40,7 +40,7 @@ def in_paren(qsplit, ind):
 
 def create_query_plan(query, keywords, action):
     '''
-    Given a query, the set of keywords that we expect to pe present and the overall action, return the query plan for this query.
+    Given a query, the set of keywords that we expect to be present and the overall action, return the query plan for this query.
 
     This can and will be used recursively
     '''
@@ -96,16 +96,25 @@ def create_query_plan(query, keywords, action):
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
-        arg_nopk = args.replace('primary key', '')[1:-1]
-        arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
+        arg_nopk_nounq = args.replace('primary key', '').replace('unique', '')[1:-1]  # need to remove primary key and unique to get col names and col types
+        arglist = [val.strip().split(' ') for val in arg_nopk_nounq.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+        unique_cols=[]
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]
+            unique_cols.append(dic['primary key'])                                  # add primary key to unique list
         else:
             dic['primary key'] = None
-    
+
+        # we find the unique columns and add them to a list
+        if 'unique' in args:
+            arglist = args[1:-1].split(' ')
+            for i in list(filter(lambda x: x[1].removesuffix(',') == 'unique', enumerate(arglist))):
+                unique_cols.append(arglist[i[0]-2])
+        dic['unique'] = unique_cols
+
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
