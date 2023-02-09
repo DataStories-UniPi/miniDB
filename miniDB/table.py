@@ -210,6 +210,7 @@ class Table:
         return indexes_to_del
     
     def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
+
         '''
         Select and return a table containing specified columns and rows where condition is met.
          
@@ -240,30 +241,37 @@ class Table:
             column_name, operator, value, column_name2, operator2, value2 = self._parse_condition(condition)
             column = self.column_by_name(column_name)
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
-
+            
         else:
             rows = [i for i in range(len(self.data))]
             column_name2=' '
- 
+
+
         if column_name2 != ' ':
             column2 = self.column_by_name(column_name2)
             rows2 = [ind for ind, x in enumerate(column2) if get_op(operator2, x, value2)]
             dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows2] if key=="data" else value2) for key,value2 in self.__dict__.items()}
 
             temp=dict['data']
-            print(temp)
+            temp2=dict['data']
+
 
             print("  ")
             dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
 
             for data in dict['data']:
-                print(data)
+                print(data[2])
 
             print(" ")
 
-            if (operator =='='):
+            if (operator == '='):
                 dict['data']=dict['data']+temp #PROSTHETO TA DATA TOU VALUE1 KAI VALUE2 MAZI
 
+            if ( column_name != column_name2): #EN GIA TO AND
+                 for i in range(len(temp)):
+                      if value.strip("'") == temp[i][1]:
+                            print(temp[i][1])
+                
             print(dict)
         else:
             #copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
@@ -299,20 +307,25 @@ class Table:
    
 
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
-
+        
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
         else:
             return_cols = [self.column_names.index(colname) for colname in return_columns]
-
-
-        column_name, operator, value = self._parse_condition(condition)
-
+        
+        column_name, operator, value, a, b, c = self._parse_condition(condition)
+        
         # if the column in condition is not a primary key, abort the select
-        if column_name != self.column_names[self.pk_idx]:
-            print('Column is not PK. Aborting')
-
+        '''
+        for i in range (10):
+            if column_name != self.column_names[self.pk_idx]:
+                for j in rows:
+        '''         
+                    
+                #print('Column is not PK. Aborting')
+                    
+                    
         # here we run the same select twice, sequentially and using the btree.
         # we then check the results match and compare performance (number of operation)
         column = self.column_by_name(column_name)
@@ -596,7 +609,7 @@ class Table:
             if left3 not in self.column_names:
                 raise ValueError(f'Condition is not valid (cant find column name)')
             coltype3 = self.column_types[self.column_names.index(left3)]
-
+    
             return left2, op2, coltype2(right2), left3, op3, coltype3(right3)
                 
 
