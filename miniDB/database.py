@@ -371,7 +371,9 @@ class Database:
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name): # to be fixed
             return
-        if len(conditions_columns) != 0:
+        if len(conditions_columns) == 0 or len(conditions_columns) > 1:
+            table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+        else:
             if self._has_index(table_name) and (conditions_columns[0]==self.tables[table_name].column_names[self.tables[table_name].pk_idx] or conditions_columns[0] in self.tables[table_name].unique[0]):
                 index_name = self.select('*', 'meta_indexes', f'table_name={table_name} and column_name={conditions_columns[0]}', return_object=True).column_by_name('index_name')
                 if index_name is not None:
@@ -381,8 +383,6 @@ class Database:
                     table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
             else:
                 table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
-        else:
-            table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as
