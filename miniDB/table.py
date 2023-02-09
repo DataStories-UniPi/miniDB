@@ -150,6 +150,53 @@ class Table:
 
                 Operatores supported: (<,<=,=,>=,>)
         '''
+
+        set_column_idx = self.column_names.index(set_column)
+        oppose = False
+        condition, op = check_logops(condition)
+        if op == 'between ':
+            condition = condition[0] + '>= ' + condition[1][0] + 'and ' + condition[0] + '<= ' + condition[1][1]
+            condition, op = check_logops(condition)
+        if op == 'not ':
+            oppose = True
+            condition, op = check_logops(condition)
+            op = oppose_op(op)
+
+        '''
+        Implementing 'none', 'and' and 'or' ops
+        '''
+        if op == 'none':
+            column_name, operator, value = self._parse_condition(condition)
+            if oppose:
+                operator = oppose_op(operator)
+            column = self.column_by_name(column_name)
+
+            for row_ind, x in enumerate(column):
+                if get_op(operator, x, value):
+                    self.data[row_ind][set_column_idx] = set_value
+        elif op == ' and':
+            column_name, operator, value = self._parse_condition(condition[0])
+            column_name2, operator2, value2 = self._parse_condition(condition[1])
+            if oppose:
+                operator = oppose_op(operator)
+                operator2 = oppose_op(operator2)
+            column = self.column_by_name(column_name)
+            column2 = self.column_by_name(column_name2)
+            for row_ind, (x, x2) in enumerate(zip(column, column2)):
+                if get_op(operator, x, value) and get_op(operator2, x2, value2):
+                    self.data[row_ind][set_column_idx] = set_value
+        elif op == ' or':
+            column_name, operator, value = self._parse_condition(condition[0])
+            column_name2, operator2, value2 = self._parse_condition(condition[1])
+            if oppose:
+                operator = oppose_op(operator)
+                operator2 = oppose_op(operator2)
+            column = self.column_by_name(column_name)
+            column2 = self.column_by_name(column_name2)
+            for row_ind, (x, x2) in enumerate(zip(column, column2)):
+                if get_op(operator, x, value) or get_op(operator2, x2, value2):
+                    self.data[row_ind][set_column_idx] = set_value
+
         # parse the condition
         #column_name, operator, value = self._parse_condition(condition)
 
