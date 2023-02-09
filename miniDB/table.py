@@ -149,6 +149,10 @@ class Table:
                 'value[<,<=,=,>=,>]column'.
 
                 Operatores supported: (<,<=,=,>=,>)
+
+        Added support for "and", "or", "not", "between"
+        Correct syntax: select "columns" from "table_name" where "not" condition1 "and" "or" condition2 /
+        select "columns" from "table_name" where "not" "between" condition1 and condition2
         '''
 
         set_column_idx = self.column_names.index(set_column)
@@ -229,6 +233,10 @@ class Table:
                 'value[<,<=,==,>=,>]column'.
                 
                 Operatores supported: (<,<=,==,>=,>)
+
+        Added support for "and", "or", "not", "between"
+        Correct syntax: select "columns" from "table_name" where "not" condition1 "and" "or" condition2 /
+        select "columns" from "table_name" where "not" "between" condition1 and condition2
         '''
 
         indexes_to_del = []
