@@ -117,7 +117,6 @@ def not_op(op):
 
 
 def split_not_condition(condition): # not salary > 50000 
-    #condition = condition[4:]       # salary > 50000
     splt = condition.split(' ')
     #print(splt)
     op_key = not_op(splt[2])  

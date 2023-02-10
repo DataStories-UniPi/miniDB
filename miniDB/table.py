@@ -928,7 +928,6 @@ class Table:
             dict['column_types']   = [self.column_types[i] for i in return_cols]
 
             s_table = Table(load=dict)
-
             s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
 
             if order_by:
@@ -945,7 +944,6 @@ class Table:
     def _select_where_and_or(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
         
         # if * return all columns, else find the column indexes for the columns specified
-        
         '''
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
