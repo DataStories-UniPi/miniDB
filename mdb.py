@@ -121,6 +121,18 @@ def create_query_plan(query, keywords, action):
         else:
             dic['force'] = False
 
+    if action=='delete from':
+        if dic['where'] is not None:
+            dic = evaluate_where_clause(dic)
+        else:
+            dic['where'] = None
+
+    if action=='update':
+        if dic['where'] is not None:
+            dic = evaluate_where_clause(dic)
+        else:
+            dic['where'] = None
+
     return dic
 
 def evaluate_from_clause(dic):
@@ -310,7 +322,7 @@ def interpret(query):
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
-                     'update table': ['update table', 'set', 'where'],
+                     'update': ['update', 'set', 'where'],
                      'create index': ['create index', 'on', 'using'],
                      'drop index': ['drop index'],
                      'create view' : ['create view', 'as']
