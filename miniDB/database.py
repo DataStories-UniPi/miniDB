@@ -11,6 +11,7 @@ sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/
 from miniDB import table
 sys.modules['table'] = table
 
+from extendiblehash import ExtendibleHashIndex
 from joins import Inlj, Smj
 from btree import Btree
 from misc import split_condition
@@ -376,9 +377,12 @@ class Database:
         else:
             if self._has_index(table_name) and '!=' not in condition_list[0] and (conditions_columns[0]==self.tables[table_name].column_names[self.tables[table_name].pk_idx] or conditions_columns[0] in self.tables[table_name].unique[0]):
                 index_name = self.select('*', 'meta_indexes', f'table_name={table_name} and column_name={conditions_columns[0]}', return_object=True).column_by_name('index_name')
+                #if index_name is not None:
+                #    bt = self._load_idx(index_name[0])
+                #    table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
                 if index_name is not None:
-                    bt = self._load_idx(index_name[0])
-                    table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+                    ht = self._load_idx(index_name[0])
+                    table = self.tables[table_name]._select_where_with_hash(columns, ht, condition, distinct, order_by, desc, limit)                    
                 else:
                     table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
             else:
@@ -683,18 +687,25 @@ class Database:
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
                 self.tables['meta_indexes']._insert([table_name, index_name, column])
                 # crate the actual index
-                self._construct_index(table_name, index_name, column)
+                self._construct_btree_index(table_name, index_name, column)
+                self.save_database()
+
+            if index_type == 'hash':
+                logging.info('Creating Hash index.')
+                self.tables['meta_indexes']._insert([table_name, index_name, column])
+                self._construct_hash_index(table_name, index_name, column)
                 self.save_database()
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
-    def _construct_index(self, table_name, index_name, column_name=None):
+    def _construct_btree_index(self, table_name, index_name, column_name=None):
         '''
         Construct a btree on a table and save.
 
         Args:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
+            column_name: string. Name of the column on which the index will be created.
         '''
         bt = Btree(3) # 3 is arbitrary
 
@@ -709,6 +720,31 @@ class Database:
                 bt.insert(key, idx)
         # save the btree
         self._save_index(index_name, bt, column_name)
+
+    def _construct_hash_index(self, table_name, index_name, column_name=None):
+        '''
+        Construct a extendible hash on a table and save.
+
+        Args:
+            table_name: string. Table name (must be part of database).
+            index_name: string. Name of the created index.
+            column_name: string. Name of the column on which the index will be created.
+        '''
+        ht = ExtendibleHashIndex(3)
+
+        if column_name is None:
+            column_name = self.tables[table_name].pk
+
+        if column_name == self.tables[table_name].pk or column_name in self.tables[table_name].unique:
+            # for each record in the primary key of the table, insert its value and index to the btree
+            for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
+                if key is None:
+                    continue
+                record = (key, idx)
+                ht.insert(record)
+        # save the extendible hash
+        self._save_index(index_name, ht, column_name)
+
 
 
     def _has_index(self, table_name):
