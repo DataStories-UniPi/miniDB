@@ -148,19 +148,18 @@ class Table:
                 
                 Operatores supported: (<,<=,=,>=,>)
         '''
-        # parse the condition
-        column_name, operator, value = self._parse_condition(condition)
 
-        # get the condition and the set column
-        column = self.column_by_name(column_name)
+        # get the set column index
         set_column_idx = self.column_names.index(set_column)
 
         # set_columns_indx = [self.column_names.index(set_column_name) for set_column_name in set_column_names]
-
-        # for each value in column, if condition, replace it with set_value
-        for row_ind, column_value in enumerate(column):
-            if get_op(operator, column_value, value):
-                self.data[row_ind][set_column_idx] = set_value
+        if condition is not None:
+            indexes_to_upd = self.find_rows_by_condition(condition) # get the indexes of the rows to be updated
+        else: # if condition is None, update all rows
+            indexes_to_upd = [i for i in range(len(self.data))] # get all indexes
+            
+        for idx in indexes_to_upd:
+            self.data[idx][set_column_idx] = set_value
 
         # self._update()
                 # print(f"Updated {len(indexes_to_del)} rows")
@@ -179,17 +178,13 @@ class Table:
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
-        column_name, operator, value = self._parse_condition(condition)
-
-        indexes_to_del = []
-
-        column = self.column_by_name(column_name)
-        for index, row_value in enumerate(column):
-            if get_op(operator, row_value, value):
-                indexes_to_del.append(index)
-
+        if condition is not None:
+            indexes_to_del = self.find_rows_by_condition(condition) # get the indexes of the rows to be deleted
+        else: # if condition is None, delete all rows
+            indexes_to_del = [i for i in range(len(self.data))] # get all indexes
+                
         # we pop from highest to lowest index in order to avoid removing the wrong item
-        # since we dont delete, we dont have to to pop in that order, but since delete is used
+        # since we dont delete, we dont have to pop in that order, but since delete is used
         # to delete from meta tables too, we still implement it.
 
         for index in sorted(indexes_to_del, reverse=True):
@@ -228,35 +223,8 @@ class Table:
 
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
-        if condition is not None:
-            def traverse_dic(clause):
-                if isinstance(clause, str):
-                    column_name, operator, value = self._parse_condition(clause)
-                    column = self.column_by_name(column_name)
-                    rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
-                    return rows
-                elif 'and' in clause:
-                    left = traverse_dic(clause['and']['left'])
-                    right = traverse_dic(clause['and']['right'])
-                    intersection = set(left).intersection(set(right)) # get the intersection of left and right
-                    return list(intersection)
-                elif 'or' in clause:
-                    left = traverse_dic(clause['or']['left'])
-                    right = traverse_dic(clause['or']['right'])
-                    union = set(left).union(set(right)) # get the union of left and right
-                    return list(union)
-                elif 'not' in clause:
-                    all_rows = [i for i in range(len(self.data))] # get all rows
-                    result = traverse_dic(clause['not'])
-                    not_result = set(all_rows) - set(result) # get the difference of all rows and result
-                    return list(not_result)
-                elif 'between' in clause:
-                    column_name = clause['column']
-                    clause['between']['and']['left'] = f"{column_name}>={clause['between']['and']['left']}" # build the condition for left side of between
-                    clause['between']['and']['right'] = f"{column_name}<={clause['between']['and']['right']}" # build the condition for right side of between
-                    return traverse_dic(clause['between'])
-                
-            rows = traverse_dic(condition)
+        if condition is not None:               
+            rows = self.find_rows_by_condition(condition) # get the rows where condition is met
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -593,3 +561,33 @@ class Table:
         f.close()
 
         self.__dict__.update(tmp_dict.__dict__)
+
+    def find_rows_by_condition(self, condition):
+        '''
+        Traverse the dictionary and return the rows that satisfy the condition.
+        '''
+        if isinstance(condition, str):
+            column_name, operator, value = self._parse_condition(condition)
+            column = self.column_by_name(column_name)
+            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            return rows
+        elif 'and' in condition:
+            left = self.find_rows_by_condition(condition['and']['left'])
+            right = self.find_rows_by_condition(condition['and']['right'])
+            intersection = set(left).intersection(set(right)) # get the intersection of left and right
+            return list(intersection)
+        elif 'or' in condition:
+            left = self.find_rows_by_condition(condition['or']['left'])
+            right = self.find_rows_by_condition(condition['or']['right'])
+            union = set(left).union(set(right)) # get the union of left and right
+            return list(union)
+        elif 'not' in condition:
+            all_rows = [i for i in range(len(self.data))] # get all rows
+            result = self.find_rows_by_condition(condition['not'])
+            not_result = set(all_rows) - set(result) # get the difference of all rows and result
+            return list(not_result)
+        elif 'between' in condition:
+            column_name = condition['column']
+            condition['between']['and']['left'] = f"{column_name}>={condition['between']['and']['left']}" # build the condition for left side of between
+            condition['between']['and']['right'] = f"{column_name}<={condition['between']['and']['right']}" # build the condition for right side of between
+            return self.find_rows_by_condition(condition['between'])
