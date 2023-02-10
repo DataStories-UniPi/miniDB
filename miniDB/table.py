@@ -594,14 +594,14 @@ class Table:
             output += f"\n## {self._name} ##\n"
 
         # headers -> "column name (column type)"
-        headers = [f'{col} ({tp.__name__})' for col, tp in zip(self.column_names, self.column_types)]
-        if self.pk_idx is not None:
-            # table has a primary key, add PK next to the appropriate column
-            headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
-        if self.unique_idx is not None:
-            # table has a unique index, add UI next to the appropriate column
-            for i in self.unique_idx:
-                headers[i] = headers[i]+' #UI#'
+        headers = []
+        for col, tp in zip(self.column_names, self.column_types):
+            if self.pk == col:
+                headers.append(f'{col} ({tp.__name__}) #PK#')
+            elif self.unique is not None and col in self.unique:
+                headers.append(f'{col} ({tp.__name__}) #UQ#')
+            else:
+                headers.append(f'{col} ({tp.__name__})')
         # detect the rows that are no tfull of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]
