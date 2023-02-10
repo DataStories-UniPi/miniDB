@@ -612,11 +612,16 @@ class Table:
     def get_rows_for_and(self, conditions_list_of_and):
         '''
         Get the rows that satisfy "and" conditions in the list of conditions and then return them.
+
+        Args:
+            conditions_columns_of_and: list of strings.
+            splitted_conditions_list_of_and: list of strings.
+            rows_for_and. set of integers.
         '''
-        conditions_columns_of_and = []
+        conditions_columns_of_and = [] 
         splitted_conditions_list_of_and = []
         rows_for_and = set(range(len(self.data)))
-
+        
         for sub_conditions in conditions_list_of_and:
             conditions_columns_of_and.append(split_condition(sub_conditions)[0])
             splitted_conditions_list_of_and.append(self._parse_condition(sub_conditions))
@@ -630,6 +635,11 @@ class Table:
     def _parse_multiple_conditions(self, conditions):
         '''
         Get the rows that satisfy "where" statement for "or" and "and" operators.
+
+        Args:
+            conditions_list_of_or: list of strings.
+            rows_for_or: set of integers.
+            sub_conditions_rows_list. list of sets of integers.
         '''
         conditions_temp = conditions
 
@@ -637,7 +647,7 @@ class Table:
             conditions_list_of_or = conditions_temp.split(' or ')
             rows_for_or = set(range(0))
             sub_conditions_rows_list = []
-
+            
             for sub_conditions in conditions_list_of_or:
                 sub_conditions_rows_list.append(self.get_rows_for_and(sub_conditions.split(' and ')))
 

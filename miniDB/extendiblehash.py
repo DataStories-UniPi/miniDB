@@ -1,24 +1,42 @@
 class Bucket:
+    '''
+    Bucket abstraction. Represents a bucket in the extendible hash index.
+    '''
     def __init__(self, max_bucket_size):
-        self.data = []
-        self.max_bucket_size = max_bucket_size
+        self.record = [] #the column with the index
+        self.max_bucket_size = max_bucket_size #bucket size
 
-    def insert(self, data):
-        self.data.append(data)
-        if len(self.data) > self.max_bucket_size:
+    def insert(self, record):
+        '''
+        Insert a record into the bucket.
+        '''
+        self.record.append(record) #insert the record
+        if len(self.record) > self.max_bucket_size: #check if the bucket is full, if it is return true
             return True
         return False
 
-    def delete(self, data):
-        self.data.remove(data)
+    def delete(self, record):
+        '''
+        Delete a record from the bucket.
+        '''
+        self.record.remove(record) #delete the record
 
-# Define a hash function for the data
+# Define a hash function for the record
 def hash_function(key, max_bucket_size):
+    '''
+    Returns the hash value of the record.
+    '''
     return jenkinsHash(key) % max_bucket_size
 
 # Jenkins hash function
 def jenkinsHash(key):
-    data = bytearray(key.encode())
+    '''
+    Hash function for the key.
+    '''
+    if type(key) == int:
+        data = bytearray(str(key).encode())
+    else:
+        data = bytearray(key.encode())
     length = len(data)
     hash = 0
     for i in range(length):
@@ -35,41 +53,54 @@ class ExtendibleHashIndex:
         self.buckets = {}
         self.max_bucket_size = max_bucket_size
 
-    def insert(self, data):
-        key, idx = data
+    def insert(self, record):
+        '''
+        Insert a record into the hash index.
+        Create a new bucket if the hash value is not in the index.
+        '''
+        key, idx = record
         hash_value = hash_function(key, self.max_bucket_size)
         if hash_value not in self.buckets:
             self.buckets[hash_value] = Bucket(self.max_bucket_size) # Create a new bucket
-        if self.buckets[hash_value].insert(data):
+        if self.buckets[hash_value].insert(record):
             self.split_bucket(hash_value)
 
-    def delete(self, data):
-        key, idx = data
+    def delete(self, record):
+        '''
+        Delete a record from the hash index.
+        '''
+        key, idx = record
         hash_value = hash_function(key, self.max_bucket_size)
         if hash_value in self.buckets:
-            self.buckets[hash_value].delete(data)
+            self.buckets[hash_value].delete(record)
 
     def split_bucket(self, hash_value):
+        '''
+        Split a bucket into two buckets and add the values to the new buckets.
+        '''
         original_bucket = self.buckets[hash_value]
         new_bucket_1 = Bucket(self.max_bucket_size)
         new_bucket_2 = Bucket(self.max_bucket_size)
 
-        for data in original_bucket.data:
-            key, idx = data
+        for record in original_bucket.record:
+            key, idx = record
             new_hash_value = hash_function(key, self.max_bucket_size * 2)
             if new_hash_value & 1:
-                new_bucket_1.insert(data)
+                new_bucket_1.insert(record)
             else:
-                new_bucket_2.insert(data)
+                new_bucket_2.insert(record)
 
         self.buckets[hash_value] = new_bucket_1
         self.buckets[hash_value + self.max_bucket_size] = new_bucket_2
 
     def find(self, key):
+        '''
+        Find a record in the hash index.
+        '''
         hash_value = hash_function(key, self.max_bucket_size)
         if hash_value in self.buckets:
             bucket = self.buckets[hash_value]
-            for data in bucket.data:
-                if data[0] == key:
-                    return data[1]
+            for record in bucket.record:
+                if record[0] == key:
+                    return record[1]
         return None
