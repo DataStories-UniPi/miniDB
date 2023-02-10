@@ -20,7 +20,7 @@ class Hash:
             self.dict[i] = b
     #Show the constructed index
     def show(self):
-        print("[", self.global_depth, "]")
+        print("[", self.global_depth,"]")
         for i in range(pow(2, self.global_depth)):
             print("|| ", i, " || -> ", self.dict[i])
 
@@ -40,7 +40,7 @@ class Hash:
                 for i in range(pow(2, self.global_depth - 1), pow(2, self.global_depth)):  # double directory
                     self.dict[i] = self.dict[i - pow(2, self.global_depth - 1)]
 
-                nh = h + pow(2,self.global_depth - 1)# the cell that created the conflict points to a new bucket ( to nb )
+                nh = h + pow(2,self.global_depth-1)# the cell that created the conflict points to a new bucket ( to nb )
                 nb = Bucket(self.global_depth)
                 self.buckets.append(nb)
                 self.dict[nh] = nb
@@ -52,7 +52,6 @@ class Hash:
                 for val in b_data:
                     hash_ = hash_func(val["value"], pow(2, self.global_depth))
                     self.dict[hash_].data.append(val)
-
                 if len(b.data) >= self.bucket_max_size or len(nb.data) >= self.bucket_max_size:
                     try:
                         b.data.remove({"value": value, "ptr": ptr})
@@ -91,7 +90,7 @@ class Hash:
 
                     return self.insert(value, ptr)
         else:
-            raise ("critical error: more data in bucket than accepted")
+            raise("critical error: more data in bucket than accepted")
 
     def find(self, value):
         h = hash_func(value, pow(2, self.global_depth))  # to cell tou dictionary
@@ -115,7 +114,7 @@ class Bucket:
 def hash_func(value, m):
     hash_object = hashlib.sha1(bytes(str(value), encoding='utf-8'))
     hex_dig = hash_object.hexdigest()
-    res = int(hex_dig, 32)
+    res = int(hex_dig,32)
     return res % m
 
 

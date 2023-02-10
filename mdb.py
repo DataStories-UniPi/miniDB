@@ -51,7 +51,7 @@ def create_query_plan(query, keywords, action):
     kw_in_query = []
     kw_positions = []
     i=0
-    while i < len(ql):
+    while i<len(ql):
         if in_paren(ql, i): 
             i+=1
             continue
@@ -105,9 +105,6 @@ def create_query_plan(query, keywords, action):
         else:
             dic['primary key'] = None
 
-        #----------------------------------------------------------------------
-        #new test
-        #case for unique keys
         if 'unique' in args:
             arglist = args[1:-1].split(' ')
             try:
@@ -303,7 +300,7 @@ if __name__ == "__main__":
             else:
                 dic = interpret(line)
                 result = execute_dic(dic)
-                if isinstance(result, Table):
+                if isinstance(result,Table):
                     result.show()
         except Exception:
             print(traceback.format_exc())

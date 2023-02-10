@@ -287,7 +287,6 @@ class Table:
 
 
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
-
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
@@ -351,7 +350,7 @@ class Table:
         column_name, operator, value = self._parse_condition(condition)
 
         # if the column in condition is not a primary key, abort the select
-        if column_name != self.column_names[self.pk_idx] and (self.un_idx != None and column_name != self.column_names[self.un_idx]):
+        if column_name != self.column_names[self.pk_idx] and (self.un_idx!=None and column_name != self.column_names[self.un_idx]):
             print('Column is not PK. or unique Aborting')
 
         # we then check the results match and compare performance (number of operation)
@@ -375,11 +374,10 @@ class Table:
         # same as simple select from now on
         rows = rows[:k]
         # TODO: this needs to be dumbed down
-        dict = {(key): ([[self.data[i][j] for j in return_cols] for i in rows] if key == "data" else value) for
-                key, value in self.__dict__.items()}
+        dict = {(key): ([[self.data[i][j] for j in return_cols] for i in rows] if key == "data" else value) for key, value in self.__dict__.items()}
 
-        dict['column_names'] = [self.column_names[i] for i in return_cols]
-        dict['column_types'] = [self.column_types[i] for i in return_cols]
+        dict['column_names']=[self.column_names[i] for i in return_cols]
+        dict['column_types']=[self.column_types[i] for i in return_cols]
 
         s_table = Table(load=dict)
 

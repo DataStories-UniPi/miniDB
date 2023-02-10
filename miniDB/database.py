@@ -30,7 +30,7 @@ class Database:
         self._name = name
         self.verbose = verbose
         #-----------------------
-        self.indexing_global = 'hash_indexing'  # btree or hash_indexing new
+        self.indexing_global = 'btree'  # btree or hash_indexing new
 
         self.savedir = f'dbdata/{name}_db'
 
@@ -104,7 +104,7 @@ class Database:
         self._update_meta_insert_stack()
 
     #unique key is added to the create table function parameters.
-    def create_table(self, name, column_names, column_types, primary_key=None, unique_key=None, load=None):
+    def create_table(self, name, column_names, column_types, primary_key=None,unique_key=None, load=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
 
@@ -128,10 +128,10 @@ class Database:
         #----------------------------------------------
         #indexes(hash or btree)
         if primary_key != None:
-            self.create_index(name + "__" + primary_key + "___pk", name, self.indexing_global)
+            self.create_index(name +"__"+ primary_key +"___pk", name, self.indexing_global)
 
         if unique_key != None:
-            self.create_index(name + "__" + unique_key + "___unique", name, self.indexing_global)
+            self.create_index(name +"__" +unique_key + "___unique", name, self.indexing_global)
         #-----------------------------------------------
         if self.verbose:
             print(f'Created table "{name}".')
@@ -383,7 +383,7 @@ class Database:
         #Check if the condition column is supported by btree or hash index use this index to search
         #If not linear search
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
-            index_names = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
+            index_names = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')
 
             #Btree primary key
             for name in index_names:
@@ -406,7 +406,7 @@ class Database:
                     print("[+] Search linear  -> ", table_name)
                     table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
 
-        elif self._has_index(table_name) and self.tables[table_name].un_idx is not None and condition_column == self.tables[table_name].column_names[self.tables[table_name].un_idx]:
+        elif self._has_index(table_name) and self.tables[table_name].un_idx is not None and condition_column==self.tables[table_name].column_names[self.tables[table_name].un_idx]:
             index_names = self.select('*', 'meta_indexes', f'table_name={table_name}',return_object=True).column_by_name('index_name')
 
             for name in index_names:
@@ -449,15 +449,14 @@ class Database:
 
 
     def show_table(self, table_name, no_of_rows=None):
-            '''
-            Print table in a readable tabular design (using tabulate).
+        '''
+        Print table in a readable tabular design (using tabulate).
 
-            Args:
-                table_name: string. Name of table (must be part of database).
-            '''
-            self.load_database()
-
-            self.tables[table_name].show(no_of_rows, self.is_locked(table_name))
+        Args:
+            table_name: string. Name of table (must be part of database).
+        '''
+        self.load_database()
+        self.tables[table_name].show(no_of_rows, self.is_locked(table_name))
 
 
     def sort(self, table_name, column_name, asc=False):
@@ -729,8 +728,8 @@ class Database:
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
             # currently only btree is supported. This can be changed by adding another if.
 
-            if index_type=='btree' or index_type=='hash_indexing': #added hash index case
-                logging.info('Creating Btree index or hash index.')
+            if index_type=='btree' or index_type=='hash_indexing':
+                logging.info('Creating Btree or hash index.')
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
                 self.tables['meta_indexes']._insert([table_name, index_name])
                 # create the actual index
@@ -756,7 +755,6 @@ class Database:
                     if key is None:
                         continue
                     bt.insert(key, idx)
-
             elif index_name.endswith("___unique"):
                 for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].unique)):
                     if key is None:
@@ -771,7 +769,6 @@ class Database:
                     if key is None:
                         continue
                     h.insert(key, idx)
-
             elif index_name.endswith("___unique"):
                 for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].unique)):
                     if key is None:
