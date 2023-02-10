@@ -64,7 +64,7 @@ def create_query_plan(query, keywords, action):
             ql[i] = ql[i]+' '+ql[i+1]
             ql.pop(i+1)
             kw_positions.append(i)
-        i+=1
+        i += 1
         
 
 
@@ -95,7 +95,7 @@ def create_query_plan(query, keywords, action):
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
-        arg_nopk = args.replace('primary key', '')[1:-1]
+        arg_nopk = args.replace('primary key', '').replace('unique', '')[1:-1]
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
@@ -115,7 +115,7 @@ def create_query_plan(query, keywords, action):
                 dic['unique key'] = arglist[arglist.index('unique') - 2]
         else:
             dic['unique key'] = None
-       #------------------------------------------------------------------------
+       #-------------------------------------------------------------------------
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
@@ -302,7 +302,7 @@ if __name__ == "__main__":
             else:
                 dic = interpret(line)
                 result = execute_dic(dic)
-                if isinstance(result,Table):
+                if isinstance(result, Table):
                     result.show()
         except Exception:
             print(traceback.format_exc())
