@@ -277,7 +277,7 @@ class Database:
         self._update()
         self.save_database()
 
-    def update_table(self, table_name, set_args, condition):
+    def update(self, table_name, set_args, condition):
         '''
         Update the value of a column where a condition is met.
 
