@@ -95,11 +95,11 @@ class Table:
                 self.unique_cols_idx = []
             
             self.pk = primary_key
-            print("pk is: ",self.pk)
-            print("pk index: ",self.pk_idx)
+            #print("pk is: ",self.pk)
+            #print("pk index: ",self.pk_idx)
             self.unique = unique
-            print("unique cols are: ",self.unique)
-            print("unique cols indexes are: ",self.unique_cols_idx)
+            #print("unique cols are: ",self.unique)
+            #print("unique cols indexes are: ",self.unique_cols_idx)
             # self._update()
 
     # if any of the name, columns_names and column types are none. return an empty table object
@@ -447,17 +447,18 @@ class Table:
         else:
             return_cols = [self.column_names.index(colname) for colname in return_columns]
 
-
+        
+        
         column_name, operator, value = self._parse_condition(condition)
+        #print("self first",self.data)
+        self.order_by(column_name, desc=True)
+        print("self first1",self.data)
+        #self.order_by(column_name, desc=True)
+        #print("\nself after",self.data)
         print("column name is: ",column_name)
         print("operator is: ",operator)
         print("value is: ",value)
-        #table_name = condition.split(' where')[0]
-
-        #print(self.column_names[0])
-        #print(self.unique_cols_idx)
-        #print(self.column_names[i] for i in self.unique_cols_idx)
-
+        
         flag = False
         for i in self.unique_cols_idx:
             if column_name == self.column_names[i]:
@@ -521,124 +522,6 @@ class Table:
 
         return s_table
     
-
-    #-------------------------------------------------------------------------------------
-    
-    def _select_where_or_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
-        
-        print("Select where OR with btree here!")
-
-        # if * return all columns, else find the column indexes for the columns specified
-        if return_columns == '*':
-            return_cols = [i for i in range(len(self.column_names))]
-        else:
-            #return_cols = [self.column_names.index(colname) for colname in return_columns.split(',')]
-            #else:
-            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
-       
-        operator = ' or ' # e.g salary = 20000 or salary > 60000
-        splt = condition.split(operator) # salary = 20000, salary > 6000
-        print("split is: ",splt)
-        if (len(splt)!=0):   # if there are any conditions on the left and on the right side of or operator
-            rows1 = []
-            rows = []
-            for s in splt:
-                #print(s)
-                column_name, operator, value = self._parse_condition(s)
-                print(column_name)
-                # column_name, operator, value = self._parse_condition(condition)
-                # here we run the same select twice, sequentially and using the btree.
-                # we then check the results match and compare performance (number of operation)
-                column = self.column_by_name(column_name)
-                # sequential
-                
-                opsseq = 0
-                for ind, x in enumerate(column):
-                    opsseq+=1
-                    if get_op(operator, x, value):
-                        rows1.append(ind)
-
-                print(operator)
-                # btree find
-                # btree find
-                print(bt.show())
-                rows.append(bt.find(operator, value))
-                flatten_list = [j for sub in rows for j in sub]
-    
-        print("rows1 are: ", rows1)  # table rows
-        print("rows are: ", flatten_list) # btree indexes
-        
-        try:
-            k = int(limit)
-        except TypeError:
-            k = None
-            
-        # same as select OR  from now on
-        rows = flatten_list[:k]
-        # TODO: this needs to be dumbed down
-        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
-
-        dict['column_names'] = [self.column_names[i] for i in return_cols]
-        dict['column_types']   = [self.column_types[i] for i in return_cols]
-
-        s_table = Table(load=dict)
-
-        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
-
-        if order_by:
-            s_table.order_by(order_by, desc)
-
-        if isinstance(limit,str):
-            s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
-
-        return s_table
-       
-        
-    def _select_where_and_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
-        
-        print("select where AND with btree here!")
-
-        # if * return all columns, else find the column indexes for the columns specified
-        if return_columns == '*':
-            return_cols = [i for i in range(len(self.column_names))]
-        else:
-            #return_cols = [self.column_names.index(colname) for colname in return_columns.split(',')]
-            #else:
-            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
-
-        
-        operator = ' and ' 
-        splt = condition.split(operator) 
-        if (len(splt)!=0):   # if there are any conditions on the left and on the right side of or operator
-            
-            column_name, operator, value = self._parse_condition(splt[0])
-            column = self.column_by_name(column_name)
-
-            rows = bt.find(operator, value)
-        
-            print(bt.show())
-            print(rows)
-        
-            #print("rows are: ", rows)
-            '''
-            rows1 = []
-            rows = []
-            for s in splt[1:]:
-                column_name, operator, value = self._parse_condition(s)
-                column = self.column_by_name(column_name)
-                
-                #opsseq = 0
-              
-
-
-                # btree find
-                rows.append(bt.find(operator, value))
-                flatten_list = [j for sub in rows for j in sub]
-            '''
-        #print("rows1 are: ", rows1)  # table rows
-        #print("rows are: ", flatten_list) # btree indexes
-
-
     def order_by(self, column_name, desc=True):
         '''
         Order table based on column.
@@ -854,9 +737,26 @@ class Table:
 
         # headers -> "column name (column type)"
         headers = [f'{col} ({tp.__name__})' for col, tp in zip(self.column_names, self.column_types)]
-        if self.pk_idx is not None:
+        #print(headers)
+        for c in range(len(self.column_names)):
+            if self.column_names[c] == self.pk:
+                headers[c] = headers[c]+' #PK#'
+                break
+        #if self.pk_idx is not None and self.pk in self.column_names:
             # table has a primary key, add PK next to the appropriate column
-            headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
+            #headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
+
+        for c in range(len(self.column_names)):
+            if self.unique is not None and self.column_names[c] in self.unique:
+                headers[c] = headers[c]+' #UQ#'
+        '''
+        if self.unique_cols_idx is not None:
+            # table has been declared as unique, add UQ next to the appropriate column
+            for c in self.unique_cols_idx:
+                print(self.unique_cols_idx)
+                print(self.unique)
+                headers[c] = headers[c]+' #UQ#'
+        '''
         # detect the rows that are no tfull of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]
