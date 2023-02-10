@@ -1,3 +1,5 @@
+import mmh3
+
 class Bucket:
     '''
     Bucket abstraction. Represents a bucket in the extendible hash index.
@@ -26,27 +28,8 @@ def hash_function(key, max_bucket_size):
     '''
     Returns the hash value of the record.
     '''
-    return jenkinsHash(key) % max_bucket_size
-
-# Jenkins hash function
-def jenkinsHash(key):
-    '''
-    Hash function for the key.
-    '''
-    if type(key) == int:
-        data = bytearray(str(key).encode())
-    else:
-        data = bytearray(key.encode())
-    length = len(data)
-    hash = 0
-    for i in range(length):
-        hash += data[i]
-        hash += (hash << 10)
-        hash ^= (hash >> 6)
-    hash += (hash << 3)
-    hash ^= (hash >> 11)
-    hash += (hash << 15)
-    return hash & 0xffffffff
+    key = str(key).encode()
+    return mmh3.hash(key) % max_bucket_size
 
 class ExtendibleHashIndex:
     def __init__(self, max_bucket_size):
