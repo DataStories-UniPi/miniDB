@@ -184,40 +184,70 @@ def evaluate_from_clause(dic):
 # to be added in create_query_plan
 def evaluate_where_clause(dic):
     '''
-    Evaluate the part of the query (argument or subquery) that is supplied as the 'where' argument
+    Evaluate the part of the query that is supplied as the 'where' argument
     '''
     if dic['where'] is None:
         return dic
-    where_split = dic['where'].split(' ')
+    where_split = split_statement(dic['where'])
 
     not_idx = [i for i,word in enumerate(where_split) if word=='not' and not in_paren(where_split,i)]
     between_idx = [i for i,word in enumerate(where_split) if word=='between' and not in_paren(where_split,i)]
 
-    if not_idx: #if there is a not keyword
-        not_idx = not_idx[0] #get the not position
-        condition_left = ' '.join(where_split[not_idx+1:]) #get the right condition
-        condition_right = ' '.join(where_split[:not_idx]) #get the left condition
-        operators = {'>=': '<',
-                     '<=': '>',
-                     '!=': '=',
-                     '>': '<=',
-                     '<': '>=',
-                     '=': '!=',
-                     }
+    operators = {'>=': '<',
+                    '<=': '>',
+                    '!=': '=',
+                    '>': '<=',
+                    '<': '>=',
+                    '=': '!=',
+                    }
+
+    # for every not keyword, delete not and change the operator to the opposite one
+    while not_idx: 
+        not_idx = not_idx[0]
+        condition_right = ' '.join(where_split[not_idx+1:not_idx+4])
+        where_split_right = ' '.join(where_split[not_idx+4:])
+        where_split_left = ' '.join(where_split[:not_idx])
 
         for key, value in operators.items():
-            if key in condition_left:
-                condition = condition_right + ' ' + condition_left.replace(key, value)
+            if key in condition_right:
+                dic['where'] = where_split_left + ' ' + condition_right.replace(key, value) + ' ' + where_split_right
                 break
-        dic['where'] =  condition #store the not dictionary in the from key of the query dictionary
-    elif between_idx:
+        where_split = split_statement(dic['where'])
+        not_idx = [i for i,word in enumerate(where_split) if word=='not' and not in_paren(where_split,i)]
+    
+    while between_idx:
         between_idx = between_idx[0]
         column_name = where_split[between_idx-1]
         value1= where_split[between_idx+1]
         value2= where_split[between_idx+3]
-        condition = column_name + ">=" + value1 + " and " + column_name + "<=" + value2
-        dic['where'] = condition #store the not dictionary in the from key of the query dictionary 
+
+        where_split_right = ' '.join(where_split[between_idx+4:])
+        where_split_left = ' '.join(where_split[:between_idx-1])
+
+
+        dic['where'] = where_split_left + ' ' + column_name + " >= " + value1 + " and " + column_name + " <= " + value2 + ' ' + where_split_right
+
+        where_split = split_statement(dic['where'])
+        between_idx = [i for i,word in enumerate(where_split) if word=='between' and not in_paren(where_split,i)]
+
     return dic
+
+
+def split_statement(statement):
+    result = []
+    current = ""
+    in_quote = False
+    for char in statement:
+        if char == "\"":
+            in_quote = not in_quote
+            current += char
+        elif char == " " and not in_quote:
+            result.append(current)
+            current = ""
+        else:
+            current += char
+    result.append(current)
+    return result
 
 
 def interpret(query):
