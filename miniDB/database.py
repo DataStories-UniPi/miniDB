@@ -744,7 +744,7 @@ class Database:
             key=str(key)#converting to string
             for i in key:
                 #adding each character
-                sum+=ord(i)
+                s+=ord(i)
             h=s%clength #modulo
             if h not in map:
                 #if the hash key is not in the map then we make a new hash with the idx
