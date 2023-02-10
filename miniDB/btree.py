@@ -1,5 +1,5 @@
 '''
-https://en.wikipedia.org/wiki/B%2B_tree test1234
+https://en.wikipedia.org/wiki/B%2B_tree
 '''
 
 class Node:
