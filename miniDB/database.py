@@ -358,7 +358,6 @@ class Database:
             distinct: boolean. If True, the resulting table will contain only unique rows.
         '''
 
-        # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
@@ -370,124 +369,36 @@ class Database:
             
             operator = ' or ' 
             operator1 = ' and '
-            operator2 = ' not '
             operator3 = ' between '
-
 
             # case: complex AND and OR conditions
             if(operator in condition and operator1 in condition and operator3 not in condition):
+                
                 flag = 1
                 if self.is_locked(table_name):
                     return
                         
-                # has to be changed
-                #if self._has_index(table_name) and (item in self.tables['meta_indexes'].column_by_name('table_column') for item in columns_name_lst):
-                if self._has_index(table_name) and operator2 not in condition and 'not ' not in condition:
-
-                    columns_name_lst = []
-                    splt1 = condition.split(operator) # split or
-                    for cond in splt1:
-                        if (operator1 in cond):
-                            l = cond.split(operator1)
-                            for i in l:
-                                columns_name_lst.append(i.split(' ')[0])   
-                        else:
-                            columns_name_lst.append(cond.split(' ')[0])   
-                    print("Columns name list is: ",columns_name_lst)
-
-                    sum = 0
-                    for i in columns_name_lst:
-                        if i in self.tables['meta_indexes'].column_by_name('table_column'):
-                            sum+=1
-                    if sum == len(columns_name_lst):    
-                        print("All columns in meta indexes table.\nHandle complex AND and OR in btree.")
-                        
-                        #has to be changed
-                        index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
-                        bt = self._load_idx(index_name)
-
-                        #has to change!
-                        table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
-                else:
-                   print("No select with btree :(")
-                   table = self.tables[table_name]._select_where_and_or(columns, condition, distinct, order_by, desc, limit)
-                
-                # self.unlock_table(table_name)
-                if save_as is not None:
-                    table._name = save_as
-                    self.table_from_object(table)
-                else:
-                    if return_object:
-                        return table
-                    else:
-                        return table.show()
-                    
+                table = self.tables[table_name]._select_where_and_or(columns, condition, distinct, order_by, desc, limit)
+                            
             # OR or AND in condition
             elif (operator in condition or operator1 in condition and operator3 not in condition): 
                 
                 flag = 1 # found
-                if (operator in condition):
-                    splt = condition.split(operator)
-                else:
-                    splt = condition.split(operator1)
 
                 if self.is_locked(table_name):
                     return
-                
-                #has to be changed
-                if self._has_index(table_name) and 'not ' not in condition and operator2 not in condition:
-                    print("yes")
-                    lst = ([item.split(' ')[0] for item in splt ]) # condition_column list
-                    print("Condition columns: ",lst)
-
-                    sum = 0
-                    for i in lst:
-                        if i in self.tables['meta_indexes'].column_by_name('table_column'):
-                            sum+=1
-                    if sum == len(lst): # all condition_columns in meta_indexes
-                        print("Handle data with btree")
-                    
-                        index_name = self.select('*', 'meta_indexes', f'table_name={table_name} and table_column={lst[0]}', return_object=True).column_by_name('index_name')
-                        index_name = ('').join(index_name)
-                        bt = self._load_idx(index_name)
-                       
-                        if (operator in condition): # or in condition
-                            print("index_name is: ",index_name)
-                            table = self.tables[table_name]._select_where_or_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
-                        else: # and in condition
-                            table = self.tables[table_name]._select_where_and_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
-                else:
-                    print("No select where with btree.")
-                    if (operator in condition): # or in condition
-                        table = self.tables[table_name]._select_where_or(columns, condition, distinct, order_by, desc, limit)
-                    else: # and in condition
-                        table = self.tables[table_name]._select_where_and(columns, condition, distinct, order_by, desc, limit)
-
-                # self.unlock_table(table_name)
-                if save_as is not None:
-                    table._name = save_as
-                    self.table_from_object(table)
-                else:
-                    if return_object:
-                        return table
-                    else:
-                        return table.show()            
+            
+                if (operator in condition): # or in condition
+                    table = self.tables[table_name]._select_where_or(columns, condition, distinct, order_by, desc, limit)
+                else: # and in condition
+                    table = self.tables[table_name]._select_where_and(columns, condition, distinct, order_by, desc, limit)
+         
             else:     
-             
-             if(condition[:4] == 'not '): # NOT in condition
-                  condition_column = split_not_condition(condition)[0]
-                  '''
-                  print("Column is: " + condition_column)
-                  print("Operator is: " + split_not_condition(condition)[1])
-                  print("Value is: " + split_not_condition(condition)[2] + '\n')
-                  '''
-             else: #NOT not in condition
+                if(condition[:4] == 'not '): # NOT in condition
+                    condition_column = split_not_condition(condition)[0]
+                else: #NOT not in condition
                     condition_column = split_condition(condition)[0]
-                    '''
-                    print("Column is: " + condition_column)
-                    print("Operator is: " + split_condition(condition)[1])
-                    print("Value is: " + split_condition(condition)[2] + '\n')
-                    '''
+                
         else: # just a simple select * query
             condition_column = ''
 
@@ -495,33 +406,29 @@ class Database:
             # self.lock_table(table_name, mode='x')
             if self.is_locked(table_name):
                 return
-           # self.tables[table_name].pk_idx is not None or 
-            if (self._has_index(table_name) and ((condition_column == self.tables[table_name].column_names[self.tables[table_name].pk_idx])  or 
-                                                  condition_column in self.tables['meta_indexes'].column_by_name('table_column') and 
+           
+            if (self._has_index(table_name) and (condition_column in self.tables['meta_indexes'].column_by_name('table_column') and 
                                                   'not ' not in condition)): 
                  
-                #print(condition_column) 
-                #a=('').join(condition_column)
-                #index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
-                index_name = self.select('*', 'meta_indexes', f'table_name = {table_name} and table_column = {condition_column}', return_object=True).column_by_name('index_name')
-                #index_name = self.tables['meta_indexes']._select_where_and('*',f'table_name={table_name} and table_column={a}', distinct, order_by, desc, limit).column_by_name('index_name')
+                index_name = self.select('*', 'meta_indexes', f'table_name = {table_name} and table_column = {condition_column}', return_object=True).column_by_name('index_name')[0]
                 index_name = ('').join(index_name)
-                print("index_name is: ",index_name)
+                print("Index_name is: ",index_name)
                 bt = self._load_idx(index_name)
+                
                 table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
             else:
-                print("No select where with btree")
+                #print("No select where with btree")
                 table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
-            # self.unlock_table(table_name)
-
-            if save_as is not None:
-                table._name = save_as
-                self.table_from_object(table)
+            
+        # self.unlock_table(table_name)
+        if save_as is not None:
+            table._name = save_as
+            self.table_from_object(table)
+        else:
+            if return_object:
+                return table
             else:
-                if return_object:
-                    return table
-                else:
-                    return table.show()
+                return table.show()
 
 
     def show_table(self, table_name, no_of_rows=None):
@@ -808,18 +715,16 @@ class Database:
         '''
 
         if (column_name != None): # look 4 unique columns 
-            print("case: look 4 pk or 4 unique  column")
+            #print("case: look 4 pk or 4 unique  column")
             #print(self.tables[table_name].pk)
-            if (column_name != self.tables[table_name].pk):
-                print("case: search 4 unique column")
-                
-                if (column_name not in self.tables[table_name].unique):
-                    raise Exception('Cannot create index. The column you specified is not unique.')
-                
+            if (column_name != self.tables[table_name].pk and column_name not in self.tables[table_name].unique):
+                raise Exception('Cannot create index. The column you specified is not unique or table has no primary key.')
+            
             if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
             # currently only btree is supported. This can be changed by adding another if.
                 if index_type == 'btree': # case1 : index btree
                     logging.info('Creating Btree index.')
+                    print('Creating Btree index.')
                     # insert a record with the name of the index and the table on which it's created to the meta_indexes table
                     self.tables['meta_indexes']._insert([table_name, column_name , index_name])
                     # crate the actual index
