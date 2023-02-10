@@ -381,7 +381,10 @@ class Database:
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+            try:
+                table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+            except:
+                table = self.tables[table_name]._select_where_with_hash(columns, bt, condition, distinct, order_by, desc, limit)
         else:
             table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
         # self.unlock_table(table_name)
@@ -662,7 +665,7 @@ class Database:
 
 
     # indexes
-    def create_index(self, index_name, table_name, column_name, index_type='btree'):
+    def create_index(self, index_name, table_name, column_name, index_type):
         '''
         Creates an index on a specified table with a given name.
         Important: An index can only be created on a primary key (the user does not specify the column).
@@ -693,6 +696,11 @@ class Database:
                 # crate the actual index
                 self._construct_index(table_name, index_name, column_name)
                 self.save_database()
+            elif index_type=='hash':
+                logging.info('Creating Hash index.')
+                self.tables['meta_indexes']._insert([table_name, index_name, column_name])
+                self._construct_hash_index(table_name,index_name,column_name)
+                self.save_database()
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
@@ -703,6 +711,7 @@ class Database:
         Args:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
+            column_name: string. Name of the column being indexed.
         '''
         bt = Btree(3) # 3 is arbitrary
 
@@ -713,6 +722,19 @@ class Database:
             bt.insert(key, idx)
         # save the btree
         self._save_index(index_name, bt)
+
+
+    def _construct_hash_index(self, table_name, index_name, column_name):
+        '''
+        Construct a btree on a table and save.
+
+        Args:
+            table_name: string. Table name (must be part of database).
+            index_name: string. Name of the created index.
+            column_name: string. Name of the column being indexed.
+        '''
+        raise Exception('Hashed indexing functionality yet to be built')
+
 
 
     def _has_index(self, table_name):

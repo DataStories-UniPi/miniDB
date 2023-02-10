@@ -402,6 +402,11 @@ class Table:
 
         return s_table
 
+
+    def select_where_with_hash(self,return_columns,hm,condition,distinct=False,order_by=None,desc=True,limit=None):
+        raise Exception('Hashed indexing functionality not created yet')
+
+        
     def order_by(self, column_name, desc=True):
         '''
         Order table based on column.
