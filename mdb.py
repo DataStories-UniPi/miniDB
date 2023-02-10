@@ -106,6 +106,7 @@ def create_query_plan(query, keywords, action):
             dic['primary key'] = None
 
         #----------------------------------------------------------------------
+        #new test
         #case for unique keys
         if 'unique' in args:
             arglist = args[1:-1].split(' ')
