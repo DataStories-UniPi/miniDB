@@ -185,11 +185,21 @@ class Table:
         column_name, operator, value = self._parse_condition(condition)
 
         indexes_to_del = []
-
-        column = self.column_by_name(column_name)
-        for index, row_value in enumerate(column):
-            if get_op(operator, row_value, value):
-                indexes_to_del.append(index)
+        if isinstance(column_name, list):
+            column = []
+            for i in range(len(column_name)):                   
+                column.append(self.column_by_name(column_name[i]))
+                temp =[]
+                for index, row_value in enumerate(column[i]):
+                    if get_op(operator[i], row_value, value[i]):
+                        temp.append(index)                
+                indexes_to_del.append(temp)
+            indexes_to_del = self.unite_rows(indexes_to_del)            
+        else:
+            column = self.column_by_name(column_name)
+            for index, row_value in enumerate(column):
+                if get_op(operator, row_value, value):
+                    indexes_to_del.append(index)
 
         # we pop from highest to lowest index in order to avoid removing the wrong item
         # since we dont delete, we dont have to to pop in that order, but since delete is used
@@ -206,7 +216,13 @@ class Table:
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
 
-
+    def unite_rows( self, listOfLists):
+        x = listOfLists[0]
+        x = set(x)
+        for l in listOfLists:
+            x = x.intersection(set(l))
+        return list(x)
+ 
     def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
@@ -233,13 +249,30 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
+            '''
+            rows =[]
+            for i in range(len(column_name)):
+                column = self.column_by_name(column_name[i])
+                r = [ind for ind, x in enumerate(column) if get_op(operator[i], x[i], value[i])]
+                print ()
+                rows.append(r)
+             '''
             column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            if isinstance(column_name, list):                       
+                column = []
+                rows = []
+                for i in range(len(column_name)):                   
+                    column.append(self.column_by_name(column_name[i]))                    
+                    rows.append( [ind for ind, x in enumerate(column[i]) if get_op(operator[i], x, value[i])])
+                rows = self.unite_rows(rows)
+            else:                       
+                column = self.column_by_name(column_name)   
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+        #DB=smdb SQL=sql_files/smallRelationsInsertFile.sql python3.9 mdb.py
         else:
             rows = [i for i in range(len(self.data))]
-
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
+        
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
 
         # we need to set the new column names/types and no of columns, since we might
@@ -269,7 +302,7 @@ class Table:
 
         return s_table
 
-
+ 
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
 
         # if * return all columns, else find the column indexes for the columns specified
@@ -280,25 +313,39 @@ class Table:
 
 
         column_name, operator, value = self._parse_condition(condition)
+        print("btrwer")
+        if isinstance(column_name, list):
+            rows=[]
+            for i in range(len(column_name)):
+                # if the column in condition is not a primary key, abort the select
+                if column_name[i] == self.column_names[self.pk_idx]:
+                    rows.append(bt.find(operator, value))
+                    #print('Column is not PK. Aborting')
+            #rows = self.unite_rows(rows) 
+            for i in range(len(column_name)):
+                if column_name[i] != self.column_names[self.pk_idx]:                    
+                    for r in range(len(rows)):
+                        if not get_op(operator[i], rows[r], value[i]):
+                            rows.pop(r)
+        else:
+            # if the column in condition is not a primary key, abort the select
+            if column_name != self.column_names[self.pk_idx]:
+                print('Column is not PK. Aborting')
 
-        # if the column in condition is not a primary key, abort the select
-        if column_name != self.column_names[self.pk_idx]:
-            print('Column is not PK. Aborting')
+            # here we run the same select twice, sequentially and using the btree.
+            # we then check the results match and compare performance (number of operation)
+            column = self.column_by_name(column_name)
 
-        # here we run the same select twice, sequentially and using the btree.
-        # we then check the results match and compare performance (number of operation)
-        column = self.column_by_name(column_name)
+            # sequential
+            rows1 = []
+            opsseq = 0
+            for ind, x in enumerate(column):
+                opsseq+=1
+                if get_op(operator, x, value):
+                    rows1.append(ind)
 
-        # sequential
-        rows1 = []
-        opsseq = 0
-        for ind, x in enumerate(column):
-            opsseq+=1
-            if get_op(operator, x, value):
-                rows1.append(ind)
-
-        # btree find
-        rows = bt.find(operator, value)
+            # btree find
+            rows = bt.find(operator, value)
 
         try:
             k = int(limit)
@@ -557,12 +604,21 @@ class Table:
             return split_condition(condition)
 
         # cast the value with the specified column's type and return the column name, the operator and the casted value
-        left, op, right = split_condition(condition)
-        if left not in self.column_names:
-            raise ValueError(f'Condition is not valid (cant find column name)')
-        coltype = self.column_types[self.column_names.index(left)]
-
-        return left, op, coltype(right)
+        left, op, right = split_condition(condition)                        
+        if isinstance(left, list) :
+            coltype = []
+            for j in range(len(left)):
+                if left[j] not in self.column_names:
+                    raise ValueError(f'Condition is not valid (cant find column name)')
+                x=self.column_types[self.column_names.index(left[j])]                
+                coltype.append(x(right[j]))
+            return left, op, coltype
+        else:
+            if left not in self.column_names:
+                raise ValueError(f'Condition is not valid (cant find column name)')
+            coltype = self.column_types[self.column_names.index(left)]            
+            return left, op, coltype(right)
+        
 
 
     def _load_from_file(self, filename):
