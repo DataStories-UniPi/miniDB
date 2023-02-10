@@ -96,10 +96,23 @@ def create_query_plan(query, keywords, action):
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
-        arg_nopk = args.replace('primary key', '')[1:-1]
+        arg_nopk = args.replace('primary key', '')[1:-1].replace('unique', '')[1:-1]
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+
+        dic['unique'] = None
+        if 'unique' in args: # Make a 'unique' item in dic if there are unique columns
+            list = args.removesuffix(')').removeprefix('(').strip().split(',') # Remove parenthesis and split them by comma
+            for i in list:
+                if len(i.split(' ')) == 4: # If there are enough items there can be a unique declaration
+                    if i.split(' ')[3] == 'unique': # unique declaration needs to be last
+                        if dic['unique'] is None: # If found add the columns in dic['unique']
+                            dic['unique'] = i.split(' ')[1] + ','
+                        else:
+                            dic['unique'] += i.split(' ')[1]
+            dic['unique'] = dic['unique'].strip(',') # If there is only one unique column the last comma needs t be removed
+
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]
@@ -121,9 +134,10 @@ def create_query_plan(query, keywords, action):
         else:
             dic['force'] = False
 
+    if action == 'create index':
+        dic['column'] = dic['on'].split('(')[1].strip().removesuffix(')').strip() # The index column is specified in parenthesis
+        dic['on'] = dic['on'].split('(')[0].strip() # The table where the index will be created
     return dic
-
-
 
 def evaluate_from_clause(dic):
     '''
@@ -157,7 +171,6 @@ def evaluate_from_clause(dic):
             join_dic['right'] = interpret(join_dic['right'][1:-1].strip())
 
         dic['from'] = join_dic
-        
     return dic
 
 def interpret(query):
@@ -175,9 +188,9 @@ def interpret(query):
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
-                     'create index': ['create index', 'on', 'using'],
+                     'create index': ['create index', 'on', 'column', 'using'], # Added column
                      'drop index': ['drop index'],
-                     'create view' : ['create view', 'as']
+                     'create view': ['create view', 'as']
                      }
 
     if query[-1]!=';':
