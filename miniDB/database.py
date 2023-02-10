@@ -733,9 +733,27 @@ class Database:
             index_name: string. Name of the created index.
             column_name: string. Name of the column being indexed.
         '''
-        raise Exception('Hashed indexing functionality yet to be built')
-
-
+        #storing the amount of columns that the table has
+        clength=len(self.tables[table_name].data)
+        map={}
+        map['Rows length']=clength
+        for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
+            if key is None:
+                continue
+            s=0 #summary of hash
+            key=str(key)#converting to string
+            for i in key:
+                #adding each character
+                sum+=ord(i)
+            h=s%clength #modulo
+            if h not in map:
+                #if the hash key is not in the map then we make a new hash with the idx
+                map[h]=[[idx, key]]
+            else:
+                #if there is already a hash key we append the map
+                map[h].append([idx, key])
+        #save the hash
+        self._save_index(idx,h)
 
     def _has_index(self, table_name):
         '''
