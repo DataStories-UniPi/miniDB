@@ -75,7 +75,6 @@ class Table:
     def column_by_name(self, column_name):
         return [row[self.column_names.index(column_name)] for row in self.data]
 
-
     def _update(self):
         '''
         Update all the available columns with the appended rows.
@@ -100,7 +99,6 @@ class Table:
         # change the type of the column
         self.column_types[column_idx] = cast_type
         # self._update()
-
 
     def _insert(self, row, insert_stack=[]):
         '''
@@ -150,23 +148,21 @@ class Table:
                 
                 Operatores supported: (<,<=,=,>=,>)
         '''
-        # parse the condition
-        column_name, operator, value = self._parse_condition(condition)
 
-        # get the condition and the set column
-        column = self.column_by_name(column_name)
+        # get the set column index
         set_column_idx = self.column_names.index(set_column)
 
         # set_columns_indx = [self.column_names.index(set_column_name) for set_column_name in set_column_names]
-
-        # for each value in column, if condition, replace it with set_value
-        for row_ind, column_value in enumerate(column):
-            if get_op(operator, column_value, value):
-                self.data[row_ind][set_column_idx] = set_value
+        if condition is not None:
+            indexes_to_upd = self.find_rows_by_condition(condition) # get the indexes of the rows to be updated
+        else: # if condition is None, update all rows
+            indexes_to_upd = [i for i in range(len(self.data))] # get all indexes
+            
+        for idx in indexes_to_upd:
+            self.data[idx][set_column_idx] = set_value
 
         # self._update()
                 # print(f"Updated {len(indexes_to_del)} rows")
-
 
     def _delete_where(self, condition):
         '''
@@ -182,17 +178,13 @@ class Table:
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
-        column_name, operator, value = self._parse_condition(condition)
-
-        indexes_to_del = []
-
-        column = self.column_by_name(column_name)
-        for index, row_value in enumerate(column):
-            if get_op(operator, row_value, value):
-                indexes_to_del.append(index)
-
+        if condition is not None:
+            indexes_to_del = self.find_rows_by_condition(condition) # get the indexes of the rows to be deleted
+        else: # if condition is None, delete all rows
+            indexes_to_del = [i for i in range(len(self.data))] # get all indexes
+                
         # we pop from highest to lowest index in order to avoid removing the wrong item
-        # since we dont delete, we dont have to to pop in that order, but since delete is used
+        # since we dont delete, we dont have to pop in that order, but since delete is used
         # to delete from meta tables too, we still implement it.
 
         for index in sorted(indexes_to_del, reverse=True):
@@ -205,7 +197,6 @@ class Table:
         # self._update()
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
-
 
     def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
         '''
@@ -232,43 +223,40 @@ class Table:
 
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
-        if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+        if condition is not None:               
+            rows = self.find_rows_by_condition(condition) # get the rows where condition is met
         else:
             rows = [i for i in range(len(self.data))]
 
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
-        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+        dic = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
 
         # we need to set the new column names/types and no of columns, since we might
         # only return some columns
-        dict['column_names'] = [self.column_names[i] for i in return_cols]
-        dict['column_types']   = [self.column_types[i] for i in return_cols]
+        dic['column_names'] = [self.column_names[i] for i in return_cols]
+        dic['column_types'] = [self.column_types[i] for i in return_cols]
 
-        s_table = Table(load=dict)
+        s_table = Table(load=dic)
 
-        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data # remove duplicates
 
         if order_by:
             s_table.order_by(order_by, desc)
 
-        # if isinstance(limit, str):
-        #     try:
-        #         k = int(limit)
-        #     except ValueError:
-        #         raise Exception("The value following 'top' in the query should be a number.")
+        '''if isinstance(limit, str):
+            try:
+                k = int(limit)
+            except ValueError:
+                raise Exception("The value following 'top' in the query should be a number.")
             
-        #     # Remove from the table's data all the None-filled rows, as they are not shown by default
-        #     # Then, show the first k rows 
-        #     s_table.data.remove(len(s_table.column_names) * [None])
-        #     s_table.data = s_table.data[:k]
+            # Remove from the table's data all the None-filled rows, as they are not shown by default
+            # Then, show the first k rows 
+            s_table.data.remove(len(s_table.column_names) * [None])
+            s_table.data = s_table.data[:k]'''
         if isinstance(limit,str):
             s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
 
         return s_table
-
 
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
 
@@ -338,7 +326,6 @@ class Table:
         self.data = [self.data[i] for i in idx]
         # self._update()
 
-
     def _general_join_processing(self, table_right:Table, condition, join_type):
         '''
         Performs the processes all the join operations need (regardless of type) so that there is no code repetition.
@@ -378,10 +365,9 @@ class Table:
         join_table_name = ''
         join_table_colnames = left_names+right_names
         join_table_coltypes = self.column_types+table_right.column_types
-        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
+        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types=join_table_coltypes)
 
         return join_table, column_index_left, column_index_right, operator
-
 
     def _inner_join(self, table_right: Table, condition):
         '''
@@ -539,7 +525,6 @@ class Table:
         # print using tabulate
         print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
 
-
     def _parse_condition(self, condition, join=False):
         '''
         Parse the single string condition and return the value of the column and the operator.
@@ -564,7 +549,6 @@ class Table:
 
         return left, op, coltype(right)
 
-
     def _load_from_file(self, filename):
         '''
         Load table from a pkl file (not used currently).
@@ -577,3 +561,33 @@ class Table:
         f.close()
 
         self.__dict__.update(tmp_dict.__dict__)
+
+    def find_rows_by_condition(self, condition):
+        '''
+        Traverse the dictionary and return the rows that satisfy the condition.
+        '''
+        if isinstance(condition, str):
+            column_name, operator, value = self._parse_condition(condition)
+            column = self.column_by_name(column_name)
+            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            return rows
+        elif 'and' in condition:
+            left = self.find_rows_by_condition(condition['and']['left'])
+            right = self.find_rows_by_condition(condition['and']['right'])
+            intersection = set(left).intersection(set(right)) # get the intersection of left and right
+            return list(intersection)
+        elif 'or' in condition:
+            left = self.find_rows_by_condition(condition['or']['left'])
+            right = self.find_rows_by_condition(condition['or']['right'])
+            union = set(left).union(set(right)) # get the union of left and right
+            return list(union)
+        elif 'not' in condition:
+            all_rows = [i for i in range(len(self.data))] # get all rows
+            result = self.find_rows_by_condition(condition['not'])
+            not_result = set(all_rows) - set(result) # get the difference of all rows and result
+            return list(not_result)
+        elif 'between' in condition:
+            column_name = condition['column']
+            condition['between']['and']['left'] = f"{column_name}>={condition['between']['and']['left']}" # build the condition for left side of between
+            condition['between']['and']['right'] = f"{column_name}<={condition['between']['and']['right']}" # build the condition for right side of between
+            return self.find_rows_by_condition(condition['between'])

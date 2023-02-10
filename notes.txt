@@ -1,87 +1,32 @@
-<> Issue 3: (α) Εντοπισμός των εναλλακτικών RA expressions.
-		    (β) Επιλογή του καλύτερου RA expression (λιγότερο κόστος).
-	
-<> Issue 1:
-		SELECT * FROM table_name WHERE NOT condition;
-		'WHERE' : {
-				'not' : condition
-		}
-
-		SELECT * FROM table_name WHERE column_name BETWEEN value1 AND value2;
-		'WHERE' : {
-				'column': column_name 
-				'between' : {
-								'and' : {
-										'left' : value1,
-										'right' : value2
-								}
-				}
-		}
-
-		SELECT * FROM table_name WHERE condition1 AND/OR condition2;
-		'WHERE' : {
-				'column': table_name
-				'and' : {
-							'left' : condition1,
-							'right' : condition2
-				},
-				'or' : {
-							'left' : condition1,
-							'right' : condition2
-				}
-		}
-
-<> Issue 1:    mdb.py, lines 173-177.
-                table.py, lines 142,171,210,273,388.
-                database.py, lines 287,311,324,337,358,372,374,430,512,542,547,565,637.
-
-<> mdb.py, line 38.
-    ~ qsplit = ['select', '*', 'from', 'a', 'where', 'not', 't=a', ';']
-    ~ ind = 3
-    ~ qsplit[:ind] = ['select', '*', 'from']
-    ~ qsplit[:ind].count('(') -> 0
-    ~ qsplit[:ind].count(')') -> 0
-    ~ return qsplit[:ind].count('(')>qsplit[:ind].count(')') -> return false
-
-<> mdb.py, line 47.
-    ~ keywords = ['select', 'from', 'where', 'not', 'distinct', 'order by', 'limit', ';']
-    ~ dic = {val: None for val in keywords if val!=';'}
-    ~ dic -> {'select': None, 'from': None, 'where': None, 'not': None, 'distinct': None, 'order by': None, 'limit': None}
-
-
-<> mdb.py, line 49.
-    ~ query = 'select * from a where not t=a ;'
-    ~ ql = [val for val in query.split(' ') if val !='']
-    ~ ql -> ['select', '*', 'from', 'a', 'where', 'not', 't=a', ';']
-
-
-<> mdb.py, line 62.
-    ~ ql = ['select', '*', 'from', 'a', 'where', 'not', 't=a', ';']
-    ~ i = 3 
-    ~ f'{ql[i]} {ql[i+1]}' -> 'a where'
-
-
-<> mdb.py, line 70.
-	~ ql = ['select', '*', 'from', 'a', 'where', 'not', 't=a', ';']
-    ~ kw_positions = [0, 2, 4, 7]
-    ~ i = 1
-    ~ ql[kw_positions[i]+1:kw_positions[i+1]] -> ['a']
-    ~ ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]]) -> 'a'
-
-<> mdb.py, line 136-137.
-    ~ from_split = ['teacher', 'inner', 'join', 'student', 'on', 'email']
-    ~ join_idx = [i for i,word in enumerate(from_split) if word=='join' and not in_paren(from_split,i)] -> [2]
-    ~ on_idx = [i for i,word in enumerate(from_split) if word=='on' and not in_paren(from_split,i)] -> [4]
-
 <> mdb.py:
-	~ line 217, στη μέθοδος execute_dic όπου γίνεται return getattr(db, action)(*dic.values()), το getattr μας βρίσκει από το αντικείμενο db την μέθοδο action(πχ select) και στη συνέχεια στη συγκεκριμένη μέθοδο στέλνουμε ως όρισμα τα *dic.values().
+	Στη μέθοδος execute_dic όπου γίνεται return getattr(db, action)(*dic.values()), το getattr μας βρίσκει από το αντικείμενο db την μέθοδο action(πχ select) και στη συνέχεια στη συγκεκριμένη μέθοδο στέλνουμε ως όρισμα τα *dic.values().
 	Έστω ότι action = select και dic.values() = ['*', 'teaches', 'year=2009', None, None, None, None], άρα κάνοντας *dic.values() η μέθοδος select παίρνει τις εξής τιμές στα ορίσματα:
 	select(self, columns, table_name, condition, distinct=None, order_by=None, limit=True, desc=None, save_as=None, return_object=True)
 	select(self, '*', 'teaches', 'year=2009', None, None, None, None, None, True)
 
-<> Πρέπει να εκτελέσει ο καθένας μας ένα ερώτημα (π.χ explain select * from A join B on A.id=B.id where not A.id=5) και να το κάνουμε μόνοι μας debug για να δούμε πως γίνεται η όλη διαδικασία.
+<> Στο execute_dic ελέγχω την περίπτωση του dic['where'], βλέπω πως παίρνει διαχωρίζει το λεξικό.
 
-<> Είμαστε στην evaluate_where_clause() και ξανακαλούμε την evaluate_where_clause() ουσιαστικά δημιουργούμε dic με key 'where' και 
-   value το σπασμένο subquery και βάζουμε το key 'left' του opperand ή το key 'right' του opperand αντίστοιχα να ισούται με το value του 'where'
+<> dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+	Επεξήγηση: 
+	The code is creating a dictionary dict that contains the values of the attributes of an object self. The key-value pairs in the dictionary are constructed as follows:
 
-<> Στην evaluate_where_clause() στον πρώτο if προσθέσαμε έναν επιπλέον έλεγχο όπου ελέγχουμε εάν το where_split[1] δεν περιέχεται μέσα στη λίστα kw_per_action, για την αποφυγή της λανθασμένης κλήσης της μεθόδου interpret.
+	The keys are the names of the attributes and are taken from the self.__dict__.items() dictionary, which contains all the attributes of an object.
+
+	The values are constructed based on the key:
+
+	If the key is "data", then the value is a nested list comprehension that creates a 2D list of the values in the self.data attribute. The 2D list has dimensions len(rows) x len(return_cols).
+	If the key is not "data", then the value is simply the corresponding value from self.__dict__.items().
+	So, in essence, the code is creating a new dictionary that contains only the values of the specified columns (return_cols) and rows (rows) of the data attribute, as well as any other attributes that are stored in self.__dict__.items().
+
+<> s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+	This line of code is using the map and set functions to make the s_table.data list unique, and store the result in s_table.data.
+
+	The map function is applied to the s_table.data list, and applies the lambda function to each element. The lambda function takes a list x as input and returns its tuple form, tuple(x).
+
+	The set function is then applied to the result of the map function, which converts the list into a set, and the duplicates are automatically removed.
+
+	Finally, the result is cast back to a list using the list function. The resulting list is then assigned back to s_table.data.
+
+	If the distinct variable is set to False, then the line of code has no effect and s_table.data is unchanged.
+
+<> Η update_table(), delete_from() και select() έχει where clause (database.py).
