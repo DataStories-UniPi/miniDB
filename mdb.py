@@ -74,7 +74,7 @@ def create_query_plan(query, keywords, action):
     
     if action == 'create view':
         dic['as'] = interpret(dic['as'])
-
+        
     if action=='select':
         dic = evaluate_from_clause(dic)
 
@@ -97,15 +97,20 @@ def create_query_plan(query, keywords, action):
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
         arg_nopk = args.replace('primary key', '')[1:-1]
+        
+        
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+        dic['columns_unique'] = ','.join([val[0] for val in arglist if 'unique' in val]) if 'unique' in args else None # added specified column with unique contstraint to dictionary
+        
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
-    
+        
+        
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
@@ -121,6 +126,21 @@ def create_query_plan(query, keywords, action):
         else:
             dic['force'] = False
 
+
+    if action=='create index': 
+        '''
+        For creating the B+ Tree index on Unique columns and PK
+        '''
+
+        dic['on']=ql[3] # Table name
+        if "(" in ql: 
+            # If the user has specified the name of the column
+            
+            dic['column'] = ql[5] # name of the column
+        else:
+            # The index will be created on the PK of the table as normal
+            dic['column']=None 
+      
     return dic
 
 
@@ -134,6 +154,7 @@ def evaluate_from_clause(dic):
     if from_split[0] == '(' and from_split[-1] == ')':
         subquery = ' '.join(from_split[1:-1])
         dic['from'] = interpret(subquery)
+        
 
     join_idx = [i for i,word in enumerate(from_split) if word=='join' and not in_paren(from_split,i)]
     on_idx = [i for i,word in enumerate(from_split) if word=='on' and not in_paren(from_split,i)]
@@ -152,6 +173,7 @@ def evaluate_from_clause(dic):
 
         if join_dic['left'].startswith('(') and join_dic['left'].endswith(')'):
             join_dic['left'] = interpret(join_dic['left'][1:-1].strip())
+            
 
         if join_dic['right'].startswith('(') and join_dic['right'].endswith(')'):
             join_dic['right'] = interpret(join_dic['right'][1:-1].strip())
@@ -175,7 +197,7 @@ def interpret(query):
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
-                     'create index': ['create index', 'on', 'using'],
+                     'create index': ['create index', 'on','column','using'], #added column for unique constraint
                      'drop index': ['drop index'],
                      'create view' : ['create view', 'as']
                      }

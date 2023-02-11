@@ -26,7 +26,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None,columns_unique=None): # added unique constraint
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -60,6 +60,10 @@ class Table:
 
             self.column_types = [eval(ct) if not isinstance(ct, type) else ct for ct in column_types]
             self.data = [] # data is a list of lists, a list of rows that is.
+
+            self.columns_unique = columns_unique if columns_unique is not None else [] # instance for unique constraint
+            #self.unique_idx = [self.column_names.index(i) for i in columns_unique] if columns_unique is not None else []
+            #print("unique columns: ", columns_unique)
 
             # if primary key is set, keep its index as an attribute
             if primary_key is not None:
@@ -123,12 +127,20 @@ class Table:
             except TypeError as exc:
                 if row[i] != None:
                     print(exc)
+            
+            
+            if (self.column_names[i] in self.columns_unique and str(row[i]) in [str(val) for val in self.column_by_name(self.column_names[i])]):
+                print(f'## ERROR: Cannot insert duplicate value "{str(row[i])}" in column "{self.column_names[i]}". It has the unique constraint.')
+                raise ValueError(f'## ERROR: Cannot insert duplicate value "{str(row[i])}" in column "{self.column_names[i]}". It has the unique constraint.')
+                
 
+            #row[i] = self.column_types[i](row[i])
+            
             # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
             elif i==self.pk_idx and row[i] is None:
-                raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
+                raise ValueError(f'## ERROR -> The value of the primary key cannot be None.')
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
@@ -183,7 +195,7 @@ class Table:
                 Operatores supported: (<,<=,==,>=,>)
         '''
         #column_name, operator, value = self._parse_condition(condition)
-
+        
         indexes_to_del = []
 
         if 'not ' in condition and ' between ' not in condition:
@@ -234,6 +246,7 @@ class Table:
                     for i in range(len(values)):
                         if row_value == values[i]:
                             indexes_to_del.append(index)
+                            #print("with special word: ", indexes_to_del)
         
         else:
             column_name, operator, value = self._parse_condition(condition)
@@ -241,12 +254,14 @@ class Table:
             for index, row_value in enumerate(column):
                 if get_op(operator, row_value, value):
                     indexes_to_del.append(index)
+                    #print("without special word: ", indexes_to_del)
 
         # we pop from highest to lowest index in order to avoid removing the wrong item
         # since we dont delete, we dont have to to pop in that order, but since delete is used
         # to delete from meta tables too, we still implement it.
 
         for index in sorted(indexes_to_del, reverse=True):
+            
             if self._name[:4] != 'meta':
                 # if the table is not a metatable, replace the row with a row of nones
                 self.data[index] = [None for _ in range(len(self.column_names))]
@@ -274,13 +289,15 @@ class Table:
             desc: boolean. If True, order_by will return results in descending order (False by default).
             limit: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
-        multiple = False        
+        #multiple = False        
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
+        #print("return_cols:", return_cols)
+        #print(condition)
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
@@ -373,15 +390,18 @@ class Table:
             else:
                 column_name, operator, value = self._parse_condition(condition)
                 column = self.column_by_name(column_name)
+                
                 rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+                
         
         else:
             rows = [i for i in range(len(self.data))]
+            
 
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
         
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
-
+        #print(rows)
         # we need to set the new column names/types and no of columns, since we might
         # only return some columns
         dict['column_names'] = [self.column_names[i] for i in return_cols]
@@ -410,7 +430,7 @@ class Table:
         return s_table
 
 
-    def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
+    def _select_where_with_btree(self, return_columns, bt, condition,  distinct=False, order_by=None, desc=True, limit=None):
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
@@ -418,12 +438,14 @@ class Table:
         else:
             return_cols = [self.column_names.index(colname) for colname in return_columns]
 
-
+        #print(condition)
         column_name, operator, value = self._parse_condition(condition)
+        '''
 
         # if the column in condition is not a primary key, abort the select
         if column_name != self.column_names[self.pk_idx]:
             print('Column is not PK. Aborting')
+        '''
 
         # here we run the same select twice, sequentially and using the btree.
         # we then check the results match and compare performance (number of operation)
@@ -434,11 +456,15 @@ class Table:
         opsseq = 0
         for ind, x in enumerate(column):
             opsseq+=1
+            
             if get_op(operator, x, value):
                 rows1.append(ind)
+                
 
         # btree find
+        
         rows = bt.find(operator, value)
+        
 
         try:
             k = int(limit)
@@ -446,9 +472,10 @@ class Table:
             k = None
         # same as simple select from now on
         rows = rows[:k]
+        
         # TODO: this needs to be dumbed down
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
-
+        
         dict['column_names'] = [self.column_names[i] for i in return_cols]
         dict['column_types']   = [self.column_types[i] for i in return_cols]
 
@@ -462,6 +489,8 @@ class Table:
         if isinstance(limit,str):
             s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
 
+        
+        print("B+Tree used for select.")
         return s_table
 
     def order_by(self, column_name, desc=True):
