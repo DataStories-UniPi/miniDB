@@ -691,20 +691,20 @@ class Database:
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
-        def _construct_hash_index(self, table_name, index_name):
+    def _construct_hash_index(self, table_name, index_name):
 
-            '''
+        '''
 
-            '''
-            hash = Hash()
+        '''
+        hash = Hash()
 
-            for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
-                if key is None:
-                    continue
-                hash.create_hash_index(key)
+        for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
+            if key is None:
+                continue
+            hash.create_hash_index(key)
 
-            # save the hash table
-            self._save_index(index_name, hash)
+        # save the hash table
+        self._save_index(index_name, hash)
 
     def _construct_index(self, table_name, index_name):
 
