@@ -431,6 +431,7 @@ class Table:
         if isinstance(limit,str):
             s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
 
+        #pd.eval(s_table)
         #print(s_table.data)
         if (flag):
             return s_table.data, dict
