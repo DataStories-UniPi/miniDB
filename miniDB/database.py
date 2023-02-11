@@ -285,9 +285,7 @@ class Database:
             table_name: string. Name of table (must be part of database).
             set_value: string. New value of the predifined column name.
             set_column: string. The column to be altered.
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+            condition: string or dict (the condition is the returned dic['where'] from interpret method).
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
@@ -307,9 +305,7 @@ class Database:
 
         Args:
             table_name: string. Name of table (must be part of database).
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+            condition: string or dict (the condition is the returned dic['where'] from interpret method).
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
@@ -334,9 +330,7 @@ class Database:
         Args:
             table_name: string. Name of table (must be part of database).
             columns: list. The columns that will be part of the output table (use '*' to select all available columns)
-            condition: string if operators 'and' or 'or' don't exist, else dict (from query plan). A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+            condition: string or dict (the condition is the returned dic['where'] from interpret method).
                 
                 Operatores supported: (<,<=,==,>=,>)
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
@@ -351,22 +345,14 @@ class Database:
         self.load_database()
         if isinstance(table_name, Table): # if table_name is a table object
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
-
-        if condition is not None:
-            if isinstance(condition, str):
-                condition_column = split_condition(condition)[0]
-            else:
-                pass # WHEN CONDITION IS A DICT, WE DON'T NEED TO CHECK FOR THE CONDITION COLUMN
-        else:
-            condition_column = ''
-        
         
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
-        if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
+        
+        if self._has_index(table_name) and condition is not None: # if table has an index and a condition is given
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
-            bt = self._load_idx(index_name)
+            bt = self._load_idx(index_name) # bt = btree, _load_idx() returns a btree object
             table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
         else:
             table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)

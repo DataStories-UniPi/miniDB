@@ -142,9 +142,7 @@ class Table:
         Args:
             set_value: string. The provided set value.
             set_column: string. The column to be altered.
-            condition: string. A condition using the following format:
-                'column[<,<=,=,>=,>]value' or
-                'value[<,<=,=,>=,>]column'.
+            condition: string or dict (the condition is the returned dic['where'] from interpret method).
                 
                 Operatores supported: (<,<=,=,>=,>)
         '''
@@ -172,9 +170,7 @@ class Table:
         These rows are then appended to the insert_stack.
 
         Args:
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+            condition: string or dict (the condition is the returned dic['where'] from interpret method).
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
@@ -204,9 +200,7 @@ class Table:
 
         Args:
             return_columns: list. The columns to be returned.
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+            condition: string or dict (the condition is the returned dic['where'] from interpret method).
                 
                 Operatores supported: (<,<=,==,>=,>)
             distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
@@ -266,15 +260,10 @@ class Table:
         else:
             return_cols = [self.column_names.index(colname) for colname in return_columns]
 
-
-        column_name, operator, value = self._parse_condition(condition)
-
-        # if the column in condition is not a primary key, abort the select
-        if column_name != self.column_names[self.pk_idx]:
-            print('Column is not PK. Aborting')
-
+        """
         # here we run the same select twice, sequentially and using the btree.
         # we then check the results match and compare performance (number of operation)
+        column_name, operator, value = self._parse_condition(condition)
         column = self.column_by_name(column_name)
 
         # sequential
@@ -284,9 +273,9 @@ class Table:
             opsseq+=1
             if get_op(operator, x, value):
                 rows1.append(ind)
+        """
 
-        # btree find
-        rows = bt.find(operator, value)
+        rows = self.find_rows_by_condition(condition, bt)
 
         try:
             k = int(limit)
@@ -562,32 +551,44 @@ class Table:
 
         self.__dict__.update(tmp_dict.__dict__)
 
-    def find_rows_by_condition(self, condition):
+    def find_rows_by_condition(self, condition, bt=None):
         '''
         Traverse the dictionary and return the rows that satisfy the condition.
+        Args:
+            condition: string or dict (the condition is the returned dic['where'] from interpret method).
+            bt: BTree. None if the table does not support btree index (works only for primary key).
         '''
         if isinstance(condition, str):
             column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            if bt is not None and column_name == self.column_names[self.pk_idx]:
+                '''
+                If bt is not None and the column is the primary key, we use the btree to find the rows.
+                '''
+                rows = bt.find(operator, value)
+            else:
+                '''
+                If bt is None or the column is not the primary key, we use the column to find the rows.
+                '''
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
             return rows
         elif 'and' in condition:
-            left = self.find_rows_by_condition(condition['and']['left'])
-            right = self.find_rows_by_condition(condition['and']['right'])
+            left = self.find_rows_by_condition(condition['and']['left'], bt)
+            right = self.find_rows_by_condition(condition['and']['right'], bt)
             intersection = set(left).intersection(set(right)) # get the intersection of left and right
             return list(intersection)
         elif 'or' in condition:
-            left = self.find_rows_by_condition(condition['or']['left'])
-            right = self.find_rows_by_condition(condition['or']['right'])
+            left = self.find_rows_by_condition(condition['or']['left'], bt)
+            right = self.find_rows_by_condition(condition['or']['right'], bt)
             union = set(left).union(set(right)) # get the union of left and right
             return list(union)
         elif 'not' in condition:
             all_rows = [i for i in range(len(self.data))] # get all rows
-            result = self.find_rows_by_condition(condition['not'])
+            result = self.find_rows_by_condition(condition['not'], bt)
             not_result = set(all_rows) - set(result) # get the difference of all rows and result
             return list(not_result)
         elif 'between' in condition:
             column_name = condition['column']
             condition['between']['and']['left'] = f"{column_name}>={condition['between']['and']['left']}" # build the condition for left side of between
             condition['between']['and']['right'] = f"{column_name}<={condition['between']['and']['right']}" # build the condition for right side of between
-            return self.find_rows_by_condition(condition['between'])
+            return self.find_rows_by_condition(condition['between'], bt)
