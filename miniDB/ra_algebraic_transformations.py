@@ -65,9 +65,9 @@ def cartesian_product_to_theta_join(dic):
     second_table = dic['from'][index_of_comma + 1:]
 
     dic['from'] = {'join': 'inner',
-                   'left' : first_table.replace(" ", ""),
-                   'right' : second_table.replace(" ", ""),
-                   'on' : dic['where'].replace(" ", "")}
+                   'left' : first_table,
+                   'right' : second_table,
+                   'on' : dic['where']}
 
     del dic['where']
 
@@ -80,3 +80,29 @@ def cartesian_product_to_theta_join_two_conditions(dic):
     dic['from']['on'] = dic['where'] + " and " + dic['from']['on']
 
     del dic['where']
+
+def natural_join_associative(dic):
+    """
+        (E1 ⊲⊳ E2) ⊲⊳ E3 = E1 ⊲⊳ (E2 ⊲⊳ E3)
+        here we are changing the positions of E1 and E3 (E1 ⊲⊳ E2) ⊲⊳ E3 -> (E3 ⊲⊳ E2) ⊲⊳ E1 =E1 ⊲⊳ (E2 ⊲⊳ E3)
+    """
+
+    tempLeftColumn = dic['right']['from']['left']
+    dic['right']['from']['left'] = dic['left']
+    dic['left'] = tempLeftColumn
+
+
+def theta_join_association(dic):
+    """
+        (E1 ⊲⊳θ1 E2) ⊲⊳θ2∧θ3 E3 = E1 ⊲⊳θ1∧θ3(E2 ⊲⊳θ2 E3)
+    """
+    index = dic['on'].index(' and ')
+    first_condition = dic['right']['from']['on']
+    second_condition = dic['on'][:index]
+    third_condition = dic['on'][index + 5:]
+
+    dic['on'] = first_condition + " and " + third_condition
+
+    dic['right']['from']['on'] = second_condition
+
+    natural_join_associative(dic)
