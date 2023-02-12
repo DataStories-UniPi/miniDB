@@ -426,7 +426,7 @@ class Database:
                 index_name = self.select('*', 'meta_indexes', f'table_name={table_name} and column_name={condition_column}', return_object=True).column_by_name('index_name')[0]
                 bt = self._load_idx(index_name)
                 table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
-            elif self._has_index(table_name) and condition_column == self.tables[table_name].column_names[self.tables[table_name].uk_idx]:
+            elif self._has_index(table_name) and (condition_column == self.tables[table_name].column_names[self.tables[table_name].uk_idx] if self.tables[table_name].uk_idx is not None else False):
                 index_name = self.select('*', 'meta_indexes', f'table_name={table_name} and column_name={condition_column}', return_object=True).column_by_name('index_name')[0]
                 bt = self._load_idx(index_name)
                 table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
@@ -765,22 +765,22 @@ class Database:
         if self.tables[table_name].pk_idx is None: # if no primary key, no index
             raise Exception('Cannot create index. Table has no primary key.')
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
-            # currently only btree is supported. This can be changed by adding another if.
+            # insert a record with the name of the index table name and column name on which it's created to the meta_indexes table
+            self.tables['meta_indexes']._insert([table_name, table_column, index_name])
             if index_type=='btree':
                 logging.info('Creating Btree index.')
-                # insert a record with the name of the index and the table on which it's created to the meta_indexes table
-                self.tables['meta_indexes']._insert([table_name, table_column, index_name])
-                # crate the actual index
+                # create the actual index
                 self._construct_index(table_name, index_name)
                 self.save_database()
-##################
-            # elif index_type=='hash':
-            #     logging.info('Creating Hash index.')
-##################
+            elif index_type=='hash':
+                logging.info('Creating Hash index.')
+                # crate the actual index
+                self._construct_hash_index(table_name, index_name, table_column)
+                self.save_database()
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
-    def _construct_index(self, table_name, index_name, column_name=None):
+    def _construct_index(self, table_name, index_name, column_name):
         '''
         Construct a btree on a table and save.
 
@@ -799,6 +799,28 @@ class Database:
                 bt.insert(key, idx)
             # save the btree
             self._save_index(index_name, bt)
+        else:
+            raise Exception(f'Column "{column_name}" must be a primary or unique key in "{table_name}" table.')
+
+    def _construct_hash_index(self, table_name, index_name, column_name):
+        '''
+        Construct a hash tree index on a table and save.
+
+        Args:
+            table_name: string. Table name (must be part of database).
+            index_name: string. Name of the created index.
+            column_name: string. Name of the table's column.
+        '''
+        ht = HashTree(4)  # 3 is arbitrary
+
+        if (column_name == self.tables[table_name].pk) or (column_name == self.tables[table_name].uk):
+            # for each record in the primary key of the table, insert its value and index to the hash tree
+            for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
+                if key is None:
+                    continue
+                ht.insert(key, idx)
+            # save the hash tree
+            self._save_index(index_name, ht)
         else:
             raise Exception(f'Column "{column_name}" must be a primary or unique key in "{table_name}" table.')
 

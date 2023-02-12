@@ -146,12 +146,11 @@ class HashTree():
             index = self.nodes_idx[node_hash_key[:self.key_level]]
             item_idx=self.__search(index, value)
             if item_idx == -1:
-                return "Not found"
+                return []
             else:
-                return self.nodes[index].ptrs[item_idx]
+                return [self.nodes[index].ptrs[item_idx]]
         else:
             raise Exception(f'Hash tree index supports only equality.')
-        return results
 
     def __search(self, index, value):
         for i in range(len(self.nodes[index].values)):
