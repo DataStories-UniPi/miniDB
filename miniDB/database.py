@@ -430,10 +430,8 @@ class Database:
                     # self.lock_table(table_name, mode='x')
                     if self.is_locked(table_name):
                         return
-                    if self._has_index(table_name) and condition_column == self.tables[table_name].column_names[
-                        self.tables[table_name].pk_idx]:
-                        index_names = self.select('*', 'meta_indexes', f'table_name={table_name}',
-                                                  return_object=True).column_by_name('index_name')
+                    if self._has_index(table_name) and condition_column == self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
+                        index_names = self.select('*', 'meta_indexes', f'table_name={table_name}',return_object=True).column_by_name('index_name')
 
                         for name in index_names:
                             if name.endswith("___pk"):
@@ -445,26 +443,25 @@ class Database:
                             print(f"[+] Search with Btree (primary key)  -> ", table_name)
 
                             bt = self._load_idx(index_name)
-                            table = self.tables[table_name]._select_where_with_btree(columns, bt, and_stmt, distinct,
-                                                                                     order_by, desc, limit)
+                            table = self.tables[table_name]._select_where_with_btree(columns, bt, and_stmt, distinct,order_by, desc, limit)
+
                         else:
                             _, op, _ = self.tables[table_name]._parse_condition(and_stmt)
                             if op == '=':
                                 print(f"[+] Search with Hash indexing (primary key)  -> ", table_name)
                                 h = self._load_idx(index_name)
-                                table = self.tables[table_name]._select_where_with_hash_indexing(columns, h, and_stmt,
-                                                                                                 distinct, order_by,
-                                                                                                 desc, limit)
+                                table = self.tables[table_name]._select_where_with_hash_indexing(columns, h, and_stmt,distinct, order_by,desc, limit)
+
+
                             else:
                                 print("[+] Search linear  -> ", table_name)
-                                table = self.tables[table_name]._select_where(columns, and_stmt, distinct, order_by,
-                                                                              desc, limit)
+                                table = self.tables[table_name]._select_where(columns, and_stmt, distinct, order_by,desc, limit)
+
 
                     elif self._has_index(table_name) and self.tables[
-                        table_name].un_idx is not None and condition_column == self.tables[table_name].column_names[
-                        self.tables[table_name].un_idx]:
-                        index_names = self.select('*', 'meta_indexes', f'table_name={table_name}',
-                                                  return_object=True).column_by_name('index_name')
+                        table_name].un_idx is not None and condition_column == self.tables[table_name].column_names[self.tables[table_name].un_idx]:
+                        index_names = self.select('*', 'meta_indexes', f'table_name={table_name}',return_object=True).column_by_name('index_name')
+
 
                         for name in index_names:
                             if name.endswith("___unique"):
@@ -475,25 +472,25 @@ class Database:
                         if self.indexing_global == 'btree':
                             print(f"[+] Search with Btree (unique key)  -> ", table_name)
                             bt = self._load_idx(index_name)
-                            table = self.tables[table_name]._select_where_with_btree(columns, bt, and_stmt, distinct,
-                                                                                     order_by, desc, limit)
+                            table = self.tables[table_name]._select_where_with_btree(columns, bt, and_stmt, distinct,order_by, desc, limit)
+
                         else:
                             _, op, _ = self.tables[table_name]._parse_condition(and_stmt)
                             if op == '=':
                                 print(f"[+] Search with Hash indexing (unique key)  -> ", table_name)
                                 h = self._load_idx(index_name)
-                                table = self.tables[table_name]._select_where_with_hash_indexing(columns, h, and_stmt,
-                                                                                                 distinct, order_by,
-                                                                                                 desc, limit)
+                                table = self.tables[table_name]._select_where_with_hash_indexing(columns, h, and_stmt,distinct, order_by,desc, limit)
+
+
                             else:
                                 print("[+] Search linear  -> ", table_name)
-                                table = self.tables[table_name]._select_where(columns, and_stmt, distinct, order_by,
-                                                                              desc, limit)
+                                table = self.tables[table_name]._select_where(columns, and_stmt, distinct, order_by,desc, limit)
+
 
                     else:
                         print("[+] Search linear  -> ", table_name)
-                        table = self.tables[table_name]._select_where(columns, and_stmt, distinct, order_by, desc,
-                                                                      limit)
+                        table = self.tables[table_name]._select_where(columns, and_stmt, distinct, order_by, desc,limit)
+
                     # self.unlock_table(table_name)
                     and_list.append(table)
                 sets = []

@@ -291,7 +291,7 @@ class Table:
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
         else:
-            return_cols = [self.column_names.index(colname) for colname in return_columns]
+            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
 
         column_name, operator, value = self._parse_condition(condition)
@@ -345,7 +345,7 @@ class Table:
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
         else:
-            return_cols = [self.column_names.index(colname) for colname in return_columns]
+            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
         column_name, operator, value = self._parse_condition(condition)
 
@@ -626,7 +626,7 @@ class Table:
         # cast the value with the specified column's type and return the column name, the operator and the casted value
         left, op, right = split_condition(condition)
         if left not in self.column_names:
-            raise ValueError(f'Condition is not valid (cant find column name)')
+            raise ValueError(f'Condition is not valid (cant find column name) ', op)
         coltype = self.column_types[self.column_names.index(left)]
 
         return left, op, coltype(right)
