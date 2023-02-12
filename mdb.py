@@ -8,7 +8,7 @@ import shutil
 sys.path.append('miniDB')
 from miniDB.database import Database
 from miniDB.table import Table
-import misc
+import miniDB.misc
 # art font is "big"
 art = '''
              _         _  _____   ____  
