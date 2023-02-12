@@ -5,6 +5,7 @@ import sys
 import readline
 import traceback
 import shutil
+
 sys.path.append('miniDB')
 
 from database import Database
@@ -36,7 +37,6 @@ def in_paren(qsplit, ind):
     Split string on space and return whether the item in index 'ind' is inside a parentheses
     '''
     return qsplit[:ind].count('(')>qsplit[:ind].count(')')
-
 
 def create_query_plan(query, keywords, action):
     '''
@@ -77,6 +77,9 @@ def create_query_plan(query, keywords, action):
 
     if action=='select':
         dic = evaluate_from_clause(dic)
+
+        if dic['where'] is not None:
+            dic = evaluate_where_clause(dic)
 
         if dic['distinct'] is not None:
             dic['select'] = dic['distinct']
@@ -123,8 +126,6 @@ def create_query_plan(query, keywords, action):
 
     return dic
 
-
-
 def evaluate_from_clause(dic):
     '''
     Evaluate the part of the query (argument or subquery) that is supplied as the 'from' argument
@@ -160,6 +161,62 @@ def evaluate_from_clause(dic):
         
     return dic
 
+def evaluate_where_clause(dic):
+    '''
+    Evaluate the part of the query that is supplied as the 'where' argument
+    '''
+
+    where_clause = dic['where']
+    where_dic = form_where_clause(where_clause)
+    dic['where'] = where_dic
+
+    return dic
+
+def form_where_clause(where_split):
+    '''
+    Evaluate the recursive part of the where clause. Returns a dictionary
+    '''
+
+    logical_operators = ['and', 'or']
+
+    if(type(where_split) != list):
+        where_split = where_split.split(' ')
+
+    operator_idx = [i for i,word in enumerate(where_split) if word in logical_operators and not in_paren(where_split,i)]
+
+    # TODO: check for ((())) multiple parenthesis
+    if((len(operator_idx) == 0) and (where_split[0]=='(' and where_split[-1]==')')):
+        where_split = where_split[1:-1]
+        operator_idx = [i for i,word in enumerate(where_split) if word in logical_operators and not in_paren(where_split,i)]
+
+    # TODO: check if works
+    if(len(where_split) == 1):
+        # TODO: Remove parenthesis if needed
+        return ''.join(where_split)
+
+    if operator_idx:
+        operator_idx_f = operator_idx[0]
+        
+        where_dic = {}
+        left = where_split[:operator_idx_f]
+        right = where_split[operator_idx_f+1:]
+
+        if(left[0] == '(' and left[-1] == ')'):
+            left = form_where_clause(left)
+        else:
+            left = ' '.join(left)
+
+        if(right[0] == '(' and right[-1] == ')' or len(operator_idx) > 0):
+            right = form_where_clause(right)
+        else:
+            right = ' '.join(right)      
+
+        where_dic['left'] = left
+        where_dic['operator'] = ''.join(where_split[operator_idx_f])
+        where_dic['right'] = right
+        
+        return where_dic
+
 def interpret(query):
     '''
     Interpret the query.
@@ -184,7 +241,7 @@ def interpret(query):
         query+=';'
     
     query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip()
-
+    
     for kw in kw_per_action.keys():
         if query.startswith(kw):
             action = kw
@@ -195,12 +252,20 @@ def execute_dic(dic):
     '''
     Execute the given dictionary
     '''
+
     for key in dic.keys():
-        if isinstance(dic[key],dict):
+        print(f'key: {key}')
+        # Skip the where key
+        if key != 'where' and isinstance(dic[key],dict):
             dic[key] = execute_dic(dic[key])
+            print(f'dic[key]: {dic[key]}')
     
     action = list(dic.keys())[0].replace(' ','_')
+    print(list(dic.keys()))
+    print(f'action: {action}')
+
     return getattr(db, action)(*dic.values())
+    
 
 def interpret_meta(command):
     """
@@ -260,7 +325,7 @@ if __name__ == "__main__":
             if line.startswith('explain'):
                 dic = interpret(line.removeprefix('explain '))
                 pprint(dic, sort_dicts=False)
-            else :
+            else:
                 dic = interpret(line.lower())
                 result = execute_dic(dic)
                 if isinstance(result,Table):
@@ -282,7 +347,7 @@ if __name__ == "__main__":
             print('\nbye!')
             break
         try:
-            if line=='exit':
+            if line=='exit ;':
                 break
             if line.split(' ')[0].removesuffix(';') in ['lsdb', 'lstb', 'cdb', 'rmdb']:
                 interpret_meta(line)
