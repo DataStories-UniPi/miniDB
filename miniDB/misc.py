@@ -28,14 +28,13 @@ def split_condition(condition):
     if "between" in splt:
         between_exists = True
         col, min, max = splt[0], splt[2], splt[4]
-
-
-
+        return col, min, max, between_exists
+    else:
         for op_key in ops.keys():
-
-            splt=condition.split(op_key)
-            if len(splt) > 1:
-                left, right = splt[0].strip(), splt[1].strip()
+            splt1=condition.split(op_key)
+            if len(splt1) > 1:
+                left, right = splt1[0].strip(), splt1[1].strip()
+                between_exists = False
 
                 if right[0] == '"' == right[-1]:  # If the value has leading and trailing quotes, remove them.
                     right = right.strip('"')
@@ -45,7 +44,7 @@ def split_condition(condition):
                 if right.find('"') != -1: # If there are any double quotes in the value, throw. (Notice we've already removed the leading and trailing ones)
                     raise ValueError(f'Invalid condition: {condition}\nDouble quotation marks are not allowed inside values.')
 
-                return left, op_key, right, between_exists, col, min, max
+                return left, op_key, right, between_exists
 
 def reverse_op(op):
     '''

@@ -233,17 +233,18 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value, column_n, minimum_value, maximum_value, between_exists = self._parse_condition(condition)
-            if between_exists==True:
-                column = self.column_by_name(column_n)
-                rows=[ind for ind, x in enumerate(column)]
+            column_name, left, right, between_exists = self._parse_condition(condition)
+            if between_exists:
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column)]
             else:
                 column = self.column_by_name(column_name)
-                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+                rows = [ind for ind, x in enumerate(column) if get_op(left, x, right)]
         else:
             rows = [i for i in range(len(self.data))]
 
-        # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
+        # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we
+        # want returned)
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
 
         # we need to set the new column names/types and no of columns, since we might
@@ -561,18 +562,14 @@ class Table:
             return split_condition(condition)
 
         # cast the value with the specified column's type and return the column name, the operator and the casted value
-        left, op, right, between_exists, col, minim, maxim = split_condition(condition)
-        if left not in self.column_names:
+        column_name, left, right, between_exists = split_condition(condition)
+        if column_name not in self.column_names:
             raise ValueError(f'Condition is not valid (cant find column name)')
-        if col not in self.column_names:
-            raise ValueError(f'Condition is not valid (cant find column name)')
-
-
-        if between_exists==True:
-            coltype = self.column_types[self.column_names.index(col)]
+        coltype = self.column_types[self.column_names.index(column_name)]
+        if between_exists:
+            return column_name, coltype(left), coltype(right), between_exists
         else:
-            coltype = self.column_types[self.column_names.index(left)]
-        return left, op, coltype(right),col,coltype(minim),coltype(maxim),between_exists
+            return column_name, left, coltype(right), between_exists
 
 
 
