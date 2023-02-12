@@ -189,7 +189,7 @@ def interpret(query):
         query += ';'
 
     query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip()
-    # SPLITTING QUERY INTO MORE QUERIES
+    # Split query into more queries
     word_query = query.split()
     are_multiple = False
     for word in word_query:
@@ -198,7 +198,7 @@ def interpret(query):
             special_word = word
 
     if are_multiple:
-        # THIS BLOCK CREATES THE BASIC SELECT * FROM WHERE PART THAT ALL QUERIES USE
+        # Basic SELECT * FROM WHERE that is being used by all queries
         base_query = []
         for i in range(0, len(word_query)):
             if (word_query[i] == 'where'):
@@ -206,21 +206,20 @@ def interpret(query):
                 break
             else:
                 base_query.append(word_query[i])
-        # THIS BLOCK CREATES THE PARTS MAKE BASIC QUERIES
         queries = []
         q = []
         for j in range(i + 1, len(word_query)):
             if (word_query[j] == 'and' or word_query[j] == 'or'):
-                # IF QUERY IS COMPLETED
+                # If query is completed
                 queries.append(q)
                 q = []
             else:
                 q.append(word_query[j])
         queries.append(q)
-        # COMBINING QUERIES
+        # Combine queries
         out_q = []
         bc = []
-        # MAKING SMALLER QUERIES
+        # Create smaller queries
         for q in queries:
             for i in base_query:
                 bc.append(i)
@@ -228,7 +227,7 @@ def interpret(query):
                 bc.append(i)
             out_q.append(bc)
             bc = []
-        # TURNING THE QUERIES INTO PROCESSING FORMAT
+        # Turn queries into the appropriate format to be processed
         out_s = []
         for i in out_q:
             q = ' '.join(i)
@@ -236,7 +235,7 @@ def interpret(query):
                 q += ' ;'
             out_s.append(q)
         query_plans = []
-        # CREATING A QUERY PLAN FOR EACH SUBQUERY
+        # Query plan for each sub query
         for query in out_s:
             for kw in kw_per_action.keys():
                 if query.startswith(kw):
@@ -244,7 +243,7 @@ def interpret(query):
 
             query_plans.append(create_query_plan(query, kw_per_action[action] + [';'], action))
 
-        # RETURNING THE QUERY PLANS WITH THE SPECIAL WORD SO THAT WE KNOW IF WE HAVE TO PERFORM AND/OR
+        # Return query plans with the special word so we know if we have to perform and/or
         return query_plans, special_word
 
     else:
