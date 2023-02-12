@@ -541,10 +541,11 @@ class Table:
         if self.pk_idx is not None:
             # table has a primary key, add PK next to the appropriate column
             headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
-        
-        unique_indxs = [i for i, x in enumerate(self.column_names) if x in self.unique_columns]
-        for indx in unique_indxs:
-            headers[indx] = headers[indx] + " #UNIQUE#"
+        # adds unique keyword next to the column name
+        if hasattr(self, 'unique_columns') and self.unique_columns is not None:
+            unique_indxs = [i for i, x in enumerate(self.column_names) if x in self.unique_columns]
+            for indx in unique_indxs:
+                headers[indx] = headers[indx] + " #UNIQUE#"
         # detect the rows that are no tfull of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]

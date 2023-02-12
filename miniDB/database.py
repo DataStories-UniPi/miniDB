@@ -115,7 +115,10 @@ class Database:
         '''
         
         # print('here -> ', column_names.split(','))
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, unique_columns=unique_columns.split(','), load=load)})
+        if unique_columns is not None:
+            unique_columns = unique_columns.split(',')
+
+        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, unique_columns=unique_columns, load=load)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
@@ -652,7 +655,7 @@ class Database:
 
 
     # indexes
-    def create_index(self, index_name, table_name, index_type='btree'):
+    def create_index(self, index_name, table_name, table_column=None, index_type='btree'):
         '''
         Creates an index on a specified table with a given name.
         Important: An index can only be created on a primary key (the user does not specify the column).
@@ -661,8 +664,22 @@ class Database:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
         '''
-        if self.tables[table_name].pk_idx is None: # if no primary key, no index
-            raise Exception('Cannot create index. Table has no primary key.')
+        table_instance = self.tables[table_name]
+
+        # Sets index to primary key by default
+        if table_column is None:
+            table_column = table_instance.pk
+        
+        # Checks if table_column is either a pk or a unique
+        if (table_column not in table_instance.unique_columns) and (table_column is not table_instance.pk):
+            raise Exception(f'Cannot create index. {table_column} is not a pk or unique column.')
+
+        print(f"Can create index with {table_column}")
+        """
+        if (not hasattr(self.tables[table_name], 'unique_columns')) or (table_column not in self.tables[table_name].unique_columns):
+            raise Exception('Cannot create index. {table_column} is not unique.')
+        print("Can create index")"""
+        """
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
             # currently only btree is supported. This can be changed by adding another if.
             if index_type=='btree':
@@ -674,7 +691,7 @@ class Database:
                 self.save_database()
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
-
+        """
     def _construct_index(self, table_name, index_name, table_column=None):
         '''
         Construct a btree on a table and save.
@@ -682,6 +699,7 @@ class Database:
         Args:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
+            table_column: string. Column name (must be unique).
         '''
         bt = Btree(3) # 3 is arbitrary
 

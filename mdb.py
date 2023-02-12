@@ -67,7 +67,7 @@ def create_query_plan(query, keywords, action):
             kw_positions.append(i)
         i+=1
     
-    print(action)
+    
 
 
     for i in range(len(kw_in_query)-1):
