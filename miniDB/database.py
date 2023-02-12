@@ -366,16 +366,48 @@ class Database:
 
         # print(table_name)
         self.load_database()
-        if isinstance(table_name,Table):
-            return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
-        if condition is not None:
-            condition_column = split_condition(condition)[0]
-        else:
-            condition_column = ''
+        if table_name == 'meta_indexes':
+            if condition is not None:
+                condition_column = split_condition(condition)[0]
+            else:
+                condition_column = ''
+                table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+                return table
+
+        if isinstance(table_name, Table):
+            or_list = []
+            table = Table()
+            #if condition is not None, for each  or_island split condition(and_stmt)
+            if condition != None:
+                for or_island in condition:
+                    and_list = []
+                    for and_stmt in or_island:
+                        condition_column = split_condition(and_stmt)[0]
+                        table = table_name._select_where(columns, and_stmt, distinct, order_by, desc, limit)
+
+                        and_list.append(table)
+                    sets = []
+                    for l in and_list:
+                        sets.append(set(tuple(x) for x in l.data))
+                    or_val = set.intersection(*sets)
+                    or_list.append(or_val)
+                #Union all the splited results
+                f_val = list(set.union(*or_list))
+
+                ret_Table = Table()
+                ret_Table._name = table._name
+                ret_Table.column_names = table.column_names
+                ret_Table.columns = table.columns
+                ret_Table.column_types = table.column_types
+                ret_Table.pk_idx = table.pk_idx
+                ret_Table.data = f_val
+
+                return ret_Table
+            else:
+                return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
 
-        
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
