@@ -1,10 +1,9 @@
 import operator
 
-#FUNCTION TO CHECK IF A NUMBER IS WITHIN A RANGE
+#Between function
 def between(to_be_checked,range):
     range=range.split("&")
     if(type(to_be_checked)==int or type(to_be_checked)==float):
-        #THIS CONVERTS THE RANGE TO FLOATS FOR WHEN WE HAVE TO PERFORM NUMERICAL COMPARISONS
         r=[]
         r.append(float(range[0]))
         r.append(float(range[1]))
@@ -23,7 +22,6 @@ def get_op(op, a, b):
                 '>=': operator.ge,
                 '<=': operator.le,
                 '=': operator.eq,
-                #DIFFERENCE OPERATOR
                 'not'.casefold(): operator.ne,
                 'between'.casefold():between}
 
@@ -38,7 +36,6 @@ def split_condition(condition):
            '=': operator.eq,
            '>': operator.gt,
            '<': operator.lt,
-           #DIFFERENCE OPERATOR
            'not'.casefold(): operator.ne,
            'between'.casefold():between}
 

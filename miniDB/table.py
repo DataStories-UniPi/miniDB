@@ -213,23 +213,21 @@ class Table:
 
     def _select_hash(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
 
-        # if * return all columns, else find the column indexes for the columns specified
+        # if * return all columns, else find the column indexes for the specified columns
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
-        # parse the condition
         number_of_bins = 5
         column_name, operator, value = self._parse_condition(condition)
 
-        # IN ORDER FOR THE HASH TO BE OF USE,IT SHOULD BE EQUALITY
+        # IN ORDER ΤΟ USED BY THE HASH, SHOULD BE EQUALITY
         pkcolumn = []
         for pk in self.data:
             pkcolumn.append(pk[0])
 
-        # INITIALIZING EMPTY BINS
-        # WE ALSO INITIALIZE A HELPER ARRAY WITH THE POINTERS
+        # INITIALIZING
         ht = []
         ptr = []
         for i in range(0, number_of_bins):
@@ -245,7 +243,6 @@ class Table:
         # SPLITTING CONDITION INTO PARTS
         if str.isdigit(str(value)):
             val = int(str(value))
-            # getting the value through the hashing function
             h = val % number_of_bins
             for i in range(0, len(ht[h])):
                 if str(ht[h][i]) == str(val):
@@ -257,8 +254,7 @@ class Table:
                 for
                 key, value in self.__dict__.items()}
 
-        # we need to set the new column names/types and no of columns, since we might
-        # only return some columns
+        # we need to set the new column names/types and no of columns
         dict['column_names'] = [self.column_names[i] for i in return_cols]
         dict['column_types'] = [self.column_types[i] for i in return_cols]
 

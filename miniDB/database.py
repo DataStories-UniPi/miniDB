@@ -355,12 +355,12 @@ class Database:
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
         if condition is not None:
-            # RETURNING ALL VALUES FROM SPLIT CONDITION
+            # Return all values
             condition_column, operator, column_right = split_condition(condition)
         else:
             condition_column = ''
 
-        # HASH TABLE SEARCH IMPLEMENTATION
+        # Hash table search
         if self.tables[table_name].pk_idx is not None and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
             column_name, operator, value = split_condition(condition)
             if operator== "=":
@@ -372,7 +372,7 @@ class Database:
             return
         if self._has_index(table_name) and condition_column == self.tables[table_name].column_names[
             self.tables[table_name].pk_idx]:
-            # CODE BLOCK FOR PRIMARY KEY COLUMNS
+            # PK columns
             index_name = \
                 self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name(
                     'index_name')[0]

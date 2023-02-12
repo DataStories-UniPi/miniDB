@@ -342,7 +342,6 @@ if __name__ == "__main__":
     print(art)
     session = PromptSession(history=FileHistory('.inp_history'))
     while 1:
-        # EXECUTION HAPPENS IN THIS LOOP
         try:
             line = session.prompt(f'({db._name})> ', auto_suggest=AutoSuggestFromHistory()).lower()
             if line[-1] != ';':
@@ -361,7 +360,6 @@ if __name__ == "__main__":
             else:
                 dic, special_word = interpret(line)
                 if special_word == 'none':
-                    # NOTHING CHANGES
                     result = execute_dic(dic)
                     if isinstance(result, Table):
                         result.show()
@@ -371,17 +369,17 @@ if __name__ == "__main__":
                         results.append(execute_dic(q))
                     nn_rows = []
                     for r in results:
-                        # RETURNING HEADERS AND ROWS
+                        # Return headers and rows
                         header, n = r.show(print_output=False)
                         nn_rows.append(n)
-                    # FINDING LONGEST TUPLE
+                    # Find longest tuple
                     l = 0
                     length = len(nn_rows[0])
                     for i in range(1, len(nn_rows)):
                         if (len(nn_rows[i]) > length):
                             length = nn_rows[i]
                             l = i
-                    # REMOVING DUPLICATES AND VALUES THAT DO NOT EXIST IN ALL RESULTS
+                    # Remove duplicates
                     out_table = []
                     for i in range(0, len(nn_rows[l])):
                         for j in nn_rows:
@@ -390,10 +388,9 @@ if __name__ == "__main__":
                                 if (t[0] == nn_rows[l][i][0]):
                                     isFound = True
                             if (isFound == False):
-                                # ROW DOESNT EXIST IN OTHER TABLE
                                 break
                         if (isFound):
-                            # THIS MEANS THAT FOR EACH ROW IT HAS BEEN SET AS TRUE
+                            # If we go in here it means that each row has been set as true
                             out_table.append(nn_rows[l][i])
                     print(tabulate(out_table[:None], headers=header) + '\n')
                 elif special_word == 'or':
@@ -403,20 +400,20 @@ if __name__ == "__main__":
                         results.append(execute_dic(q))
                     nn_rows = []
                     for r in results:
-                        # RETURNING HEADERS AND ROWS
+                        # Return headers and rows
                         print(f' results "{results}"')
 
                         header, n = r.show(print_output=False)
                         nn_rows.append(n)
 
-                    # FINDING LONGEST TUPLE
+                    # Find longest tuple
                     l = 0
                     length = len(nn_rows[0])
                     for i in range(1, len(nn_rows)):
                         if len(nn_rows[i]) > length:
                             length = nn_rows[i]
                             l = i
-                    # REMOVING DUPLICATE ROWS
+                    # Removing duplicates
                     out_table = []
                     for i in nn_rows[l]:
                         out_table.append(i)
