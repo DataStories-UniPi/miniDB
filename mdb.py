@@ -107,13 +107,9 @@ def create_query_plan(query, keywords, action):
             dic['primary key'] = None
         if 'unique key' in args:
             arglist = args[1:-1].split(' ')
-            dic['unique keys']=''
-            while 'unique' in arglist:
-                dic['unique keys'] += "," + arglist[arglist.index('unique')-2]
-                arglist.pop(arglist.index('unique'))
-            dic['unique keys'] = dic['unique keys'][1:]
+            dic['unique key'] = arglist[arglist.index('unique')-2]
         else:
-            dic['unique keys'] = None
+            dic['unique key'] = None
 
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}

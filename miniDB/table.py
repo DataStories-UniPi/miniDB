@@ -18,7 +18,7 @@ class Table:
         - column names (list of strings)
         - column types (list of functions like str/int etc)
         - primary (name of the primary key column)
-        - unique_keys (a list of unique key column names separated by ", ")
+        - unique (unique key column name)
 
     OR
 
@@ -27,7 +27,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, unique_keys=None, load=None):
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, unique_key=None, load=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -70,16 +70,13 @@ class Table:
 
             self.pk = primary_key
 
-            # if unique keys are set, keep indexes and names as an attribute
-            if unique_keys is not None:
-                self.uk_idxs=[]
-                self.uks=[]
-                for u_key in unique_keys.split(','):
-                    self.uk_idxs.append(self.column_names.index(u_key))
-                    self.uks.append(u_key)
+            # if unique key is set, keep index as an attribute
+            if unique_key is not None:
+                self.uk_idx = self.column_names.index(unique_key)
             else:
-                self.uks=[]
-                self.uk_idxs=[]
+                self.uk_idx = None
+
+            self.uk = unique_key
 
             # self._update()
 
@@ -144,12 +141,10 @@ class Table:
                 raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
 
             # if value is to be appended to a unique_key column, check that it doesn't alrady exist (no duplicate unique keys)
-            if self.uk_idxs is not None:
-                for j in range(len(self.uk_idxs)):
-                    if i==self.uk_idxs[j] and row[i] in self.column_by_name(self.uks[j]):
-                        raise ValueError(f'## ERROR -> Value {row[i]} already exists in unique key column {self.uks[j]}.')
-                    elif i==self.uk_idxs[j] and row[i] is None:
-                        raise ValueError(f'ERROR -> The value in unique key column {self.uks[j]} cannot be None.')
+            if i==self.uk_idx and row[i] in self.column_by_name(self.uk):
+                raise ValueError(f'## ERROR -> Value {row[i]} already exists in unique key column "{self.uk}".')
+            elif i==self.uk_idx and row[i] is None:
+                raise ValueError(f'ERROR -> The value in unique key column "{self.uk}" cannot be None.')
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
@@ -238,7 +233,7 @@ class Table:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
-                Operatores supported: (<,<=,==,>=,>)
+                Operators supported: (<,<=,==,>=,>)
             distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (False by default).
@@ -303,7 +298,7 @@ class Table:
         column_name, operator, value = self._parse_condition(condition)
 
         # if the column in condition is not a primary or unique key, abort the select
-        if (column_name != self.column_names[self.pk_idx]) and (column_name not in self.uks):
+        if (column_name != self.column_names[self.pk_idx]) and (column_name != self.column_names[self.uk_idx]):
             print('Column is not PK or UK. Aborting')
 
         # here we run the same select twice, sequentially and using the btree.
@@ -554,10 +549,9 @@ class Table:
         if self.pk_idx is not None:
             # table has a primary key, add PK next to the appropriate column
             headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
-        if self.uk_idxs is not None:
-            # table has unique keys, add UK next to the appropriate columns
-            for uk_idx in self.uk_idxs:
-                headers[uk_idx] = headers[uk_idx]+' #UK#'
+        if self.uk_idx is not None:
+            # table has unique key, add UK next to the appropriate columns
+            headers[self.uk_idx] = headers[self.uk_idx]+' #UK#'
         # detect the rows that are not full of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]

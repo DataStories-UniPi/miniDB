@@ -101,7 +101,7 @@ class Database:
         self._update_meta_insert_stack()
 
 
-    def create_table(self, name, column_names, column_types, primary_key=None, unique_keys=None, load=None):
+    def create_table(self, name, column_names, column_types, primary_key=None, unique_key=None, load=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
 
@@ -110,11 +110,11 @@ class Database:
             column_names: list. Names of columns.
             column_types: list. Types of columns.
             primary_key: string. The primary key (if it exists).
-            unique_keys: string. A list of unique key column names separated by ",".
+            unique_key: string. Unique key column name (if it exists).
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
         # print('here -> ', column_names.split(','))
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, unique_keys=unique_keys, load=load), })
+        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, unique_key=unique_key, load=load), })
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
@@ -161,7 +161,7 @@ class Database:
         self.save_database()
 
 
-    def import_table(self, table_name, filename, column_types=None, primary_key=None):
+    def import_table(self, table_name, filename, column_types=None, primary_key=None, unique_key=None):
         '''
         Creates table from CSV file.
 
@@ -169,6 +169,7 @@ class Database:
             filename: string. CSV filename. If not specified, filename's name will be used.
             column_types: list. Types of columns. If not specified, all will be set to type str.
             primary_key: string. The primary key (if it exists).
+            unique_key: string. Unique key column name (if it exists).
         '''
         file = open(filename, 'r')
 
@@ -178,7 +179,7 @@ class Database:
                 colnames = line.strip('\n')
                 if column_types is None:
                     column_types = ",".join(['str' for _ in colnames.split(',')])
-                self.create_table(name=table_name, column_names=colnames, column_types=column_types, primary_key=primary_key)
+                self.create_table(name=table_name, column_names=colnames, column_types=column_types, primary_key=primary_key, unique_key=unique_key)
                 lock_ownership = self.lock_table(table_name, mode='x')
                 first_line = False
                 continue
@@ -425,7 +426,7 @@ class Database:
                 index_name = self.select('*', 'meta_indexes', f'table_name={table_name} and column_name={condition_column}', return_object=True).column_by_name('index_name')[0]
                 bt = self._load_idx(index_name)
                 table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
-            elif self._has_index(table_name) and condition_column in self.tables[table_name].uks:
+            elif self._has_index(table_name) and condition_column == self.tables[table_name].column_names[self.tables[table_name].uk_idx]:
                 index_name = self.select('*', 'meta_indexes', f'table_name={table_name} and column_name={condition_column}', return_object=True).column_by_name('index_name')[0]
                 bt = self._load_idx(index_name)
                 table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
@@ -743,8 +744,8 @@ class Database:
     def create_index(self, index_name, table_name, index_type='btree'):
         '''
         Creates an index on a specified table with a given name.
-        Important: An index can be created on a primary key (the user don't need to specify the column).
-                                        OR on a unique key (the user must specify the column name in format table(column).
+        Important: An index can be created on a primary key (the user does not need to specify the column).
+                                        OR on a unique key (the user must specify the column name).
                    User must specify the column name with table name using format table_name(column_name).
 
         Args:
@@ -790,7 +791,7 @@ class Database:
         '''
         bt = Btree(3) # 3 is arbitrary
 
-        if (column_name == self.tables[table_name].pk) or (column_name in self.tables[table_name].uks):
+        if (column_name == self.tables[table_name].pk) or (column_name == self.tables[table_name].uk):
             # for each record in the primary key of the table, insert its value and index to the btree
             for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
                 if key is None:
