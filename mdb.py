@@ -368,9 +368,6 @@ if __name__ == "__main__":
                 pprint(dic, sort_dicts=False)
             else:
                 dic = interpret(line)
-                print(dic)
-                rel = create_rel(dic)
-                print_rel(rel)
                 result = execute_dic(dic)
                 if isinstance(result,Table):
                     result.show()
