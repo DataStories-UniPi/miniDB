@@ -66,7 +66,8 @@ def create_query_plan(query, keywords, action):
             ql.pop(i+1)
             kw_positions.append(i)
         i+=1
-        
+    
+    print(action)
 
 
     for i in range(len(kw_in_query)-1):
@@ -120,6 +121,13 @@ def create_query_plan(query, keywords, action):
             dic['force'] = True
         else:
             dic['force'] = False
+
+    if action=='create index':
+        on_value = dic["on"].split(" ")
+
+        if len(on_value) == 4 and on_value[1] == '(' and on_value[-1]==')':
+            dic['on'] = on_value[0]
+            dic['column'] = on_value[2]
 
     return dic
 
@@ -175,7 +183,7 @@ def interpret(query):
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
-                     'create index': ['create index', 'on', 'using'],
+                     'create index': ['create index', 'on', 'column', 'using'],
                      'drop index': ['drop index'],
                      'create view' : ['create view', 'as']
                      }
