@@ -148,7 +148,11 @@ def evaluate_from_clause(dic):
             join_dic['join'] = 'inner'
             join_dic['left'] = ' '.join(from_split[:join_idx])
         join_dic['right'] = ' '.join(from_split[join_idx+1:on_idx])
-        join_dic['on'] = ''.join(from_split[on_idx+1:])
+        and_idx = [i+on_idx+1 for i,word in enumerate(from_split[on_idx+1:]) if word=='and']
+        if and_idx:
+            join_dic['on'] = {'and':{'left':' '.join(from_split[on_idx+1:and_idx[0]]),'right':' '.join(from_split[and_idx[0]+1:])}}
+        else:
+            join_dic['on'] = ''.join(from_split[on_idx+1:])
 
         if join_dic['left'].startswith('(') and join_dic['left'].endswith(')'):
             join_dic['left'] = interpret(join_dic['left'][1:-1].strip())
