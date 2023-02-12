@@ -7,8 +7,10 @@ import traceback
 import shutil
 sys.path.append('miniDB')
 
-from database import Database
-from table import Table
+from miniDB.database import Database
+from miniDB.table import Table
+from miniDB.misc import return_tables_in_join_dict,split_condition,split_complex_conditions
+from miniDB.Query_optimizer import build_equivalent_query
 # art font is "big"
 art = '''
              _         _  _____   ____  
@@ -100,11 +102,17 @@ def create_query_plan(query, keywords, action):
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+        dic['unique'] = ','.join([val[0] for val in arglist if len(val)==3]) # if length of a list inside arglist is 3, then the 3rd variable is unique
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
+
+        if dic['primary key'] is not None and dic['primary key'] not in dic['unique']:
+            dic['unique'] += ","+dic['primary key']
+
+        
     
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
@@ -148,7 +156,7 @@ def evaluate_from_clause(dic):
             join_dic['join'] = 'inner'
             join_dic['left'] = ' '.join(from_split[:join_idx])
         join_dic['right'] = ' '.join(from_split[join_idx+1:on_idx])
-        join_dic['on'] = ''.join(from_split[on_idx+1:])
+        join_dic['on'] = ' '.join(from_split[on_idx+1:])
 
         if join_dic['left'].startswith('(') and join_dic['left'].endswith(')'):
             join_dic['left'] = interpret(join_dic['left'][1:-1].strip())
@@ -175,7 +183,7 @@ def interpret(query):
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
-                     'create index': ['create index', 'on', 'using'],
+                     'create index': ['create index', 'on', 'column', 'using'],
                      'drop index': ['drop index'],
                      'create view' : ['create view', 'as']
                      }
@@ -246,6 +254,16 @@ def interpret_meta(command):
     commands_dict[action](db_name)
 
 
+
+
+
+
+
+        
+            
+
+
+
 if __name__ == "__main__":
     fname = os.getenv('SQL')
     dbname = os.getenv('DB')
@@ -281,8 +299,11 @@ if __name__ == "__main__":
         except (KeyboardInterrupt, EOFError):
             print('\nbye!')
             break
+        except IndexError:
+            print('No command given!\n')
+            continue
         try:
-            if line=='exit':
+            if line=='exit;':
                 break
             if line.split(' ')[0].removesuffix(';') in ['lsdb', 'lstb', 'cdb', 'rmdb']:
                 interpret_meta(line)
