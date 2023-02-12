@@ -8,6 +8,7 @@ import shutil
 sys.path.append('miniDB')
 from miniDB.database import Database
 from miniDB.table import Table
+import misc
 # art font is "big"
 art = '''
              _         _  _____   ____  
@@ -35,6 +36,73 @@ def in_paren(qsplit, ind):
     Split string on space and return whether the item in index 'ind' is inside a parentheses
     '''
     return qsplit[:ind].count('(')>qsplit[:ind].count(')')
+
+
+def fix_not(dic_where):
+    '''
+        function that reverse the operators of  condition for not operator creation
+    '''
+    if dic_where == None:
+        return dic_where
+
+    if dic_where.count("not") == 1:
+        where = dic_where.replace("not", " ")
+        left, op, right = misc.split_condition(where)
+
+        dic_where = left + ' ' + misc.antitheta_op(op) + ' ' + '"' + right + '"'
+    else:
+        where = dic_where
+        left, op, right = misc.split_condition(where)
+        dic_where = left + ' ' + op + ' ' + '"' + right + '"'
+
+    return dic_where
+
+
+def fix_between(dic_where):
+    '''
+        Function for fix_between which replaces between like the following example.
+        Example: condition:id between 10101 and 14114 --> id>=10101 and id<=14141
+    '''
+    if dic_where == None:
+        return dic_where
+
+    if dic_where.count("between") > 0:
+        z = dic_where.split("between")
+        lf = z[0]
+        f = z[1]
+        if f.count("and") == 1:
+            k = f.split("and")
+            f1 = k[0]
+            f2 = k[1]
+            dic_where = lf + ' >= ' + '"' + f1 + '"' + ' and ' + lf + ' <= ' + '"' + f2 + '"'
+        else:
+            temp = f.split("and", 2)
+            f1 = temp[0]
+            f2 = temp[1]
+            rest = temp[2]
+            dic_where = lf + ' >= ' + '"' + f1 + '"' + ' and ' + lf + ' <= ' + '"' + f2 + '"' + ' and ' + rest
+    return dic_where
+
+
+def get_and_of(dic_where):
+    '''
+        Function which recognizes and , or operators and do or_islands
+    '''
+    if dic_where == None:
+        return dic_where
+
+    ret = []
+    or_islands = dic_where.split('or')
+
+    for isl in or_islands:
+        without_between = fix_between(isl)
+        inter = without_between.split('and')
+        inner_ret = []
+        for inner in inter:
+            inner_ret.append(fix_not(inner))
+        ret.append(inner_ret)
+
+    return ret
 
 
 def create_query_plan(query, keywords, action):
@@ -91,6 +159,7 @@ def create_query_plan(query, keywords, action):
             
         else:
             dic['desc'] = None
+        dic["where"] = get_and_of(dic["where"])
 
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
