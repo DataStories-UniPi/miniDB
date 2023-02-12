@@ -13,7 +13,8 @@ sys.modules['table'] = table
 
 from joins import Inlj, Smj
 from btree import Btree
-from misc import split_condition
+from Extendible_Hash import Hash
+from misc import split_condition,split_complex_conditions,high_priority_conditions
 from table import Table
 
 
@@ -54,7 +55,7 @@ class Database:
         self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
-        self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
+        self.create_table('meta_indexes', 'table_name,index_name,column,index_type', 'str,str,str,str')
         self.save_database()
 
     def save_database(self):
@@ -101,7 +102,7 @@ class Database:
         self._update_meta_insert_stack()
 
 
-    def create_table(self, name, column_names, column_types, primary_key=None, load=None):
+    def create_table(self, name, column_names, column_types, unique=None, primary_key=None, load=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
 
@@ -110,10 +111,14 @@ class Database:
             column_names: list. Names of columns.
             column_types: list. Types of columns.
             primary_key: string. The primary key (if it exists).
+            unique: list. columns that are unique.
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
         # print('here -> ', column_names.split(','))
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)})
+        if unique is not None:
+            unique=unique.split(',')
+
+        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, unique=unique, load=load)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
@@ -290,11 +295,13 @@ class Database:
             table_name: string. Name of table (must be part of database).
             set_value: string. New value of the predifined column name.
             set_column: string. The column to be altered.
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+            condition: string. Either complex or simple.
+                A simple condition has the following format:
+                '(not) column[<,<=,==,>=,>]value' or
+                '(not) value[<,<=,==,>=,>]column'.
+                Complex conditions consist of simple ones connected with operators 'or','and' and 'not'
                 
-                Operatores supported: (<,<=,==,>=,>)
+                Operatores supported: (<,<=,==,>=,>,between,and,or,not)
         '''
         set_column, set_value = set_args.replace(' ','').split('=')
         self.load_database()
@@ -312,11 +319,13 @@ class Database:
 
         Args:
             table_name: string. Name of table (must be part of database).
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+            condition: string. Either complex or simple.
+                A simple condition has the following format:
+                '(not) column[<,<=,==,>=,>]value' or
+                '(not) value[<,<=,==,>=,>]column'.
+                Complex conditions consist of simple ones connected with operators 'or','and' and 'not'
                 
-                Operatores supported: (<,<=,==,>=,>)
+                Operatores supported: (<,<=,==,>=,>,between,and,or,not)
         '''
         self.load_database()
         
@@ -339,11 +348,13 @@ class Database:
         Args:
             table_name: string. Name of table (must be part of database).
             columns: list. The columns that will be part of the output table (use '*' to select all available columns)
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+            condition: string. Either complex or simple.
+                A simple condition has the following format:
+                '(not) column[<,<=,==,>=,>]value' or
+                '(not) value[<,<=,==,>=,>]column'.
+                Complex conditions consist of simple ones connected with operators 'or','and' and 'not'
                 
-                Operatores supported: (<,<=,==,>=,>)
+                Operatores supported: (<,<=,==,>=,>,between,and,or,not)
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (True by default).
             limit: int. An integer that defines the number of rows that will be returned (all rows if None).
@@ -355,21 +366,106 @@ class Database:
         # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
-            return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
+            return table_name._select_where(columns, condition, distinct, order_by, desc, limit)              
 
-        if condition is not None:
-            condition_column = split_condition(condition)[0]
-        else:
-            condition_column = ''
+                        
 
-        
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
-        if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
-            index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
-            bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+        if condition is not None and self._has_index(table_name):
+            # check if we can take advantage of any index
+
+            # break the complex condition into smaller ones and put them into a list
+            broken_complex_condition = split_complex_conditions(condition)               
+
+            # WE HAVE TO DETERMINE THE PRIORITY OF THE CONDITIONS COMPARED TO THE WHOLE COMPLEX CONDITION
+            # IF A CONDITION HAS TO BE TRUE IN ORDER FOR THE WHOLE CONDITION TO BE TRUE, THEN WE CAN USE THAT CONDITION FOR SEARCHING WITH INDEX (ASUUMING THERE IS AN INDEX ON IT)
+            # IF A CONDITION IS NOT REQUIRED AND IT IS CONNECTED WITH 'OR' OPERATOR THEN WE MIGHT OMMIT RESULTS THAT COME FROM OTHER CONDITIONS
+            # WE HAVE TO MAKE SURE THIS CONDITION IS REQUIRED IN ORDER TO USE IT FOR SEARCHING WITH INDEX
+
+            # finding the conditions that can be checked using the index (in broken_complex_condition)
+            # they should be high priority
+            high_priority_condition = high_priority_conditions(broken_complex_condition)
+            for i in range(len(high_priority_condition)): # split each condition
+                column_name, operator, value = split_condition(high_priority_condition[i])
+                high_priority_condition[i] = [column_name,operator,value]
+
+            
+            # finding the high priority conditions that have index
+            # only those can be used to select for index
+            conditions_that_can_use_index = []
+            columns_that_have_indexes = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('column')
+            for i in high_priority_condition:
+                if i[0] in columns_that_have_indexes:
+                    conditions_that_can_use_index.append(i)
+
+            
+            # hash index can only find exact value
+            for i in conditions_that_can_use_index:
+                type_of_index_for_this_condition = self.select('*', 'meta_indexes', f'table_name={table_name} and column={i[0]}', return_object=True).column_by_name('index_type')
+                if i[1]!='='and 'btree' not in type_of_index_for_this_condition: # if we are searching for range of values and there is only hash index
+                    conditions_that_can_use_index.remove(i) # remove this condition
+
+            
+            if len(conditions_that_can_use_index) != 0:
+                # if any of the conditions can be used for searching with index, we'll use it
+
+                # choose a condition
+                chosen_condition = 0
+                
+
+                # loading index
+                index_name = self.select('*', 'meta_indexes', f'table_name={table_name} and column={conditions_that_can_use_index[chosen_condition][0]}', return_object=True).column_by_name('index_name')[0]
+                index_type = self.select('*', 'meta_indexes', f'table_name={table_name} and column={conditions_that_can_use_index[chosen_condition][0]}', return_object=True).column_by_name('index_type')[0]
+                index = self._load_idx(index_name)
+            
+
+            
+                condition_4_index = ' '.join(str(x) for x in conditions_that_can_use_index[chosen_condition]) # getting the condition for the column of the btree
+
+                if index_type == 'btree':
+                    table = self.tables[table_name]._select_where_with_btree(columns, index, condition_4_index, distinct, order_by, desc, limit)
+                elif index_type == 'hash':
+                    table = self.tables[table_name]._select_where_with_hash(columns, index, condition_4_index)
+
+ 
+
+                if len(broken_complex_condition) > 1:
+                    # if there were more than 1 conditions in broken_complex_condition, remove the condition from broken_complex_condition and select the rest
+
+                    # analyse each condition in broken_complex_condition
+                    for i in range(len(broken_complex_condition)): # split each condition
+                        if broken_complex_condition[i] != 'and' and broken_complex_condition[i] != 'or':
+                            column_name, operator, value = split_condition(broken_complex_condition[i])
+                            broken_complex_condition[i] = [column_name,operator,value]
+
+                    # find the position of the one we checked
+                    position = broken_complex_condition.index(conditions_that_can_use_index[chosen_condition]) # find the index of the condition used for index
+                    
+                    if position == 0:
+                        broken_complex_condition.pop(0) # removing the condition from list
+                        broken_complex_condition.pop(0) # removing 'and' operators after
+                    else: # if this condition wasnt in the beginning 
+                        broken_complex_condition.pop(position-1) # removing 'and' operators before
+                        broken_complex_condition.pop(position-1) # removing the condition from list ( its posisiton changed in the list after removing the and)
+                        
+                    
+
+                    new_condition = '' # getting the new condition
+                    for x in broken_complex_condition:
+                        if isinstance(x,str):
+                            new_condition += x 
+                        elif isinstance(x,list):
+                            for j in x:
+                                new_condition += j
+
+                    table = table._select_where(columns, new_condition, distinct, order_by, desc, limit) # checking for the rest of the conditions in the table that we got from the index     
+
+            else: # same line as next 2 lines in case the index column isn't necessary for the condition to be true
+                  # then we search the table without index
+                table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+                   
         else:
             table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
         # self.unlock_table(table_name)
@@ -432,11 +528,13 @@ class Database:
         Args:
             left_table: string. Name of the left table (must be in DB) or Table obj.
             right_table: string. Name of the right table (must be in DB) or Table obj.
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+            condition: string. Either complex or simple.
+                A simple condition has the following format:
+                '(not) column[<,<=,==,>=,>]value' or
+                '(not) value[<,<=,==,>=,>]column'.
+                Complex conditions consist of simple ones connected with operators 'or','and' and 'not'
                 
-                Operators supported: (<,<=,==,>=,>)
+                Operatores supported: (<,<=,==,>=,>,between,and,or,not)
         save_as: string. The output filename that will be used to save the resulting table in the database (won't save if None).
         return_object: boolean. If True, the result will be a table object (useful for internal usage - the result will be printed by default).
         '''
@@ -469,10 +567,12 @@ class Database:
                 res = None
                 raise Exception('Index-nested-loop join cannot be executed. Use inner join instead.\n')
             elif rightIndexExists:
-                index_name = self.select('*', 'meta_indexes', f'table_name={right_table._name}', return_object=True).column_by_name('index_name')[0]
+                # inl join searches in the index with operators other than '=' operator. Hash indexes can't find items with any other operator. 
+                # we'll restrict indexes to only btree ones
+                index_name = self.select('*', 'meta_indexes', f'table_name={right_table._name} and index_type=btree', return_object=True).column_by_name('index_name')[0]
                 res = Inlj(condition, left_table, right_table, self._load_idx(index_name), 'right').join()
             elif leftIndexExists:
-                index_name = self.select('*', 'meta_indexes', f'table_name={left_table._name}', return_object=True).column_by_name('index_name')[0]
+                index_name = self.select('*', 'meta_indexes', f'table_name={left_table._name} and index_type=btree', return_object=True).column_by_name('index_name')[0]
                 res = Inlj(condition, left_table, right_table, self._load_idx(index_name), 'left').join()
 
         elif mode=='sm':
@@ -570,6 +670,21 @@ class Database:
             pass
         return False
 
+    def return_table_column_names(self, table_name):
+        '''
+            Gets a list of tables and returns all columns inside those tables
+        '''
+        columns = [] # output list
+
+        for x in table_name: # for each table in the input list 
+            if x in self.tables.keys(): # if the table exists
+                for j in self.tables[table_name].column_names: # add its columns to output list
+                    if j not in columns:
+                        columns.append(j)
+            else:
+                raise ValueError(f'Invalid table name: {table_name}\nNo such table exists.')
+        
+        return columns
 
     #### META ####
 
@@ -650,7 +765,7 @@ class Database:
 
 
     # indexes
-    def create_index(self, index_name, table_name, index_type='btree'):
+    def create_index(self, index_name, table_name, column_name=None, index_type='btree'):
         '''
         Creates an index on a specified table with a given name.
         Important: An index can only be created on a primary key (the user does not specify the column).
@@ -658,40 +773,63 @@ class Database:
         Args:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
+            column_name: string. Name of the column that we want to make index. None by default.
+            index_type: string. The type of the index (btree or hash)
         '''
-        if self.tables[table_name].pk_idx is None: # if no primary key, no index
-            raise Exception('Cannot create index. Table has no primary key.')
+        
+        if column_name is None: # if user doesn't specify column 
+            column_name = self.tables[table_name].pk # assume index column is pk
+            if column_name is None: # if no primary key, no index
+                raise Exception('Cannot create index on Primary key. Table has no primary key.')
+        
+            
+        if column_name not in self.tables[table_name].column_names:
+            raise Exception('Cannot create index on this column. Column doesnt exist.')
+        elif column_name not in self.tables[table_name].unique:
+            raise Exception('Cannot create index on this column. This column is not unique.')
+
+        
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
             # currently only btree is supported. This can be changed by adding another if.
-            if index_type=='btree':
-                logging.info('Creating Btree index.')
+            if index_type=='btree' or index_type=='hash':
+                logging.info('Creating ' + index_type + ' index.')
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
-                self.tables['meta_indexes']._insert([table_name, index_name])
-                # crate the actual index
-                self._construct_index(table_name, index_name)
+                self.tables['meta_indexes']._insert([table_name, index_name, column_name, index_type])
+                # create the actual index
+                self._construct_index(table_name, index_name, index_type, column_name)
                 self.save_database()
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
-    def _construct_index(self, table_name, index_name):
+    def _construct_index(self, table_name, index_name, index_type, column_name=None, ):
         '''
-        Construct a btree on a table and save.
+        Construct an index on a table and save.
 
         Args:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
+            index_type: string. The type of the index (btree or hash)
+            column_name: string. Name of the column that we want to make index. None by default.
         '''
-        bt = Btree(3) # 3 is arbitrary
+        if column_name==None: # if column name not specified, set as pk
+            column_name = self.tables[table_name].pk
+
+        if index_type=='btree': # if index_type is btree, create btree
+            This_index = Btree(3) # 3 is arbitrary
+
+        elif index_type=='hash': # if index_type is hash, create hash index
+            # find the number of elements in the table
+            n = self.tables['meta_length']._select_where('no_of_rows', condition='table_name='+table_name).column_by_name('no_of_rows')[0]
+            This_index = Hash(n)
 
         # for each record in the primary key of the table, insert its value and index to the btree
-        for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
+        for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
             if key is None:
                 continue
-            bt.insert(key, idx)
+            This_index.insert(key, idx)
         # save the btree
-        self._save_index(index_name, bt)
-
-
+        self._save_index(index_name, This_index)
+        
     def _has_index(self, table_name):
         '''
         Check whether the specified table's primary key column is indexed.
