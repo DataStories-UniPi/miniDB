@@ -5,10 +5,12 @@ import sys
 import readline
 import traceback
 import shutil
+import ast
 sys.path.append('miniDB')
 
 from miniDB.database import Database
 from miniDB.table import Table
+from miniDB.query_plans import multiple_query_plans
 # art font is "big"
 art = '''
              _         _  _____   ____  
@@ -18,6 +20,7 @@ art = '''
  | | | | | || || | | || || |__| || |_) |
  |_| |_| |_||_||_| |_||_||_____/ |____/   2022                              
 '''   
+
 
 
 def search_between(s, first, last):
@@ -328,6 +331,7 @@ def interpret(query):
                      'create view' : ['create view', 'as']
                      }
 
+
     if query[-1]!=';':
         query+=';'
     
@@ -349,6 +353,7 @@ def execute_dic(dic):
     
     action = list(dic.keys())[0].replace(' ','_')
     return getattr(db, action)(*dic.values())
+    
 
 def interpret_meta(command):
     '''
@@ -437,7 +442,8 @@ if __name__ == "__main__":
                 interpret_meta(line)
             elif line.startswith('explain'):
                 dic = interpret(line.removeprefix('explain '))
-                pprint(dic, sort_dicts=False)
+                multiple_query_plans(dic)
+                #pprint(dic, sort_dicts=False)
             else:
                 dic = interpret(line)
                 result = execute_dic(dic)
