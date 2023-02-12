@@ -1,5 +1,18 @@
 import operator
 
+#Between function
+def between(to_be_checked,range):
+    range=range.split("&")
+    if(type(to_be_checked)==int or type(to_be_checked)==float):
+        r=[]
+        r.append(float(range[0]))
+        r.append(float(range[1]))
+        range=r
+    if(to_be_checked>range[0] and to_be_checked<range[1]):
+        return True
+    else:
+        return False
+
 def get_op(op, a, b):
     '''
     Get op as a function of a and b by using a symbol
@@ -8,7 +21,9 @@ def get_op(op, a, b):
                 '<': operator.lt,
                 '>=': operator.ge,
                 '<=': operator.le,
-                '=': operator.eq}
+                '=': operator.eq,
+                'not'.casefold(): operator.ne,
+                'between'.casefold():between}
 
     try:
         return ops[op](a,b)
@@ -20,7 +35,9 @@ def split_condition(condition):
            '<=': operator.le,
            '=': operator.eq,
            '>': operator.gt,
-           '<': operator.lt}
+           '<': operator.lt,
+           'not'.casefold(): operator.ne,
+           'between'.casefold():between}
 
     for op_key in ops.keys():
         splt=condition.split(op_key)
@@ -34,7 +51,6 @@ def split_condition(condition):
 
             if right.find('"') != -1: # If there are any double quotes in the value, throw. (Notice we've already removed the leading and trailing ones)
                 raise ValueError(f'Invalid condition: {condition}\nDouble quotation marks are not allowed inside values.')
-
             return left, op_key, right
 
 def reverse_op(op):

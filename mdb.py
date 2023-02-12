@@ -1,14 +1,15 @@
 import os
-import re
 from pprint import pprint
 import sys
-import readline
 import traceback
 import shutil
-sys.path.append('miniDB')
 
-from database import Database
-from table import Table
+sys.path.append('miniDB')
+from tabulate import tabulate
+
+from miniDB.database import Database
+from miniDB.table import Table
+
 # art font is "big"
 art = '''
              _         _  _____   ____  
@@ -17,25 +18,25 @@ art = '''
  | '_ ` _ \ | || '_ \ | || |  | ||  _ < 
  | | | | | || || | | || || |__| || |_) |
  |_| |_| |_||_||_| |_||_||_____/ |____/   2022                              
-'''   
-
+'''
 
 def search_between(s, first, last):
     '''
     Search in 's' for the substring that is between 'first' and 'last'
     '''
     try:
-        start = s.index( first ) + len( first )
-        end = s.index( last, start )
+        start = s.index(first) + len(first)
+        end = s.index(last, start)
     except:
         return
     return s[start:end].strip()
+
 
 def in_paren(qsplit, ind):
     '''
     Split string on space and return whether the item in index 'ind' is inside a parentheses
     '''
-    return qsplit[:ind].count('(')>qsplit[:ind].count(')')
+    return qsplit[:ind].count('(') > qsplit[:ind].count(')')
 
 
 def create_query_plan(query, keywords, action):
@@ -45,37 +46,35 @@ def create_query_plan(query, keywords, action):
     This can and will be used recursively
     '''
 
-    dic = {val: None for val in keywords if val!=';'}
+    dic = {val: None for val in keywords if val != ';'}
 
-    ql = [val for val in query.split(' ') if val !='']
+    ql = [val for val in query.split(' ') if val != '']
 
     kw_in_query = []
     kw_positions = []
-    i=0
-    while i<len(ql):
-        if in_paren(ql, i): 
-            i+=1
+    i = 0
+    while i < len(ql):
+        if in_paren(ql, i):
+            i += 1
             continue
         if ql[i] in keywords:
             kw_in_query.append(ql[i])
             kw_positions.append(i)
-        
-        elif i!=len(ql)-1 and f'{ql[i]} {ql[i+1]}' in keywords:
-            kw_in_query.append(f'{ql[i]} {ql[i+1]}')
-            ql[i] = ql[i]+' '+ql[i+1]
-            ql.pop(i+1)
+
+        elif i != len(ql) - 1 and f'{ql[i]} {ql[i + 1]}' in keywords:
+            kw_in_query.append(f'{ql[i]} {ql[i + 1]}')
+            ql[i] = ql[i] + ' ' + ql[i + 1]
+            ql.pop(i + 1)
             kw_positions.append(i)
-        i+=1
-        
+        i += 1
 
+    for i in range(len(kw_in_query) - 1):
+        dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i] + 1:kw_positions[i + 1]])
 
-    for i in range(len(kw_in_query)-1):
-        dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
-    
     if action == 'create view':
         dic['as'] = interpret(dic['as'])
 
-    if action=='select':
+    if action == 'select':
         dic = evaluate_from_clause(dic)
 
         if dic['distinct'] is not None:
@@ -89,12 +88,12 @@ def create_query_plan(query, keywords, action):
             else:
                 dic['desc'] = False
             dic['order by'] = dic['order by'].removesuffix(' asc').removesuffix(' desc')
-            
+
         else:
             dic['desc'] = None
 
-    if action=='create table':
-        args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
+    if action == 'create table':
+        args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')') + 1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
         arg_nopk = args.replace('primary key', '')[1:-1]
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
@@ -102,27 +101,32 @@ def create_query_plan(query, keywords, action):
         dic['column_types'] = ','.join([val[1] for val in arglist])
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
-            dic['primary key'] = arglist[arglist.index('primary')-2]
+            dic['primary key'] = arglist[arglist.index('primary') - 2]
         else:
             dic['primary key'] = None
-    
-    if action=='import': 
-        dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
+        # UNIQUE COLUMN CREATION
+        if 'unique' in args:
+            arglist = args[1:-1].split(' ')
+            # REMOVING ALL CHARACTERS BEFORE THE COMMA
+            uq = arglist[arglist.index('unique') - 2].split(",", 1)
+            dic['unique'] = uq[1]
 
-    if action=='insert into':
+    if action == 'import':
+        dic = {'import table' if key == 'import' else key: val for key, val in dic.items()}
+
+    if action == 'insert into':
         if dic['values'][0] == '(' and dic['values'][-1] == ')':
             dic['values'] = dic['values'][1:-1]
         else:
             raise ValueError('Your parens are not right m8')
-    
-    if action=='unlock table':
+
+    if action == 'unlock table':
         if dic['force'] is not None:
             dic['force'] = True
         else:
             dic['force'] = False
 
     return dic
-
 
 
 def evaluate_from_clause(dic):
@@ -135,20 +139,20 @@ def evaluate_from_clause(dic):
         subquery = ' '.join(from_split[1:-1])
         dic['from'] = interpret(subquery)
 
-    join_idx = [i for i,word in enumerate(from_split) if word=='join' and not in_paren(from_split,i)]
-    on_idx = [i for i,word in enumerate(from_split) if word=='on' and not in_paren(from_split,i)]
+    join_idx = [i for i, word in enumerate(from_split) if word == 'join' and not in_paren(from_split, i)]
+    on_idx = [i for i, word in enumerate(from_split) if word == 'on' and not in_paren(from_split, i)]
     if join_idx:
         join_idx = join_idx[0]
         on_idx = on_idx[0]
         join_dic = {}
-        if from_split[join_idx-1] in join_types:
-            join_dic['join'] = from_split[join_idx-1]
-            join_dic['left'] = ' '.join(from_split[:join_idx-1])
+        if from_split[join_idx - 1] in join_types:
+            join_dic['join'] = from_split[join_idx - 1]
+            join_dic['left'] = ' '.join(from_split[:join_idx - 1])
         else:
             join_dic['join'] = 'inner'
             join_dic['left'] = ' '.join(from_split[:join_idx])
-        join_dic['right'] = ' '.join(from_split[join_idx+1:on_idx])
-        join_dic['on'] = ''.join(from_split[on_idx+1:])
+        join_dic['right'] = ' '.join(from_split[join_idx + 1:on_idx])
+        join_dic['on'] = ''.join(from_split[on_idx + 1:])
 
         if join_dic['left'].startswith('(') and join_dic['left'].endswith(')'):
             join_dic['left'] = interpret(join_dic['left'][1:-1].strip())
@@ -157,8 +161,9 @@ def evaluate_from_clause(dic):
             join_dic['right'] = interpret(join_dic['right'][1:-1].strip())
 
         dic['from'] = join_dic
-        
+
     return dic
+
 
 def interpret(query):
     '''
@@ -177,30 +182,92 @@ def interpret(query):
                      'update table': ['update table', 'set', 'where'],
                      'create index': ['create index', 'on', 'using'],
                      'drop index': ['drop index'],
-                     'create view' : ['create view', 'as']
+                     'create view': ['create view', 'as'],
                      }
 
-    if query[-1]!=';':
-        query+=';'
-    
+    if query[-1] != ';':
+        query += ';'
+
     query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip()
+    # Split query into more queries
+    word_query = query.split()
+    are_multiple = False
+    for word in word_query:
+        if word == 'and' or word == 'or':
+            are_multiple = True
+            special_word = word
 
-    for kw in kw_per_action.keys():
-        if query.startswith(kw):
-            action = kw
+    if are_multiple:
+        # Basic SELECT * FROM WHERE that is being used by all queries
+        base_query = []
+        for i in range(0, len(word_query)):
+            if (word_query[i] == 'where'):
+                base_query.append(word_query[i])
+                break
+            else:
+                base_query.append(word_query[i])
+        queries = []
+        q = []
+        for j in range(i + 1, len(word_query)):
+            if (word_query[j] == 'and' or word_query[j] == 'or'):
+                # If query is completed
+                queries.append(q)
+                q = []
+            else:
+                q.append(word_query[j])
+        queries.append(q)
+        # Combine queries
+        out_q = []
+        bc = []
+        # Create smaller queries
+        for q in queries:
+            for i in base_query:
+                bc.append(i)
+            for i in q:
+                bc.append(i)
+            out_q.append(bc)
+            bc = []
+        # Turn queries into the appropriate format to be processed
+        out_s = []
+        for i in out_q:
+            q = ' '.join(i)
+            if (q[-1] != ';'):
+                q += ' ;'
+            out_s.append(q)
+        query_plans = []
+        # Query plan for each sub query
+        for query in out_s:
+            for kw in kw_per_action.keys():
+                if query.startswith(kw):
+                    action = kw
 
-    return create_query_plan(query, kw_per_action[action]+[';'], action)
+            query_plans.append(create_query_plan(query, kw_per_action[action] + [';'], action))
+
+        # Return query plans with the special word so we know if we have to perform and/or
+        return query_plans, special_word
+
+    else:
+        for kw in kw_per_action.keys():
+            if query.startswith(kw):
+                action = kw
+        return create_query_plan(query, kw_per_action[action] + [';'], action), 'none'
+
 
 def execute_dic(dic):
     '''
     Execute the given dictionary
     '''
     for key in dic.keys():
-        if isinstance(dic[key],dict):
+        if isinstance(dic[key], dict):
             dic[key] = execute_dic(dic[key])
-    
-    action = list(dic.keys())[0].replace(' ','_')
+
+    action = list(dic.keys())[0].replace(' ', '_')
+    print(f'action "{action}"')
+    print(f'dic "{dic}"')
+    print(f'dic.values() "{dic.values()}"')
+
     return getattr(db, action)(*dic.values())
+
 
 def interpret_meta(command):
     """
@@ -215,24 +282,24 @@ def interpret_meta(command):
     """
     action = command.split(' ')[0].removesuffix(';')
 
-    db_name = db._name if search_between(command, action,';')=='' else search_between(command, action,';')
+    db_name = db._name if search_between(command, action, ';') == '' else search_between(command, action, ';')
 
     verbose = True
     if action == 'cdb' and ' -noverb' in db_name:
-        db_name = db_name.replace(' -noverb','')
+        db_name = db_name.replace(' -noverb', '')
         verbose = False
 
     def list_databases(db_name):
         [print(fold.removesuffix('_db')) for fold in os.listdir('dbdata')]
-    
+
     def list_tables(db_name):
-        [print(pklf.removesuffix('.pkl')) for pklf in os.listdir(f'dbdata/{db_name}_db') if pklf.endswith('.pkl')\
-            and not pklf.startswith('meta')]
+        [print(pklf.removesuffix('.pkl')) for pklf in os.listdir(f'dbdata/{db_name}_db') if pklf.endswith('.pkl') \
+         and not pklf.startswith('meta')]
 
     def change_db(db_name):
         global db
         db = Database(db_name, load=True, verbose=verbose)
-    
+
     def remove_db(db_name):
         shutil.rmtree(f'dbdata/{db_name}_db')
 
@@ -252,20 +319,17 @@ if __name__ == "__main__":
 
     db = Database(dbname, load=True)
 
-    
-
     if fname is not None:
         for line in open(fname, 'r').read().splitlines():
             if line.startswith('--'): continue
             if line.startswith('explain'):
                 dic = interpret(line.removeprefix('explain '))
                 pprint(dic, sort_dicts=False)
-            else :
+            else:
                 dic = interpret(line.lower())
-                result = execute_dic(dic)
-                if isinstance(result,Table):
+                result = execute_dic(dic[0])
+                if isinstance(result, Table):
                     result.show()
-        
 
     from prompt_toolkit import PromptSession
     from prompt_toolkit.history import FileHistory
@@ -276,13 +340,13 @@ if __name__ == "__main__":
     while 1:
         try:
             line = session.prompt(f'({db._name})> ', auto_suggest=AutoSuggestFromHistory()).lower()
-            if line[-1]!=';':
-                line+=';'
+            if line[-1] != ';':
+                line += ';'
         except (KeyboardInterrupt, EOFError):
             print('\nbye!')
             break
         try:
-            if line=='exit':
+            if line == 'exit':
                 break
             if line.split(' ')[0].removesuffix(';') in ['lsdb', 'lstb', 'cdb', 'rmdb']:
                 interpret_meta(line)
@@ -290,9 +354,77 @@ if __name__ == "__main__":
                 dic = interpret(line.removeprefix('explain '))
                 pprint(dic, sort_dicts=False)
             else:
-                dic = interpret(line)
-                result = execute_dic(dic)
-                if isinstance(result,Table):
-                    result.show()
+                dic, special_word = interpret(line)
+                if special_word == 'none':
+                    result = execute_dic(dic)
+                    if isinstance(result, Table):
+                        result.show()
+                elif special_word == 'and':
+                    results = []
+                    for q in dic:
+                        results.append(execute_dic(q))
+                    nn_rows = []
+                    for r in results:
+                        # Return headers and rows
+                        header, n = r.show(print_output=False)
+                        nn_rows.append(n)
+                    # Find longest tuple
+                    l = 0
+                    length = len(nn_rows[0])
+                    for i in range(1, len(nn_rows)):
+                        if (len(nn_rows[i]) > length):
+                            length = nn_rows[i]
+                            l = i
+                    # Remove duplicates
+                    out_table = []
+                    for i in range(0, len(nn_rows[l])):
+                        for j in nn_rows:
+                            isFound = False
+                            for t in j:
+                                if (t[0] == nn_rows[l][i][0]):
+                                    isFound = True
+                            if (isFound == False):
+                                break
+                        if (isFound):
+                            # If we go in here it means that each row has been set as true
+                            out_table.append(nn_rows[l][i])
+                    print(tabulate(out_table[:None], headers=header) + '\n')
+                elif special_word == 'or':
+                    results = []
+
+                    for q in dic:
+                        results.append(execute_dic(q))
+                    nn_rows = []
+                    for r in results:
+                        # Return headers and rows
+                        print(f' results "{results}"')
+
+                        header, n = r.show(print_output=False)
+                        nn_rows.append(n)
+
+                    # Find longest tuple
+                    l = 0
+                    length = len(nn_rows[0])
+                    for i in range(1, len(nn_rows)):
+                        if len(nn_rows[i]) > length:
+                            length = nn_rows[i]
+                            l = i
+                    # Removing duplicates
+                    out_table = []
+                    for i in nn_rows[l]:
+                        out_table.append(i)
+                    for i in range(0, len(nn_rows[l])):
+                        for j in range(0, len(nn_rows)):
+                            for t in nn_rows[j]:
+                                isDuplicate = False
+                                if not isDuplicate:
+                                    check = True
+                                    for x in out_table:
+                                        # COMPARING DUPLICATES ONLY ON FIRST COLUMN (ID)
+                                        if x[0] == t[0]:
+                                            check = False
+                                    if check:
+                                        out_table.append(t)
+                    print(tabulate(out_table[:None], headers=header) + '\n')
         except Exception:
             print(traceback.format_exc())
