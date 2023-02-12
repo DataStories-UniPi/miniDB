@@ -123,6 +123,19 @@ def create_query_plan(query, keywords, action):
             dic['force'] = True
         else:
             dic['force'] = False
+
+    if action=='delete from':
+        if dic['where'] is not None:
+            dic = evaluate_where_clause(dic)
+        else:
+            dic['where'] = None
+
+    if action=='update':
+        if dic['where'] is not None:
+            dic = evaluate_where_clause(dic)
+        else:
+            dic['where'] = None
+
     return dic
 
 def evaluate_from_clause(dic):
@@ -316,7 +329,7 @@ def interpret(query):
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
-                     'update table': ['update table', 'set', 'where'],
+                     'update': ['update', 'set', 'where'],
                      'create index': ['create index', 'on', 'using'],
                      'drop index': ['drop index'],
                      'create view' : ['create view', 'as']
@@ -339,7 +352,7 @@ def execute_dic(dic):
     Execute the given dictionary
     '''
     for key in dic.keys():
-        if isinstance(dic[key], dict):
+        if isinstance(dic[key], dict) and key == 'from':
             dic[key] = execute_dic(dic[key])
     
     action = list(dic.keys())[0].replace(' ','_')
@@ -441,5 +454,5 @@ if __name__ == "__main__":
                 if isinstance(result,Table):
                     result.show()
         except Exception as e:
-            #print(traceback.format_exc())
+            print(traceback.format_exc())
             print(e)

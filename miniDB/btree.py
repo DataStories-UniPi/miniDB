@@ -15,7 +15,6 @@ class Node:
         self.parent = parent # the index of a buckets parent
         self.is_leaf = is_leaf # a boolean value signaling whether the node is a leaf or not
 
-
     def find(self, value, return_ops=False):
         '''
         Returns the index of the next node to search for a value if the node is not a leaf (a ptrs of the available ones).
@@ -46,7 +45,6 @@ class Node:
         else:
             return self.ptrs[-1]
 
-
     def insert(self, value, ptr, ptr1=None):
         '''
         Insert the value and its ptr/s to the appropriate place (node wise).
@@ -74,8 +72,6 @@ class Node:
         self.ptrs.append(ptr)
         if ptr1:
             self.ptrs.append(ptr1)
-
-
 
     def show(self):
         '''
@@ -143,7 +139,6 @@ class Btree:
             return self.nodes.index(node), ops
         else:
             return self.nodes.index(node)
-
 
     def split(self, node_id):
         '''
@@ -220,9 +215,6 @@ class Btree:
             if len(self.nodes[node.parent].values)==self.b:
                 self.split(node.parent)
 
-
-
-
     def show(self):
         '''
         Show important info for each node (sort by level - root first, then left to right).
@@ -238,7 +230,6 @@ class Btree:
             print(f'## {ptr} ##')
             self.nodes[ptr].show()
             print('----')
-
 
     def plot(self):
         ## arrange the nodes top to bottom left to right
@@ -288,7 +279,7 @@ class Btree:
             operator: string. The provided evaluation operator.
             value: float. The value being searched for.
         '''
-        results = []
+        results = [] # list of ptrs to the elements that match the condition
         # find the index of the node that the element should exist in
         leaf_idx, ops = self._search(value, True)
         target_node = self.nodes[leaf_idx]
