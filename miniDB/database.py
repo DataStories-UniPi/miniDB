@@ -100,7 +100,6 @@ class Database:
         self._update_meta_length()
         self._update_meta_insert_stack()
 
-
     def create_table(self, name, column_names, column_types, primary_key=None, load=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
@@ -122,7 +121,6 @@ class Database:
         # (self.tables[name])
         if self.verbose:
             print(f'Created table "{name}".')
-
 
     def drop_table(self, table_name):
         '''
@@ -159,7 +157,6 @@ class Database:
         # self._update()
         self.save_database()
 
-
     def import_table(self, table_name, filename, column_types=None, primary_key=None):
         '''
         Creates table from CSV file.
@@ -187,7 +184,6 @@ class Database:
              self.unlock_table(table_name)
         self._update()
         self.save_database()
-
 
     def export(self, table_name, filename=None):
         '''
@@ -281,8 +277,7 @@ class Database:
         self._update()
         self.save_database()
 
-
-    def update_table(self, table_name, set_args, condition):
+    def update(self, table_name, set_args, condition):
         '''
         Update the value of a column where a condition is met.
 
@@ -290,9 +285,7 @@ class Database:
             table_name: string. Name of table (must be part of database).
             set_value: string. New value of the predifined column name.
             set_column: string. The column to be altered.
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+            condition: string or dict (the condition is the returned dic['where'] from interpret method).
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
@@ -312,9 +305,7 @@ class Database:
 
         Args:
             table_name: string. Name of table (must be part of database).
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+            condition: string or dict (the condition is the returned dic['where'] from interpret method).
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
@@ -339,9 +330,7 @@ class Database:
         Args:
             table_name: string. Name of table (must be part of database).
             columns: list. The columns that will be part of the output table (use '*' to select all available columns)
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+            condition: string or dict (the condition is the returned dic['where'] from interpret method).
                 
                 Operatores supported: (<,<=,==,>=,>)
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
@@ -354,21 +343,16 @@ class Database:
 
         # print(table_name)
         self.load_database()
-        if isinstance(table_name,Table):
+        if isinstance(table_name, Table): # if table_name is a table object
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
-
-        if condition is not None:
-            condition_column = split_condition(condition)[0]
-        else:
-            condition_column = ''
-
         
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
-        if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
+        
+        if self._has_index(table_name) and condition is not None: # if table has an index and a condition is given
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
-            bt = self._load_idx(index_name)
+            bt = self._load_idx(index_name) # bt = btree, _load_idx() returns a btree object
             table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
         else:
             table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
@@ -382,7 +366,6 @@ class Database:
             else:
                 return table.show()
 
-
     def show_table(self, table_name, no_of_rows=None):
         '''
         Print table in a readable tabular design (using tabulate).
@@ -393,7 +376,6 @@ class Database:
         self.load_database()
         
         self.tables[table_name].show(no_of_rows, self.is_locked(table_name))
-
 
     def sort(self, table_name, column_name, asc=False):
         '''
@@ -494,7 +476,7 @@ class Database:
             return res
         else:
             res.show()
-
+        
     def lock_table(self, table_name, mode='x'):
         '''
         Locks the specified table using the exclusive lock (X).
@@ -615,7 +597,6 @@ class Database:
             if table._name not in self.tables['meta_insert_stack'].column_by_name('table_name'):
                 self.tables['meta_insert_stack']._insert([table._name, []])
 
-
     def _add_to_insert_stack(self, table_name, indexes):
         '''
         Adds provided indices to the insert stack of the specified table.
@@ -690,7 +671,6 @@ class Database:
             bt.insert(key, idx)
         # save the btree
         self._save_index(index_name, bt)
-
 
     def _has_index(self, table_name):
         '''
