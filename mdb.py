@@ -12,13 +12,13 @@ from database import Database
 from table import Table
 # art font is "big"
 art = '''
-             _         _  _____   ____  
-            (_)       (_)|  __ \ |  _ \     
+             _         _  _____   ____
+            (_)       (_)|  __ \ |  _ \
   _ __ ___   _  _ __   _ | |  | || |_) |
- | '_ ` _ \ | || '_ \ | || |  | ||  _ < 
+ | '_ ` _ \ | || '_ \ | || |  | ||  _ <
  | | | | | || || | | || || |__| || |_) |
- |_| |_| |_||_||_| |_||_||_____/ |____/   2022                              
-'''   
+ |_| |_| |_||_||_| |_||_||_____/ |____/   2022
+'''
 
 
 def search_between(s, first, last):
@@ -53,25 +53,25 @@ def create_query_plan(query, keywords, action):
     kw_positions = []
     i=0
     while i<len(ql):
-        if in_paren(ql, i): 
+        if in_paren(ql, i):
             i+=1
             continue
         if ql[i] in keywords:
             kw_in_query.append(ql[i])
             kw_positions.append(i)
-        
+
         elif i!=len(ql)-1 and f'{ql[i]} {ql[i+1]}' in keywords:
             kw_in_query.append(f'{ql[i]} {ql[i+1]}')
             ql[i] = ql[i]+' '+ql[i+1]
             ql.pop(i+1)
             kw_positions.append(i)
         i+=1
-        
+
 
 
     for i in range(len(kw_in_query)-1):
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
-    
+
     if action == 'create view':
         dic['as'] = interpret(dic['as'])
 
@@ -92,7 +92,7 @@ def create_query_plan(query, keywords, action):
             else:
                 dic['desc'] = False
             dic['order by'] = dic['order by'].removesuffix(' asc').removesuffix(' desc')
-            
+
         else:
             dic['desc'] = None
 
@@ -108,8 +108,8 @@ def create_query_plan(query, keywords, action):
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
-    
-    if action=='import': 
+
+    if action=='import':
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
     if action=='insert into':
@@ -117,7 +117,7 @@ def create_query_plan(query, keywords, action):
             dic['values'] = dic['values'][1:-1]
         else:
             raise ValueError('Your parens are not right m8')
-    
+
     if action=='unlock table':
         if dic['force'] is not None:
             dic['force'] = True
@@ -158,14 +158,13 @@ def evaluate_from_clause(dic):
             join_dic['right'] = interpret(join_dic['right'][1:-1].strip())
 
         dic['from'] = join_dic
-        
+
     return dic
 
 def evaluate_where_clause(dic):
     '''
     Evaluate the part of the query that is supplied as the 'where' argument
     '''
-
     where_clause = dic['where']
     where_dic = form_where_clause(where_clause)
     dic['where'] = where_dic
@@ -176,8 +175,7 @@ def form_where_clause(where_split):
     '''
     Evaluate the recursive part of the where clause. Returns a dictionary
     '''
-
-    logical_operators = ['and', 'or']
+    logical_operators = ['and', 'or', 'between', 'not']
 
     if(type(where_split) != list):
         where_split = where_split.split(' ')
@@ -185,6 +183,7 @@ def form_where_clause(where_split):
     operator_idx = [i for i,word in enumerate(where_split) if word in logical_operators and not in_paren(where_split,i)]
 
     # TODO: check for ((())) multiple parenthesis
+
     if((len(operator_idx) == 0) and (where_split[0]=='(' and where_split[-1]==')')):
         where_split = where_split[1:-1]
         operator_idx = [i for i,word in enumerate(where_split) if word in logical_operators and not in_paren(where_split,i)]
@@ -194,13 +193,24 @@ def form_where_clause(where_split):
         # TODO: Remove parenthesis if needed
         return ''.join(where_split)
 
+
     if operator_idx:
+
+        if (where_split[operator_idx[0]]) == "between":
+            left = where_split[operator_idx[0]+1]
+            right = where_split[operator_idx[0]+3]
+            left = where_split[operator_idx[0]-1] + ">=" + left
+            right = where_split[operator_idx[0]-1] + "<=" + right
+            where_split[operator_idx[0]+1] = left
+            where_split[operator_idx[0]+3] = right
+            del where_split[0]
+            del where_split[0]
+
         operator_idx_f = operator_idx[0]
-        
         where_dic = {}
+
         left = where_split[:operator_idx_f]
         right = where_split[operator_idx_f+1:]
-
         if(left[0] == '(' and left[-1] == ')'):
             left = form_where_clause(left)
         else:
@@ -209,12 +219,11 @@ def form_where_clause(where_split):
         if(right[0] == '(' and right[-1] == ')' or len(operator_idx) > 0):
             right = form_where_clause(right)
         else:
-            right = ' '.join(right)      
+            right = ' '.join(right)
 
         where_dic['left'] = left
         where_dic['operator'] = ''.join(where_split[operator_idx_f])
         where_dic['right'] = right
-        
         return where_dic
 
 def interpret(query):
@@ -239,9 +248,9 @@ def interpret(query):
 
     if query[-1]!=';':
         query+=';'
-    
+
     query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip()
-    
+
     for kw in kw_per_action.keys():
         if query.startswith(kw):
             action = kw
@@ -259,13 +268,13 @@ def execute_dic(dic):
         if key != 'where' and isinstance(dic[key],dict):
             dic[key] = execute_dic(dic[key])
             print(f'dic[key]: {dic[key]}')
-    
+
     action = list(dic.keys())[0].replace(' ','_')
     print(list(dic.keys()))
     print(f'action: {action}')
 
     return getattr(db, action)(*dic.values())
-    
+
 
 def interpret_meta(command):
     """
@@ -289,7 +298,7 @@ def interpret_meta(command):
 
     def list_databases(db_name):
         [print(fold.removesuffix('_db')) for fold in os.listdir('dbdata')]
-    
+
     def list_tables(db_name):
         [print(pklf.removesuffix('.pkl')) for pklf in os.listdir(f'dbdata/{db_name}_db') if pklf.endswith('.pkl')\
             and not pklf.startswith('meta')]
@@ -297,7 +306,7 @@ def interpret_meta(command):
     def change_db(db_name):
         global db
         db = Database(db_name, load=True, verbose=verbose)
-    
+
     def remove_db(db_name):
         shutil.rmtree(f'dbdata/{db_name}_db')
 
@@ -317,7 +326,7 @@ if __name__ == "__main__":
 
     db = Database(dbname, load=True)
 
-    
+
 
     if fname is not None:
         for line in open(fname, 'r').read().splitlines():
@@ -330,7 +339,7 @@ if __name__ == "__main__":
                 result = execute_dic(dic)
                 if isinstance(result,Table):
                     result.show()
-        
+
 
     from prompt_toolkit import PromptSession
     from prompt_toolkit.history import FileHistory
