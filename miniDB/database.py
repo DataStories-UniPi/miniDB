@@ -1,11 +1,8 @@
 from __future__ import annotations
 import pickle
-from time import sleep, localtime, strftime
 import os, sys
 import logging
 import warnings
-import readline
-from tabulate import tabulate
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 from miniDB import table
