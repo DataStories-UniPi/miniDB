@@ -1,8 +1,6 @@
 import os
-import re
 from pprint import pprint
 import sys
-import readline
 import traceback
 import shutil
 
@@ -21,7 +19,6 @@ art = '''
  | | | | | || || | | || || |__| || |_) |
  |_| |_| |_||_||_| |_||_||_____/ |____/   2022                              
 '''
-
 
 def search_between(s, first, last):
     '''
@@ -430,9 +427,5 @@ if __name__ == "__main__":
                                     if check:
                                         out_table.append(t)
                     print(tabulate(out_table[:None], headers=header) + '\n')
-
-
-
-
         except Exception:
             print(traceback.format_exc())
