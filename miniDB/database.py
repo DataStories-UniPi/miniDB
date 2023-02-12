@@ -21,6 +21,7 @@ from table import Table
 
 class Database:
     '''
+    adfasf
     Main Database class, containing tables.
     '''
 

@@ -1,14 +1,14 @@
 import os
 import re
 from pprint import pprint
-import sys
 import readline
+import sys
 import traceback
 import shutil
 sys.path.append('miniDB')
 
-from database import Database
-from table import Table
+from miniDB.database import Database
+from miniDB.table import Table
 # art font is "big"
 art = '''
              _         _  _____   ____  
