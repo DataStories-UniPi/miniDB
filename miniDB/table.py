@@ -18,6 +18,7 @@ class Table:
         - column names (list of strings)
         - column types (list of functions like str/int etc)
         - primary (name of the primary key column)
+        - unique (name of the unique columns)
 
     OR
 
@@ -165,10 +166,10 @@ class Table:
             set_value: string. The provided set value.
             set_column: string. The column to be altered.
             condition: string. A condition using the following format:
-                'column[<,<=,=,>=,>]value' or
-                'value[<,<=,=,>=,>]column'.
+                'column[<,<=,=,>=,>,!=]value' or
+                'value[<,<=,=,>=,>,!=]column'.
                 
-                Operatores supported: (<,<=,=,>=,>)
+                Operatores supported: (<,<=,=,>=,>,!=)
         '''
         # parse multiple conditions
         rows = self._parse_multiple_conditions(condition)
@@ -195,10 +196,10 @@ class Table:
 
         Args:
             condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+                'column[<,<=,==,>=,>,!=]value' or
+                'value[<,<=,==,>=,>,!=]column'.
                 
-                Operatores supported: (<,<=,==,>=,>)
+                Operatores supported: (<,<=,==,>=,>,!=)
         '''
 
         indexes_to_del = list(self._parse_multiple_conditions(condition))
@@ -242,7 +243,7 @@ class Table:
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
-         # if condition is None, return all rows
+        # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
             rows = self._parse_multiple_conditions(condition)
@@ -281,7 +282,9 @@ class Table:
 
 
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
-
+        '''
+        Returns the table of a select where condition is met, using a btree.
+        '''
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
@@ -291,7 +294,7 @@ class Table:
 
         column_name, operator, value = self._parse_condition(condition)
 
-        # if the column in condition is not a primary key and unique, abort the select
+        # if the column in condition is not a primary key or unique, abort the select
         if self.unique is not None and column_name != self.column_names[self.pk_idx] and column_name not in self.unique:
             print('Column is not PK or unique. Aborting')
         elif self.unique is None and column_name != self.column_names[self.pk_idx]:
@@ -337,8 +340,9 @@ class Table:
         return s_table
 
     def _select_where_with_hash(self, return_columns, ht, condition, distinct=False, order_by=None, desc=True, limit=None):
-
-
+        '''
+        Returns the table of a select where condition is met, using an extendible hash.
+        '''
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
@@ -354,7 +358,7 @@ class Table:
         elif self.unique is None and column_name != self.column_names[self.pk_idx]:
             print('Column is not PK. Aborting')
 
-        # here we run the same select twice, sequentially and using the btree.
+        # here we run the same select twice, sequentially and using the extedible hash.
         # we then check the results match and compare performance (number of operation)
         column = self.column_by_name(column_name)
 
@@ -387,7 +391,7 @@ class Table:
         if isinstance(limit,str):
             s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
 
-        return s_table    
+        return s_table
 
     def order_by(self, column_name, desc=True):
         '''
@@ -616,16 +620,16 @@ class Table:
         Args:
             conditions_columns_of_and: list of strings.
             splitted_conditions_list_of_and: list of strings.
-            rows_for_and. set of integers.
+            rows_for_and: set of integers.
         '''
         conditions_columns_of_and = [] 
         splitted_conditions_list_of_and = []
         rows_for_and = set(range(len(self.data)))
-        
+        # get the columns and the conditions for each and condition
         for sub_conditions in conditions_list_of_and:
             conditions_columns_of_and.append(split_condition(sub_conditions)[0])
             splitted_conditions_list_of_and.append(self._parse_condition(sub_conditions))
-
+        # get the rows that satisfy the and conditions
         for index in range(len(conditions_list_of_and)):
             column = self.column_by_name(conditions_columns_of_and[index])
             rows_for_and = rows_for_and.intersection([ind for ind, x in enumerate(column) if get_op(splitted_conditions_list_of_and[index][1], x, splitted_conditions_list_of_and[index][2])])
@@ -639,10 +643,10 @@ class Table:
         Args:
             conditions_list_of_or: list of strings.
             rows_for_or: set of integers.
-            sub_conditions_rows_list. list of sets of integers.
+            sub_conditions_rows_list: list of sets of integers.
         '''
         conditions_temp = conditions
-
+        # check if there is any or operator
         if ' or ' in conditions_temp:
             conditions_list_of_or = conditions_temp.split(' or ')
             rows_for_or = set(range(0))
@@ -650,7 +654,7 @@ class Table:
             
             for sub_conditions in conditions_list_of_or:
                 sub_conditions_rows_list.append(self.get_rows_for_and(sub_conditions.split(' and ')))
-
+            # get the rows that satisfy the or conditions
             for rows in sub_conditions_rows_list:
                 rows_for_or = rows_for_or.union(rows)
 
@@ -664,13 +668,13 @@ class Table:
 
         Args:
             condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+                'column[<,<=,==,>=,>,!=]value' or
+                'value[<,<=,==,>=,>,!=]column'.
                 
-                Operatores supported: (<,<=,==,>=,>)
+                Operators supported: (<,<=,==,>=,>,!=)
             join: boolean. Whether to join or not (False by default).
         '''
-        # if both_columns (used by the join function) return the names of the names of the columns (left first)
+        # if both_columns (used by the join function) return the names of the columns (left first)
         if join:
             return split_condition(condition)
 
