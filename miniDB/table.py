@@ -233,9 +233,13 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            column_name, operator, value, column_n, minimum_value, maximum_value, between_exists = self._parse_condition(condition)
+            if between_exists==True:
+                column = self.column_by_name(column_n)
+                rows=[ind for ind, x in enumerate(column)]
+            else:
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -557,12 +561,19 @@ class Table:
             return split_condition(condition)
 
         # cast the value with the specified column's type and return the column name, the operator and the casted value
-        left, op, right = split_condition(condition)
+        left, op, right, between_exists, col, minim, maxim = split_condition(condition)
         if left not in self.column_names:
             raise ValueError(f'Condition is not valid (cant find column name)')
-        coltype = self.column_types[self.column_names.index(left)]
+        if col not in self.column_names:
+            raise ValueError(f'Condition is not valid (cant find column name)')
 
-        return left, op, coltype(right)
+
+        if between_exists==True:
+            coltype = self.column_types[self.column_names.index(col)]
+        else:
+            coltype = self.column_types[self.column_names.index(left)]
+        return left, op, coltype(right),col,coltype(minim),coltype(maxim),between_exists
+
 
 
     def _load_from_file(self, filename):
