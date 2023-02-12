@@ -275,7 +275,7 @@ class Table:
         """
         if isinstance(condition, str):
             final_rows = self._in_depth(condition)
-        if isinstance(condition, dict):
+        elif isinstance(condition, dict):
             print("It is a dict, so split left and right")
 
             left_part = condition['left']
