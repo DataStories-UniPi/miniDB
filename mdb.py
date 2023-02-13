@@ -8,7 +8,9 @@ import shutil
 sys.path.append('miniDB')
 from miniDB.database import Database
 from miniDB.table import Table
-import miniDB.misc
+from miniDB.misc import *
+from miniDB.optimizer import *
+
 # art font is "big"
 art = '''
              _         _  _____   ____  
@@ -47,13 +49,13 @@ def fix_not(dic_where):
 
     if dic_where.count("not") == 1:
         where = dic_where.replace("not", " ")
-        left, op, right = misc.split_condition(where)
+        left, op, right = split_condition(where)
 
-        dic_where = left + ' ' + misc.antitheta_op(op) + ' ' + '"' + right + '"'
+        dic_where = left + ' ' + antitheta_op(op) + ' ' + '"' + right + '"'
     else:
         where = dic_where
-        left, op, right = misc.split_condition(where)
-        dic_where = left + ' ' + op + ' ' + '"' + right + '"'
+        left, op, right = split_condition(where)
+        dic_where =  left +' '+op + ' '+ '"'+right+'"'
 
     return dic_where
 
@@ -80,7 +82,7 @@ def fix_between(dic_where):
             f1 = temp[0]
             f2 = temp[1]
             rest = temp[2]
-            dic_where = lf + ' >= ' + '"' + f1 + '"' + ' and ' + lf + ' <= ' + '"' + f2 + '"' + ' and ' + rest
+            dic_where = lf + ' >= '  + '"'+ f1 + '"' + ' and ' + lf +' <= ' +'"'+ f2+ '"' + ' and ' + rest
     return dic_where
 
 
@@ -132,7 +134,7 @@ def create_query_plan(query, keywords, action):
             ql[i] = ql[i]+' '+ql[i+1]
             ql.pop(i+1)
             kw_positions.append(i)
-        i += 1
+        i+=1
         
 
 
@@ -177,9 +179,9 @@ def create_query_plan(query, keywords, action):
         if 'unique' in args:
             arglist = args[1:-1].split(' ')
             try:
-                dic['unique key'] = arglist[arglist.index('unique,') - 2]
+                dic['unique key'] = arglist[arglist.index('unique,')-2]
             except:
-                dic['unique key'] = arglist[arglist.index('unique') - 2]
+                dic['unique key'] = arglist[arglist.index('unique')-2]
         else:
             dic['unique key'] = None
        #-------------------------------------------------------------------------
@@ -368,6 +370,9 @@ if __name__ == "__main__":
                 pprint(dic, sort_dicts=False)
             else:
                 dic = interpret(line)
+                print(dic)
+                rel = create_rel(dic)
+                print_rel(rel)
                 result = execute_dic(dic)
                 if isinstance(result,Table):
                     result.show()

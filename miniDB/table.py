@@ -26,7 +26,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, unique_key=None, load=None):
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, unique_key= None, load=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -117,7 +117,7 @@ class Table:
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             insert_stack: list. The insert stack (empty by default).
         '''
-        if len(row) != len(self.column_names):
+        if len(row)!=len(self.column_names):
             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
 
         for i in range(len(row)):
@@ -132,15 +132,15 @@ class Table:
                     print(exc)
 
             # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
-            if i == self.pk_idx and row[i] in self.column_by_name(self.pk):
+            if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
-            elif i == self.pk_idx and row[i] is None:
+            elif i==self.pk_idx and row[i] is None:
                 raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
 
             #----------------
-            if i == self.un_idx and row[i] in self.column_by_name(self.unique):
+            if i==self.un_idx and row[i] in self.column_by_name(self.unique):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in unique key column.')
-            elif i == self.un_idx and row[i] is None:
+            elif i==self.un_idx and row[i] is None:
                 raise ValueError(f'ERROR -> The value of the unique key cannot be None.')
             #-----------------
 
@@ -298,7 +298,7 @@ class Table:
 
         # if the column in condition is not a primary key, abort the select
         #-------------------------
-        if column_name != self.column_names[self.pk_idx] and (self.un_idx != None and column_name != self.column_names[self.un_idx]):
+        if column_name != self.column_names[self.pk_idx] and (self.un_idx != None and column_name!=self.column_names[self.un_idx]):
             print('Column is not PK. or unique Aborting')
         #--------------------------
         # here we run the same select twice, sequentially and using the btree.
@@ -337,7 +337,6 @@ class Table:
 
         if isinstance(limit,str):
             s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
-
         return s_table
     #--------------------------------------------------------------------------------------------------------------------------------------
     def _select_where_with_hash_indexing(self, return_columns, hash, condition, distinct=False, order_by=None,desc=True, limit=None):
@@ -350,7 +349,7 @@ class Table:
         column_name, operator, value = self._parse_condition(condition)
 
         # if the column in condition is not a primary key, abort the select
-        if column_name != self.column_names[self.pk_idx] and (self.un_idx!=None and column_name != self.column_names[self.un_idx]):
+        if column_name != self.column_names[self.pk_idx] and (self.un_idx !=None and column_name != self.column_names[self.un_idx]):
             print('Column is not PK. or unique Aborting')
 
         # we then check the results match and compare performance (number of operation)

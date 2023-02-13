@@ -30,7 +30,7 @@ class Database:
         self._name = name
         self.verbose = verbose
         #-----------------------
-        self.indexing_global = 'btree'  # btree or hash_indexing new
+        self.indexing_global = 'hash_indexing'  # btree or hash_indexing new
 
         self.savedir = f'dbdata/{name}_db'
 
@@ -104,7 +104,7 @@ class Database:
         self._update_meta_insert_stack()
 
     #unique key is added to the create table function parameters.
-    def create_table(self, name, column_names, column_types, primary_key=None,unique_key=None, load=None):
+    def create_table(self, name, column_names, column_types, primary_key=None, unique_key=None, load=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
 
@@ -118,7 +118,7 @@ class Database:
         # print('here -> ', column_names.split(','))
 
         #fixed missing gunique key
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, unique_key=unique_key, load=load)})
+        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key,unique_key=unique_key, load=load)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
@@ -128,14 +128,14 @@ class Database:
         #----------------------------------------------
         #indexes(hash or btree)
         if primary_key != None:
-            self.create_index(name +"__"+ primary_key +"___pk", name, self.indexing_global)
+            self.create_index(name + "__" + primary_key + "___pk", name, self.indexing_global)
 
         if unique_key != None:
-            self.create_index(name +"__" +unique_key + "___unique", name, self.indexing_global)
-        #-----------------------------------------------
+            self.create_index(name + "__" + unique_key + "___unique", name, self.indexing_global)
+
+        # (self.tables[name])
         if self.verbose:
             print(f'Created table "{name}".')
-
 
     def drop_table(self, table_name):
         '''
@@ -372,10 +372,10 @@ class Database:
                 condition_column = split_condition(condition)[0]
             else:
                 condition_column = ''
-                table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
-                return table
+            table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+            return table
 
-        if isinstance(table_name, Table):
+        if isinstance(table_name,Table):
             or_list = []
             table = Table()
             #if condition is not None, for each  or_island split condition(and_stmt)
@@ -451,17 +451,12 @@ class Database:
                                 print(f"[+] Search with Hash indexing (primary key)  -> ", table_name)
                                 h = self._load_idx(index_name)
                                 table = self.tables[table_name]._select_where_with_hash_indexing(columns, h, and_stmt,distinct, order_by,desc, limit)
-
-
                             else:
                                 print("[+] Search linear  -> ", table_name)
                                 table = self.tables[table_name]._select_where(columns, and_stmt, distinct, order_by,desc, limit)
 
-
-                    elif self._has_index(table_name) and self.tables[
-                        table_name].un_idx is not None and condition_column == self.tables[table_name].column_names[self.tables[table_name].un_idx]:
+                    elif self._has_index(table_name) and self.tables[table_name].un_idx is not None and condition_column == self.tables[table_name].column_names[self.tables[table_name].un_idx]:
                         index_names = self.select('*', 'meta_indexes', f'table_name={table_name}',return_object=True).column_by_name('index_name')
-
 
                         for name in index_names:
                             if name.endswith("___unique"):
@@ -472,14 +467,14 @@ class Database:
                         if self.indexing_global == 'btree':
                             print(f"[+] Search with Btree (unique key)  -> ", table_name)
                             bt = self._load_idx(index_name)
-                            table = self.tables[table_name]._select_where_with_btree(columns, bt, and_stmt, distinct,order_by, desc, limit)
+                            table = self.tables[table_name]._select_where_with_btree(columns, bt, and_stmt, distinct, order_by, desc, limit)
 
                         else:
                             _, op, _ = self.tables[table_name]._parse_condition(and_stmt)
                             if op == '=':
                                 print(f"[+] Search with Hash indexing (unique key)  -> ", table_name)
                                 h = self._load_idx(index_name)
-                                table = self.tables[table_name]._select_where_with_hash_indexing(columns, h, and_stmt,distinct, order_by,desc, limit)
+                                table = self.tables[table_name]._select_where_with_hash_indexing(columns, h, and_stmt, distinct, order_by, desc, limit)
 
 
                             else:
@@ -512,10 +507,6 @@ class Database:
                 else:
                     return ret_Table.show()
 
-
-
-
-
     def show_table(self, table_name, no_of_rows=None):
         '''
         Print table in a readable tabular design (using tabulate).
@@ -524,6 +515,7 @@ class Database:
             table_name: string. Name of table (must be part of database).
         '''
         self.load_database()
+
         self.tables[table_name].show(no_of_rows, self.is_locked(table_name))
 
 
@@ -806,7 +798,7 @@ class Database:
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
-    def _construct_index(self, table_name, index_name,index_type):
+    def _construct_index(self, table_name, index_name, index_type):
         '''
         Construct a btree on a table and save.
 
@@ -817,7 +809,7 @@ class Database:
 
         # for each record in the primary key of the table, insert its value and index to the btree
         if index_type == 'btree':
-            bt = Btree(3)  # 3 is arbitrary
+            bt = Btree(3)# 3 is arbitrary
             if index_name.endswith("___pk"):
                 for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
                     if key is None:
@@ -837,12 +829,14 @@ class Database:
                     if key is None:
                         continue
                     h.insert(key, idx)
+
             elif index_name.endswith("___unique"):
                 for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].unique)):
                     if key is None:
                         continue
                     h.insert(key, idx)
             self._save_index(index_name, h)
+
 
     def _has_index(self, table_name):
         '''
