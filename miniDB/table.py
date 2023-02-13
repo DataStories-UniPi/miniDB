@@ -11,7 +11,6 @@ from misc import get_op, split_condition
 
 class Table:
     '''
-    asdfasdfa
     Table object represents a table inside a database
 
     A Table object can be created either by assigning:
