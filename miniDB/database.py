@@ -7,6 +7,8 @@ import warnings
 import readline
 from tabulate import tabulate
 
+from hash import HashTable
+
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 from miniDB import table
 sys.modules['table'] = table
@@ -362,11 +364,11 @@ class Database:
             #condition_column = split_condition(condition)[0]
             #condition_column = condition.split()[0]
             
-            if " between " in condition.split():
+            if " between " in condition:
                 condition_column = condition.split(" ")[0]
-            elif " not " in condition.split():
+            elif " not " in condition:
                 condition_column = condition.split(" ")[0]
-            elif " and " in condition.split() or " or " in condition.split():
+            elif " and " in condition or " or " in condition:
                 condition_column = condition.split(" ")[0]
             else:
                 condition_column = split_condition(condition)[0]
@@ -385,17 +387,53 @@ class Database:
         
         #print("Is the column unique: ", conditioncheck)
 
-        if self._has_index(table_name) and any(condition_column in x for x in self.tables[table_name].columns_unique) and condition_column != '' : #
-            
-            index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
+        if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
+            # in case of more than one indexes in a table, we need to find the index of the specified index in the meta_indexes table.
+            idx = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('column_name').index(condition_column) 
+            #print(idx)
+            index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[idx]
+            index_type = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_type')[idx]
+            #print(index_type)
+            #print(self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_type')[idx])
+            if index_type == 'hash':
+                ht = self._load_idx(index_name)
+                try:          
+                    print("Hash select")
+                    table = self.tables[table_name]._select_where_with_hash(columns, ht, condition, distinct, order_by, desc, limit)
+                except:
+                    table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+            elif index_type == 'btree':
+                bt = self._load_idx(index_name)
+                try:
+                    table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+                except:
+                    table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+        else:
+            #print("normal select")
+            table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+
+        if self._has_index(table_name) and any(condition_column in x for x in self.tables[table_name].columns_unique) and condition_column != '' : 
+            # in case of more than one indexes in a table, we need to find the index of the specified index in the meta_indexes table.
+            idx = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('column_name').index(condition_column)
+            #print(idx)
+            index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[idx]
             
             #print("index_name; ", index_name)
-            index_type = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_type')[0]
+            index_type = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_type')[idx]
+            #print(index_type)
+            #print(self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_type')[idx])
             if index_type == 'btree':
                 bt = self._load_idx(index_name)
                 #print("btree select")
                 try:
                     table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+                except:
+                    table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+            elif index_type == 'hash':
+                ht = self._load_idx(index_name)
+                try:
+                    print("Hash select")
+                    table = self.tables[table_name]._select_where_with_hash(columns, ht, condition, distinct, order_by, desc, limit)
                 except:
                     table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
             
@@ -713,18 +751,24 @@ class Database:
                 raise Exception('## ERROR: Cannot create index. Column does not have the unique constraint and it is non-pk.')
 
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
-            # currently only btree is supported. This can be changed by adding another if. TODO: ADD HASH
+            # currently only btree is supported. This can be changed by adding another if. 
             if index_type=='btree':
                 logging.info('Creating Btree index.')
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
                 self.tables['meta_indexes']._insert([table_name, index_name, column_name, 'btree'])
                 # create the actual index
-                self._construct_index(table_name, index_name, column_name, 'btree') # added column_name for indexes with the unique constraint
+                self._construct_index(table_name, index_name, column_name, 'btree') # added column_name for indexes with the unique constraint and index_type column for the two kinds of indexes supported
                 self.save_database()
+            elif index_type == 'hash':
+                logging.info('Creating Hash index.')
+                self.tables['meta_indexes']._insert([table_name, index_name, column_name, 'hash'])
+                self._construct_index_hash(table_name, index_name, column_name)
+                self.save_database()
+
         else:
             raise Exception('## ERROR: Cannot create index. Another index with the same name already exists.')
 
-    def _construct_index(self, table_name, index_name, column_name, index_type=None): # added column_name for indexes with the unique constraint
+    def _construct_index(self, table_name, index_name, column_name, index_type=None): # added column_name for indexes with the unique constraint and index_type column for the two kinds of indexes supported
         '''
         Construct a btree on a table and save.
 
@@ -744,6 +788,24 @@ class Database:
            # bt.insert(key, idx)
         # save the btree
         #self._save_index(index_name, bt)
+
+    def _construct_index_hash(self, table_name, index_name, column_name): 
+        '''
+        Construct a hash index on a HashTable object that uses extendible hashing and save.
+
+        Args:
+            table_name: string. Table name (must be part of database).
+            index_name: string. Name of the created index. 
+            column_name: string. Name of specified column with index.
+        '''
+        exthash = HashTable()
+        for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)): # for each record in the table, insert it in the HashTable object.
+            if key is None:
+                continue
+            exthash.insert(key,idx)
+      
+        self._save_index(index_name, exthash)
+        print("Created index with Hash-Index on column: " + column_name + ".")
 
 
     def _has_index(self, table_name):

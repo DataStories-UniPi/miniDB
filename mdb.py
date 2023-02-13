@@ -95,6 +95,8 @@ def create_query_plan(query, keywords, action):
 
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
+        #print("args: ", args)
+        
         dic['create table'] = dic['create table'].removesuffix(args).strip()
         arg_nopk = args.replace('primary key', '')[1:-1]
         
@@ -110,7 +112,7 @@ def create_query_plan(query, keywords, action):
         else:
             dic['primary key'] = None
         
-        
+             
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
