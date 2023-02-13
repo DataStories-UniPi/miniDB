@@ -111,12 +111,8 @@ def create_query_plan(query, keywords, action):
         if 'primary key' in args:
             #print("primary here")
             arglist = args[1:-1].split(' ')
-            '''
-            print("arglist is")
-            print(arglist)
-            print("dic after")
-            '''
-            dic['primary key'] = arglist[arglist.index('primary')-2] # -2 gia na vreis to onoma toy key, an phgaine -1 tha evriske ton typo toy key e.g string/ integer
+            
+            dic['primary key'] = arglist[arglist.index('primary')-2] # -2 tp find key's name, -1 to find key's data type  e.g string/ integer
         else:
             dic['primary key'] = None
         
@@ -130,6 +126,7 @@ def create_query_plan(query, keywords, action):
             dic['unique'] = None
         #print("\n")
         #print(dic)
+        #print("\n")
     
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
