@@ -16,6 +16,8 @@ from btree import Btree
 from misc import split_condition
 from table import Table
 
+#Importing custom Extendible Hash Table struct.
+from hash import Extendible_Hash
 
 # readline.clear_history()
 
@@ -54,7 +56,7 @@ class Database:
         self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
-        self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
+        self.create_table('meta_indexes', 'table_name,index_name,column_name,type', 'str,str,str,str') #Updating the meta_indexes table to store the column name as well as the index type (btree or hash).
         self.save_database()
 
     def save_database(self):
@@ -101,7 +103,7 @@ class Database:
         self._update_meta_insert_stack()
 
 
-    def create_table(self, name, column_names, column_types, primary_key=None, load=None):
+    def create_table(self, name, column_names, column_types, primary_key=None, unique_columns=None, load=None): #Updating the 'create table' function in order to provide the unique_columns arg.
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
 
@@ -113,7 +115,9 @@ class Database:
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
         # print('here -> ', column_names.split(','))
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)})
+        
+        # Table constructor updated for the unique_columns arg.
+        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, unique_columns=unique_columns, load=load)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
@@ -139,9 +143,9 @@ class Database:
             os.remove(f'{self.savedir}/{table_name}.pkl')
         else:
             warnings.warn(f'"{self.savedir}/{table_name}.pkl" not found.')
-        self.delete_from('meta_locks', f'table_name={table_name}')
-        self.delete_from('meta_length', f'table_name={table_name}')
-        self.delete_from('meta_insert_stack', f'table_name={table_name}')
+        self.delete_from('meta_locks', f'table_name={table_name}', 'simple') #Updating the delete calls for the condition type arg.
+        self.delete_from('meta_length', f'table_name={table_name}', 'simple')
+        self.delete_from('meta_insert_stack', f'table_name={table_name}', 'simple')
 
         if self._has_index(table_name):
             to_be_deleted = []
@@ -281,8 +285,8 @@ class Database:
         self._update()
         self.save_database()
 
-
-    def update_table(self, table_name, set_args, condition):
+    #Updating the update_table function for the condition type arg.
+    def update_table(self, table_name, set_args, condition, condition_type):
         '''
         Update the value of a column where a condition is met.
 
@@ -300,13 +304,17 @@ class Database:
         self.load_database()
         
         lock_ownership = self.lock_table(table_name, mode='x')
-        self.tables[table_name]._update_rows(set_value, set_column, condition)
+
+        #Providing the condition_type arg in the new _update_rows function.
+        cond_type = condition_type
+        self.tables[table_name]._update_rows(set_value, set_column, condition, cond_type)
         if lock_ownership:
             self.unlock_table(table_name)
         self._update()
         self.save_database()
 
-    def delete_from(self, table_name, condition):
+    #Updating the delete_from function for the condition type arg.
+    def delete_from(self, table_name, condition, condition_type): 
         '''
         Delete rows of table where condition is met.
 
@@ -321,7 +329,7 @@ class Database:
         self.load_database()
         
         lock_ownership = self.lock_table(table_name, mode='x')
-        deleted = self.tables[table_name]._delete_where(condition)
+        deleted = self.tables[table_name]._delete_where(condition, condition_type) #New _delete_where function for the condition type arg.
         if lock_ownership:
             self.unlock_table(table_name)
         self._update()
@@ -331,8 +339,9 @@ class Database:
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
 
+    #Updating the select function for the condition type arg.
     def select(self, columns, table_name, condition, distinct=None, order_by=None, \
-               limit=True, desc=None, save_as=None, return_object=True):
+               limit=True, desc=None, condition_type=False, save_as=None, return_object=True): 
         '''
         Selects and outputs a table's data where condtion is met.
 
@@ -357,21 +366,56 @@ class Database:
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
+        # New way to get the condition column needed for the index check.
+        # 'Simple' conditions work fine. For 'complex' ones, it is assumed that if the column in the first condition is PK or unique, the same is true for the other conditions.
+        cond_type = condition_type
         if condition is not None:
-            condition_column = split_condition(condition)[0]
+            if cond_type == 'simple':
+                if condition.startswith('not') or condition.startswith('NOT'):
+                    condition_split = condition[4:]
+                    condition_column = split_condition(condition_split)[0]
+                elif 'between' in condition or 'BETWEEN' in condition:
+                    condition_check = condition.split()
+                    condition_column = condition_check[0]
+                else:
+                    condition_column = split_condition(condition)[0]
+            else:
+                condition_check = condition.split()
+                condition_column = condition_check[0]
         else:
             condition_column = ''
 
+        # New checks for the unique columns.
+        unique_cols = False
+        if self.tables[table_name].unique_columns is not None:
+            unique_cols = True
+
+        is_pk_or_unique = False 
+        if unique_cols and self.tables[table_name].pk_idx is not None: 
+            if condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx] or condition_column in self.tables[table_name].unique_columns:
+                is_pk_or_unique = True
         
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
-        if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
-            index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
-            bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+        if self._has_index(table_name) and is_pk_or_unique: 
+            
+            #The index_name check is needed in the case where we have a PK or Unique column in the condition, but no index for the specified one. In this case, do a 'classic' select call.
+            index_name_check = self.select('*', 'meta_indexes', f'table_name={table_name} and column_name = {condition_column}', condition_type='complex', return_object=True).column_by_name('index_name')
+            if index_name_check == []:
+                table = self.tables[table_name]._select_where(columns, condition, cond_type, distinct, order_by, desc, limit)
+            else:
+
+                #Getting the index name and type, and calling the select function we need.
+                index_name = index_name_check[0]
+                index_type = self.select('*', 'meta_indexes', f'index_name={index_name}', condition_type='simple', return_object=True).column_by_name('type')[0]
+                struct = self._load_idx(index_name)
+                if index_type == 'btree':
+                    table = self.tables[table_name]._select_where_with_btree(columns, struct, condition, cond_type, distinct, order_by, desc, limit)
+                elif index_type == 'hash':
+                    table = self.tables[table_name]._select_where_with_hash(columns, struct, condition, cond_type, distinct, order_by, desc, limit)
         else:
-            table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+            table = self.tables[table_name]._select_where(columns, condition, cond_type, distinct, order_by, desc, limit)
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as
@@ -544,7 +588,7 @@ class Database:
                     raise Exception(f'Table "{table_name}" is locked by the process with pid={pid}')
             except IndexError:
                 pass
-        self.tables['meta_locks']._delete_where(f'table_name={table_name}')
+        self.tables['meta_locks']._delete_where(f'table_name={table_name}', 'simple') #New _delete_where function for the condition type arg.
         self._save_locks()
         # print(f'Unlocking table "{table_name}"')
 
@@ -590,7 +634,7 @@ class Database:
             # the result needs to represent the rows that contain data. Since we use an insert_stack
             # some rows are filled with Nones. We skip these rows.
             non_none_rows = len([row for row in table.data if any(row)])
-            self.tables['meta_length']._update_rows(non_none_rows, 'no_of_rows', f'table_name={table._name}')
+            self.tables['meta_length']._update_rows(non_none_rows, 'no_of_rows', f'table_name={table._name}', 'simple') #New _update_rows function for the condition type arg.
             # self.update_row('meta_length', len(table.data), 'no_of_rows', 'table_name', '==', table._name)
 
     def _update_meta_locks(self):
@@ -646,11 +690,12 @@ class Database:
             table_name: string. Table name (must be part of database).
             new_stack: string. The stack that will be used to replace the existing one.
         '''
-        self.tables['meta_insert_stack']._update_rows(new_stack, 'indexes', f'table_name={table_name}')
+        self.tables['meta_insert_stack']._update_rows(new_stack, 'indexes', f'table_name={table_name}', 'simple') #New _update_rows function for the condition type arg.
 
 
     # indexes
-    def create_index(self, index_name, table_name, index_type='btree'):
+    # Updating the create_index function to support unique columns and hash struct.
+    def create_index(self, index_name, table_name, index_type='btree', column=None):
         '''
         Creates an index on a specified table with a given name.
         Important: An index can only be created on a primary key (the user does not specify the column).
@@ -659,21 +704,42 @@ class Database:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
         '''
-        if self.tables[table_name].pk_idx is None: # if no primary key, no index
+        if self.tables[table_name].pk_idx is None or self.tables[table_name].unique_columns is None: # if no primary key or unique, no index
             raise Exception('Cannot create index. Table has no primary key.')
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
             # currently only btree is supported. This can be changed by adding another if.
+            
+            # Adding checks for unique columns.
+            column_name = ''
+            if column is not None:
+                if self.tables[table_name].unique_columns is not None:
+                    if column in self.tables[table_name].unique_columns:
+                        column_name = column
+                if column == self.tables[table_name].pk:
+                    column_name = self.tables[table_name].pk
+            else: #If no column is provided, we default to the PK.
+                column_name = self.tables[table_name].pk
+
+            self.tables['meta_indexes']._insert([table_name, index_name, column_name, index_type]) #Meta_indexes now storing the column name and the index type.
+            # crate the actual index
+            
+            # Adding support for hash struct.
             if index_type=='btree':
                 logging.info('Creating Btree index.')
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
-                self.tables['meta_indexes']._insert([table_name, index_name])
-                # crate the actual index
-                self._construct_index(table_name, index_name)
-                self.save_database()
+            elif index_type=='hash':
+                logging.info('Creating Hash index.')
+                # insert a record with the name of the index and the table on which it's created to the meta_indexes table
+                
+            self._construct_index(table_name, index_name, column_name, index_type)
+                
+            self.save_database()
+
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
-    def _construct_index(self, table_name, index_name):
+    # Updating _construct_index for the index_type arg.
+    def _construct_index(self, table_name, index_name, column_name, index_type):
         '''
         Construct a btree on a table and save.
 
@@ -681,15 +747,28 @@ class Database:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
         '''
-        bt = Btree(3) # 3 is arbitrary
+        if index_type == 'btree':
 
-        # for each record in the primary key of the table, insert its value and index to the btree
-        for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
-            if key is None:
-                continue
-            bt.insert(key, idx)
-        # save the btree
-        self._save_index(index_name, bt)
+            bt = Btree(3) # 3 is arbitrary
+
+            # for each record in the primary key of the table, insert its value and index to the btree
+            for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
+                if key is None:
+                    continue
+                bt.insert(key, idx)
+            bt.show()
+            # save the btree
+            self._save_index(index_name, bt)
+        elif index_type == 'hash':
+
+            #3 is the bucket size. Can be changed.
+            e_hash = Extendible_Hash(3)
+
+            #Adding the key, its row index and saving the hash table.
+            for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
+                e_hash.insert(key,idx)
+            e_hash.show()
+            self._save_index(index_name, e_hash)
 
 
     def _has_index(self, table_name):
@@ -737,7 +816,7 @@ class Database:
             index_name: string. Name of index.
         '''
         if index_name in self.tables['meta_indexes'].column_by_name('index_name'):
-            self.delete_from('meta_indexes', f'index_name = {index_name}')
+            self.delete_from('meta_indexes', f'index_name = {index_name}', 'simple') #Updating the delete calls for the condition type arg.
 
             if os.path.isfile(f'{self.savedir}/indexes/meta_{index_name}_index.pkl'):
                 os.remove(f'{self.savedir}/indexes/meta_{index_name}_index.pkl')
