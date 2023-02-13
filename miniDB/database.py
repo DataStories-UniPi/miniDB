@@ -1,5 +1,6 @@
 from __future__ import annotations
 import pickle
+import random
 from time import sleep, localtime, strftime
 import os,sys
 import logging
@@ -16,7 +17,7 @@ from btree import Btree
 from misc import split_condition
 from misc import split_not_condition
 from table import Table
-from hash import Hash
+from hash2 import Hash
 
 
 # readline.clear_history()
@@ -392,7 +393,16 @@ class Database:
                 if (operator in condition): # or in condition
                     table = self.tables[table_name]._select_where_or(columns, condition, distinct, order_by, desc, limit)
                 else: # and in condition
-                    table = self.tables[table_name]._select_where_and(columns, condition, distinct, order_by, desc, limit)
+                    #try to use transformation rules:
+                    k = random.randint(0, 1) # decide on k once
+                    print("random k is: ",k)
+                    #splt = condition.split(operator1)
+                    k=0
+                    if k == 0: # use transformation rules
+                        #print("2 conditions combined with AND have been found!")
+                        table = self.tables[table_name].transformation_rules(columns, condition, distinct, order_by, desc, limit)
+                    else: # select the default path
+                        table = self.tables[table_name]._select_where_and(columns, condition, distinct, order_by, desc, limit)
          
             else:     
                 if(condition[:4] == 'not '): # NOT in condition
