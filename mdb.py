@@ -92,6 +92,25 @@ def create_query_plan(query, keywords, action):
             
         else:
             dic['desc'] = None
+    
+    # This code will help us determine the condition type (can be either 'simple' or 'complex').
+    # Simple conditions can be either the default ones (provided by miniDB), or a condition using the NOT or BETWEEN operators (or both).
+    # Complex conditions can be any simple condition chained with AND or OR operators (or both).
+    if action == 'select' or action == 'update table' or action == 'delete from':
+        cond_type = 'simple'
+        if dic['where'] is not None:
+            condition = dic['where']
+            if ('and' in condition or 'AND' in condition) or ('or' in condition or 'OR' in condition):
+                cond_type = 'complex'
+                if condition.count('and') == 1 or condition.count('AND') == 1: #This is needed in order not to mix up a single condition with the 'between' operator as a complex one.
+                    cond_check = condition.split(' ')
+                    if (cond_check[1] == 'between' or cond_check[1] == 'BETWEEN') or (cond_check[2] == 'between' or cond_check[2] == 'BETWEEN'): #Second check is for NOT BETWEEN cases.
+                        cond_type = 'simple'    
+            else:
+                cond_type = 'simple'
+        
+        dic['condition_type'] = cond_type
+
 
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
@@ -105,6 +124,16 @@ def create_query_plan(query, keywords, action):
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
+        
+        #Updating the 'create table' action to support the creation of unique columns
+        if 'unique' in args: 
+            dic['unique_columns'] = []
+            for idx, arg  in enumerate(arglist):
+                if arg == 'unique' or arg == 'unique,':
+                    dic['unique_columns'].append(arglist[idx-2])
+        else:
+            dic['unique_columns'] = None
+
     
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
@@ -121,9 +150,16 @@ def create_query_plan(query, keywords, action):
         else:
             dic['force'] = False
 
+    #Updating the 'create index' action in order to specify the column name which will be indexed (must be either PK or Unique).
+    if action=='create index':
+        if '(' in dic['on'] and ')' in dic['on'] :
+            dic['on'] = dic['on'].replace(' ','')
+            left_paren = dic['on'].find('(')
+            right_paren = dic['on'].find(')')
+            dic['column'] = dic['on'][left_paren+1:right_paren]
+            dic['on'] = dic['on'][:dic['on'].index("(")]
+
     return dic
-
-
 
 def evaluate_from_clause(dic):
     '''
