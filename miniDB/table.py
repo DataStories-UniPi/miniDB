@@ -234,7 +234,6 @@ class Table:
         # if not, return the rows with values where condition is met for value
         if condition is not None:
             rows = []
-            count = 0
             if "between" in condition.split():
                 splt = condition.split()
                 column_name = splt[0]
@@ -242,7 +241,7 @@ class Table:
                 max_value = splt[4]
                 column = self.column_by_name(column_name)
                 for i, j in enumerate(column):
-                    if int(min_value) <=int(j) and int(j) <= int(max_value):
+                    if int(min_value) <= int(j) <= int(max_value):
                         rows.append(i)
             elif "not" in condition.split():
                 splt = condition.split("not")
@@ -265,7 +264,13 @@ class Table:
                         r = set(r).intersection(list_of_rows)
                     count += 1
                 rows += r
-                print(rows)
+            elif "or" in condition.split():
+                splt = condition.split("or")
+                for conditions in splt:
+                    column_name, operator, value = self._parse_condition(conditions)
+                    column = self.column_by_name(column_name)
+                    rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
 
             else:
                 column_name, operator, value = self._parse_condition(condition)
