@@ -6,12 +6,11 @@ import sys
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
-from misc import get_op, split_condition
+from misc import get_op, split_condition, reverse_op
 
 
 class Table:
     '''
-    asdfasdfa
     Table object represents a table inside a database
 
     A Table object can be created either by assigning:
@@ -225,6 +224,7 @@ class Table:
             limit: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
 
+
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
@@ -234,9 +234,30 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            if "BETWEEN" in condition.split() or "between" in condition.split():
+                strings = condition.split()
+                print("Strings:")
+                print(strings)
+                column_name = strings[0]
+                prwth_timh = strings[2]
+                deuterh_timh = strings[4]
+                column = self.column_by_name(column_name)
+                rows = []      
+                for i,j in enumerate(column):
+                    if j >= int(prwth_timh) and j <= int(deuterh_timh):
+                        rows.append(i)     
+            elif "NOT" in condition.split() or "not" in condition.split():
+                strings = condition.split("NOT")
+                strings = condition.split("not")
+                column_name, operator, value = self._parse_condition(strings[1])
+                column = self.column_by_name(column_name)
+                operatorNOT = reverse_op(operator)
+                rows = [ind for ind, x in enumerate(column) if get_op(operatorNOT, x, value)]
+            else:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]    
+
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -334,6 +355,7 @@ class Table:
             desc: boolean. If True, order_by will return results in descending order (False by default).
         '''
         column = [val if val is not None else 0 for val in self.column_by_name(column_name)]
+        column = self.column_by_name(column_name)
         idx = sorted(range(len(column)), key=lambda k: column[k], reverse=desc)
         # print(idx)
         self.data = [self.data[i] for i in idx]
