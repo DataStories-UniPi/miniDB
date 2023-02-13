@@ -2,22 +2,23 @@ import os
 import re
 from pprint import pprint
 import sys
-import readline
+#import readline
+from pyreadline3 import Readline
 import traceback
 import shutil
 sys.path.append('miniDB')
 
-from database import Database
-from table import Table
+from miniDB.database import Database
+from miniDB.table import Table
 # art font is "big"
 art = '''
-             _         _  _____   ____  
-            (_)       (_)|  __ \ |  _ \     
+             _         _  _____   ____
+            (_)       (_)|  __ \ |  _ \
   _ __ ___   _  _ __   _ | |  | || |_) |
- | '_ ` _ \ | || '_ \ | || |  | ||  _ < 
+ | '_ ` _ \ | || '_ \ | || |  | ||  _ <
  | | | | | || || | | || || |__| || |_) |
- |_| |_| |_||_||_| |_||_||_____/ |____/   2022                              
-'''   
+ |_| |_| |_||_||_| |_||_||_____/ |____/   2022
+'''
 
 
 def search_between(s, first, last):
@@ -53,25 +54,25 @@ def create_query_plan(query, keywords, action):
     kw_positions = []
     i=0
     while i<len(ql):
-        if in_paren(ql, i): 
+        if in_paren(ql, i):
             i+=1
             continue
         if ql[i] in keywords:
             kw_in_query.append(ql[i])
             kw_positions.append(i)
-        
+
         elif i!=len(ql)-1 and f'{ql[i]} {ql[i+1]}' in keywords:
             kw_in_query.append(f'{ql[i]} {ql[i+1]}')
             ql[i] = ql[i]+' '+ql[i+1]
             ql.pop(i+1)
             kw_positions.append(i)
         i+=1
-        
+
 
 
     for i in range(len(kw_in_query)-1):
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
-    
+
     if action == 'create view':
         dic['as'] = interpret(dic['as'])
 
@@ -89,7 +90,7 @@ def create_query_plan(query, keywords, action):
             else:
                 dic['desc'] = False
             dic['order by'] = dic['order by'].removesuffix(' asc').removesuffix(' desc')
-            
+
         else:
             dic['desc'] = None
 
@@ -105,8 +106,8 @@ def create_query_plan(query, keywords, action):
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
-    
-    if action=='import': 
+
+    if action=='import':
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
     if action=='insert into':
@@ -114,7 +115,7 @@ def create_query_plan(query, keywords, action):
             dic['values'] = dic['values'][1:-1]
         else:
             raise ValueError('Your parens are not right m8')
-    
+
     if action=='unlock table':
         if dic['force'] is not None:
             dic['force'] = True
@@ -157,7 +158,7 @@ def evaluate_from_clause(dic):
             join_dic['right'] = interpret(join_dic['right'][1:-1].strip())
 
         dic['from'] = join_dic
-        
+
     return dic
 
 def interpret(query):
@@ -182,7 +183,7 @@ def interpret(query):
 
     if query[-1]!=';':
         query+=';'
-    
+
     query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip()
 
     for kw in kw_per_action.keys():
@@ -198,7 +199,7 @@ def execute_dic(dic):
     for key in dic.keys():
         if isinstance(dic[key],dict):
             dic[key] = execute_dic(dic[key])
-    
+
     action = list(dic.keys())[0].replace(' ','_')
     return getattr(db, action)(*dic.values())
 
@@ -224,7 +225,7 @@ def interpret_meta(command):
 
     def list_databases(db_name):
         [print(fold.removesuffix('_db')) for fold in os.listdir('dbdata')]
-    
+
     def list_tables(db_name):
         [print(pklf.removesuffix('.pkl')) for pklf in os.listdir(f'dbdata/{db_name}_db') if pklf.endswith('.pkl')\
             and not pklf.startswith('meta')]
@@ -232,7 +233,7 @@ def interpret_meta(command):
     def change_db(db_name):
         global db
         db = Database(db_name, load=True, verbose=verbose)
-    
+
     def remove_db(db_name):
         shutil.rmtree(f'dbdata/{db_name}_db')
 
@@ -252,7 +253,7 @@ if __name__ == "__main__":
 
     db = Database(dbname, load=True)
 
-    
+
 
     if fname is not None:
         for line in open(fname, 'r').read().splitlines():
@@ -265,7 +266,7 @@ if __name__ == "__main__":
                 result = execute_dic(dic)
                 if isinstance(result,Table):
                     result.show()
-        
+
 
     from prompt_toolkit import PromptSession
     from prompt_toolkit.history import FileHistory
