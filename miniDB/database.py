@@ -360,7 +360,7 @@ class Database:
         if condition is not None:
             column,left,right,between_exists=split_condition(condition)
             if between_exists==True:
-                condition_column = col
+                condition_column = column
             elif between_exists==False:
                 condition_column = split_condition(condition)[0]
         else:
