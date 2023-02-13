@@ -6,7 +6,7 @@ import sys
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
-from misc import get_op, split_condition
+from misc import get_op, split_condition, reverse_op
 
 
 class Table:
@@ -238,15 +238,23 @@ class Table:
             #rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
             rows = []
             if "between" in condition.split():
-                splt=condition.split()
-                column_name=splt[0]
-                min_value=splt[2]
-                max_value=splt[4]
+                splt = condition.split()
+                column_name = splt[0]
+                min_value = splt[2]
+                max_value = splt[4]
                 column = self.column_by_name(column_name)
                 for i, j in enumerate(column):
                     if int(min_value) <=int(j) and int(j) <= int(max_value):
                         rows.append(i)
-                # rows = [ind for ind, x in enumerate(column) if (x > left & x < right)]
+            elif "not" in condition.split():
+                splt = condition.split("not")
+                cond = splt[1]
+                column_name, operator, value = self._parse_condition(cond)
+                column = self.column_by_name(column_name)
+                reversed_operator = reverse_op(operator)
+                rows = [ind for ind, x in enumerate(column) if get_op(reversed_operator, x, value)]
+
+
         else:
             rows = [i for i in range(len(self.data))]
 
