@@ -233,14 +233,20 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, left, right, between_exists = self._parse_condition(condition)
-            if between_exists:
+            #column_name, operator, value=self._parse_condition(condition)
+            #column = self.column_by_name(column_name)
+            #rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            rows = []
+            if "between" in condition.split():
+                splt=condition.split()
+                column_name=splt[0]
+                min_value=splt[2]
+                max_value=splt[4]
                 column = self.column_by_name(column_name)
-                rows = [ind for ind, x in enumerate(column) if (x > left & x < right)]
-
-            else:
-                column = self.column_by_name(column_name)
-                rows = [ind for ind, x in enumerate(column) if get_op(left, x, right)]
+                for i, j in enumerate(column):
+                    if int(min_value) <=int(j) and int(j) <= int(max_value):
+                        rows.append(i)
+                # rows = [ind for ind, x in enumerate(column) if (x > left & x < right)]
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -563,14 +569,12 @@ class Table:
             return split_condition(condition)
 
         # cast the value with the specified column's type and return the column name, the operator and the casted value
-        column_name, left, right, between_exists = split_condition(condition)
-        if column_name not in self.column_names:
+        left, op, right = split_condition(condition)
+        if left not in self.column_names:
             raise ValueError(f'Condition is not valid (cant find column name)')
-        coltype = self.column_types[self.column_names.index(column_name)]
-        if between_exists:
-            return column_name, coltype(left), coltype(right), between_exists
-        else:
-            return column_name, left, coltype(right), between_exists
+        coltype = self.column_types[self.column_names.index(left)]
+
+        return left, op, coltype(right)
 
 
 

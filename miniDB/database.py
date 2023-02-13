@@ -358,11 +358,16 @@ class Database:
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
         if condition is not None:
-            column,left,right,between_exists=split_condition(condition)
-            if between_exists==True:
-                condition_column = column
-            elif between_exists==False:
+            #column,left,right,between_exists=split_condition(condition)
+            #if between_exists==True:
+            #    condition_column = column
+            #elif between_exists==False:
+            if "between" in condition.split():
+                condition_column=condition.split(" ")[0]
+            else:
                 condition_column = split_condition(condition)[0]
+
+
         else:
             condition_column = ''
 
