@@ -1,5 +1,6 @@
 from __future__ import annotations
 import itertools
+import random
 from tabulate import tabulate
 import pickle
 import os
@@ -364,6 +365,123 @@ class Table:
         #print(t_indexes)
         #return t_indexes
     '''
+    def transformation_rules(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None, flag = False):
+        '''
+        rules:
+        1. σθ1 ^ σθ2 = σθ1(σθ2)
+        2. σθ1(σθ2) = σθ2(σθ1)
+        '''
+        print("Use transformation rule: σθ1^σθ2 = σθ1(σθ2)")
+
+        # if * return all columns, else find the column indexes for the columns specified
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
+        else:
+            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+
+        '''
+        if ' and ' in condition:
+            data = []
+            splt = condition.split(' and ')
+            dict = self._select_where(return_columns, splt[-1], distinct, order_by, desc, limit, True)[1]
+            print(dict)
+            #data = data.append(self._select_where(return_columns, splt[1], distinct, order_by, desc, limit, True)[0])
+            #print("data is: \n",data)
+            self = Table(load=dict)
+            print("Self.data of inside select is: ",self.data)
+            #data = self.data
+            for i in reversed(splt):
+                if i == splt[-1]:
+                    continue
+                else:
+                    data.append(self._select_where(return_columns, i, distinct, order_by, desc, limit, True)[0])
+            print(data)
+            data1 = [elem for twod in data for elem in twod] # convert 3D list into a 2D list
+            print(data1)
+            # remove duplicate records but first sort the list
+            data1.sort()
+            new_list = list(l for l, _ in itertools.groupby(data1)) 
+            self.data = new_list # final data
+        
+        '''
+        splt = condition.split(' and ')
+        if (len(splt)!=0):   # if there are any conditions on the left and on the right side of or operator
+            rows = []
+            rows1 = []
+            
+            if (len(splt) == 2):
+
+                k = random.randint(0, 1) # decide on k once
+                print("random k is: ",k)
+                k = 0
+                if k == 0: #reverse
+                    print("Use transformation rule: σθ1(σθ2)=σθ2(σθ1)")
+                    temp = ''
+                    temp = splt[-1]
+                    splt[-1] = splt[0]
+                    splt[0] = temp
+
+
+            column_name, operator, value = self._parse_condition(splt[-1])
+            column = self.column_by_name(column_name)
+
+                #rows.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)])
+            for ind, x in enumerate(column):
+                #print(ind,x)
+                #print(x)
+                if get_op(operator, x, value):
+                    rows.append(ind)
+                   
+            print("Ιnitial rows are: ",rows)
+            for s in reversed(splt):
+                if s == splt[-1]:
+                    continue
+                else:
+                    column_name, operator, value = self._parse_condition(s)
+                    column = self.column_by_name(column_name)
+
+                    #print("column name: ",column_name)
+                    #print("column: ",column)
+            
+                    for ind, x in enumerate(column):
+                        if ind not in rows:
+                            continue
+                        else:
+                            #print(x,operator,value)
+                            if get_op(operator, x, value):
+                                rows1.append(ind)
+                    print("Rows1 are: ",rows1)
+                rows = [c for c in rows if c in rows1]
+                if len(rows) == 0: # no common element
+                    break
+            print("Τotal rows are: ",rows)
+
+            # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
+            dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+
+            # we need to set the new column names/types and no of columns, since we might
+            # only return some columns
+            dict['column_names'] = [self.column_names[i] for i in return_cols]
+            dict['column_types']   = [self.column_types[i] for i in return_cols]
+
+            s_table = Table(load=dict)
+            s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+
+            if order_by:
+                s_table.order_by(order_by, desc)
+            if isinstance(limit,str):
+                s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
+
+            if (flag):
+                return s_table.data, dict
+            else:
+                return s_table
+                    
+            #return self
+            #print("Self.data of outside select is: ",dataout)
+            #print("new self data is: ",self.data)
+
+    
 
     def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None, flag = False):
         '''
@@ -441,7 +559,7 @@ class Table:
 
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
 
-        print("Select where with btree hereee")
+        print("Select where with btree.")
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
@@ -452,13 +570,14 @@ class Table:
         
         column_name, operator, value = self._parse_condition(condition)
         #print("self first",self.data)
-        self.order_by(column_name, desc=True)
-        print("self first1",self.data)
+        self.order_by(column_name, desc=False)
+        #print("self first1",self.data)
         #self.order_by(column_name, desc=True)
         #print("\nself after",self.data)
-        print("column name is: ",column_name)
-        print("operator is: ",operator)
-        print("value is: ",value)
+
+        #print("column name is: ",column_name)
+        #print("operator is: ",operator)
+        #print("value is: ",value)
         
         flag = False
         for i in self.unique_cols_idx:
@@ -488,11 +607,11 @@ class Table:
         #print("rows1 are: ", rows1)
 
         # btree find
-        print(bt.show())
+        print("btree is: ",bt.show())
         rows = bt.find(operator, value)
 
-        print("rows1 are: ", rows1)
-        print("rows from btree are: ", rows)
+        #print("rows1 are: ", rows1)
+        #print("rows from btree are: ", rows)
         '''
         print("rows are: ", rows)
         print("value is: ",value)
