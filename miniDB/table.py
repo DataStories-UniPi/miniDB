@@ -233,10 +233,8 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            #column_name, operator, value=self._parse_condition(condition)
-            #column = self.column_by_name(column_name)
-            #rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
             rows = []
+            count = 0
             if "between" in condition.split():
                 splt = condition.split()
                 column_name = splt[0]
@@ -253,6 +251,26 @@ class Table:
                 column = self.column_by_name(column_name)
                 reversed_operator = reverse_op(operator)
                 rows = [ind for ind, x in enumerate(column) if get_op(reversed_operator, x, value)]
+
+            elif "and" in condition.split():
+                splt= condition.split("and")
+                count = 0
+                for conditions in splt:
+                    column_name, operator, value = self._parse_condition(conditions)
+                    column = self.column_by_name(column_name)
+                    list_of_rows= [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+                    if count == 0:
+                        r = list_of_rows
+                    else:
+                        r = set(r).intersection(list_of_rows)
+                    count += 1
+                rows += r
+                print(rows)
+
+            else:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
 
 
         else:

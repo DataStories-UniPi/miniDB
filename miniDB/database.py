@@ -363,6 +363,8 @@ class Database:
                 condition_column=condition.split(" ")[0]
             elif "not" in condition.split():
                 condition_column=condition.split(" ")[0]
+            elif "and" in condition.split():
+                condition_column=condition.split(" ")[0]
             else:
                 condition_column = split_condition(condition)[0]
 
