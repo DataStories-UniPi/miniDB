@@ -236,7 +236,8 @@ class Table:
             column_name, left, right, between_exists = self._parse_condition(condition)
             if between_exists:
                 column = self.column_by_name(column_name)
-                rows = [ind for ind, x in enumerate(column)]
+                rows = [ind for ind, x in enumerate(column) if (x > left & x < right)]
+
             else:
                 column = self.column_by_name(column_name)
                 rows = [ind for ind, x in enumerate(column) if get_op(left, x, right)]
