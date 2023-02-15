@@ -310,7 +310,6 @@ if __name__ == "__main__":
 
 # E1 ⊲⊳θ E2 = E2 ⊲⊳θ E1  and #σθ1∧θ2(E) = σθ2(σθ1(E))
 def create_query_plan(query, keywords, action):  
-    
     '''
     Given a query, the set of keywords that we expect to pe present and the overall action, return the query plan for this query.
     This can and will be used recursively
