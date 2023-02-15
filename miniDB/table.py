@@ -283,6 +283,8 @@ class Table:
                     row_lists.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)])
 
                 rows = set(row_lists[0]).intersection(*row_lists) # get the intersection of the seperate conditions                
+
+            # code for NOT
                 
             elif "NOT" in condition.split() or "not" in condition.split():
                 condition_list = condition.split("NOT")
