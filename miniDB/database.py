@@ -672,8 +672,7 @@ class Database:
         #remove the exception
 
         '''
-        if self.tables[table_name].pk_idx is None: # if no primary key, no index
-            raise Exception('Cannot create index. Table has no primary key.')
+        
         if table_name not in self.tables:   
             raise Exception('Index is not created. Table does not exist')
 
