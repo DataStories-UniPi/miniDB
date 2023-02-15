@@ -379,7 +379,7 @@ def create_query_plan(query, keywords, action):
 
         return dic    
 
-# E1 ⊲⊳ θ(E2) = E2 ⊲⊳ θ(E1) and σθ1∧θ2(E) = σθ1(σθ2(E))
+# E1 ⊲⊳ θ(E2) = E2 ⊲⊳ θ(E1) and σθ1∧θ2(E) = σθ1(σθ2(E)) 
 def create_query_plan2(query, keywords, action): 
     '''
     Given a query, the set of keywords that we expect to pe present and the overall action, return the query plan for this query.
