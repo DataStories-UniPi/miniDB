@@ -273,8 +273,6 @@ if __name__ == "__main__":
 
     db = Database(dbname, load=True)
 
-    
-
     if fname is not None:
         for line in open(fname, 'r').read().splitlines():
             if line.startswith('--'): continue
@@ -291,6 +289,7 @@ if __name__ == "__main__":
     from prompt_toolkit import PromptSession
     from prompt_toolkit.history import FileHistory
     from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+
 
     print(art)
     session = PromptSession(history=FileHistory('.inp_history'))
@@ -317,3 +316,5 @@ if __name__ == "__main__":
                     result.show()
         except Exception:
             print(traceback.format_exc())
+
+

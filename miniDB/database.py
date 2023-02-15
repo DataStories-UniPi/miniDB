@@ -54,7 +54,7 @@ class Database:
         self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
-        self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
+        self.create_table('meta_indexes', 'table_name, table_column, index_name', 'str,str,str')
         self.save_database()
 
     def save_database(self):
@@ -367,15 +367,17 @@ class Database:
         else:
             condition_column = ''
 
-        print(self.tables[table_name].column_types)
+        
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
+            print("Used index")
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
             table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
         else:
+            print("Did not use index")
             table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
         # self.unlock_table(table_name)
         if save_as is not None:
@@ -665,33 +667,32 @@ class Database:
             index_name: string. Name of the created index.
         '''
         table_instance = self.tables[table_name]
-
+        
         # Sets index to primary key by default
         if table_column is None:
-            table_column = table_instance.pk
+            if table_instance.pk is not None:
+                table_column = table_instance.pk
+            else:
+                raise Exception(f'Cannot create index. {table_instance._name} does not have a primary key.')
         
-        # Checks if table_column is either a pk or a unique
-        if (table_column not in table_instance.unique_columns) and (table_column is not table_instance.pk):
-            raise Exception(f'Cannot create index. {table_column} is not a pk or unique column.')
+        if(table_column not in table_instance.column_names):
+            raise Exception(f'Cannot create index. {table_column} column does not exist.')
 
-        print(f"Can create index with {table_column}")
-        """
-        if (not hasattr(self.tables[table_name], 'unique_columns')) or (table_column not in self.tables[table_name].unique_columns):
-            raise Exception('Cannot create index. {table_column} is not unique.')
-        print("Can create index")"""
-        """
+        if (table_column is not table_instance.pk) and hasattr(table_instance, 'unique_columns') and table_instance.unique_columns is not None and table_column not in table_instance.unique_columns:
+            raise Exception(f'Cannot create index. {table_column} is not a unique column.')
+        
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
             # currently only btree is supported. This can be changed by adding another if.
             if index_type=='btree':
                 logging.info('Creating Btree index.')
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
-                self.tables['meta_indexes']._insert([table_name, index_name])
+                self.tables['meta_indexes']._insert([table_name, table_column, index_name])
                 # crate the actual index
                 self._construct_index(table_name, index_name)
                 self.save_database()
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
-        """
+
     def _construct_index(self, table_name, index_name, table_column=None):
         '''
         Construct a btree on a table and save.

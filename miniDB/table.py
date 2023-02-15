@@ -123,7 +123,7 @@ class Table:
             except TypeError as exc:
                 if row[i] != None:
                     print(exc)
-
+            
             # if value is to be appended to the primary_key column, check that it doesnt already exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
@@ -131,10 +131,12 @@ class Table:
                 raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
             
             # if value is to be appended to the unique column, check that it doesnt already exist
-            if hasattr(self, 'unique_columns'):
+            if hasattr(self, 'unique_columns') and self.unique_columns is not None:
                 column_name = self.column_names[i]
                 if column_name in self.unique_columns and row[i] in self.column_by_name(column_name):
                     raise ValueError(f'## ERROR -> Value {row[i]} already exists in {column_name} unique column.')
+            
+            print(f"row[i]: {row[i]}")
             
                     
 
