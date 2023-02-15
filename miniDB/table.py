@@ -244,14 +244,14 @@ class Table:
                     column_name = split_con[0]
                     column = self.column_by_name(column_name)
                     rows = []
-                    # on condition that values are numbers
+                    # if values are numbers
                     if (
                             left_val.isdigit() and right_val.isdigit()):  
                         for i, j in enumerate(column):
                             if int(j) >= int(left_val) and int(j) <= int(right_val):
                                 rows.append(i)  
                     else:  
-                        ('Cannot compare strings')
+                        ('Can not compare strings')
                         exit()
             # code for OR 
             elif "OR" in condition.split() or "or" in condition.split():
@@ -269,22 +269,20 @@ class Table:
                     for row in l:
                         if not(row in rows):
                             rows.append(row)
-            #print('Cannot compare strings')
+            #print('Can not compare strings')
             #exit ()
 
-            # Acode for AND
+            # code for AND
             elif "AND" in condition.split() or "and" in condition.split():
                 condition_list = condition.split("AND")
                 condition_list = condition_list[0].split("and")
                 row_lists = []
-                for cond in condition_list: # run every condition seperatly
+                for cond in condition_list: # run every condition separately
                     column_name, operator, value = self._parse_condition(cond)
                     column = self.column_by_name(column_name)
                     row_lists.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)])
 
                 rows = set(row_lists[0]).intersection(*row_lists) # get the intersection of the seperate conditions                
-
-                rows = set(row_lists[0]).intersection(*row_lists) # get the intersection of the seperate conditions
                 
             elif "NOT" in condition.split() or "not" in condition.split():
                 condition_list = condition.split("NOT")
