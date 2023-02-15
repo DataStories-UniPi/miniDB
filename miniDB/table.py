@@ -149,8 +149,8 @@ class Table:
 
         # get the set column index
         set_column_idx = self.column_names.index(set_column)
-
         # set_columns_indx = [self.column_names.index(set_column_name) for set_column_name in set_column_names]
+        
         if condition is not None:
             indexes_to_upd = self.find_rows_by_condition(condition) # get the indexes of the rows to be updated
         else: # if condition is None, update all rows
