@@ -246,8 +246,41 @@ class Table:
                 for i,j in enumerate(column):
                     if j >= int(prwth_timh) and j <= int(deuterh_timh):
                         rows.append(i)
-           
-           
+            elif "OR" in condition.split() or "or" in condition.split():
+                strings = condition.split("OR")
+                strings = condition.split("or")
+                print(strings)
+
+                column_name, operator, value = self._parse_condition(strings[0])
+                column = self.column_by_name(column_name)
+                rows1 = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+                column_name, operator, value = self._parse_condition(strings[1])
+                column = self.column_by_name(column_name)
+                rows2 = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+                rows3 = [rows1,rows2]
+                rows = []
+                for i in rows3:
+                    for j in i:
+                        if not (j in rows):
+                            rows.append(j)
+
+            elif "AND" in condition.split() or "and" in condition.split():
+                strings = condition.split("AND")
+                strings = condition.split("and")
+                print(strings)
+
+                column_name, operator, value = self._parse_condition(strings[0])
+                column = self.column_by_name(column_name)
+                rows1 = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+                column_name, operator, value = self._parse_condition(strings[1])
+                column = self.column_by_name(column_name)
+                rows2 = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+                rows3 = [rows1,rows2]
+                rows = set(rows3[0]).intersection(*rows3)
+                print(rows)
             elif "NOT" in condition.split() or "not" in condition.split():
                 strings = condition.split("NOT")
                 strings = condition.split("not")
@@ -255,20 +288,6 @@ class Table:
                 column = self.column_by_name(column_name)
                 operatorNOT = reverse_op(operator)
                 rows = [ind for ind, x in enumerate(column) if get_op(operatorNOT, x, value)]
-
-                if operator == "=":
-                    operatorNOT1 = "<"
-                    operatorNOT2 = ">"
-                
-                    rows1 = [ind for ind, x in enumerate(column) if get_op(operatorNOT1, x, value)]
-                    rows2 = [ind for ind, x in enumerate(column) if get_op(operatorNOT2, x, value)]
-                    rows3 = [rows1,rows2]
-                    rows = []
-                    for i in rows3:
-                        for j in i:
-                            if not (j in rows):
-                                rows.append(j)
-
             else:
                 column_name, operator, value = self._parse_condition(condition)
                 column = self.column_by_name(column_name)
