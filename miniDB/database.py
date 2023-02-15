@@ -690,14 +690,7 @@ class Database:
                 # crate the actual index
                 self._construct_index(table_name, index_name)
                 self.save_database()
-               
-             elif index_type'hash':
-             logging.info('Creating Hash index')
-             # insert a record with the name of the index and the table on which it's created to the meta_indexes table
-             self.tables['meta_indexes']._insert([table_name, table_column, index_name])
-             # crate the actual index
-             self._construct_index(table_name, index_name)
-             self.save_database()
+
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
