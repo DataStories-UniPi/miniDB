@@ -10,6 +10,7 @@
 
 
 
+![Screenshot 2023-02-15 153734](https://user-images.githubusercontent.com/43910499/219042558-1263b5ce-0925-4eca-9bc9-6975bc9ab7c0.png)
 
 
 
@@ -23,6 +24,7 @@
   Τέλος, εκτελούμε την reverse_op, για να στείλουμε στον πίνακα rows[] το αποτέλεσμα της συνθήκης.
 
 
+![Screenshot 2023-02-15 154438](https://user-images.githubusercontent.com/43910499/219044080-c6847b48-56e8-427c-b6c8-c2a83f2036a8.png)
 
 
 
@@ -38,6 +40,7 @@
 
 
 
+![Screenshot 2023-02-15 153927](https://user-images.githubusercontent.com/43910499/219043169-8b60e4dd-9a0e-4e9c-95d1-a11ee62bfdc4.png)
 
 
 
@@ -51,6 +54,7 @@
   Τέλος, στον πίνακα rows[] βάζουμε το αποτέλεσμα του ελέγχου για κάθε condition. 
 
 
+![Screenshot 2023-02-15 154247](https://user-images.githubusercontent.com/43910499/219043651-5c02b792-24d7-423f-ab1c-430acca924e6.png)
 
 
 
@@ -67,12 +71,13 @@
   Τέλος, ελέγχουμε για διπλότυπα και περνάμε στον row[] όλα τα στοιχεία του row_list[].
 
 
+![Screenshot 2023-02-15 154402](https://user-images.githubusercontent.com/43910499/219043942-24511594-49f9-4ccd-bcf0-bfa85baa80e1.png)
 
 
 Εικόνα 5: Αλλάγές στο αρχείο table.py, όσο αφορά τo OR.
 
 
-##β2	Indexing functionality enrichment
+## 2 Indexing functionality enrichment
 
 Αρχικά, στο αρχείο mdb.py, πρέπει να γίνουν κάποιες ενέργειες, οι οποίες είναι:
 
