@@ -288,6 +288,19 @@ class Table:
                 column = self.column_by_name(column_name)
                 operatorNOT = reverse_op(operator)
                 rows = [ind for ind, x in enumerate(column) if get_op(operatorNOT, x, value)]
+
+                if operator == "=":
+                    operatorNOT1 = "<"
+                    operatorNOT2 = ">"
+                
+                    rows1 = [ind for ind, x in enumerate(column) if get_op(operatorNOT1, x, value)]
+                    rows2 = [ind for ind, x in enumerate(column) if get_op(operatorNOT2, x, value)]
+                    rows3 = [rows1,rows2]
+                    rows = []
+                    for i in rows3:
+                        for j in i:
+                            if not (j in rows):
+                                rows.append(j)
             else:
                 column_name, operator, value = self._parse_condition(condition)
                 column = self.column_by_name(column_name)
