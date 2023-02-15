@@ -55,8 +55,7 @@ class Database:
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
         self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
-        self.save_database()
-
+        
     def save_database(self):
         '''
         Save database as a pkl file. This method saves the database object, including all tables and attributes.
@@ -100,7 +99,6 @@ class Database:
         self._update_meta_length()
         self._update_meta_insert_stack()
 
-
     def create_table(self, name, column_names, column_types, primary_key=None, load=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
@@ -113,7 +111,13 @@ class Database:
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
         # print('here -> ', column_names.split(','))
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)})
+        #self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)})
+        if unique is not None: # If there are unique columns make self.unique and make table given unique
+            self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), unique=unique.split(','), primary_key=primary_key, load=load)})
+            self.unique = unique.split(',')
+        else: # Same as before where there is no unique columns
+            self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), unique=None, primary_key=primary_key, load=load)})
+            self.unique = None
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
@@ -360,8 +364,7 @@ class Database:
         if condition is not None:
             condition_column,op,right = split_condition(condition)
         else:
-            condition_column = ''
-            op=None
+          condition_column = ''
 
         pass_controls=False
 
