@@ -353,6 +353,24 @@ class Database:
         '''
 
         # print(table_name)
+
+        if condition is not None:
+            '''
+            checks if conditions is or, and, between, not
+            adding the 1st element of the condition after spliting " " in
+            condition_column, that way we get the wanted operator
+            '''
+            if "or" in condition.split():
+                condition_column=condition.split(" ")[0]
+            elif "and" in condition.split():
+                condition_column=condition.split(" ")[0]
+            elif "between" in condition.split():
+                condition_column=condition.split(" ")[0]
+            elif "not" in condition.split():
+                condition_column=condition.split(" ")[0]
+            else:
+                condition_column=split_condition(" ")[0]
+
         self.load_database()
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
