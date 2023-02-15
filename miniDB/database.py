@@ -672,7 +672,7 @@ class Database:
         #remove the exception
 
         '''
-        
+
         if table_name not in self.tables:   
             raise Exception('Index is not created. Table does not exist')
 
@@ -718,6 +718,8 @@ class Database:
         self._save_index(index_name, bt)
         return
 
+
+    #hash index tree
     def _construct_index_hash(self, table_name, index_name, column_name):
         row_len = len(self.tables[table_name].data)
         hm = {}
