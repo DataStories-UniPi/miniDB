@@ -365,13 +365,13 @@ class Table:
         #print(t_indexes)
         #return t_indexes
     '''
-    def transformation_rules(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None, flag = False):
+    def equivalence_transformation_rules(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None, flag = False):
         '''
-        rules:
+        Relational Algebraic Equivalence Transformation Rules:
         1. σθ1 ^ σθ2 = σθ1(σθ2)
         2. σθ1(σθ2) = σθ2(σθ1)
         '''
-        print("Use transformation rule: σθ1^σθ2 = σθ1(σθ2)")
+        print("Equivalence Transformation Rule: σθ1^σθ2 = σθ1(σθ2)")
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
@@ -379,31 +379,7 @@ class Table:
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
-        '''
-        if ' and ' in condition:
-            data = []
-            splt = condition.split(' and ')
-            dict = self._select_where(return_columns, splt[-1], distinct, order_by, desc, limit, True)[1]
-            print(dict)
-            #data = data.append(self._select_where(return_columns, splt[1], distinct, order_by, desc, limit, True)[0])
-            #print("data is: \n",data)
-            self = Table(load=dict)
-            print("Self.data of inside select is: ",self.data)
-            #data = self.data
-            for i in reversed(splt):
-                if i == splt[-1]:
-                    continue
-                else:
-                    data.append(self._select_where(return_columns, i, distinct, order_by, desc, limit, True)[0])
-            print(data)
-            data1 = [elem for twod in data for elem in twod] # convert 3D list into a 2D list
-            print(data1)
-            # remove duplicate records but first sort the list
-            data1.sort()
-            new_list = list(l for l, _ in itertools.groupby(data1)) 
-            self.data = new_list # final data
-        
-        '''
+       
         splt = condition.split(' and ')
         if (len(splt)!=0):   # if there are any conditions on the left and on the right side of or operator
             rows = []
@@ -412,10 +388,10 @@ class Table:
             if (len(splt) == 2):
 
                 k = random.randint(0, 1) # decide on k once
-                print("random k is: ",k)
-                k = 0
+                #print("random k is: ",k)
+
                 if k == 0: #reverse
-                    print("Use transformation rule: σθ1(σθ2)=σθ2(σθ1)")
+                    print("Equivalence Transformation Rule: σθ1(σθ2)=σθ2(σθ1)")
                     temp = ''
                     temp = splt[-1]
                     splt[-1] = splt[0]
@@ -425,36 +401,30 @@ class Table:
             column_name, operator, value = self._parse_condition(splt[-1])
             column = self.column_by_name(column_name)
 
-                #rows.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)])
             for ind, x in enumerate(column):
-                #print(ind,x)
-                #print(x)
                 if get_op(operator, x, value):
                     rows.append(ind)
                    
-            print("Ιnitial rows are: ",rows)
+            #print("Ιnitial rows are: ",rows)
             for s in reversed(splt):
                 if s == splt[-1]:
                     continue
                 else:
                     column_name, operator, value = self._parse_condition(s)
                     column = self.column_by_name(column_name)
-
-                    #print("column name: ",column_name)
-                    #print("column: ",column)
             
                     for ind, x in enumerate(column):
-                        if ind not in rows:
+                        if ind not in rows: # not in inner condition indexes
                             continue
                         else:
-                            #print(x,operator,value)
                             if get_op(operator, x, value):
                                 rows1.append(ind)
-                    print("Rows1 are: ",rows1)
+                            
+                    #print("Rows1 are: ",rows1)
                 rows = [c for c in rows if c in rows1]
                 if len(rows) == 0: # no common element
                     break
-            print("Τotal rows are: ",rows)
+            #print("Τotal rows are: ",rows)
 
             # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
             dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
@@ -477,11 +447,6 @@ class Table:
             else:
                 return s_table
                     
-            #return self
-            #print("Self.data of outside select is: ",dataout)
-            #print("new self data is: ",self.data)
-
-    
 
     def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None, flag = False):
         '''
@@ -566,8 +531,7 @@ class Table:
         else:
             return_cols = [self.column_names.index(colname) for colname in return_columns]
 
-        
-        
+       
         column_name, operator, value = self._parse_condition(condition)
         #print("self first",self.data)
         self.order_by(column_name, desc=False)
@@ -598,13 +562,14 @@ class Table:
         column = self.column_by_name(column_name)
         #print(column)
         # sequential
+            
         rows1 = []
         opsseq = 0
         for ind, x in enumerate(column):
             opsseq+=1
             if get_op(operator, x, value):
                 rows1.append(ind)
-        #print("rows1 are: ", rows1)
+            #print("rows1 are: ", rows1)
 
         # btree find
         print("btree is: ",bt.show())
@@ -612,6 +577,7 @@ class Table:
 
         #print("rows1 are: ", rows1)
         #print("rows from btree are: ", rows)
+           
         '''
         print("rows are: ", rows)
         print("value is: ",value)
@@ -621,6 +587,7 @@ class Table:
             k = int(limit)
         except TypeError:
             k = None
+            
         # same as simple select from now on
 
         rows = rows[:k]
