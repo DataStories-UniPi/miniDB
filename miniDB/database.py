@@ -724,14 +724,20 @@ class Database:
 
 
 
-    def _has_index(self, table_name):
+    def _has_index(self, table_name, table_column="credits"):
         '''
         Check whether the specified table's primary key column is indexed.
 
         Args:
             table_name: string. Table name (must be part of database).
         '''
-        return table_name in self.tables['meta_indexes'].column_by_name('table_name')
+        rows = self.tables['meta_indexes'].data
+        for row_idx in range(len(rows)):
+            if rows[row_idx][0] == table_name and rows[row_idx][1] == table_column:
+                return True
+        
+        return False
+
 
     def _save_index(self, index_name, index):
         '''
