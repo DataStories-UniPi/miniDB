@@ -140,7 +140,7 @@ def create_query_plan(query, keywords, action):
         if len(on_value) == 4 and on_value[1] == '(' and on_value[-1]==')':
             dic['on'] = on_value[0]
             dic['column'] = on_value[2]
-    print(f"Final dic: {dic}")
+    
     return dic
 
 

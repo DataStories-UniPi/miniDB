@@ -367,7 +367,7 @@ class Database:
         else:
             condition_column = ''
 
-        
+        print(f"Has index? {self._has_index(table_name)}")
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
@@ -681,6 +681,14 @@ class Database:
         if (table_column is not table_instance.pk) and hasattr(table_instance, 'unique_columns') and table_instance.unique_columns is not None and table_column not in table_instance.unique_columns:
             raise Exception(f'Cannot create index. {table_column} is not a unique column.')
         
+        if index_type=='btree':
+                logging.info('Creating Btree index.')
+                # insert a record with the name of the index and the table on which it's created to the meta_indexes table
+                self.tables['meta_indexes']._insert([table_name, table_column, index_name])
+                # crate the actual index
+                self._construct_index(table_name, index_name, table_column)
+                self.save_database()
+        """
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
             # currently only btree is supported. This can be changed by adding another if.
             if index_type=='btree':
@@ -688,13 +696,13 @@ class Database:
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
                 self.tables['meta_indexes']._insert([table_name, table_column, index_name])
                 # crate the actual index
-                self._construct_index(table_name, index_name)
+                self._construct_index(table_name, index_name, table_column)
                 self.save_database()
 
         else:
-            raise Exception('Cannot create index. Another index with the same name already exists.')
+            raise Exception('Cannot create index. Another index with the same name already exists.')"""
 
-    def _construct_index(self, table_name, index_name, table_column=None):
+    def _construct_index(self, table_name, index_name, table_column):
         '''
         Construct a btree on a table and save.
 
@@ -704,21 +712,16 @@ class Database:
             table_column: string. Column name (must be unique).
         '''
         bt = Btree(3) # 3 is arbitrary
+        
+        # for each record in the table_column of the table, insert its value and index to the btree
+        for idx, key in enumerate(self.tables[table_name].column_by_name(table_column)):
+            if key is None:
+                continue
+            bt.insert(key, idx)
 
-        # By default it takes the pk as the column for the index
-        if table_column is None or table_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
-            # for each record in the primary key of the table, insert its value and index to the btree
-            for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
-                if key is None:
-                    continue
-                bt.insert(key, idx)
-            # save the btree
-            self._save_index(index_name, bt)
-        elif 1==1: # Check if the given column exists and is unique
-            # TODO: implement
-            print("Hello, World!")
-        else:
-            raise CustomFailException("Cannot construct Btree index.")
+        # save the btree
+        self._save_index(index_name, bt)
+
 
 
     def _has_index(self, table_name):
@@ -765,6 +768,7 @@ class Database:
         Args:
             index_name: string. Name of index.
         '''
+
         if index_name in self.tables['meta_indexes'].column_by_name('index_name'):
             self.delete_from('meta_indexes', f'index_name = {index_name}')
 

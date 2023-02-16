@@ -136,7 +136,6 @@ class Table:
                 if column_name in self.unique_columns and row[i] in self.column_by_name(column_name):
                     raise ValueError(f'## ERROR -> Value {row[i]} already exists in {column_name} unique column.')
             
-            print(f"row[i]: {row[i]}")
             
                     
 
