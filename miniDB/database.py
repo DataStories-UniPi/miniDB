@@ -112,7 +112,15 @@ class Database:
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
         # print('here -> ', column_names.split(','))
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, unique_columns=unique_columns.split(','), load=load)})
+            
+        self.tables.update(
+            { name: Table(name=name, column_names=column_names.split(','),
+                         column_types=column_types.split(','),
+                         primary_key=primary_key,
+                         unique_columns=unique_columns.split(',') if unique_columns is not None else None,
+                         load=load) }
+            )
+        
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
@@ -270,6 +278,7 @@ class Database:
         except Exception as e:
             logging.info(e)
             logging.info('ABORTED')
+            raise e # abort and raise exception
         self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
 
         if lock_ownership:

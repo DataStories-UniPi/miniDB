@@ -71,6 +71,7 @@ class Table:
             self.pk = primary_key
             
             # if unique columns are set, keep their names and indexes as attributes.
+            self.unique_columns = None
             if unique_columns is not None:
                 self.unique_columns = unique_columns
                 self.unique_columns_idx = [self.column_names.index(col) for col in self.column_names if col in self.unique_columns]
@@ -128,12 +129,16 @@ class Table:
                 if row[i] != None:
                     print(exc)
 
-            # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
+            # if value is to be appended to the primary_key column, check that it doesn't already exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
-                raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
-            elif i==self.pk_idx and row[i] is None:
+                raise ValueError(f'## ERROR -> Value "{row[i]}" already exists in primary key column.')
+            elif i==self.pk_idx and (row[i] is None or row[i] == ''):
                 raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
 
+            # if value already exists in a unique column, raise an error. (no duplicate values in unique columns)
+            if self.unique_columns is not None and i in self.unique_columns_idx and row[i] in self.column_by_name(self.column_names[i]):
+                raise ValueError(f'## ERROR -> Value "{row[i]}" already exists in unique column "{self.column_names[i]}".')
+            
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
             self.data[insert_stack[-1]] = row
@@ -515,7 +520,7 @@ class Table:
             # table has a primary key, add PK next to the appropriate column
             headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
             
-        if self.unique_columns_idx is not None:
+        if self.unique_columns is not None:
             # table has unique columns, add UNIQUE next to the appropriate columns
             for idx in self.unique_columns_idx:
                 headers[idx] = headers[idx]+' #UNIQUE#'
