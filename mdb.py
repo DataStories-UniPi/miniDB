@@ -99,16 +99,26 @@ def create_query_plan(query, keywords, action):
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
-        arg_nopk = args.replace('primary key', '')[1:-1]
-        arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
+        temp_args = args.replace('primary key', '')[1:-1] # remove primary key and parentheses
+        temp_args = temp_args.replace('unique', '') # remove unique
+        arglist = [val.strip().split(' ') for val in temp_args.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+        
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
-    
+            
+        if 'unique' in args:
+            arglist = args[1:-1].split(',')
+            arglist = [val.strip().split(' ') for val in arglist]
+            column_names = [val[0] for val in arglist if len(val)>2 and val[2]=='unique']
+            dic['unique_columns'] = ','.join(column_names)
+        else:
+            dic['unique_columns'] = None
+
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
