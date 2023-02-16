@@ -105,7 +105,12 @@ def create_query_plan(query, keywords, action):
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
-    
+        if 'unique key' in args:
+            arglist = args[1:-1].split(' ')
+            dic['unique key'] = arglist[arglist.index('unique')-2]
+        else:
+            dic['unique key'] = None
+
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
@@ -282,7 +287,7 @@ if __name__ == "__main__":
             print('\nbye!')
             break
         try:
-            if line=='exit':
+            if line=='exit;':
                 break
             if line.split(' ')[0].removesuffix(';') in ['lsdb', 'lstb', 'cdb', 'rmdb']:
                 interpret_meta(line)
