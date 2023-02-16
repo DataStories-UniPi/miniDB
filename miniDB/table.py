@@ -26,7 +26,11 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+
+    '''
+    Updating the table constructor for the unique columns arg
+    '''
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, unique_columns=None, load=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -68,6 +72,17 @@ class Table:
                 self.pk_idx = None
 
             self.pk = primary_key
+
+            '''
+            We define the unique_indexes array by checking the unique_columns array and
+            in order get the indexes of the unique columns we use the unique_indexes attribute
+            '''
+            if unique_columns is not None:
+                self.unique_indexes = [idx for idx, col in enumerate(self.column_names) if col in unique_columns]
+            else:
+                self.unique_indexes = None
+
+            self.unique_columns = unique_columns
             # self._update()
 
     # if any of the name, columns_names and column types are none. return an empty table object
@@ -129,6 +144,14 @@ class Table:
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
             elif i==self.pk_idx and row[i] is None:
                 raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
+
+            # Preventing unique columns from having duplicate values
+            if self.unique_columns is not None and i in self.unique_indexes:
+                unique_idx = self.unique_indexes.index(i)
+                unique_col = self.unique_columns[unique_idx]
+
+                if row[i] in self.column_by_name(unique_col):
+                    raise ValueError(f'## ERROR -> Value {row[i]} already exists in unique column {unique_col}.')
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
@@ -398,6 +421,10 @@ class Table:
         dict['column_types']   = [self.column_types[i] for i in return_cols]
 
         s_table = Table(load=dict)
+
+        # We bring back the unique columns and the indexes.
+        s_table.unique_columns = self.unique_columns
+        s_table.unique_indexes = self.unique_indexes
 
         s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
 
@@ -683,12 +710,15 @@ class Table:
         if self.pk_idx is not None:
             # table has a primary key, add PK next to the appropriate column
             headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
+        if self.unique_columns is not None:
+            for unique_idx in self.unique_indexes:
+                # Inserting the identifier UNIQUE for unique columns
+                headers[unique_idx] = headers[unique_idx] + ' #UNIQUE#'
         # detect the rows that are no tfull of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]
         # print using tabulate
         print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
-
 
     def _parse_condition(self, condition, join=False):
         '''
