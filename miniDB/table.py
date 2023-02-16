@@ -223,6 +223,15 @@ class Table:
             desc: boolean. If True, order_by will return results in descending order (False by default).
             limit: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
+        if condition is not None:
+                if "not" in condition.split() or "NOT" in condition.split():
+                    conditlist = condiiton.split("not")
+                    conditlist = condition_list[0].split("NOT")
+                    column_name,operator,value = self._parse_condition(condition_list[1])
+                    column = self.column_by_name(column_name)
+                    #Antistrefoume to operator
+                    op = reverse_op(operator)
+                    rows = [i for i,j in enumerate(column) if get_op(op,j,value)]
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':

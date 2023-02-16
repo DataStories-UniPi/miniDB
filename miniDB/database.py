@@ -351,6 +351,18 @@ class Database:
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
             distinct: boolean. If True, the resulting table will contain only unique rows.
         '''
+        if condition is not None:
+                
+            if "between" in condition.split() or "BETWEEN" in condition.split():
+                condition_column = condition.split("")[0]
+            elif "or" in condition.split() or "OR" in condition.split():
+                condition_column = condition.split("")[0]
+            elif "and" in condition.split() or "AND" in condition.split():
+                condition_column = condition.split("")[0]
+            elif "not" in condition.split() or "NOT" in condition.split():
+                condition_column = condition.split("")[0]
+            else:
+                condition_column = condition.split("")[0]
 
         # print(table_name)
         self.load_database()
