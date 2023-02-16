@@ -18,6 +18,7 @@ class Table:
         - column names (list of strings)
         - column types (list of functions like str/int etc)
         - primary (name of the primary key column)
+        - unique (list of strings (column names) that are unique)
 
     OR
 
@@ -26,7 +27,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, unique_columns=None, load=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -68,8 +69,13 @@ class Table:
                 self.pk_idx = None
 
             self.pk = primary_key
+            
+            # if unique columns are set, keep their names and indexes as attributes.
+            if unique_columns is not None:
+                self.unique_columns = unique_columns
+                self.unique_columns_idx = [self.column_names.index(col) for col in self.column_names if col in self.unique_columns]
+                
             # self._update()
-
     # if any of the name, columns_names and column types are none. return an empty table object
 
     def column_by_name(self, column_name):
@@ -508,6 +514,12 @@ class Table:
         if self.pk_idx is not None:
             # table has a primary key, add PK next to the appropriate column
             headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
+            
+        if self.unique_columns_idx is not None:
+            # table has unique columns, add UNIQUE next to the appropriate columns
+            for idx in self.unique_columns_idx:
+                headers[idx] = headers[idx]+' #UNIQUE#'
+                
         # detect the rows that are no tfull of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]
