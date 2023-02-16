@@ -134,13 +134,13 @@ class Table:
                 if row[i] != None:
                     print(exc)
 
-            # if value is to be appended to the primary_key column, check that it doesn't alrady exist (no duplicate primary keys)
+            # if value is to be appended to the primary_key column, check that it doesn't already exists (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
             elif i==self.pk_idx and row[i] is None:
                 raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
 
-            # if value is to be appended to a unique_key column, check that it doesn't alrady exist (no duplicate unique keys)
+            # if value is to be appended to a unique_key column, check that it doesn't already exists (no duplicate unique keys)
             if i==self.uk_idx and row[i] in self.column_by_name(self.uk):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in unique key column "{self.uk}".')
             elif i==self.uk_idx and row[i] is None:
@@ -550,7 +550,7 @@ class Table:
             # table has a primary key, add PK next to the appropriate column
             headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
         if self.uk_idx is not None:
-            # table has unique key, add UK next to the appropriate columns
+            # table has unique key, add UK next to the appropriate column
             headers[self.uk_idx] = headers[self.uk_idx]+' #UK#'
         # detect the rows that are not full of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions

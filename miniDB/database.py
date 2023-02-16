@@ -13,6 +13,7 @@ sys.modules['table'] = table
 
 from joins import Inlj, Smj
 from btree import Btree
+from hashTree import HashTree
 from misc import split_condition,convert_between_condition,reverse_not
 from table import Table
 
