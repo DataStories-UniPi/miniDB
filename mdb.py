@@ -93,20 +93,41 @@ def create_query_plan(query, keywords, action):
         else:
             dic['desc'] = None
 
-    if action=='create table':
-        args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
-        dic['create table'] = dic['create table'].removesuffix(args).strip()
-        arg_nopk = args.replace('primary key', '')[1:-1]
-        arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
-        dic['column_names'] = ','.join([val[0] for val in arglist])
-        dic['column_types'] = ','.join([val[1] for val in arglist])
-        if 'primary key' in args:
-            arglist = args[1:-1].split(' ')
-            dic['primary key'] = arglist[arglist.index('primary')-2]
+    if action == 'create table':
+        if dic['create table'].count('(') ==1:
+            args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
+            dic['create table'] = dic['create table'].removesuffix(args).strip()
+            arg_nopk = args.replace('primary key', '')[1:-1]
+            arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
+            dic['column_names'] = ','.join([val[0] for val in arglist])
+            dic['column_types'] = ','.join([val[1] for val in arglist])
+            if 'primary key' in args:
+                arglist = args[1:-1].split(' ')
+                dic['primary key'] = arglist[arglist.index('primary')-2]
+            else:
+                dic['primary key'] = None
         else:
-            dic['primary key'] = None
-    
-    if action=='import': 
+            args = dic['create table'][dic['create table'].index('('):len(dic['create table'])]
+            dic['create table'] = dic['create table'].removesuffix(args).strip()
+            arg_nopk = args[1:args.index(',primary')]
+            arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
+            dic['column_names'] = ','.join([val[0] for val in arglist])
+            dic['column_types'] = ','.join([val[1] for val in arglist])
+            if 'primary key' in args:
+                arglist = args[1:-1].split(' ')
+                dic['primary key'] = arglist[arglist.index('primary')-2]
+            else:
+                dic['primary key'] = None
+            if 'unique' in args:
+                arglist=args[args.index('unique')+len('unique'):-1].replace('(','').replace(')','').split(',')
+                for x in range(len(arglist)):
+                    arglist[x] = arglist[x].strip()
+
+                    dic['unique']=arglist
+            else:
+                dic['unique'] = None
+
+    if action == 'import':
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
     if action=='insert into':
@@ -115,12 +136,22 @@ def create_query_plan(query, keywords, action):
         else:
             raise ValueError('Your parens are not right m8')
     
-    if action=='unlock table':
+    if action == 'unlock table':
         if dic['force'] is not None:
             dic['force'] = True
         else:
             dic['force'] = False
             # if action = create index
+    if action == 'create index':
+        dic['on']=ql[3]
+        if '(' in ql:
+            dic['column name']=ql[5]
+            print(dic)
+
+        #dic['column name'] = dic['on'][dic['on'].index('(')+1:-1].split(',')
+        #for x in range(len(dic['column name'])):
+        #    dic['column name'][x] = dic['column name'][x].strip()
+        #dic['on'] = dic['on'][0:dic['on'].index('(')]
 
     return dic
 
@@ -178,7 +209,7 @@ def interpret(query):
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
-                     'create index': ['create index', 'on', 'using'],
+                     'create index': ['create index', 'on','column' 'using'],
                      'drop index': ['drop index'],
                      'create view' : ['create view', 'as']
                      }
