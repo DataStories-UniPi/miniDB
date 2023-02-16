@@ -451,9 +451,9 @@ class Database:
             table = execute_condition(None)
 
         # self.lock_table(table_name, mode='x')
+        if self.is_locked(table_name):
+            return
 ### Included in execute_condition function from here
-        # if self.is_locked(table_name):
-        #     return
         # if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
         #     index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
         #     bt = self._load_idx(index_name)
