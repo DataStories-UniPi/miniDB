@@ -193,9 +193,6 @@ def interpret(query):
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
                      'select': ['select', 'from', 'where', 'distinct', 'order by', 'limit'],
-                     # test for optimize or query
-                     #'select': ['select', 'from', 'where', 'in', 'distinct', 'order by', 'limit'],
-                     # e.g. column IN (expr1,expr2,expr3,...)
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
