@@ -338,8 +338,8 @@ class Database:
 
 
 
-    def select(self, columns, table_name, condition, distinct=None, order_by=None, \
-               limit=True, desc=None, save_as=None, return_object=True):
+    def select (self, columns, table_name, condition, distinct=None, order_by=None, \
+                limit=True, desc=None, save_as=None, return_object=True):
         '''
         Selects and outputs a table's data where condtion is met.
 
@@ -365,6 +365,7 @@ class Database:
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
         flag = 0
+        statistics_OR = False
         if condition is not None:
 
             print("Condition is: " + condition+"\n")
@@ -386,22 +387,65 @@ class Database:
             elif (operator in condition or operator1 in condition and operator3 not in condition): 
                 
                 flag = 1 # found
-
                 if self.is_locked(table_name):
                     return
             
-                if (operator in condition): # or in condition
-                    table = self.tables[table_name]._select_where_or(columns, condition, distinct, order_by, desc, limit)
-                else: # and in condition
-                    #try to use transformation rules:
+                if (operator in condition): # OR in condition
+                    
+                    #print("OR here")
+                    '''
+                    test for OR optimizations
+                    - first check if all conditions refer to the same column name
+                    '''
+                    splt = condition.split(operator)
+                    condition_column_name = splt[0].split(' ')[0]
+                    #print("Condition column name is: ",condition_column_name)
+                    
+                    flag1 = False
+                    for i in range(len(splt)):
+                        if 'not' not in splt[i]:
+                            if splt[i].split(' ')[0] == condition_column_name:
+                                flag1 = True
+                            else: 
+                                flag1 = False
+                                break
+                        else: # NOT in condition
+                            if splt[i].split(' ')[1] == condition_column_name:
+                                    flag1 = True
+                            else:
+                                flag1 = False
+                                break
+                    if flag1:
+                        print("----OR optimizations-----")
+                        print("All conditions refer to the same column!")
+
+                        if (self._has_index(table_name) and (condition_column_name in self.tables['meta_indexes'].column_by_name('table_column') and 
+                                                  'not' not in splt)): 
+                                
+                                statistics_OR = True
+                                expression_list = []
+                  
+                                print("BTree index has been found!")
+                                
+                                for s in splt:
+                                    s1 = s.split(condition_column_name)
+                                    expression_list.append(s1[1])
+
+                                tuple1 = tuple(expression_list)    
+                                #print(tuple1)
+                                condition1 = f'{condition_column_name}' " IN " f'{tuple1}'
+                                print("New term is: ",condition1)     
+                    else:
+                        print("Conditions do not refer to the same column!")
+                        table = self.tables[table_name]._select_where_or(columns, condition, distinct, order_by, desc, limit)
+                else: # AND in condition
+                    # Try to use Equivalence Transformation Rules:
                     k = random.randint(0, 1) # decide on k once
-                    print("random k is: ",k)
-                    #splt = condition.split(operator1)
-                    k=0
-                    if k == 0: # use transformation rules
-                        #print("2 conditions combined with AND have been found!")
-                        table = self.tables[table_name].transformation_rules(columns, condition, distinct, order_by, desc, limit)
-                    else: # select the default path
+                    #print("random k is: ",k)
+        
+                    if k == 0: # use Equivalence Transformation Rules
+                        table = self.tables[table_name].equivalence_transformation_rules(columns, condition, distinct, order_by, desc, limit)
+                    else: # choose the default path -> function select_where_and 
                         table = self.tables[table_name]._select_where_and(columns, condition, distinct, order_by, desc, limit)
          
             else:     
@@ -432,14 +476,15 @@ class Database:
                 table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
             
         # self.unlock_table(table_name)
-        if save_as is not None:
-            table._name = save_as
-            self.table_from_object(table)
-        else:
-            if return_object:
-                return table
+        if (statistics_OR == False):
+            if save_as is not None:
+                table._name = save_as
+                self.table_from_object(table)
             else:
-                return table.show()
+                if return_object:
+                    return table
+                else:
+                    return table.show()
 
 
     def show_table(self, table_name, no_of_rows=None):
