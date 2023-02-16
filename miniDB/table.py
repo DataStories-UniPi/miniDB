@@ -232,6 +232,41 @@ class Table:
                     #Antistrefoume to operator
                     op = reverse_op(operator)
                     rows = [i for i,j in enumerate(column) if get_op(op,j,value)]
+                elif "between" in condition.split() or "BETWEEN" in condition.split():
+                    #Apothikeusi tou condition.split se metavliti
+                    conspl=condition.split()
+                    if (conspl[3] == "and"):
+
+                       left = conspl[2] #H prwti timi pros sygkrisi 
+                       right = conspl[4] #H deyteri timi pros sygkrisi
+                       column_name = conspl[0]
+                       rows = []
+
+                       if (left.isdigit() && right.isdigit()):
+                        #Stin periptwsi pou i sygkrisi einai metaxy arithmwn 
+                           for i,j in enumerate(column):
+                               if int(i) >= left && int(j) <= int(right):
+                                #Prosthetoume ston pinaka tis times gia tis opoies isxuei i synthiki
+                                rows.append(i)
+                       else:
+                        #Metavlites typoy string den mporoume na tis sygkrinoume
+                                    print("To between operator den leitourgei gia strings")
+                                    exit()
+		            
+                    else:
+                         print("Leipei to and endiamesa apo tous arithmous")
+                         exit()			        
+			           			           
+                elif "and" in condition.split() or "AND" in condition.split():
+                     condlist = condiiton.split("and")
+                     condlist = condition_list[0].split("AND")
+                     rows2 = []
+                     for c in condition_list:
+                         #To trexoume gia kathe synthiki
+                         column_name,op,value = self._parse_condition(c)
+                         column = self.column_by_name(column_name)
+                         rows2.append([i for i,j in enumerate(column) if get_op(op,j,value)])
+                     rows = set(rows2[0].intersection(*rows2))
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
