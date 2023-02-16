@@ -267,6 +267,26 @@ class Table:
                          column = self.column_by_name(column_name)
                          rows2.append([i for i,j in enumerate(column) if get_op(op,j,value)])
                      rows = set(rows2[0].intersection(*rows2))
+                
+                elif "or" in condition.split() or "OR" in condition.split():
+                      conditlist = condiiton.split("or")
+                      conditlist = condition_list[0].split("OR")
+                      rows2=[]
+                      for c in condition_list:
+                          #To trexoume gia kathe synthiki
+                          column_name,op,value=self._parse_condition(c)
+                          column = self.column_by_name(column_name)
+                          rows2.append([i for i,j in enumerate(column) if get_op(op,j,value)])
+                      rows = []
+                      '''
+                      vazoume tis times tis seiras se monodiastato pinaka
+                      '''
+                      for i in rows2:
+                            for j in i:
+                                if not(j in rows):#gia na apofygoume thn dhmiourgia twn duplicate
+                                   rows.append(j)
+
+                     
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
