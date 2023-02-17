@@ -37,8 +37,6 @@ def in_paren(qsplit, ind):
     '''
     return qsplit[:ind].count('(')>qsplit[:ind].count(')')
 
-
-
 def create_query_plan(query, keywords, action):
     '''
     Given a query, the set of keywords that we expect to pe present and the overall action, return the query plan for this query.
@@ -176,8 +174,7 @@ def interpret(query):
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
-                    # 'create index': ['create index', 'on', 'using'],
-                     'create index': ['create index', 'on', 'column', 'using'], # Added column
+                     'create index': ['create index', 'on', 'using'],
                      'drop index': ['drop index'],
                      'create view' : ['create view', 'as']
                      }
@@ -266,7 +263,8 @@ if __name__ == "__main__":
                 dic = interpret(line.lower())
                 result = execute_dic(dic)
                 if isinstance(result,Table):
-                    result.show()        
+                    result.show()
+        
 
     from prompt_toolkit import PromptSession
     from prompt_toolkit.history import FileHistory
