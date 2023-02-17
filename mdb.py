@@ -308,3 +308,99 @@ if __name__ == "__main__":
                     result.show()
         except Exception:
             print(traceback.format_exc())
+
+
+def query_plan1(query, keywords, action):
+
+        dict = {val: None for val in keywords if val != ';'} #create dictionary with all keywords
+
+        query_list = [val for val in query.split(' ') if val != ''] #split query into list
+
+        kw_in_query = []
+        kw_positions = []
+        i = 0
+        while i < len(query_list): #find all keywords in query
+            if in_paren(query_list, i): 
+                i += 1
+                continue
+            if query_list[i] in keywords: #if keyword is found, add it to the list of keywords in query
+                kw_in_query.append(query_list[i])
+                kw_positions.append(i)
+
+            elif i != len(query_list)-1 and f'{query_list[i]} {query_list[i+1]}' in keywords: #if keyword is found, add it to the list of keywords in query
+                kw_in_query.append(f'{query_list[i]} {query_list[i+1]}')
+                query_list[i] = query_list[i] + ' ' + query_list[i+1]
+                query_list.pop(i+1)
+                kw_positions.append(i)
+            i += 1
+
+        for i in range(len(kw_in_query)-1): #add all keywords to the dictionary
+            dict[kw_in_query[i]] = ' '.join(query_list[kw_positions[i]+1:kw_positions[i+1]])
+
+        if action == 'select': #if action is select, add the last keyword to the dictionary
+            dict = evaluate_from_clause(dict)
+
+            if "and" in dict[kw_in_query[2]]: #if there is an and in the where clause, split it into two
+                split_con = dict[kw_in_query[2]].split() 
+                split_con.remove("(")
+                split_con.remove(")")
+                split_con.remove("(")
+                split_con.remove(")")
+
+            if dict['distinct'] is not None: #if distinct is not none, set distinct to true
+                dict['select'] = dict['distinct']
+                dict['distinct'] = True
+
+            if dict['order by'] is not None: #if order by is not none, set desc to true if desc is in the order by clause
+                dict['from'] = dict['from']
+                if 'desc' in dict['order by']:
+                    dict['desc'] = True
+                else:
+                    dict['desc'] = False
+                dict['order by'] = dict['order by'].removesuffix(' asc').removesuffix(' desc')
+
+            else: #if order by is none, set desc to none
+                dict['desc'] = None
+
+            return dict
+
+
+def query_plan2(query, keywords, action):  #same as query_plan1, but with a different approach
+    dic = {val: None for val in keywords if val!=';'}
+    ql = [val for val in query.split(' ') if val !='']
+    kw_in_query = []
+    kw_positions = []
+    i=0
+    while i<len(ql): 
+        if in_paren(ql, i): 
+            i+=1
+            continue
+        if ql[i] in keywords:
+            kw_positions.append(i)
+
+        elif i!=len(ql)-1 and f'{ql[i]} {ql[i+1]}' in keywords:
+            kw_in_query.append(f'{ql[i]} {ql[i+1]}')
+            ql.pop(i+1)
+            kw_positions.append(i)
+        i+=1
+
+    for i in range(len(kw_in_query)-1): 
+        dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
+
+    if action=='select': 
+        if dic['distinct'] is not None:
+            dic['select'] = dic['distinct']
+            dic['distinct'] = True
+
+        if dic['order by'] is not None:
+            dic['from'] = dic['from']
+            if 'desc' in dic['order by']:
+                dic['desc'] = True
+            else:
+                dic['desc'] = False
+            dic['order by'] = dic['order by'].removesuffix(' asc').removesuffix(' desc')
+
+        else:
+            dic['desc'] = None
+
+        return dic
