@@ -356,28 +356,29 @@ class Database:
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
             distinct: boolean. If True, the resulting table will contain only unique rows.
         '''
-
+        
         # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
         if condition is not None:
-            condition_column = split_condition(condition)[0]
+            column_name = split_condition(condition)[0]
         else:
-            condition_column = ''
+            column_name = ''
+        
+        
+        print(f"Has index? {self._has_index(table_name, column_name)}")
 
-        print(f"Has index? {self._has_index(table_name)}")
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
-        if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
+        if self._has_index(table_name, column_name):
             print("Used index")
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
-            bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+            #bt = self._load_idx(index_name)
+            #table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
         else:
-            print("Did not use index")
             table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
         # self.unlock_table(table_name)
         if save_as is not None:
@@ -724,12 +725,13 @@ class Database:
 
 
 
-    def _has_index(self, table_name, table_column="credits"):
+    def _has_index(self, table_name, table_column):
         '''
         Check whether the specified table's primary key column is indexed.
 
         Args:
             table_name: string. Table name (must be part of database).
+            table_column: string. Table column.
         '''
         rows = self.tables['meta_indexes'].data
         for row_idx in range(len(rows)):
