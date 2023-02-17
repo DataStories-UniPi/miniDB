@@ -161,13 +161,21 @@ def evaluate_from_clause(dic):
         
     return dic
 
+def has_parenth(list):
+    return list[0]=='(' and list[-1]==')'
+
 def evaluate_where_clause(dic):
     '''
     Evaluate the part of the query that is supplied as the 'where' argument
     '''
 
     where_clause = dic['where']
-    where_dic = form_where_clause(where_clause)
+    where_split = where_clause.split(' ')
+    if len(where_split) == 1:
+        where_dic = where_clause
+    else:
+        where_dic = form_where_clause(where_clause)
+    
     dic['where'] = where_dic
 
     return dic
@@ -184,38 +192,35 @@ def form_where_clause(where_split):
 
     operator_idx = [i for i,word in enumerate(where_split) if word in logical_operators and not in_paren(where_split,i)]
 
-    # TODO: check for ((())) multiple parenthesis
-    if((len(operator_idx) == 0) and (where_split[0]=='(' and where_split[-1]==')')):
-        where_split = where_split[1:-1]
+    if len(operator_idx) == 0 and has_parenth(where_split):
+        while has_parenth(where_split):
+            where_split = where_split[1:-1]
         operator_idx = [i for i,word in enumerate(where_split) if word in logical_operators and not in_paren(where_split,i)]
 
-    # TODO: check if works
-    if(len(where_split) == 1):
-        # TODO: Remove parenthesis if needed
+    if len(operator_idx) == 0:
         return ''.join(where_split)
 
-    if operator_idx:
-        operator_idx_f = operator_idx[0]
-        
-        where_dic = {}
-        left = where_split[:operator_idx_f]
-        right = where_split[operator_idx_f+1:]
+    operator_idx_f = operator_idx[0]
+    where_dic = {}
+    left = where_split[:operator_idx_f]
+    right = where_split[operator_idx_f+1:]
 
-        if(left[0] == '(' and left[-1] == ')'):
-            left = form_where_clause(left)
-        else:
-            left = ' '.join(left)
+    if has_parenth(left):
+        left = form_where_clause(left)
+    else:
+        left = ' '.join(left)
 
-        if(right[0] == '(' and right[-1] == ')' or len(operator_idx) > 0):
-            right = form_where_clause(right)
-        else:
-            right = ' '.join(right)      
+    if has_parenth(right) or operator_idx_f is not None:
+        right = form_where_clause(right)
+    else:
+        right = ' '.join(right)      
 
-        where_dic['left'] = left
-        where_dic['operator'] = ''.join(where_split[operator_idx_f])
-        where_dic['right'] = right
-        
-        return where_dic
+    where_dic['left'] = left
+    where_dic['operator'] = ''.join(where_split[operator_idx_f])
+    where_dic['right'] = right
+            
+    return where_dic
+
 
 def interpret(query):
     '''
