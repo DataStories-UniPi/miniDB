@@ -65,17 +65,17 @@ def fix_between(dic_where):
     if dic_where == None:
         return dic_where
 
-    if dic_where.count("between") > 0:
-        z = dic_where.split("between")
+    if dic_where.count(" between ") > 0:
+        z = dic_where.split(" between ")
         lf = z[0]
         f = z[1]
-        if f.count("and") == 1:
-            k =  f.split("and")
+        if f.count(" and ") == 1:
+            k =  f.split(" and ")
             f1  = k[0]
             f2  = k[1]
             dic_where = lf + ' >= '  + '"'+ f1 + '"' + ' and ' + lf +' <= ' +'"'+ f2+ '"'
         else:
-            temp = f.split("and", 2)
+            temp = f.split(" and ", 2)
             f1 = temp[0]
             f2 = temp[1]
             rest = temp[2]
@@ -87,11 +87,11 @@ def get_and_of(dic_where):
         return dic_where
 
     ret = []
-    or_islands = dic_where.split('or')
+    or_islands = dic_where.split(' or ')
 
     for isl in or_islands:
         without_between = fix_between(isl)
-        inter = without_between.split('and')
+        inter = without_between.split(' and ')
         inner_ret = []
         for inner in inter:
             inner_ret.append(fix_not(inner))
