@@ -208,7 +208,8 @@ class Table:
         # self._update()
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
-    
+
+
     def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
 
         '''
@@ -251,27 +252,46 @@ class Table:
             column2 = self.column_by_name(column_name2)
             rows2 = [ind for ind, x in enumerate(column2) if get_op(operator2, x, value2)]
             dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows2] if key=="data" else value2) for key,value2 in self.__dict__.items()}
+            #print(dict)
+
+            aaa = dict['data']
+            print(aaa[2])
+            print("LOL")
 
             temp=dict['data']
-            temp2=dict['data']
+            temp2=" "
+            print(temp)
+            #temp2=dict['data']
 
-
+            #{'_name': 'department', 'column_names': ['dept_name', 'building', 'budget'], 
+            #'columns': [[], [], []], 'dept_name': [], 'building': [], 'budget': [], 
+            #'column_types': [<class 'str'>, <class 'str'>, <class 'int'>], 
+            #'data': [['biology', 'watson', 90000], ['comp. sci.', 'taylor', 100000], ['finance', 'painter', 120000]], 
+            #'pk_idx': 0, 'pk': 'dept_name'}[['biology', 'watson', 90000], ['comp. sci.', 'taylor', 100000], ['finance', 'painter', 120000]]
+            
             print("  ")
             dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
 
             for data in dict['data']:
                 print(data[2])
+                print("EN TOUTO NAI")
 
             print(" ")
 
-            if (operator == '='):
+            if (operator == '=' and operator2 == '='):
+                dict ={(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+
+            if (operator == '=' and operator2 != '='):
                 dict['data']=dict['data']+temp #PROSTHETO TA DATA TOU VALUE1 KAI VALUE2 MAZI
 
             if ( column_name != column_name2): #EN GIA TO AND
                  for i in range(len(temp)):
                       if value.strip("'") == temp[i][1]:
-                            print(temp[i][1])
-                
+                            print(temp[i][0], temp[i][1], temp[i][2])
+                            del dict['data']
+                            my_dict1 = {str(temp[i][0]) + "," + str(temp[i][1]) + "," + str(temp[i][2])}
+                            dict['data'] = my_dict1
+                 
             print(dict)
         else:
             #copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
@@ -307,7 +327,8 @@ class Table:
    
 
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
-        
+       
+
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
@@ -317,12 +338,16 @@ class Table:
         column_name, operator, value, a, b, c = self._parse_condition(condition)
         
         # if the column in condition is not a primary key, abort the select
+
+        total_rows = len(return_cols)
+        print(total_rows)
+        print("TOUTO DAME BRO MU")
         '''
         for i in range (10):
             if column_name != self.column_names[self.pk_idx]:
-                for j in rows:
-        '''         
+                for j in :
                     
+        '''            
                 #print('Column is not PK. Aborting')
                     
                     
