@@ -54,7 +54,7 @@ class Database:
         self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
-        self.create_table('meta_indexes', 'table_name,table_column,index_name', 'str,str,str')
+        self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
         self.save_database()
 
     def save_database(self):
