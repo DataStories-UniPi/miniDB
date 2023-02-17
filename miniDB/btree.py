@@ -1,6 +1,7 @@
 '''
 https://en.wikipedia.org/wiki/B%2B_tree
 '''
+import math
 
 class Node:
     '''
@@ -278,7 +279,19 @@ class Btree:
             with open('graph.gv','w') as f:
                 f.write(g)
 
-    def find(self, operator, value):
+
+    def height(self):
+        ## arrange the nodes top to bottom left to right
+        nds = []
+        nds.append(self.root)
+        for ptr in nds:
+            if self.nodes[ptr].is_leaf:
+                continue
+            nds.extend(self.nodes[ptr].ptrs)
+        return math.ceil(math.log((len(nds)+1)/2, self.b))
+
+
+    def find(self, operator, value, return_cost=False):
         '''
         Return ptrs of elements where btree_value"operator"value.
         Important, the user supplied "value" is the right value of the operation. That is why the operation are reversed below.
@@ -289,6 +302,7 @@ class Btree:
             value: float. The value being searched for.
         '''
         results = []
+        k = 0
         # find the index of the node that the element should exist in
         leaf_idx, ops = self._search(value, True)
         target_node = self.nodes[leaf_idx]
@@ -312,6 +326,7 @@ class Btree:
                 if node_value > value:
                     results.append(target_node.ptrs[idx])
             while target_node.right_sibling is not None:
+                k+= 1
                 target_node = self.nodes[target_node.right_sibling]
                 results.extend(target_node.ptrs)
 
@@ -322,6 +337,8 @@ class Btree:
                 if node_value >= value:
                     results.append(target_node.ptrs[idx])
             while target_node.right_sibling is not None:
+                k+= 1
+
                 target_node = self.nodes[target_node.right_sibling]
                 results.extend(target_node.ptrs)
 
@@ -331,6 +348,8 @@ class Btree:
                 if node_value < value:
                     results.append(target_node.ptrs[idx])
             while target_node.left_sibling is not None:
+                k+= 1
+
                 target_node = self.nodes[target_node.left_sibling]
                 results.extend(target_node.ptrs)
 
@@ -340,9 +359,14 @@ class Btree:
                 if node_value <= value:
                     results.append(target_node.ptrs[idx])
             while target_node.left_sibling is not None:
+                k+= 1
+
                 target_node = self.nodes[target_node.left_sibling]
                 results.extend(target_node.ptrs)
 
         # print the number of operations (usefull for benchamrking)
         # print(f'With BTree -> {ops} comparison operations')
+
+        if return_cost:
+            return k, results
         return results
