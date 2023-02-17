@@ -2,7 +2,7 @@ import os
 import re
 from pprint import pprint
 import sys
-import readline
+#import readline
 import traceback
 import shutil
 sys.path.append('miniDB')
