@@ -11,6 +11,7 @@ sys.path.append('miniDB')
 from miniDB.database import Database
 from miniDB.table import Table
 from miniDB.query_plans import multiple_query_plans
+from miniDB.evaluate_query_plans import evaluate_query_plans
 # art font is "big"
 art = '''
              _         _  _____   ____  
@@ -446,10 +447,13 @@ if __name__ == "__main__":
                 interpret_meta(line)
             elif line.startswith('explain'):
                 dic = interpret(line.removeprefix('explain '))
-                multiple_query_plans(dic)
+                queries = multiple_query_plans(dic)
                 #pprint(dic, sort_dicts=False)
+                evaluate_query_plans(db,queries)
             else:
                 dic = interpret(line)
+                queries = multiple_query_plans(dic)
+                dic = evaluate_query_plans(db,queries)
                 result = execute_dic(dic)
                 if isinstance(result,Table):
                     result.show()
