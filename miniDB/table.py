@@ -135,7 +135,7 @@ class Table:
             elif i==self.pk_idx and (row[i] is None or row[i] == ''):
                 raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
 
-            # if value already exists in a unique column, raise an error. (no duplicate values in unique columns)
+            # if value already exists in a unique column, raise an error (no duplicate values in unique columns).
             if self.unique_columns is not None and i in self.unique_columns_idx and row[i] in self.column_by_name(self.column_names[i]):
                 raise ValueError(f'## ERROR -> Value "{row[i]}" already exists in unique column "{self.column_names[i]}".')
             
@@ -154,7 +154,6 @@ class Table:
             set_value: string. The provided set value.
             set_column: string. The column to be altered.
             condition: string or dict (the condition is the returned dic['where'] from interpret method).
-                
                 Operatores supported: (<,<=,=,>=,>)
         '''
 
@@ -182,8 +181,7 @@ class Table:
 
         Args:
             condition: string or dict (the condition is the returned dic['where'] from interpret method).
-                
-                Operatores supported: (<,<=,==,>=,>)
+                Operatores supported: (<,<=,=,>=,>)
         '''
         if condition is not None:
             indexes_to_del = self.find_rows_by_condition(condition) # get the indexes of the rows to be deleted
@@ -212,8 +210,7 @@ class Table:
         Args:
             return_columns: list. The columns to be returned.
             condition: string or dict (the condition is the returned dic['where'] from interpret method).
-                
-                Operatores supported: (<,<=,==,>=,>)
+                Operatores supported: (<,<=,=,>=,>)
             distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (False by default).
