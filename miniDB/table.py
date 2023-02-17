@@ -260,7 +260,7 @@ class Table:
 
         return s_table
 
-    def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
+    def _select_where_with_btree(self, return_columns, bt_dic, condition, distinct=False, order_by=None, desc=True, limit=None):
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
@@ -283,7 +283,7 @@ class Table:
                 rows1.append(ind)
         """
 
-        rows = self.find_rows_by_condition(condition, bt)
+        rows = self.find_rows_by_condition(condition, bt_dic) # get the rows where condition is met
 
         try:
             k = int(limit)
@@ -565,44 +565,45 @@ class Table:
 
         self.__dict__.update(tmp_dict.__dict__)
 
-    def find_rows_by_condition(self, condition, bt=None):
+    def find_rows_by_condition(self, condition, bt_dic=None):
         '''
         Traverse the dictionary and return the rows that satisfy the condition.
         Args:
-            condition: string or dict (the condition is the returned dic['where'] from interpret method).
-            bt: BTree. None if the table does not support btree index (works only for primary key).
+            condition: string or dictionary (the condition is the returned dic['where'] from interpret method).
+            bt_dic: dictionary. Dictionary structure: {indexed_column_1: btree_1 , indexed_column_2: btree_2, ...}.
+            None if the table does not support btree index (works for primary key and unique columns).
         '''
         if isinstance(condition, str):
             column_name, operator, value = self._parse_condition(condition)
-            if bt is not None and column_name == self.column_names[self.pk_idx]:
+            if bt_dic is not None and column_name in bt_dic.keys():
                 '''
-                If bt is not None and the column is the primary key, we use the btree to find the rows.
+                If bt_dic is not None and the column_name is in the bt_dic keys, we use the btree to find the rows.
                 '''
-                rows = bt.find(operator, value)
+                rows = bt_dic[column_name].find(operator, value)
             else:
                 '''
-                If bt is None or the column is not the primary key, we use the column to find the rows.
+                If bt_dic is None or the column_name is not in the bt_dic keys, we use the linear search to find the rows.
                 '''
                 column = self.column_by_name(column_name)
                 rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
             return rows
         elif 'and' in condition:
-            left = self.find_rows_by_condition(condition['and']['left'], bt)
-            right = self.find_rows_by_condition(condition['and']['right'], bt)
+            left = self.find_rows_by_condition(condition['and']['left'], bt_dic)
+            right = self.find_rows_by_condition(condition['and']['right'], bt_dic)
             intersection = set(left).intersection(set(right)) # get the intersection of left and right
             return list(intersection)
         elif 'or' in condition:
-            left = self.find_rows_by_condition(condition['or']['left'], bt)
-            right = self.find_rows_by_condition(condition['or']['right'], bt)
+            left = self.find_rows_by_condition(condition['or']['left'], bt_dic)
+            right = self.find_rows_by_condition(condition['or']['right'], bt_dic)
             union = set(left).union(set(right)) # get the union of left and right
             return list(union)
         elif 'not' in condition:
             all_rows = [i for i in range(len(self.data))] # get all rows
-            result = self.find_rows_by_condition(condition['not'], bt)
+            result = self.find_rows_by_condition(condition['not'], bt_dic)
             not_result = set(all_rows) - set(result) # get the difference of all rows and result
             return list(not_result)
         elif 'between' in condition:
             column_name = condition['column']
             condition['between']['and']['left'] = f"{column_name}>={condition['between']['and']['left']}" # build the condition for left side of between
             condition['between']['and']['right'] = f"{column_name}<={condition['between']['and']['right']}" # build the condition for right side of between
-            return self.find_rows_by_condition(condition['between'], bt)
+            return self.find_rows_by_condition(condition['between'], bt_dic)

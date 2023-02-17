@@ -156,7 +156,7 @@ class Database:
                     to_be_deleted.append(key)
 
             for i in reversed(to_be_deleted):
-                self.drop_index(self.tables['meta_indexes'].data[i][1])
+                self.drop_index(self.tables['meta_indexes'].data[i][2]) # index name
 
         try:
             delattr(self, table_name)
@@ -348,8 +348,6 @@ class Database:
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
             distinct: boolean. If True, the resulting table will contain only unique rows.
         '''
-
-        # print(table_name)
         self.load_database()
         if isinstance(table_name, Table): # if table_name is a table object
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
@@ -358,10 +356,24 @@ class Database:
         if self.is_locked(table_name):
             return
         
-        if self._has_index(table_name) and condition is not None: # if table has an index and a condition is given
-            index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
-            bt = self._load_idx(index_name) # _load_idx() returns a btree object
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+        # if table has an index and a condition is given.
+        if self._has_index(table_name) and condition is not None:
+            # Table object of 'meta_indexes' table which contains the indexes of the specified table.
+            table_indexes = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True)
+            
+            # get the index names for the specified table.
+            index_name_list = table_indexes.column_by_name('index_name')
+            
+            # get the indexed columns name for the specified table.
+            indexed_column_list = table_indexes.column_by_name('indexed_column')
+            
+            # create a list of dictionaries with the indexed column name as key and the btree object as value.
+            bt_list = [ {indexed_column_list.pop(0): self._load_idx(idx_name)} for idx_name in index_name_list]
+            
+            # create a dictionary with the indexed column name as key and the value of the condition as value.
+            bt_dic = {k: v for d in bt_list for k, v in d.items()}
+            
+            table = self.tables[table_name]._select_where_with_btree(columns, bt_dic, condition, distinct, order_by, desc, limit)
         else:
             table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
         # self.unlock_table(table_name)
@@ -657,16 +669,23 @@ class Database:
         column_name = on_clause['column_name']
         
         if table_name not in self.tables:
-            raise Exception(f'Table {table_name} does not exist.')
+            raise Exception(f'Table "{table_name}" does not exist.')
         
         # check if table has a primary key or a unique column.
-        if (self.tables[table_name].pk_idx is None or column_name!=self.tables[table_name].pk) and\
-           (self.tables[table_name].unique_columns is None and column_name not in self.tables[table_name].unique_columns):
+        if self.tables[table_name].pk_idx is None and self.tables[table_name].unique_columns is None:
             raise Exception('Cannot create index. Table must have a primary key or a unique column.')
         
-        # check if index name or indexed column already exists.
-        if index_name in self.tables['meta_indexes'].column_by_name('index_name') or column_name in self.tables['meta_indexes'].column_by_name('indexed_column'):
-            raise Exception('Cannot create index. Another index with the same index name or indexed column already exists.')
+        # check if the specified column is a primary key or a unique column.
+        if column_name!=self.tables[table_name].pk and column_name not in self.tables[table_name].unique_columns:
+            raise Exception('Cannot create index. The specified column is not a primary key or a unique column.')
+        
+        # check if index name already exists.
+        if index_name in self.tables['meta_indexes'].column_by_name('index_name'):
+            raise Exception('Cannot create index. Another index with the same index name already exists.')
+
+        # check if the column is already indexed for the specified table.
+        if [table_name, column_name] in [[row[0], row[1]] for row in self.tables['meta_indexes'].data]:
+            raise Exception('Cannot create index. The given column is already indexed for the specified table.')
         
         # currently only btree is supported. This can be changed by adding another if.
         if index_type=='btree':
@@ -687,7 +706,7 @@ class Database:
             index_name: string. Name of the created index.
         '''
         bt = Btree(3) # 3 is arbitrary
-
+        self.tables[table_name].sort_by_column(column_name) # sort the table by the specified column
         # for each record of column_name, insert the key and the index of the record to the btree.
         for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
             if key is None:
@@ -702,10 +721,11 @@ class Database:
 
         Args:
             table_name: string. Table name (must be part of database).
-            column_name: string. Column name (must be part of table), if None, check if the table has any index.
+            column_name: string. Column name (must be part of table). If None, check if the table has any index.
         '''
         if column_name is None: # check if the table has any index.
             return table_name in self.tables['meta_indexes'].column_by_name('table_name')
+        # else check if the specified column is indexed.
         return table_name in self.tables['meta_indexes'].column_by_name('table_name') and column_name in self.tables['meta_indexes'].column_by_name('indexed_column')
 
     def _save_index(self, index_name, index):
@@ -752,4 +772,3 @@ class Database:
                 warnings.warn(f'"{self.savedir}/indexes/meta_{index_name}_index.pkl" not found.')
 
             self.save_database()
-        
