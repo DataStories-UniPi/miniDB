@@ -750,7 +750,7 @@ class Database:
 
     def _has_index(self, table_name):
         '''
-        Check whether the specified table's primary key column is indexed.
+        Check whether the specified table's primary key or unique column is indexed.
 
         Args:
             table_name: string. Table name (must be part of database).
