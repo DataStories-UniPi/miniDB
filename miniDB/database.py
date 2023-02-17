@@ -54,7 +54,7 @@ class Database:
         self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
-        self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
+        self.create_table('meta_indexes', 'table_name,table_column,index_name', 'str,str,str')
         self.save_database()
 
     def save_database(self):
@@ -334,14 +334,20 @@ class Database:
     def select(self, columns, table_name, condition, distinct=None, order_by=None, \
                limit=True, desc=None, save_as=None, return_object=True):
         '''
-        Selects and outputs a table's data where condtion is met.
+        Selects and outputs a table's data where condition is met.
 
         Args:
             table_name: string. Name of table (must be part of database).
             columns: list. The columns that will be part of the output table (use '*' to select all available columns)
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+            condition: string or dict. 
+                String is using the following format:
+                    'column[<,<=,==,>=,>]value' or
+                    'value[<,<=,==,>=,>]column'.
+                Dict is using the following format:
+                    {'left': 'column[<,<=,==,>=,>]value',
+                     'operator': '[and,or]',
+                     'right': 'column[<,<=,==,>=,>]value',
+                    }
                 
                 Operatores supported: (<,<=,==,>=,>)
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).

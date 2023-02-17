@@ -213,9 +213,15 @@ class Table:
 
         Args:
             return_columns: list. The columns to be returned.
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+            condition: string or dict. 
+                String is using the following format:
+                    'column[<,<=,==,>=,>]value' or
+                    'value[<,<=,==,>=,>]column'.
+                Dict is using the following format:
+                    {'left': 'column[<,<=,==,>=,>]value',
+                     'operator': '[and,or]',
+                     'right': 'column[<,<=,==,>=,>]value',
+                    }
                 
                 Operatores supported: (<,<=,==,>=,>)
             distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
@@ -294,7 +300,7 @@ class Table:
         return final_rows
 
     def _in_depth(self, condition):
-        
+        # TODO: Check here if it has indexes
         if isinstance(condition,str):
             column_name, operator, value = self._parse_condition(condition)
             column = self.column_by_name(column_name)
