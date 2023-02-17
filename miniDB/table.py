@@ -446,7 +446,6 @@ class Table:
 
         return s_table
 
-
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
 
         # if * return all columns, else find the column indexes for the columns specified
@@ -455,32 +454,94 @@ class Table:
         else:
             return_cols = [self.column_names.index(colname) for colname in return_columns]
 
+        '''
+        First check for logic operators, second check for 'between' and 'not'
+        '''
+        oppose = False
+        condition, op = check_logops(condition)
+        if op == 'between ':
+            condition = condition[0] + '>= ' + condition[1][0] + 'and ' + condition[0] + '<= ' + condition[1][1]
+            condition, op = check_logops(condition)
+        if op == 'not ':
+            oppose = True
+            condition, op = check_logops(condition)
+            op = oppose_op(op)
 
-        column_name, operator, value = self._parse_condition(condition)
+        '''
+        Implementing 'none', 'and' and 'or' ops
+        '''
+        if op == 'none':
+            column_name, operator, value = self._parse_condition(condition)
+            if column_name != self.column_names[self.pk_idx] and column_name not in self.unique_columns:
+                print('Column is not PK or Unique. Aborting')
+            if oppose:
+                operator = oppose_op(operator)
+            column = self.column_by_name(column_name)
+            rows1 = []
+            opsseq = 0
+            for ind, x in enumerate(column):
+                opsseq += 1
+                if get_op(operator, x, value):
+                    rows1.append(ind)
 
-        # if the column in condition is not a primary key, abort the select
-        if column_name != self.column_names[self.pk_idx]:
-            print('Column is not PK. Aborting')
+            # btree find
+            rows = bt.find(operator, value)
 
-        # here we run the same select twice, sequentially and using the btree.
-        # we then check the results match and compare performance (number of operation)
-        column = self.column_by_name(column_name)
+        elif op == ' and':
+            column_name, operator, value = self._parse_condition(condition[0])
+            if column_name != self.column_names[self.pk_idx] and column_name not in self.unique_columns:
+                print('Column is not PK or Unique. Aborting')
+            column_name2, operator2, value2 = self._parse_condition(condition[1])
+            if oppose:
+                operator = oppose_op(operator)
+                operator2 = oppose_op(operator2)
+            column = self.column_by_name(column_name)
+            column2 = self.column_by_name(column_name2)
+            rows1 = []
+            opsseq = 0
+            for ind, (x, x2) in enumerate(zip(column, column2)):
+                opsseq += 1
+                if get_op(operator, x, value) and get_op(operator2, x2, value2):
+                    rows1.append(ind)
 
-        # sequential
-        rows1 = []
-        opsseq = 0
-        for ind, x in enumerate(column):
-            opsseq+=1
-            if get_op(operator, x, value):
-                rows1.append(ind)
+            # btree find
+            rows = bt.find(operator, value)
 
-        # btree find
-        rows = bt.find(operator, value)
+        elif op == ' or':
+            column_name, operator, value = self._parse_condition(condition[0])
+            if column_name != self.column_names[self.pk_idx] and column_name not in self.unique_columns:
+                print('Column is not PK or Unique. Aborting')
+            column_name2, operator2, value2 = self._parse_condition(condition[1])
+            if oppose:
+                operator = oppose_op(operator)
+                operator2 = oppose_op(operator2)
+            column = self.column_by_name(column_name)
+            column2 = self.column_by_name(column_name2)
+            rows1 = []
+            opsseq = 0
+            for ind, (x, x2) in enumerate(zip(column, column2)):
+                opsseq += 1
+                if get_op(operator, x, value) or get_op(operator2, x2, value2):
+                    rows1.append(ind)
+
+            # btree find
+            rows = bt.find(operator, value)
 
         try:
             k = int(limit)
         except TypeError:
             k = None
+
+        # if the column in condition is not a primary key, abort the select
+        #if column_name != self.column_names[self.pk_idx] and column_name not in self.unique_columns:
+            #print('Column is not PK or Unique. Aborting')
+
+        # here we run the same select twice, sequentially and using the btree.
+        # we then check the results match and compare performance (number of operation)
+        #column = self.column_by_name(column_name)
+
+        # sequential
+
         # same as simple select from now on
         rows = rows[:k]
         # TODO: this needs to be dumbed down
@@ -497,6 +558,104 @@ class Table:
             s_table.order_by(order_by, desc)
 
         if isinstance(limit,str):
+            s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
+
+        return s_table
+
+    # Select with hash index
+    def _select_where_with_hash(self, return_columns, hash, condition, distinct=False, order_by=None, desc=True, limit=None):
+        # if * return all columns, else find the column indexes for the columns specified
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
+        else:
+            return_cols = [self.column_names.index(colname) for colname in return_columns]
+
+        '''
+        First check for logic operators, second check for 'between' and 'not'
+        '''
+        oppose = False
+        condition, op = check_logops(condition)
+        if op == 'between ':
+            condition = condition[0] + '>= ' + condition[1][0] + 'and ' + condition[0] + '<= ' + condition[1][1]
+            condition, op = check_logops(condition)
+        if op == 'not ':
+            oppose = True
+            condition, op = check_logops(condition)
+            op = oppose_op(op)
+
+        '''
+        Implementing 'none', 'and' and 'or' ops
+        '''
+        if op == 'none':
+            column_name, operator, value = self._parse_condition(condition)
+            if column_name != self.column_names[self.pk_idx] and column_name not in self.unique_columns:
+                print('Column is not PK or Unique. Aborting')
+            if oppose:
+                operator = oppose_op(operator)
+            column = self.column_by_name(column_name)
+            if hash is not None:
+                if operator == '=':  # Hash Tables by definition support only equality operation, so all other cases (including not, between, etc) default to the classic for loops.
+                    rows = hash.find(value)
+                else:
+                    rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+        elif op == ' and':
+            column_name, operator, value = self._parse_condition(condition[0])
+            if column_name != self.column_names[self.pk_idx] and column_name not in self.unique_columns:
+                print('Column is not PK or Unique. Aborting')
+            column_name2, operator2, value2 = self._parse_condition(condition[1])
+            if oppose:
+                operator = oppose_op(operator)
+                operator2 = oppose_op(operator2)
+            column = self.column_by_name(column_name)
+            column2 = self.column_by_name(column_name2)
+            if hash is not None:
+                if operator == '=':  # Hash Tables by definition support only equality operation, so all other cases (including not, between, etc) default to the classic for loops.
+                    rows = hash.find(value)
+                else:
+                    rows = [ind for ind, (x, x2) in enumerate(zip(column, column2)) if
+                            get_op(operator, x, value) and get_op(operator2, x2, value2)]
+        elif op == ' or':
+            column_name, operator, value = self._parse_condition(condition[0])
+            if column_name != self.column_names[self.pk_idx] and column_name not in self.unique_columns:
+                print('Column is not PK or Unique. Aborting')
+            column_name2, operator2, value2 = self._parse_condition(condition[1])
+            if oppose:
+                operator = oppose_op(operator)
+                operator2 = oppose_op(operator2)
+            column = self.column_by_name(column_name)
+            column2 = self.column_by_name(column_name2)
+            if hash is not None:
+                if operator == '=':  # Hash Tables by definition support only equality operation, so all other cases (including not, between, etc) default to the classic for loops.
+                    rows = hash.find(value)
+                else:
+                    rows = [ind for ind, (x, x2) in enumerate(zip(column, column2)) if
+                            get_op(operator, x, value) or get_op(operator2, x2, value2)]
+
+        try:
+            k = int(limit)
+        except TypeError:
+            k = None
+
+        # same as simple select from now on
+        rows = rows[:k]
+        dict = {(key): ([[self.data[i][j] for j in return_cols] for i in rows] if key == "data" else value) for
+                key, value in self.__dict__.items()}
+
+        dict['column_names'] = [self.column_names[i] for i in return_cols]
+        dict['column_types'] = [self.column_types[i] for i in return_cols]
+
+        s_table = Table(load=dict)
+
+        # Adding back the unique columns and indexes.
+        s_table.unique_columns = self.unique_columns
+        s_table.unique_indexes = self.unique_indexes
+
+        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+
+        if order_by:
+            s_table.order_by(order_by, desc)
+
+        if isinstance(limit, str):
             s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
 
         return s_table
