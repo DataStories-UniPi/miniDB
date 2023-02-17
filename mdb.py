@@ -2,16 +2,19 @@ import os
 import re
 from pprint import pprint
 import sys
-#import readline
+import readline
 import traceback
 import shutil
 sys.path.append('miniDB')
-from miniDB.database import Database
-from miniDB.table import Table
-from miniDB.misc import *
-from miniDB.optimizer import *
 
+from database import Database
+from table import Table
+import misc
+from optimizer import *
 # art font is "big"
+
+Verbose = True
+
 art = '''
              _         _  _____   ____  
             (_)       (_)|  __ \ |  _ \     
@@ -41,30 +44,24 @@ def in_paren(qsplit, ind):
 
 
 def fix_not(dic_where):
-    '''
-        function that reverse the operators of  condition for not operator creation
-    '''
+
     if dic_where == None:
         return dic_where
-
+    
     if dic_where.count("not") == 1:
         where = dic_where.replace("not", " ")
-        left, op, right = split_condition(where)
+        left, op, right = misc.split_condition(where)
 
-        dic_where = left + ' ' + antitheta_op(op) + ' ' + '"' + right + '"'
+        dic_where =  left +' '+misc.antitheta_op(op) + ' '+ '"'+right+'"'
     else:
         where = dic_where
-        left, op, right = split_condition(where)
+        left, op, right = misc.split_condition(where)
         dic_where =  left +' '+op + ' '+ '"'+right+'"'
 
     return dic_where
 
 
 def fix_between(dic_where):
-    '''
-        Function for fix_between which replaces between like the following example.
-        Example: condition:id between 10101 and 14114 --> id>=10101 and id<=14141
-    '''
     if dic_where == None:
         return dic_where
 
@@ -73,10 +70,10 @@ def fix_between(dic_where):
         lf = z[0]
         f = z[1]
         if f.count("and") == 1:
-            k = f.split("and")
-            f1 = k[0]
-            f2 = k[1]
-            dic_where = lf + ' >= ' + '"' + f1 + '"' + ' and ' + lf + ' <= ' + '"' + f2 + '"'
+            k =  f.split("and")
+            f1  = k[0]
+            f2  = k[1]
+            dic_where = lf + ' >= '  + '"'+ f1 + '"' + ' and ' + lf +' <= ' +'"'+ f2+ '"'
         else:
             temp = f.split("and", 2)
             f1 = temp[0]
@@ -85,11 +82,7 @@ def fix_between(dic_where):
             dic_where = lf + ' >= '  + '"'+ f1 + '"' + ' and ' + lf +' <= ' +'"'+ f2+ '"' + ' and ' + rest
     return dic_where
 
-
 def get_and_of(dic_where):
-    '''
-        Function which recognizes and , or operators and do or_islands
-    '''
     if dic_where == None:
         return dic_where
 
@@ -103,7 +96,7 @@ def get_and_of(dic_where):
         for inner in inter:
             inner_ret.append(fix_not(inner))
         ret.append(inner_ret)
-
+    
     return ret
 
 
@@ -146,7 +139,7 @@ def create_query_plan(query, keywords, action):
 
     if action=='select':
         dic = evaluate_from_clause(dic)
-
+        
         if dic['distinct'] is not None:
             dic['select'] = dic['distinct']
             dic['distinct'] = True
@@ -161,6 +154,7 @@ def create_query_plan(query, keywords, action):
             
         else:
             dic['desc'] = None
+
         dic["where"] = get_and_of(dic["where"])
 
     if action=='create table':
@@ -175,7 +169,7 @@ def create_query_plan(query, keywords, action):
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
-
+        
         if 'unique' in args:
             arglist = args[1:-1].split(' ')
             try:
@@ -184,7 +178,7 @@ def create_query_plan(query, keywords, action):
                 dic['unique key'] = arglist[arglist.index('unique')-2]
         else:
             dic['unique key'] = None
-       #-------------------------------------------------------------------------
+
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
@@ -331,8 +325,6 @@ if __name__ == "__main__":
 
     db = Database(dbname, load=True)
 
-    
-
     if fname is not None:
         for line in open(fname, 'r').read().splitlines():
             if line.startswith('--'): continue
@@ -370,10 +362,22 @@ if __name__ == "__main__":
                 pprint(dic, sort_dicts=False)
             else:
                 dic = interpret(line)
-                print(dic)
                 rel = create_rel(dic)
-                print_rel(rel)
-                result = execute_dic(dic)
+                rels = create_alt_rels(rel)
+                costs = []
+                for rel in rels:
+                    if Verbose:
+                        print_rel(rel)
+                        print("-----")
+                    costs.append(comp_cost(rel, db))
+                best_rel = rels[costs.index(min(costs))]
+                if Verbose:
+                    print("Tree costs:", costs, " Best tree: Ind. ", costs.index(min(costs)) )
+                    print("===== Best Tree =====")
+                    print_rel(best_rel)
+                    print("=====================")
+
+                result = exec_rel(best_rel, db)
                 if isinstance(result,Table):
                     result.show()
         except Exception:

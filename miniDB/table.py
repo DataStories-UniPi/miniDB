@@ -67,8 +67,6 @@ class Table:
             else:
                 self.pk_idx = None
 
-            # self._update()
-            #------------------------------
             if unique_key is not None:
                 self.un_idx = self.column_names.index(unique_key)
             else:
@@ -76,6 +74,8 @@ class Table:
 
             self.pk = primary_key
             self.unique = unique_key
+
+            # self._update()
 
     # if any of the name, columns_names and column types are none. return an empty table object
 
@@ -137,12 +137,11 @@ class Table:
             elif i==self.pk_idx and row[i] is None:
                 raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
 
-            #----------------
+
             if i==self.un_idx and row[i] in self.column_by_name(self.unique):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in unique key column.')
             elif i==self.un_idx and row[i] is None:
                 raise ValueError(f'ERROR -> The value of the unique key cannot be None.')
-            #-----------------
 
 
         # if insert_stack is not empty, append to its last index
@@ -151,7 +150,6 @@ class Table:
         else: # else append to the end
             self.data.append(row)
         # self._update()
-
 
     def _update_rows(self, set_value, set_column, condition):
         '''
@@ -250,6 +248,7 @@ class Table:
         # if not, return the rows with values where condition is met for value
         if condition is not None:
             column_name, operator, value = self._parse_condition(condition)
+
             column = self.column_by_name(column_name)
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
@@ -286,21 +285,35 @@ class Table:
         return s_table
 
 
-    def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
+    def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None, return_cost=False):
+        '''
+        Select and return a table containing specified columns and rows where condition is met using Btree indexing.
+
+        Args:
+            return_columns: list. The columns to be returned.
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+                
+                Operatores supported: (<,<=,==,>=,>)
+            distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
+            order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
+            desc: boolean. If True, order_by will return results in descending order (False by default).
+            limit: int. An integer that defines the number of rows that will be returned (all rows if None).
+        '''
+
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
-
         column_name, operator, value = self._parse_condition(condition)
 
         # if the column in condition is not a primary key, abort the select
-        #-------------------------
-        if column_name != self.column_names[self.pk_idx] and (self.un_idx != None and column_name!=self.column_names[self.un_idx]):
+        if column_name != self.column_names[self.pk_idx] and (self.un_idx !=None and column_name != self.column_names[self.un_idx]):
             print('Column is not PK. or unique Aborting')
-        #--------------------------
+
         # here we run the same select twice, sequentially and using the btree.
         # we then check the results match and compare performance (number of operation)
         column = self.column_by_name(column_name)
@@ -314,7 +327,83 @@ class Table:
                 rows1.append(ind)
 
         # btree find
-        rows = bt.find(operator, value)
+        if not return_cost:
+            rows = bt.find(operator, value)
+        else:
+            k, rows = bt.find(operator, value, return_cost=True)
+
+            if operator == '=':
+                cost = '= ' + str(1 + bt.height())
+            else:
+                cost = "!= " + str((bt.height() - 1) + k)
+        try:
+            k = int(limit)
+        except TypeError:
+            k = None
+        # same as simple select from now on
+        rows = rows[:k]
+        # TODO: this needs to be dumbed down
+        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+        dict['column_names'] = [self.column_names[i] for i in return_cols]
+        dict['column_types']   = [self.column_types[i] for i in return_cols]
+
+        s_table = Table(load=dict)
+
+        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+        if order_by:
+            s_table.order_by(order_by, desc)
+
+        if isinstance(limit,str):
+            s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
+        
+        if return_cost:
+            return cost, s_table
+        
+        return s_table
+
+
+    def _select_where_with_hash_indexing(self, return_columns, hash, condition, distinct=False, order_by=None, desc=True, limit=None):
+        '''
+        Select and return a table containing specified columns and rows where condition is met using Hash indexing.
+
+        Args:
+            return_columns: list. The columns to be returned.
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+                
+                Operatores supported: (<,<=,==,>=,>)
+            distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
+            order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
+            desc: boolean. If True, order_by will return results in descending order (False by default).
+            limit: int. An integer that defines the number of rows that will be returned (all rows if None).
+        '''
+
+        # if * return all columns, else find the column indexes for the columns specified
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
+        else:
+            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+
+        column_name, operator, value = self._parse_condition(condition)
+
+        # if the column in condition is not a primary key, abort the select
+        if column_name != self.column_names[self.pk_idx] and (self.un_idx !=None and column_name != self.column_names[self.un_idx]):
+            print('Column is not PK. or unique Aborting')
+
+        # we then check the results match and compare performance (number of operation)
+        column = self.column_by_name(column_name)
+
+        # sequential
+        rows1 = []
+        opsseq = 0
+        for ind, x in enumerate(column):
+            opsseq+=1
+            if get_op(operator, x, value):
+                rows1.append(ind)
+
+        # hash find
+        rows = hash.find(value)
 
         try:
             k = int(limit)
@@ -337,59 +426,9 @@ class Table:
 
         if isinstance(limit,str):
             s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
-        return s_table
-    #--------------------------------------------------------------------------------------------------------------------------------------
-    def _select_where_with_hash_indexing(self, return_columns, hash, condition, distinct=False, order_by=None,desc=True, limit=None):
-        # if * return all columns, else find the column indexes for the columns specified
-        if return_columns == '*':
-            return_cols = [i for i in range(len(self.column_names))]
-        else:
-            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
-
-        column_name, operator, value = self._parse_condition(condition)
-
-        # if the column in condition is not a primary key, abort the select
-        if column_name != self.column_names[self.pk_idx] and (self.un_idx !=None and column_name != self.column_names[self.un_idx]):
-            print('Column is not PK. or unique Aborting')
-
-        # we then check the results match and compare performance (number of operation)
-        column = self.column_by_name(column_name)
-
-        # sequential
-        rows1 = []
-        opsseq = 0
-        for ind, x in enumerate(column):
-            opsseq += 1
-            if get_op(operator, x, value):
-                rows1.append(ind)
-
-        # btree find
-        rows = hash.find(value)
-
-        try:
-            k = int(limit)
-        except TypeError:
-            k = None
-        # same as simple select from now on
-        rows = rows[:k]
-        # TODO: this needs to be dumbed down
-        dict = {(key): ([[self.data[i][j] for j in return_cols] for i in rows] if key == "data" else value) for key, value in self.__dict__.items()}
-
-        dict['column_names']=[self.column_names[i] for i in return_cols]
-        dict['column_types']=[self.column_types[i] for i in return_cols]
-
-        s_table = Table(load=dict)
-
-        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
-
-        if order_by:
-            s_table.order_by(order_by, desc)
-
-        if isinstance(limit, str):
-            s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
 
         return s_table
-    #-----------------------------------------------------------------------------------------------------------------------------------
+
     def order_by(self, column_name, desc=True):
         '''
         Order table based on column.
