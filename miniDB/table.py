@@ -182,14 +182,24 @@ class Table:
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
-        column_name, operator, value = self._parse_condition(condition)
+        lists_of_indexes = []
+        for cond in condition.split('and'):
+            indexes = []
+            column_name, operator, value = self._parse_condition(cond)
 
-        indexes_to_del = []
+            column = self.column_by_name(column_name)
+            for index, row_value in enumerate(column):
+                if get_op(operator, row_value, value):
+                    indexes.append(index)
 
-        column = self.column_by_name(column_name)
-        for index, row_value in enumerate(column):
-            if get_op(operator, row_value, value):
-                indexes_to_del.append(index)
+            lists_of_indexes.append(indexes)
+
+        intersection_set = set(lists_of_indexes[0])
+        for l in lists_of_indexes[1:]:
+            intersection_set = intersection_set.intersection(l)
+
+        indexes_to_del = list(intersection_set)
+
 
         # we pop from highest to lowest index in order to avoid removing the wrong item
         # since we dont delete, we dont have to to pop in that order, but since delete is used
@@ -236,7 +246,6 @@ class Table:
             column_name, operator, value = self._parse_condition(condition)
             column = self.column_by_name(column_name)
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
-            print(rows)
         else:
             rows = [i for i in range(len(self.data))]
 

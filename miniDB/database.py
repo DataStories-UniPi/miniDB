@@ -319,7 +319,14 @@ class Database:
                 Operatores supported: (<,<=,==,>=,>)
         '''
         self.load_database()
-        
+
+        conditions = []
+        if 'and' in condition:
+            for cond in condition.split('and'):
+                conditions.append(cond)
+
+
+
         lock_ownership = self.lock_table(table_name, mode='x')
         deleted = self.tables[table_name]._delete_where(condition)
         if lock_ownership:
@@ -363,14 +370,14 @@ class Database:
         else:
             condition_column = ''
 
-        conditions = []
         and_flag = False
-        if 'and' in condition:
-            and_flag = True
-            for cond in condition.split('and'):
-                conditions.append(cond)
-        else:
-            print('or pending..')
+        if condition is not None:
+            conditions = []
+            if 'and' in condition:
+                and_flag = True
+                for cond in condition.split('and'):
+                    conditions.append(cond)
+
 
 
         
