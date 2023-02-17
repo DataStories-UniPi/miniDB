@@ -18,6 +18,7 @@ class Table:
         - column names (list of strings)
         - column types (list of functions like str/int etc)
         - primary (name of the primary key column)
+        - unique (name of unique column)
 
     OR
 
@@ -26,7 +27,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None, unique_cols=None):  # add UNIQUE constraint
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -60,8 +61,15 @@ class Table:
 
             self.column_types = [eval(ct) if not isinstance(ct, type) else ct for ct in column_types]
             self.data = [] # data is a list of lists, a list of rows that is.
-
+            #print("UNIQUE:")
+            #print( unique_cols)
+            if (unique_cols is not None):
+                self.unique_cols = unique_cols
+            else:
+                self.unique_cols = []
             # if primary key is set, keep its index as an attribute
+            #print("PK:")
+            #print(primary_key)
             if primary_key is not None:
                 self.pk_idx = self.column_names.index(primary_key)
             else:
@@ -115,17 +123,31 @@ class Table:
 
         for i in range(len(row)):
             # for each value, cast and replace it in row.
-            try:
+            '''try:
                 row[i] = self.column_types[i](row[i])
             except ValueError:
                 if row[i] != 'NULL':
                     raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
             except TypeError as exc:
                 if row[i] != None:
-                    print(exc)
+                    print(exc)'''
 
+            if self._name[:4] != 'meta': # check whether the current column being evaluated is a metadata column
+                is_unique = self.column_names[i] in self.unique_cols # If the column has the UNIQUE constraint
+                # print(is_unique)
+                is_duplicate = str(row[i]) in [str(val) for val in self.column_by_name(self.column_names[i])] # Check if the value is already in the table
+                #print(is_duplicate)
+                if (is_unique and is_duplicate):  
+                    err_msg = f'ERROR -> Value "{str(row[i])}" already exists in column "{self.column_names[i]}" that has the UNIQUE constraint.'
+                    print(err_msg)
+                    raise ValueError(err_msg)
+
+
+            row[i] = self.column_types[i](row[i])
+            
             # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
+                print(f'ERROR -> Value {row[i]} already exists in primary key column.')
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
             elif i==self.pk_idx and row[i] is None:
                 raise ValueError(f'ERROR -> The value of the primary key cannot be None.')

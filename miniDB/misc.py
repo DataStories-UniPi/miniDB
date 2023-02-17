@@ -22,12 +22,14 @@ def split_condition(condition):
            '>': operator.gt,
            '<': operator.lt}
 
+    # NOT operator
     if 'not' in condition:
         condition=condition.replace('not','')  # remove NOT from condition
         for op_key in ops.keys():
             if op_key in condition:
                 condition=condition.replace(op_key,not_op(op_key))  # reverse the condition
 
+    # BETWEEN operator
     if 'between' in condition:
          splt=condition.split()  
          return splt[0].strip()  # return only column name
