@@ -53,9 +53,6 @@ def reverse_op(op):
 
 
 def antitheta_op(op):
-    '''
-    Reverse the operator given, added !=
-    '''
     return {
         '>' : '<=',
         '>=' : '<',
