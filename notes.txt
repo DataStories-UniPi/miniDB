@@ -33,7 +33,4 @@
 
 <> ΟΤΑΝ ΟΛΟΚΛΗΡΩΘΕΙ Η ΛΕΙΤΟΥΡΓΙΑ ΟΠΟΥ ΥΠΟΣΤΗΡΙΖΕΤΑΙ ΤΟ B+ TREE ΚΑΙ ΣΕ UNIQUE ΠΕΔΙΑ, ΕΛΕΓΧΩ ΤΑ ΣΧΟΛΙΑ (DOCSTRINGS) ΤΗΣ ΣΥΝΑΡΤΗΣΗΣ find_rows_by_condition() ΣΤΟ ΑΡΧΕΙΟ table.py ΚΑΙ ΤΗΣ create_index() ΣΤΟ ΑΡΧΕΙΟ database.py.
 
-<> Check all references of meta_indexes and _has_index.
-
-<> Ελέγχω καλύτερα την περίπτωση "Cannot create index. Another index with the same index name or indexed column already exists." στην create_index(),
-	όπου το indexed column υπάρχει αλλά για άλλον πίνακα.
+<> Check all references of meta_indexes and _has_index -> Database: join(470-475)
