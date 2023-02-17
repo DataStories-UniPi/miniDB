@@ -146,6 +146,16 @@ def create_query_plan(query, keywords, action):
         else:
             dic['where'] = None
 
+    if action=='create index':
+        # Check if 'on' clause is not None and if is of the form 'table_name (column_name)'
+        if dic['on'] is not None and '(' in dic['on'] and ')' in dic['on'] and dic['on'].count('(') == dic['on'].count(')') == 1:
+            on_clause = dic['on'].split('(')
+            table_name = on_clause[0].strip()
+            column_name = on_clause[1][:-1].strip()
+            dic['on'] = { 'table_name': table_name, 'column_name': column_name }
+        else:
+            raise ValueError('\nWrong syntax: "on" clause must be of the form "table_name (column_name, ...)"\n')
+        
     return dic
 
 def evaluate_from_clause(dic):
@@ -215,7 +225,7 @@ def evaluate_where_clause(dic):
                 if ' '.join(where_split[:oprt_idx[0]]).__contains__('between'):
                     btwn_idx = where_split[:oprt_idx[0]].index('between')
                     if not in_paren(where_split, btwn_idx):
-                        raise Exception(f'\nWrong syntax: "between" clause must be in parentheses.\n')
+                        raise ValueError(f'\nWrong syntax: "between" clause must be in parentheses.\n')
 
             oprt_dic['left'] = evaluate_where_clause( { 'where':  oprt_dic['left'] } )['where']
             oprt_dic['right'] = ' '.join(where_split[oprt_idx[0]+1:])
