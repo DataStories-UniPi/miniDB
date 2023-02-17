@@ -4,7 +4,7 @@ from time import sleep, localtime, strftime
 import os,sys
 import logging
 import warnings
-import readline
+#import readline
 from tabulate import tabulate
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
@@ -358,7 +358,11 @@ class Database:
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
         if condition is not None:
-            condition_column = split_condition(condition)[0]
+            if 'between' in condition:
+               condition_column = condition.split("between")[0]
+               condition=condition_column+"between"+condition.split("between")[1]
+            else:
+                condition_column = split_condition(condition)[0] 
         else:
             condition_column = ''
 

@@ -6,7 +6,7 @@ import sys
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
-from misc import get_op, split_condition
+from misc import get_op, split_condition,get_not_op
 
 
 class Table:
@@ -233,9 +233,93 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+        ## gia to not
+            if 'not' in condition:
+                condition=condition.lstrip('not')
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_not_op(operator, x, value)] #i get not op einai gia na dinei tis anapodes sinthikes(not)
+            elif 'and' in condition:  #gia to between
+                if 'between' in condition:
+                   temp=condition.split("between") 
+                   temp1=temp[1].split("and")
+                   if temp1[0]<temp1[1]:
+                     condition=temp[0]+">="+temp1[0]
+                     column_name, operator, value = self._parse_condition(condition)
+                     column = self.column_by_name(column_name)
+                     rows1 = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+                     condition1=temp[0]+"<="+temp1[1]
+                     column_name1, operator1, value1 = self._parse_condition(condition1)
+                     column1 = self.column_by_name(column_name1)
+                     rows2= [ind for ind, x in enumerate(column1) if get_op(operator1, x, value1)]
+
+                     rows = set(rows1).intersection(rows2) 
+
+                   else:
+                        condition=temp[0]+"<="+temp1[0]
+                      
+                        column_name, operator, value = self._parse_condition(condition)
+                        column = self.column_by_name(column_name)
+                        rows1 = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+                        condition1=temp[0]+">="+temp1[1]
+                        column_name1, operator1, value1 = self._parse_condition(condition1)
+                        column1 = self.column_by_name(column_name1)
+                        rows2= [ind for ind, x in enumerate(column1) if get_op(operator1, x, value1)]
+
+                        rows = set(rows1).intersection(rows2) 
+                    
+                else: #only for and 
+                   ##proto condition
+                   x1=condition.split("and")
+                   condition=x1[0]
+               
+                   column_name, operator, value = self._parse_condition(condition)
+                   column = self.column_by_name(column_name)
+                   rows1 = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+              
+                   ##deutero condition
+                   condition1=x1[1]
+               
+                   column_name1, operator1, value1 = self._parse_condition(condition1)
+                   column1 = self.column_by_name(column_name1)
+                   rows2= [ind for ind, x in enumerate(column1) if get_op(operator1, x, value1)]
+
+                   rows = set(rows1).intersection(rows2)
+                   print(rows)
+             
+                
+            elif 'or' in condition:
+                
+                x1=condition.split("or")
+
+                condition=x1[0]
+                print(condition)
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows1 = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+                
+                   ##deutero condition
+                condition1=x1[1]
+               
+                column_name1, operator1, value1 = self._parse_condition(condition1)
+                column1 = self.column_by_name(column_name1)
+                rows2= [ind for ind, x in enumerate(column1) if get_op(operator1, x, value1)]
+                
+                print(rows2)
+
+                rows = set(rows1).union(rows2)
+                                                 
+            else:
+               
+               column_name, operator, value = self._parse_condition(condition)
+               column = self.column_by_name(column_name)
+               rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            
+                
+            
         else:
             rows = [i for i in range(len(self.data))]
 
