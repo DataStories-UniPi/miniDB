@@ -354,16 +354,29 @@ class Database:
 
         # print(table_name)
         self.load_database()
-        if isinstance(table_name,Table):
+        if isinstance(table_name, Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
         if condition is not None:
-            condition_column = split_condition(condition)[0]
+            if 'and' not in condition:
+                condition_column = split_condition(condition)[0]
         else:
             condition_column = ''
 
+        conditions = []
+        and_flag = False
+        if 'and' in condition:
+            and_flag = True
+            for cond in condition.split('and'):
+                conditions.append(cond)
+        else:
+            print('or pending..')
+
+
         
         # self.lock_table(table_name, mode='x')
+
+
         if self.is_locked(table_name):
             return
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
@@ -371,7 +384,12 @@ class Database:
             bt = self._load_idx(index_name)
             table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
         else:
-            table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+            if and_flag == False:
+                table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+            else:
+                table = self.tables[table_name]._select_where(columns, conditions[0], distinct, order_by, desc, limit)
+                for cond in conditions[1:]:
+                    table = table._select_where(columns, cond, distinct, order_by, desc, limit)
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as

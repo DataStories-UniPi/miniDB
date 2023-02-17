@@ -44,9 +44,7 @@ def create_query_plan(query, keywords, action):
 
     This can and will be used recursively
     '''
-
     dic = {val: None for val in keywords if val!=';'}
-
     ql = [val for val in query.split(' ') if val !='']
 
     kw_in_query = []
