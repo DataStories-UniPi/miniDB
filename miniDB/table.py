@@ -276,7 +276,6 @@ class Table:
         if isinstance(condition, str):
             final_rows = self._in_depth(condition)
         elif isinstance(condition, dict):
-            print("It is a dict, so split left and right")
 
             left_part = condition['left']
             right_part = condition['right']
@@ -285,10 +284,6 @@ class Table:
             left_rows = self._in_depth(left_part)
             right_rows = self._in_depth(right_part)
 
-            print(f'left rows: {left_rows}')
-            print(f'operator: {operator}')
-            print(f'right rows: {right_rows}')
-
             if(operator == 'and'):
                 final_rows = list(set(left_rows).intersection(right_rows))
             elif(operator == 'or'):
@@ -296,21 +291,17 @@ class Table:
             else:
                 raise Exception('Not a valid logical operator.')
         
-        print(f'the final rows are {final_rows}')
         return final_rows
 
     def _in_depth(self, condition):
-        print(f'Find rows for: {condition}')
         
         if isinstance(condition,str):
             column_name, operator, value = self._parse_condition(condition)
             column = self.column_by_name(column_name)
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
-            print(f'returning rows {rows}')
             return rows
 
         elif isinstance(condition,dict):
-            print("It is a dict, so split left and right")
 
             left_part = condition['left']
             right_part = condition['right']
@@ -318,8 +309,6 @@ class Table:
 
             left_rows = self._in_depth(left_part)
             right_rows = self._find_rows(right_part)
-            
-            print(f'left rows: {left_rows} operator: {operator} right rows: {right_rows}')
 
             if(operator == 'and'):
                 rows = list(set(left_rows).intersection(right_rows))
@@ -328,8 +317,6 @@ class Table:
             else:
                 raise Exception('Not a valid logical operator.')
 
-            print(f'returning {rows}')
-            
         else:
             raise Exception('Not a valid where type.')
 

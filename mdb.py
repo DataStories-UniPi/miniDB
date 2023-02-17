@@ -254,15 +254,11 @@ def execute_dic(dic):
     '''
 
     for key in dic.keys():
-        print(f'key: {key}')
         # Skip the where key
         if key != 'where' and isinstance(dic[key],dict):
             dic[key] = execute_dic(dic[key])
-            print(f'dic[key]: {dic[key]}')
     
     action = list(dic.keys())[0].replace(' ','_')
-    print(list(dic.keys()))
-    print(f'action: {action}')
 
     return getattr(db, action)(*dic.values())
     

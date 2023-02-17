@@ -357,13 +357,11 @@ class Database:
         if isinstance(table_name, Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
-        print(f'condition: {condition}')
 
         if type(condition) is dict:
-            print("dict")
+            condition_column = ''
         elif condition is not None:
             condition_column = split_condition(condition)[0]
-            print(f'splitted condition: {condition_column}')
         else:
             condition_column = ''
 
