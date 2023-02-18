@@ -352,13 +352,19 @@ class Database:
             distinct: boolean. If True, the resulting table will contain only unique rows.
         '''
 
-        # print(table_name)
-        self.load_database()
-        if isinstance(table_name,Table):
-            return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
-
+        
+        #check for operators
         if condition is not None:
-            condition_column = split_condition(condition)[0]
+            #elegxos an mesa sto condition yparxei and,or,not,between
+            #An nai tote eisagoyme to prwto stoixeio ths syntikis meta to split sto condition column
+
+            if "BETWEEN" in condition.split() or "NOT" in condition.split() or  elif "AND" in condition.split() or "OR" in condition.split():
+               condition_column = condition.split(" ")[0]
+            elif "between" in condition.split() or "not" in condition.split() or "and" in condition.split() or "or" in condition.split():
+               condition_column = condition.split(" ")[0]
+            else
+               condition_column = split_condition(" ")[0] 
+
         else:
             condition_column = ''
 
