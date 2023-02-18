@@ -339,14 +339,20 @@ class Database:
     def select(self, columns, table_name, condition, distinct=None, order_by=None, \
                limit=True, desc=None, save_as=None, return_object=True):
         '''
-        Selects and outputs a table's data where condtion is met.
+        Selects and outputs a table's data where condition is met.
 
         Args:
             table_name: string. Name of table (must be part of database).
             columns: list. The columns that will be part of the output table (use '*' to select all available columns)
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+            condition: string or dict. 
+                String is using the following format:
+                    'column[<,<=,==,>=,>]value' or
+                    'value[<,<=,==,>=,>]column'.
+                Dict is using the following format:
+                    {'left': 'column[<,<=,==,>=,>]value',
+                     'operator': '[and,or]',
+                     'right': 'column[<,<=,==,>=,>]value',
+                    }
                 
                 Operatores supported: (<,<=,==,>=,>)
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
@@ -359,27 +365,23 @@ class Database:
         
         # print(table_name)
         self.load_database()
-        if isinstance(table_name,Table):
+        if isinstance(table_name, Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
-
-        if condition is not None:
-            column_name = split_condition(condition)[0]
-        else:
-            column_name = ''
-        
-        
-        print(f"Has index? {self._has_index(table_name, column_name)}")
 
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
-        if self._has_index(table_name, column_name):
-            print("Used index")
-            index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
-            #bt = self._load_idx(index_name)
-            #table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
-        else:
-            table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+        
+        supported_btrees = None
+        if self._has_index(table_name):
+            index_names = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')
+            supported_btrees = {}
+            for index_name in index_names:
+                supported_btrees[self.tables[table_name].pk] = self._load_idx(index_name)
+
+        table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit, supported_btrees)
+        
+
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as
@@ -725,7 +727,7 @@ class Database:
 
 
 
-    def _has_index(self, table_name, table_column):
+    def _has_index(self, table_name):
         '''
         Check whether the specified table's primary key column is indexed.
 
@@ -735,7 +737,7 @@ class Database:
         '''
         rows = self.tables['meta_indexes'].data
         for row_idx in range(len(rows)):
-            if rows[row_idx][0] == table_name and rows[row_idx][1] == table_column:
+            if rows[row_idx][0] == table_name: #and rows[row_idx][1] == table_column:
                 return True
         
         return False
