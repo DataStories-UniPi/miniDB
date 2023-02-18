@@ -663,9 +663,8 @@ class Database:
         '''
         self.tables['meta_insert_stack']._update_rows(new_stack, 'indexes', f'table_name={table_name}')
 
-
     # indexes
-    def create_index(self, index_name, table_name, column_name=None,index_type='btree'):
+    def create_index(self, index_name, table_name, column_name = None, index_type = 'btree'):
         '''
         Creates an index on a specified table with a given name.
         Important: An index can only be created on a primary key (the user does not specify the column).
@@ -674,18 +673,21 @@ class Database:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
         '''
-        if column_name is None:
-            if self.tables[table_name].pk_idx is None:
-                print('no pk')
-        elif column_name not in self.tables[table_name].unique and column_name!=self.tables[table_name].pk:
-            print('oops')
+        if table_name not in self.tables:
+            raise Exception('Table does not exist')
+        if self.tables[table_name].unique[0] not in self.tables[table_name].column_names:
+            raise Exception('Column does not exist')
+        if column_name not in self.tables[table_name].unique and column_name!=self.tables[table_name].pk:
+            print(self.tables[table_name].unique)
+            raise Exception('Cannot create')
 
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
             # currently only btree is supported. This can be changed by adding another if.
+            print('Btree=?')
             print(index_type)
-            print( self.tables[table_name].unique)
+            print(self.tables[table_name].unique)
 
-            if index_type=='btree':
+            if index_type == 'btree':
                 if self.tables[table_name].pk == column_name or column_name in self.tables[table_name].unique:
                     logging.info('Creating Btree index.')
                     # insert a record with the name of the index and the table on which it's created to the meta_indexes table
