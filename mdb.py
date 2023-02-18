@@ -211,7 +211,9 @@ def form_where_clause(where_split):
 
         left = where_split[:operator_idx_f]
         right = where_split[operator_idx_f+1:]
-        if(left[0] == '(' and left[-1] == ')'):
+        if (where_split[operator_idx[0]]) == "not":
+            left = None
+        elif(left[0] == '(' and left[-1] == ')'):
             left = form_where_clause(left)
         else:
             left = ' '.join(left)
