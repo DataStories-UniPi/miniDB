@@ -57,7 +57,7 @@ class Database:
         self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
-        self.create_table('meta_indexes', 'table_name,table_column,index_name', 'str,str,str')
+        self.create_table('meta_indexes', 'table_name,table_column,index_name,index_type', 'str,str,str,str')
         self.save_database()
 
     def save_database(self):
@@ -491,10 +491,20 @@ class Database:
                  
                 index_name = self.select('*', 'meta_indexes', f'table_name = {table_name} and table_column = {condition_column}', return_object=True).column_by_name('index_name')[0]
                 index_name = ('').join(index_name)
+
+                index_type = self.select('*', 'meta_indexes', f'table_name = {table_name} and table_column = {condition_column} and index_name = {index_name}', return_object=True).column_by_name('index_type')
+                index_type = ('').join(index_type)
+
                 print("Index_name is: ",index_name)
-                bt = self._load_idx(index_name)
+                print("Index_type is: ",index_type)
                 
-                table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+                if index_type == 'btree':
+                    bt = self._load_idx(index_name)
+                    table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+                else: # Extendible hashing
+                    h = self._load_idx(index_name)
+                    table = self.tables[table_name]._select_where_with_hash(columns, h, condition, distinct, order_by, desc, limit)
+            
             else:
                 #print("No select where with btree")
                 table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
@@ -806,7 +816,7 @@ class Database:
                     logging.info('Creating Btree index.')
                     print('Creating Btree index.')
                     # insert a record with the name of the index and the table on which it's created to the meta_indexes table
-                    self.tables['meta_indexes']._insert([table_name, column_name , index_name])
+                    self.tables['meta_indexes']._insert([table_name, column_name , index_name, index_type])
                     # crate the actual index
                     self._construct_index(table_name, column_name, index_name)
                     self.save_database()
@@ -815,7 +825,7 @@ class Database:
                     logging.info('Creating hash index.')
                     print('Creating hash index.')
                     # insert a record with the name of the index and the table on which it's created to the meta_indexes table
-                    self.tables['meta_indexes']._insert([table_name, column_name, index_name])
+                    self.tables['meta_indexes']._insert([table_name, column_name, index_name, index_type])
                     # crate the actual index
                     self._construct_hash_index(table_name, column_name, index_name)
                     self.save_database()
@@ -847,9 +857,14 @@ class Database:
         self._save_index( index_name, bt)
 
 
-    def _construct_hash_index(self, table_name, column_name, index_name): #table_column
+    def _construct_hash_index(self, table_name, column_name, index_name): 
         '''
-        
+        Construct extendible hashing on a table and save.
+
+        Args:
+            table_name: string. Table name (must be part of database).
+            column_name: string. Name of the table's column where the index is created over (must be part of database).
+            index_name: string. Name of the created index.
         '''
         m=Hash()
         for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
@@ -857,9 +872,8 @@ class Database:
                 continue
             m.insert(key, idx)
             print("\n")
-            #m.get_hash_index(key)
         self._save_index(index_name,m) 
-        print('M is:',m)
+        #print('M is:',m.show()) # object address
 
 
     def _has_index(self, table_name):
