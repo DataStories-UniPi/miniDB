@@ -150,22 +150,67 @@ class Table:
                 
                 Operatores supported: (<,<=,=,>=,>)
         '''
-        # parse the condition
-        column_name, operator, value = self._parse_condition(condition)
+        # # parse the condition
+        # column_name, operator, value = self._parse_condition(condition)
 
-        # get the condition and the set column
-        column = self.column_by_name(column_name)
+        # # get the condition and the set column
+        # column = self.column_by_name(column_name)
+        # set_column_idx = self.column_names.index(set_column)
+
+        # # set_columns_indx = [self.column_names.index(set_column_name) for set_column_name in set_column_names]
+
+        # # for each value in column, if condition, replace it with set_value
+        # for row_ind, column_value in enumerate(column):
+        #     if get_op(operator, column_value, value):
+        #         self.data[row_ind][set_column_idx] = set_value
+
+        # # self._update()
+        #         # print(f"Updated {len(indexes_to_del)} rows")
         set_column_idx = self.column_names.index(set_column)
+        if ' and ' in condition:
+            lists_of_indexes = []
+            for cond in condition.split('and'):
+                if 'not ' in cond:
+                    cond = cond.split('not ')[1]
+                    column_name, operator, value = self._parse_condition(cond)
+                    column = self.column_by_name(column_name)
+                    operator = not_op(operator)
+                    cond = column_name + operator + str(value)
+                indexes = []
+                column_name, operator, value = self._parse_condition(cond)
 
-        # set_columns_indx = [self.column_names.index(set_column_name) for set_column_name in set_column_names]
+                column = self.column_by_name(column_name)
+                for index, row_value in enumerate(column):
+                    if get_op(operator, row_value, value):
+                        indexes.append(index)
 
-        # for each value in column, if condition, replace it with set_value
-        for row_ind, column_value in enumerate(column):
-            if get_op(operator, column_value, value):
-                self.data[row_ind][set_column_idx] = set_value
+                lists_of_indexes.append(indexes)
 
-        # self._update()
-                # print(f"Updated {len(indexes_to_del)} rows")
+            intersection_set = set(lists_of_indexes[0])
+            for l in lists_of_indexes[1:]:
+                intersection_set = intersection_set.intersection(l)
+
+            indexes_to_del = list(intersection_set)
+        else:
+            list_of_indexes = []
+            for cond in condition.split(' or '):
+                if 'not ' in cond:
+                    cond = cond.split('not ')[1]
+                    column_name, operator, value = self._parse_condition(cond)
+                    column = self.column_by_name(column_name)
+                    operator = not_op(operator)
+                    cond = column_name + operator + str(value)
+                column_name, operator, value = self._parse_condition(cond)
+
+                column = self.column_by_name(column_name)
+                for index, row_value in enumerate(column):
+                    if get_op(operator, row_value, value):
+                        list_of_indexes.append(index)
+
+            indexes_to_del = list(set(list_of_indexes))
+            
+        for row_index in indexes_to_del:
+            self.data[row_index][set_column_idx] = set_value
 
 
     def _delete_where(self, condition):
