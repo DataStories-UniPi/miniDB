@@ -683,9 +683,6 @@ class Database:
 
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
             # currently only btree is supported. This can be changed by adding another if.
-            print('Btree=?')
-            print(index_type)
-            print(self.tables[table_name].unique)
 
             if index_type == 'btree':
                 if self.tables[table_name].pk == column_name or column_name in self.tables[table_name].unique:
