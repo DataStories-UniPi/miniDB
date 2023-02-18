@@ -817,7 +817,7 @@ class Database:
                     print('Creating Btree index.')
                     # insert a record with the name of the index, the index type, the table and the table's column on which it's created to the meta_indexes table
                     self.tables['meta_indexes']._insert([table_name, column_name , index_name, index_type])
-                    # crate the actual index
+                    # create the actual index
                     self._construct_index(table_name, column_name, index_name)
                     self.save_database()
 
