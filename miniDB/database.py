@@ -706,7 +706,7 @@ class Database:
             index_name: string. Name of the created index.
         '''
         bt = Btree(3) # 3 is arbitrary
-        self.tables[table_name].sort_by_column(column_name) # sort the table by the specified column
+
         # for each record of column_name, insert the key and the index of the record to the btree.
         for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
             if key is None:
