@@ -22,7 +22,7 @@ def multiple_query_plans(dic):
     
     try:
         # Check if the first and second rules of relational algebra (RA) can be applied to the query plan
-        if 'select' in  query_plan_1['from'].keys() and query_plan_1['where'] != None:
+        if 'select' in  query_plan_1['from'].keys() and query_plan_1['where'] != None:#if isinstance(query_plan_1['from'],dict) 'select' in  query_plan_1['from'].keys() and query_plan_1['where'] != None
             '''
 
             The first and second rules of RA are applied in order to optimize the query plan.

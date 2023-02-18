@@ -95,20 +95,18 @@ def evaluate_select_clause(db, subquery):
             right_condition = where_clause["and"]["right"]
             column_name_left = re.findall(r'\w+', left_condition)[0]
             column_name_right = re.findall(r'\w+', right_condition)[0]
-            table = db.tables[table_name]
             # Check if there is an index on the primary key column
-            if db._has_index(table_name) and column_name_left == table.column_names[table.pk_idx]:
+            if db._has_index(table_name,column_name_left):
                 cost = 1
-            elif db._has_index(table_name) and column_name_right == table.column_names[table.pk_idx]:
+            elif db._has_index(table_name,column_name_right):
                 cost = 1
             else:
                 cost += stats[table_name]["size"]
         elif isinstance(where_clause, str):
              # If there is only one condition in the "where" clause, check if it uses the primary key
             column_name = re.findall(r'\w+', where_clause)[0]
-            table = db.tables[table_name]
               # If the condition uses the primary key, the cost is 1
-            if db._has_index(table_name) and column_name == table.column_names[table.pk_idx]:
+            if db._has_index(table_name,column_name):
                 cost = 1
             else:
                 # Otherwise, add the size of the table to the cost
@@ -181,10 +179,13 @@ def evaluate_query_plans(db , queries):
                 join_type = from_clause["join"]
                 left_table = from_clause["left"]
                 right_table = from_clause["right"]
+                table_right = db.tables[right_table]
+                table_left = db.tables[left_table]
+
                 
 
                 # If the right table has an index on its primary key, use its size as the cost (INLJ)
-                if db._has_index(right_table):
+                if db._has_index(right_table,table_right.column_names[table_right.pk_idx]):
                     cost += stats[right_table]["size"]
                     cost_of_table += stats[right_table]["size"]
                     table_name = right_table
@@ -193,7 +194,7 @@ def evaluate_query_plans(db , queries):
                     cost += stats[left_table]["size"] * stats[right_table]["size"]
                     cost_of_table += stats[left_table]["size"] * stats[right_table]["size"]
                     #We check if left table has an index or if its smaller than the right table ,if it has or if it smaller table_name = left_table, otherwise table_name = right_table
-                    if db._has_index(left_table):
+                    if db._has_index(left_table,table_left.column_names[table_right.pk_idx]):
                         table_name = left_table
                     elif stats[left_table]["size"] < stats[right_table]["size"]:
                         table_name = left_table
@@ -213,16 +214,15 @@ def evaluate_query_plans(db , queries):
                 right_condition = where_clause["and"]["right"]
                 column_name_left = re.findall(r'\w+', left_condition)[0]
                 column_name_right = re.findall(r'\w+', right_condition)[0]
-                table = db.tables[table_name]
 
-                if db._has_index(table_name) and column_name_left == table.column_names[table.pk_idx]:
-                     # If the left condition uses the primary key, add 1 to the cost
+                if db._has_index(table_name,column_name_left):
+                     # If the left's condition column has an index, add 1 to the cost
                     if cost == 0:
                         cost += 1
                     cost += 1
                     
-                elif db._has_index(table_name) and column_name_right == table.column_names[table.pk_idx]:
-                    # If the right condition uses the primary key, add 1 to the cost
+                elif db._has_index(table_name,column_name_right):
+                    # If the right's condition column has an index, add 1 to the cost
                     if cost == 0:
                         cost += 1
                     cost += 1
@@ -238,9 +238,8 @@ def evaluate_query_plans(db , queries):
                     cost += cost_of_table
                  # If there is only one condition in the "where" clause, check if it uses the primary key
                 column_name = re.findall(r'\w+', where_clause)[0]
-                table = db.tables[table_name]
-                if db._has_index(table_name) and column_name == table.column_names[table.pk_idx]:
-                     # If the condition uses the primary key, add 1 to the cost
+                if db._has_index(table_name,column_name):
+                     # If the condition's column has an index, add 1 to the cost
                     if cost == 0:
                         cost += 1 
                     cost += 1
