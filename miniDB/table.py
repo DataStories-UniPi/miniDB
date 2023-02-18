@@ -182,23 +182,49 @@ class Table:
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
-        lists_of_indexes = []
-        for cond in condition.split('and'):
-            indexes = []
-            column_name, operator, value = self._parse_condition(cond)
 
-            column = self.column_by_name(column_name)
-            for index, row_value in enumerate(column):
-                if get_op(operator, row_value, value):
-                    indexes.append(index)
+        if ' and ' in condition:
+            lists_of_indexes = []
+            for cond in condition.split('and'):
+                if 'not ' in cond:
+                    cond = cond.split('not ')[1]
+                    column_name, operator, value = self._parse_condition(cond)
+                    column = self.column_by_name(column_name)
+                    operator = not_op(operator)
+                    cond = column_name + operator + str(value)
+                indexes = []
+                column_name, operator, value = self._parse_condition(cond)
 
-            lists_of_indexes.append(indexes)
+                column = self.column_by_name(column_name)
+                for index, row_value in enumerate(column):
+                    if get_op(operator, row_value, value):
+                        indexes.append(index)
 
-        intersection_set = set(lists_of_indexes[0])
-        for l in lists_of_indexes[1:]:
-            intersection_set = intersection_set.intersection(l)
+                lists_of_indexes.append(indexes)
 
-        indexes_to_del = list(intersection_set)
+            intersection_set = set(lists_of_indexes[0])
+            for l in lists_of_indexes[1:]:
+                intersection_set = intersection_set.intersection(l)
+
+            indexes_to_del = list(intersection_set)
+        else:
+            list_of_indexes = []
+            for cond in condition.split(' or '):
+                if 'not ' in cond:
+                    cond = cond.split('not ')[1]
+                    column_name, operator, value = self._parse_condition(cond)
+                    column = self.column_by_name(column_name)
+                    operator = not_op(operator)
+                    cond = column_name + operator + str(value)
+                column_name, operator, value = self._parse_condition(cond)
+
+                column = self.column_by_name(column_name)
+                for index, row_value in enumerate(column):
+                    if get_op(operator, row_value, value):
+                        list_of_indexes.append(index)
+
+            indexes_to_del = list(set(list_of_indexes))
+
 
 
         # we pop from highest to lowest index in order to avoid removing the wrong item
@@ -251,7 +277,6 @@ class Table:
                         column_name, operator, value = self._parse_condition(cond)
                         column = self.column_by_name(column_name)
                         operator = not_op(operator)
-                        cond = column_name + operator + str(value)
                     else:
                         column_name, operator, value = self._parse_condition(cond)
                         column = self.column_by_name(column_name)
@@ -291,7 +316,7 @@ class Table:
         # we need to set the new column names/types and no of columns, since we might
         # only return some columns
         dict['column_names'] = [self.column_names[i] for i in return_cols]
-        dict['column_types']   = [self.column_types[i] for i in return_cols]
+        dict['column_types'] = [self.column_types[i] for i in return_cols]
 
         s_table = Table(load=dict)
 
