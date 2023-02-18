@@ -815,7 +815,7 @@ class Database:
                 if index_type == 'btree': # case1 : index btree
                     logging.info('Creating Btree index.')
                     print('Creating Btree index.')
-                    # insert a record with the name of the index and the table on which it's created to the meta_indexes table
+                    # insert a record with the name of the index, the index type, the table and the table's column on which it's created to the meta_indexes table
                     self.tables['meta_indexes']._insert([table_name, column_name , index_name, index_type])
                     # crate the actual index
                     self._construct_index(table_name, column_name, index_name)
@@ -824,7 +824,7 @@ class Database:
                 elif index_type == 'hashing': # case2 : index hash
                     logging.info('Creating hash index.')
                     print('Creating hash index.')
-                    # insert a record with the name of the index and the table on which it's created to the meta_indexes table
+                    # insert a record with the name of the index, the index type, the table and the table's column on which it's created to the meta_indexes table
                     self.tables['meta_indexes']._insert([table_name, column_name, index_name, index_type])
                     # crate the actual index
                     self._construct_hash_index(table_name, column_name, index_name)
@@ -866,14 +866,14 @@ class Database:
             column_name: string. Name of the table's column where the index is created over (must be part of database).
             index_name: string. Name of the created index.
         '''
-        m=Hash()
+        h=Hash()
         for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
             if key is None:
                 continue
-            m.insert(key, idx)
+            h.insert(key, idx)
             print("\n")
-        self._save_index(index_name,m) 
-        #print('M is:',m.show()) # object address
+        self._save_index(index_name,h) 
+        #print('H is:',h.show()) # object's address
 
 
     def _has_index(self, table_name):
