@@ -55,12 +55,7 @@ class Table:
 
             self.columns = []
             self.unique_cols_idx = []
-            #self.unique_cols = []
-            
-
-            #self.unique_cols= []
-            #print(self.unique)
-            #print(self.column_names)
+           
             '''
             for c in self.unique:
                 if c not in self.__dir__():
@@ -96,11 +91,8 @@ class Table:
                 self.unique_cols_idx = []
             
             self.pk = primary_key
-            #print("pk is: ",self.pk)
-            #print("pk index: ",self.pk_idx)
             self.unique = unique
-            #print("unique cols are: ",self.unique)
-            #print("unique cols indexes are: ",self.unique_cols_idx)
+            
             # self._update()
 
     # if any of the name, columns_names and column types are none. return an empty table object
@@ -180,8 +172,14 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,=,>=,>]value' or
                 'not column[<,<=,=,>=,>]value' or
-                'value[<,<=,=,>=,>]column'.
-                
+                'value[<,<=,=,>=,>]column' or
+
+                'column[<,<=,==,>=,>]value and/or column[<,<=,==,>=,>]value and/or... ' or
+                'column[<,<=,==,>=,>]value and/or not column[<,<=,==,>=,>]value and/or... ' or
+                'not column[<,<=,==,>=,>]value and/or column[<,<=,==,>=,>]value and/or... ' or
+                'not column[<,<=,==,>=,>]value and/or not column[<,<=,==,>=,>]value and/or ...' 
+                'column between value1 and value2' .
+                 
                 Operatores supported: (<,<=,=,>=,>)
         '''
 
@@ -274,14 +272,13 @@ class Table:
                 'not column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column' or
                 
-                'column[<,<=,==,>=,>]value and column[<,<=,==,>=,>]value and... ' or
-                'not column[<,<=,==,>=,>]value and column[<,<=,==,>=,>]value and... ' or
-                'not column[<,<=,==,>=,>]value and not column[<,<=,==,>=,>]value and ...' or
+                'column[<,<=,==,>=,>]value and/or column[<,<=,==,>=,>]value and/or... ' or
+                'column[<,<=,==,>=,>]value and/or not column[<,<=,==,>=,>]value and/or... ' or
+                'not column[<,<=,==,>=,>]value and/or column[<,<=,==,>=,>]value and/or... ' or
+                'not column[<,<=,==,>=,>]value and/or not column[<,<=,==,>=,>]value and/or ...' or
+
+                'column between value1 and value2' .
                  
-                'column[<,<=,==,>=,>]value or column[<,<=,==,>=,>]value and... ' or
-                'not column[<,<=,==,>=,>]value or column[<,<=,==,>=,>]value and... ' or
-                'not column[<,<=,==,>=,>]value or not column[<,<=,==,>=,>]value and ...' .
-                
                 Operatores supported: (<,<=,==,>=,>)
         '''
 
@@ -291,7 +288,7 @@ class Table:
         indexes_to_del = []
         indexes_to_del1 = []
 
-        if (operator in condition and operator1 in condition and operator3 not in condition):
+        if (operator in condition and operator1 in condition and operator3 not in condition): # OR and AND in condition
             print("complex AND and OR found!")
             print(condition)
             splt = condition.split(operator)
@@ -299,7 +296,7 @@ class Table:
                 self._delete_where(s)
             #self._delete_where_and_or(condition)
 
-        elif (operator in condition and operator3 not in condition): # or in condition
+        elif (operator in condition and operator3 not in condition): # OR in condition
             splt = condition.split(operator)
             for s in splt:   
                 column_name, operator, value = self._parse_condition(s)
@@ -308,7 +305,7 @@ class Table:
                     if get_op(operator, row_value, value):
                         indexes_to_del.append(index) 
 
-        elif(operator1 in condition and operator3 not in condition): # and in condition
+        elif(operator1 in condition and operator3 not in condition): # AND in condition
                 splt = condition.split(operator1)
                 #indexes_to_del1 = []
                 column_name, operator, value = self._parse_condition(splt[0])
@@ -330,7 +327,7 @@ class Table:
                     #print(indexes_to_del)
                     if len(indexes_to_del) == 0: # no common element
                         break
-        else:
+        else: # a simple delete query
             column_name, operator, value = self._parse_condition(condition)
             column = self.column_by_name(column_name)
             for index, row_value in enumerate(column):
@@ -353,7 +350,7 @@ class Table:
         return indexes_to_del
     
     '''
-    def _delete_where_and_or(self, condition):   # uselless has to be deleted!
+    def _delete_where_and_or(self, condition):   
         #t_indexes = [] 
         #operator1 = ' and '
         operator2 = ' or '
@@ -457,8 +454,18 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'not column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
-                
+                'value[<,<=,==,>=,>]column' or
+
+                'column[<,<=,==,>=,>]value and/or column[<,<=,==,>=,>]value and/or... ' or
+                'column[<,<=,==,>=,>]value and/or not column[<,<=,==,>=,>]value and/or... ' or
+                'not column[<,<=,==,>=,>]value and/or column[<,<=,==,>=,>]value and/or... ' or
+                'not column[<,<=,==,>=,>]value and/or not column[<,<=,==,>=,>]value and/or ...' or
+
+                'column between value1 and value2 or not column[<,<=,==,>=,>]value or ... ' or
+                'column between value1 and value2 or column[<,<=,==,>=,>]value or ... ' or
+                'column[<,<=,==,>=,>]value or column between value1 and value2 or ... ' or
+                'not column[<,<=,==,>=,>]value or column between value1 and value2 or ... '.
+                 
                 Operators supported: (<,<=,==,>=,>)
             distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
@@ -552,10 +559,6 @@ class Table:
         # if the column in condition is not a primary key or unique, abort the select
         if (flag is False and self.pk_idx and column_name != self.column_names[self.pk_idx]):
             print('Column is not unique or PK. Aborting')
-        '''
-        elif (self.pk_idx and column_name != self.column_names[self.pk_idx]):
-            print('Column is not PK. Aborting')
-        '''
         
         # here we run the same select twice, sequentially and using the btree.
         # we then check the results match and compare performance (number of operation)
@@ -578,11 +581,6 @@ class Table:
         #print("rows1 are: ", rows1)
         #print("rows from btree are: ", rows)
            
-        '''
-        print("rows are: ", rows)
-        print("value is: ",value)
-        print("operator is: ",operator)
-        '''
         try:
             k = int(limit)
         except TypeError:
@@ -859,7 +857,8 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'not column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+                'value[<,<=,==,>=,>]column' or
+                'column between value1 and value2' .
                 
                 Operatores supported: (<,<=,==,>=,>)
             join: boolean. Whether to join or not (False by default).
@@ -907,9 +906,13 @@ class Table:
         Args:
             return_columns: list. The columns to be returned.
             condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value or column[<,<=,==,>=,>]value and... ' or
-                'not column[<,<=,==,>=,>]value or column[<,<=,==,>=,>]value and... ' or
-                'not column[<,<=,==,>=,>]value or not column[<,<=,==,>=,>]value and ...' .
+                'column[<,<=,==,>=,>]value or column[<,<=,==,>=,>]value or... ' or
+                'not column[<,<=,==,>=,>]value or column[<,<=,==,>=,>]value or... ' or
+                'not column[<,<=,==,>=,>]value or not column[<,<=,==,>=,>]value or ... ' or
+                'column between value1 and value2 or not column[<,<=,==,>=,>]value or ... ' or
+                'column between value1 and value2 or column[<,<=,==,>=,>]value or ... ' or
+                'column[<,<=,==,>=,>]value or column between value1 and value2 or ... ' or
+                'not column[<,<=,==,>=,>]value or column between value1 and value2 or ... '.
                 
                 Operatores supported: (<,<=,==,>=,>)
             distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
