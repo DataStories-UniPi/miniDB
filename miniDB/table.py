@@ -261,9 +261,27 @@ class Table:
                         list_of_indexes.append(idx)
                 rows = list(set(list_of_indexes))
             else:
-                print('')
+                # print('')
+                lists_of_indexes = []
+                for cond in condition.split('and'):
+                    if 'not ' in cond:
+                        cond = cond.split('not ')[1]
+                        column_name, operator, value = self._parse_condition(cond)
+                        column = self.column_by_name(column_name)
+                        operator = not_op(operator)
+                        cond = column_name + operator + str(value)
+                    indexes = []
+                    column_name, operator, value = self._parse_condition(cond)
+                    column = self.column_by_name(column_name)
+                    for index, row_value in enumerate(column):
+                        if get_op(operator, row_value, value):
+                            indexes.append(index)
+                    lists_of_indexes.append(indexes)
 
-
+                intersection_set = set(lists_of_indexes[0])
+                for l in lists_of_indexes[1:]:
+                    intersection_set = intersection_set.intersection(l)
+                rows = list(intersection_set)
         else:
             rows = [i for i in range(len(self.data))]
 

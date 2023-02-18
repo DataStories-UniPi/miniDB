@@ -320,10 +320,10 @@ class Database:
         '''
         self.load_database()
 
-        conditions = []
-        if 'and' in condition:
-            for cond in condition.split('and'):
-                conditions.append(cond)
+        # conditions = []
+        # if 'and' in condition:
+        #     for cond in condition.split('and'):
+        #         conditions.append(cond)
 
 
 
