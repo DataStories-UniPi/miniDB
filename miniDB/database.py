@@ -466,15 +466,43 @@ class Database:
             # Check if there is an index of either of the two tables available, as if there isn't we can't use inlj
             leftIndexExists = self._has_index(left_table._name)
             rightIndexExists = self._has_index(right_table._name)
-
+            column_exist_r = False
+            column_exist_l = False
+            
             if not leftIndexExists and not rightIndexExists:
                 res = None
                 raise Exception('Index-nested-loop join cannot be executed. Use inner join instead.\n')
-            elif rightIndexExists:
-                index_name = self.select('*', 'meta_indexes', f'table_name={right_table._name}', return_object=True).column_by_name('index_name')[0]
+
+            if rightIndexExists:
+                # Get the 'meta_indexes' table object, which contains the indexes of the right table.
+                table_indexes_r = self.select('*', 'meta_indexes', f'table_name={right_table._name}', return_object=True)
+                
+                # Check if the indexed column of the right table is the same as the condition column ('on' clause).
+                column_name = condition.split('=')[0]
+                column_exist_r = [right_table._name, column_name] in [[row[0], row[1]] for row in table_indexes_r.data]
+
+            if leftIndexExists:
+                # Get the 'meta_indexes' table object, which contains the indexes of the left table.
+                table_indexes_l = self.select('*', 'meta_indexes', f'table_name={left_table._name}', return_object=True)
+                
+                # Check if the indexed column of the left table is the same as the condition column ('on' clause).
+                column_name = condition.split('=')[0]
+                column_exist_l = [left_table._name, column_name] in [[row[0], row[1]] for row in table_indexes_l.data]
+
+            if column_exist_r:
+                # If the column exists in the right table, get the specific index name and use it to join the tables.
+                for row in table_indexes_r.data:
+                    if row[0]==right_table._name and row[1]==column_name:
+                        index_name = row[2] # Get the index name
+                        break
                 res = Inlj(condition, left_table, right_table, self._load_idx(index_name), 'right').join()
-            elif leftIndexExists:
-                index_name = self.select('*', 'meta_indexes', f'table_name={left_table._name}', return_object=True).column_by_name('index_name')[0]
+
+            elif column_exist_l:
+            # If the column exists in the left table, get the specific index name and use it to join the tables.
+                for row in table_indexes_l.data:
+                    if row[0]==left_table._name and row[1]==column_name:
+                        index_name = row[2] # Get the index name
+                        break
                 res = Inlj(condition, left_table, right_table, self._load_idx(index_name), 'left').join()
 
         elif mode=='sm':
@@ -706,7 +734,7 @@ class Database:
             index_name: string. Name of the created index.
         '''
         bt = Btree(3) # 3 is arbitrary
-        
+
         # for each record of column_name, insert the key and the index of the record to the btree.
         for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
             if key is None:
@@ -717,7 +745,8 @@ class Database:
 
     def _has_index(self, table_name, column_name=None):
         '''
-        Check whether the specified table's primary key column is indexed.
+        Check whether the specified table has an index in the specified column.
+        If column_name is None, check if the table has any index.
 
         Args:
             table_name: string. Table name (must be part of database).
@@ -726,7 +755,8 @@ class Database:
         if column_name is None: # check if the table has any index.
             return table_name in self.tables['meta_indexes'].column_by_name('table_name')
         # else check if the specified column is indexed.
-        return table_name in self.tables['meta_indexes'].column_by_name('table_name') and column_name in self.tables['meta_indexes'].column_by_name('indexed_column')
+        return [table_name, column_name] in [[row[0], row[1]] for row in self.tables['meta_indexes'].data]
+        #return table_name in self.tables['meta_indexes'].column_by_name('table_name') and column_name in self.tables['meta_indexes'].column_by_name('indexed_column')
 
     def _save_index(self, index_name, index):
         '''
