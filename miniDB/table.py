@@ -880,7 +880,7 @@ class Table:
         coltype = self.column_types[self.column_names.index(left)]
 
         if op == 'between':
-            print("between has been found")
+            #print("between has been found")
             return left, op, right
         return left, op, coltype(right)
 
