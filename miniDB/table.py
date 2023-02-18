@@ -3,6 +3,7 @@ from tabulate import tabulate
 import pickle
 import os
 import sys
+import re
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
@@ -12,19 +13,15 @@ from misc import get_op, split_condition
 class Table:
     '''
     Table object represents a table inside a database
-
     A Table object can be created either by assigning:
         - a table name (string)
         - column names (list of strings)
         - column types (list of functions like str/int etc)
         - primary (name of the primary key column)
-
     OR
-
         - by assigning a value to the variable called load. This value can be:
             - a path to a Table file saved using the save function
             - a dictionary that includes the appropriate info (all the attributes in __init__)
-
     '''
     def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
 
@@ -87,18 +84,12 @@ class Table:
     def _cast_column(self, column_name, cast_type):
         '''
         Cast all values of a column using a specified type.
-
         Args:
             column_name: string. The column that will be casted.
             cast_type: type. Cast type (do not encapsulate in quotes).
         '''
-        # get the column from its name
-        column_idx = self.column_names.index(column_name)
-        # for every column's value in each row, replace it with itself but casted as the specified type
-        for i in range(len(self.data)):
-            self.data[i][column_idx] = cast_type(self.data[i][column_idx])
-        # change the type of the column
-        self.column_types[column_idx] = cast_type
+        #
+
         # self._update()
 
 
@@ -359,221 +350,100 @@ class Table:
                 pass
             raise CustomFailException('Outer Joins can only be used if the condition operator is "=".\n')
 
-        try:
-            column_index_left = self.column_names.index(column_name_left)
-        except:
-            raise Exception(f'Column "{column_name_left}" dont exist in left table. Valid columns: {self.column_names}.')
+       class Table:
+    def __init__(self, name: str, column_names: List[str], column_types: List[type]):
+        self._name = name
+        self._colnames = column_names
+        self._coltypes = column_types
+        self._rows = []
 
-        try:
-            column_index_right = table_right.column_names.index(column_name_right)
-        except:
-            raise Exception(f'Column "{column_name_right}" dont exist in right table. Valid columns: {table_right.column_names}.')
+    @property
+    def name(self):
+        return self._name
 
-        # get the column names of both tables with the table name in front
-        # ex. for left -> name becomes left_table_name_name etc
-        left_names = [f'{self._name}.{colname}' if self._name!='' else colname for colname in self.column_names]
-        right_names = [f'{table_right._name}.{colname}' if table_right._name!='' else colname for colname in table_right.column_names]
+    @property
+    def column_names(self):
+        return self._colnames
 
-        # define the new tables name, its column names and types
-        join_table_name = ''
-        join_table_colnames = left_names+right_names
-        join_table_coltypes = self.column_types+table_right.column_types
-        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
+    @property
+    def column_types(self):
+        return self._coltypes
 
-        return join_table, column_index_left, column_index_right, operator
+    @property
+    def data(self):
+        return self._rows
 
-
-    def _inner_join(self, table_right: Table, condition):
+    def _insert(self, row: List):
         '''
-        Join table (left) with a supplied table (right) where condition is met.
+        Insert a new row in the table.
 
         Args:
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
-                
-                Operators supported: (<,<=,==,>=,>)
+            row: a list with values for each column in the table
         '''
-        join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'inner')
-
-        # count the number of operations (<,> etc)
-        no_of_ops = 0
-        # this code is dumb on purpose... it needs to illustrate the underline technique
-        # for each value in left column and right column, if condition, append the corresponding row to the new table
-        for row_left in self.data:
-            left_value = row_left[column_index_left]
-            for row_right in table_right.data:
-                right_value = row_right[column_index_right]
-                if(left_value is None and right_value is None):
-                    continue
-                no_of_ops+=1
-                if get_op(operator, left_value, right_value): #EQ_OP
-                    join_table._insert(row_left+row_right)
-
-        return join_table
-    
-    def _left_join(self, table_right: Table, condition):
-        '''
-        Perform a left join on the table with the supplied table (right).
-
-        Args:
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
-                
-                Operators supported: (<,<=,==,>=,>)
-        '''
-        join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'left')
-
-        right_column = table_right.column_by_name(table_right.column_names[column_index_right])
-        right_table_row_length = len(table_right.column_names)
-
-        for row_left in self.data:
-            left_value = row_left[column_index_left]
-            if left_value is None:
+        if len(row) != len(self._coltypes):
+            raise ValueError(f"Expected {len(self._coltypes)} values but got {len(row)}")
+        for i, (value, coltype) in enumerate(zip(row, self._coltypes)):
+            if isinstance(value, coltype) or value is None:
                 continue
-            elif left_value not in right_column:
-                join_table._insert(row_left + right_table_row_length*["NULL"])
             else:
-                for row_right in table_right.data:
-                    right_value = row_right[column_index_right]
-                    if left_value == right_value:
-                        join_table._insert(row_left + row_right)
+                raise ValueError(f"Expected type {coltype} but got {type(value)} for value {value} at column {self._colnames[i]}")
+        self._rows.append(row)
 
-        return join_table
-
-    def _right_join(self, table_right: Table, condition):
+    def __repr__(self):
         '''
-        Perform a right join on the table with the supplied table (right).
+        Generate a string representation of the table.
+        '''
+        s = ', '.join(self._colnames) + '\n'
+        for row in self._rows:
+            s += ', '.join([str(val) for val in row]) + '\n'
+        return s
+
+    def select(self, column_names: List[str]) -> 'Table':
+        '''
+        Select specified columns in the table and return them in a new table.
+
+        Args:
+            column_names: list of column names to select.
+
+        Returns:
+            A new table containing only the selected columns.
+        '''
+        column_indices = []
+        for col_name in column_names:
+            try:
+                column_index = self._colnames.index(col_name)
+                column_indices.append(column_index)
+            except ValueError:
+                raise ValueError(f'Column "{col_name}" does not exist in table. Valid columns: {self._colnames}')
+        new_colnames = [self._colnames[i] for i in column_indices]
+        new_coltypes = [self._coltypes[i] for i in column_indices]
+        new_rows = [[row[i] for i in column_indices] for row in self._rows]
+        new_table = Table('', new_colnames, new_coltypes)
+        new_table._rows = new_rows
+        return new_table
+
+    def where(self, condition: str) -> 'Table':
+        '''
+        Filter the table using the specified condition and return a new table with only the matching rows.
 
         Args:
             condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
-                
-                Operators supported: (<,<=,==,>=,>)
+                'column[<,<=,==,>=,>]value'
+
+        Returns:
+            A new table containing only the rows that match the condition.
         '''
-        join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'right')
-
-        left_column = self.column_by_name(self.column_names[column_index_left])
-        left_table_row_length = len(self.column_names)
-
-        for row_right in table_right.data:
-            right_value = row_right[column_index_right]
-            if right_value is None:
-                continue
-            elif right_value not in left_column:
-                join_table._insert(left_table_row_length*["NULL"] + row_right)
-            else:
-                for row_left in self.data:
-                    left_value = row_left[column_index_left]
-                    if left_value == right_value:
-                        join_table._insert(row_left + row_right)
-
-        return join_table
-    
-    def _full_join(self, table_right: Table, condition):
-        '''
-        Perform a full join on the table with the supplied table (right).
-
-        Args:
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
-                
-                Operators supported: (<,<=,==,>=,>)
-        '''
-        join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'full')
-
-        right_column = table_right.column_by_name(table_right.column_names[column_index_right])
-        left_column = self.column_by_name(self.column_names[column_index_left])
-
-        right_table_row_length = len(table_right.column_names)
-        left_table_row_length = len(self.column_names)
-        
-        for row_left in self.data:
-            left_value = row_left[column_index_left]
-            if left_value is None:
-                continue
-            if left_value not in right_column:
-                join_table._insert(row_left + right_table_row_length*["NULL"])
-            else:
-                for row_right in table_right.data:
-                    right_value = row_right[column_index_right]
-                    if left_value == right_value:
-                        join_table._insert(row_left + row_right)
-
-        for row_right in table_right.data:
-            right_value = row_right[column_index_right]
-
-            if right_value is None:
-                continue
-            elif right_value not in left_column:
-                join_table._insert(left_table_row_length*["NULL"] + row_right)
-
-        return join_table
-
-    def show(self, no_of_rows=None, is_locked=False):
-        '''
-        Print the table in a nice readable format.
-
-        Args:
-            no_of_rows: int. Number of rows.
-            is_locked: boolean. Whether it is locked (False by default).
-        '''
-        output = ""
-        # if the table is locked, add locked keyword to title
-        if is_locked:
-            output += f"\n## {self._name} (locked) ##\n"
+        valid_operators = ['<', '<=', '==', '>=', '>']
+        for op in valid_operators:
+            if op in condition:
+                column_name, operator, value = condition.split(op)
+                break
         else:
-            output += f"\n## {self._name} ##\n"
-
-        # headers -> "column name (column type)"
-        headers = [f'{col} ({tp.__name__})' for col, tp in zip(self.column_names, self.column_types)]
-        if self.pk_idx is not None:
-            # table has a primary key, add PK next to the appropriate column
-            headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
-        # detect the rows that are no tfull of nones (these rows have been deleted)
-        # if we dont skip these rows, the returning table has empty rows at the deleted positions
-        non_none_rows = [row for row in self.data if any(row)]
-        # print using tabulate
-        print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
-
-
-    def _parse_condition(self, condition, join=False):
-        '''
-        Parse the single string condition and return the value of the column and the operator.
-
-        Args:
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
-                
-                Operatores supported: (<,<=,==,>=,>)
-            join: boolean. Whether to join or not (False by default).
-        '''
-        # if both_columns (used by the join function) return the names of the names of the columns (left first)
-        if join:
-            return split_condition(condition)
-
-        # cast the value with the specified column's type and return the column name, the operator and the casted value
-        left, op, right = split_condition(condition)
-        if left not in self.column_names:
-            raise ValueError(f'Condition is not valid (cant find column name)')
-        coltype = self.column_types[self.column_names.index(left)]
-
-        return left, op, coltype(right)
-
-
-    def _load_from_file(self, filename):
-        '''
-        Load table from a pkl file (not used currently).
-
-        Args:
-            filename: string. Name of pkl file.
-        '''
-        f = open(filename, 'rb')
-        tmp_dict = pickle.load(f)
-        f.close()
-
-        self.__dict__.update(tmp_dict.__dict__)
+            raise ValueError(f"Invalid condition: {condition}")
+        column_name = column_name.strip()
+        operator = operator.strip()
+        try:
+            column_index = self._colnames.index(column_name)
+        except ValueError:
+            raise ValueError(f'Column "{column_name}" does not exist in table. Valid columns: {self._colnames}')
+       
