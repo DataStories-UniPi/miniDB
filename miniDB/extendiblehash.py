@@ -154,3 +154,14 @@ class Hash:
                         if binary_ver[-bucket.local_depth:] == hash_: 
                             self.directory[key] = bucket
         return new_ptr
+    
+    def delete(self,key):
+        remainder_lsb = self.get_remainder(key)
+        pointer = int(self.get_binary(remainder_lsb,self.global_depth)[-self.global_depth:],2)
+        for record in self.directory[pointer].records:
+            if key == record[0]:
+                self.directory[pointer].records.remove(record)
+                if len(self.directory[pointer].records) == 0:
+                    self.merge_bucket(pointer)
+                return
+        return -1
