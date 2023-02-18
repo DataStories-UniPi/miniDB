@@ -7,7 +7,7 @@ class Hash:
 
     def __init__(self, b, key=2047): # 1st mersenne prime
         '''
-        The tree abstraction.
+        The hash index abstraction.
         '''
         self.b = b # blocking factor
         self.hash_prefix = {} # search dictionary
@@ -29,23 +29,39 @@ class Hash:
         bits=self.i_MSB(bin_val)
         selected=self.hash_prefix[bits] # selected bucket (pointer)
         # Check if record fits in the bucket
-        if (len(selected.data)<=selected.b):
+        if (len(selected.data)<selected.b):
             selected.data[value]=ptr
         else:
             self.split(selected,bits)
             self.insert(value,ptr) # recursive call after splitting
 
 
-    def _search(self, value, return_ops=False):
-        pass
+    def _search(self, value):
+        '''
+        Returns the bucket that the given value exists or should exist in.
+
+        Args:
+            value: float or string. The value being searched for.  
+        '''
+        # key to be hashed
+        h_key=self.calc_hash(value)
+        # formatted as binary value
+        bin_val=format(h_key,'011b')
+        bits=self.i_MSB(bin_val)       
+        return self.hash_prefix[bits] # selected bucket (pointer)
     
 
     def split(self, bucket_j,bits):
         '''
-        https://www.db-book.com/ (pg. 1197-1203)
+        Splits the bucket_j into two buckets and updates the hash_prefix dictionary
+        It was implemented following the algorithm in the Database System Concepts,
+        a Book by Avi Silberschatz, Henry F. Korth, and S. Sudarshan (https://www.db-book.com/ (pg. 1197-1203))
+
+        Args:
+            bucket_j: Bucket. The bucket to be split.
+            bits: string. The first i bits of the hash value of the record that caused the split/The prefix that points to bucket_j.
         '''
-        print("hi")
-        if self.i==bucket_j.i_bucket: # no pointer available for the new bucket
+        if self.i==bucket_j.i: # no pointer available for the new bucket
 
             self.i+=1 #increase hash prefix size (size is doubled)
             #replace each element of hash_prefix with 2 elements containing the same index as the original element
@@ -57,26 +73,22 @@ class Hash:
 
             bucket_z=Bucket(self.b,self.i) #new bucket's prefix length is equal to i
             self.buckets.append(bucket_z) #add new bucket to the hash index
-            self.hash_prefix[bits+'1']=len(self.buckets)-1 #the 2nd element that points to the bucket_j now points to the bucket_z
+            self.hash_prefix[bits+'1']=bucket_z #the 2nd element that points to the bucket_j now points to the bucket_z
 
-            bucket_j.i_bucket=self.i #bucket_j's prefix length is now equal to i
+            bucket_j.i=self.i #bucket_j's prefix length is now equal to i
             
-        elif self.i>bucket_j.i_bucket: # there is a pointer available for the new bucket
-            bucket_j.i_bucket+=1 # update how many bits we are using
-            bucket_z=Bucket(self.b,bucket_j.i_bucket)
-            list_prefixes=[]
-            for prefix, ptr in self.hash_prefix.items():
-                if ptr == bucket_j:
-                    list_prefixes.append(prefix)
-                    print(ptr)
-            for i in range(len(list_prefixes)//2,len(list_prefixes)): # half the pointers point to the new bucket
+        elif self.i>bucket_j.i: # there is a pointer available for the new bucket
+            bucket_j.i+=1 # update how many bits we are using
+            bucket_z=Bucket(self.b,bucket_j.i)
+            self.buckets.append(bucket_z)
 
-                 self.hash_prefix[list_prefixes[i]]=len(self.buckets)-1
- 
+            #find the lower half of hash prefixes/pointers that point to bucket_j and change them to point to bucket_z
+            for prefix, ptr in self.hash_prefix.items():
+                if prefix.startswith(bits[0:bucket_j.i]) and ptr==bucket_j:
+                    self.hash_prefix[prefix]=bucket_z
+
         # apply the hash function to each record of bucket j and according to the first i bits,the record stays in bucket_j or moves to bucket_z
         j_new_data={} 
-        print(type(bucket_j))
-        print(type(bucket_j.data))
 
         for r_key,r_value in bucket_j.data.items():
                 
@@ -96,12 +108,23 @@ class Hash:
        
     
     def show(self):
-        # optionally, implement hash printing
-        pass
+        '''
+        Prints the hash index.
+
+        Args:
+            None
+        '''
+        print("i="+str(self.i))
+        for prefix, bucket in self.hash_prefix.items():
+            print("Prefix="+prefix+", i_bucket="+str(bucket.i)+" => "+str(bucket.data))
+        
     
     def calc_hash(self,value):
         '''
-        
+        The hash function used to calculate the hash value of a given value.
+
+        Args:
+            value: float or string. The value to be hashed.
         '''
         if isinstance(value, str):
             value=int(binascii.hexlify(bytes(value,'utf-8')), 16)
@@ -110,13 +133,34 @@ class Hash:
     def i_MSB(self,bin_value):
         '''
         returns the i MSB of a binary value 
+
+        Args:
+            bin_value: string. The binary value to be truncated.
         '''
         return bin_value[0:self.i]
         
 
 
-class Bucket: # kouvadaki
-    def __init__(self, b,i_bucket):
+class Bucket:
+    '''
+    Bucket abstraction.
+
+    Explanation of the attribute i:
+    Although i bits are required to find the correct bucket using the hash prefix dictionary, 
+    several contiguous dictionary keys can point to the same bucket.
+    All these keys will have a common prefix, but the length of this prefix can be less than i. 
+    So,we associate an integer with each bucket that gives the length of that common hash prefix.
+    '''
+    def __init__(self, b,i):
         self.b = b # number of records held in block (blocking factor)
-        self.i_bucket=i_bucket
-        self.data = {}
+        self.i=i # number of bits used for hash prefix
+        self.data = {} # dictionary of records and their pointers
+
+    def find(self, value):
+        '''
+        Returns the pointer of the record with the given value.
+
+        Args:
+            value: float or string. The value of the record to be found.
+        '''
+        return self.data[value]
