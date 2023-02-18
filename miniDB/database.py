@@ -365,7 +365,8 @@ class Database:
               if "NOT" in condition.split() or "not" in condition.split():
                 condition_column = condition.split(" ")[0]  
               elif " BETWEEN " in condition.split() or " between " in condition.split():
-                condition_column = condition.split(" ")[0]            
+                condition_column = condition.split(" ")[0]  
+              elif "AND" in condition.split() or "and" in condition.split() or "OR" in condition.split() or "or" in condition.split():          
               else:
                 condition_column = split_condition(condition)[0]
 
