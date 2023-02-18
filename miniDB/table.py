@@ -207,7 +207,7 @@ class Table:
         return indexes_to_del
 
 
-    def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
+    def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None, supported_btrees=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -239,7 +239,7 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            rows = self._find_rows(condition)
+            rows = self._find_rows(condition, supported_btrees)
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -273,23 +273,23 @@ class Table:
 
         return s_table
 
-    def _find_rows(self, condition):
+    def _find_rows(self, condition, supported_btrees):
         """
         TODO:
         1. add comments to methods
         2. correct the priority of logical operations
         """
         if isinstance(condition, str):
-            final_rows = self._in_depth(condition)
+            final_rows = self._in_depth(condition, supported_btrees)
         elif isinstance(condition, dict):
             left_part = condition['left']
             right_part = condition['right']
             operator = condition['operator']
             if(operator != 'not'):
-                left_rows = self._in_depth(left_part)
+                left_rows = self._in_depth(left_part, supported_btrees)
             else:
                 left_rows = None
-            right_rows = self._in_depth(right_part)
+            right_rows = self._in_depth(right_part, supported_btrees)
 
             if(operator == 'and'):
                 final_rows = list(set(left_rows).intersection(right_rows))
@@ -303,12 +303,14 @@ class Table:
         
         return final_rows
 
-    def _in_depth(self, condition):
-        # TODO: Check here if it has indexes
+    def _in_depth(self, condition, supported_btrees):
         if isinstance(condition,str):
             column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            if supported_btrees is not None and column_name in supported_btrees:
+                rows = self._find_btree_rows(supported_btrees[column_name], column_name, operator, value)
+            else:
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
             return rows
 
         elif isinstance(condition,dict):
@@ -318,10 +320,10 @@ class Table:
             operator = condition['operator']
 
             if(operator != 'not'):
-                left_rows = self._in_depth(left_part)
+                left_rows = self._in_depth(left_part, supported_btrees)
             else:
                 left_rows = None
-            right_rows = self._find_rows(right_part)
+            right_rows = self._in_depth(right_part, supported_btrees)
 
             if(operator == 'and'):
                 rows = list(set(left_rows).intersection(right_rows))
@@ -339,8 +341,21 @@ class Table:
 
         return rows
 
+    def _find_btree_rows(self, bt, column_name, operator, value):
+        column = self.column_by_name(column_name)
 
+        # sequential
+        rows1 = []
+        opsseq = 0
+        for ind, x in enumerate(column):
+            opsseq+=1
+            if get_op(operator, x, value):
+                rows1.append(ind)
 
+        # btree find
+        rows = bt.find(operator, value)
+
+        return rows
 
 
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
@@ -612,7 +627,7 @@ class Table:
         # print using tabulate
         print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
 
-    # not finished
+
     def _parse_condition(self, condition, join=False):
         '''
         Parse the single string condition and return the value of the column and the operator.

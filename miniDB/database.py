@@ -363,24 +363,19 @@ class Database:
         if isinstance(table_name, Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
-
-        if type(condition) is dict:
-            condition_column = ''
-        elif condition is not None:
-            condition_column = split_condition(condition)[0]
-        else:
-            condition_column = ''
-
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
-        # implement this to work with columns inside dicts 
-        if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
-            index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
-            bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
-        else:
-            table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+        
+        supported_btrees = None
+        if self._has_index(table_name):
+            index_names = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')
+            supported_btrees = {}
+            for index_name in index_names:
+                supported_btrees[self.tables[table_name].pk] = self._load_idx(index_name)
+
+        table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit, supported_btrees)
+        
 
         # self.unlock_table(table_name)
         if save_as is not None:

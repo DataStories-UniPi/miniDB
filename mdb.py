@@ -266,7 +266,7 @@ def execute_dic(dic):
     '''
     Execute the given dictionary
     '''
-
+    
     for key in dic.keys():
         # Skip the where key
         if key != 'where' and isinstance(dic[key],dict):
