@@ -572,7 +572,6 @@ class Table:
             opsseq+=1
             if get_op(operator, x, value):
                 rows1.append(ind)
-            #print("rows1 are: ", rows1)
 
         # btree find
         #print("btree is: ",bt.show())
@@ -630,30 +629,27 @@ class Table:
         if (flag is False and self.pk_idx and column_name != self.column_names[self.pk_idx]):
             print('Column is not unique or PK. Aborting')
         
-        # here we run the same select twice, sequentially and using the btree.
+        # here we run the same select twice, sequentially and using the hash.
         # we then check the results match and compare performance (number of operation)
         column = self.column_by_name(column_name)
         #print(column)
         # sequential
             
-        rows = []
+        rows1 = []
         opsseq = 0
         for ind, x in enumerate(column):
             opsseq+=1
             if get_op(operator, x, value):
-                rows.append(ind)
-            #print("rows1 are: ", rows1)
+                rows1.append(ind)
+        #print("rows1: ",rows1)
 
-        # btree find
-        print(h.data)
-        print("Extendible Hashing: ",h.show())
-        #rows = bt.find(operator, value)
-
-        #print("rows1 are: ", rows1)
-        #print("rows from btree are: ", rows)
-           
-
-        
+        # hash find
+        print("\nExtendible hashing:")
+        h.show()
+        print("\n")
+        rows = h.find(operator,value)
+        #print("rows: ",rows)
+       
         try:
             k = int(limit)
         except TypeError:
