@@ -233,9 +233,16 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            # check the condition status (not,between,or,and)
+            condition = self.Check_condition(condition, return_cols)
+
+            # check the type of the returned value of the condition. If it's a list , the rows are ready.
+            if isinstance(condition, list):
+                rows = condition
+            else:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -268,6 +275,86 @@ class Table:
             s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
 
         return s_table
+
+    # Check Condition, in general
+    def Check_condition(self, condition, cols):
+        new_condition = condition
+        if new_condition.startswith("not "):
+            new_condition = self.Check_NotCondition(condition, cols)
+        elif " between " in new_condition:
+            new_condition = self.Check_BetweenCondition(condition, cols);
+        elif " and " in new_condition:
+            new_condition = self.Check_AndCondition(condition, cols)
+        elif " or " in new_condition:
+            new_condition = self.Check_OrCondition(condition, cols);
+
+        return new_condition
+
+    # Target is to find the operator and reverse it for the `not` condition
+    def Check_NotCondition(self, condition, cols):
+        new_condition = condition.replace("not","")
+
+        if "<=" in new_condition:
+            new_condition = new_condition.replace("<=", ">")
+        elif ">=" in new_condition:
+            new_condition = new_condition.replace(">=", "<")
+        elif "<" in new_condition:
+            new_condition = new_condition.replace("<", ">=")
+        elif ">" in new_condition:
+            new_condition = new_condition.replace(">", "<=")
+
+        return new_condition
+
+    # Target is to find column name and the values between the `and` and then make a new custom condition.
+    # The new condition follows the `and` condition.
+    def Check_BetweenCondition(self, condition, cols):
+        new_condition = condition.replace("between", "")
+        new_condition = new_condition.replace("and", "")
+        new_condition = new_condition.split()
+
+        new_condition = new_condition[0] + " >= " + new_condition[1] + " and " + new_condition[0] + "<=" + new_condition[2]
+        new_condition = self.Check_AndCondition(new_condition, cols)
+        return new_condition
+
+    # In this condition (`and`), we need to get the common values from the lists created in this. Values between `and`
+    # could be 2+, so we need to loop through all the possible values.
+    # in the end a list with all values remaining.
+    def Check_AndCondition(self, condition, cols):
+        new_condition = condition.split(" and ")
+
+        final_result = []
+        counter = 0
+        for x in new_condition:
+            current_results = self.GetResults_Condition(x, cols)
+            if counter == 0:
+                final_result = current_results
+                counter += 1
+            final_result = list(set(final_result)&set(current_results))
+
+        new_condition = final_result
+        return new_condition
+
+    # In this condition (`or`), we need to get the all the values from the lists created in this. Values between `or`
+    # could be 2+, so we need to loop through all the possible values.
+    # in the end a list with all values remaining.
+    def Check_OrCondition(self, condition, cols):
+        new_condition = condition.split(" or ")
+
+        final_result = []
+        for x in new_condition:
+            current_results = self.GetResults_Condition(x, cols)
+            final_result += current_results
+
+        new_condition = list(set(final_result))
+        return new_condition
+
+    # Get a condition as parameter and return the rows
+    def GetResults_Condition(self, condition, cols):
+        column_name, operator, value = self._parse_condition(condition)
+        column = self.column_by_name(column_name)
+        rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+        return rows
 
 
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
@@ -558,6 +645,7 @@ class Table:
 
         # cast the value with the specified column's type and return the column name, the operator and the casted value
         left, op, right = split_condition(condition)
+
         if left not in self.column_names:
             raise ValueError(f'Condition is not valid (cant find column name)')
         coltype = self.column_types[self.column_names.index(left)]
