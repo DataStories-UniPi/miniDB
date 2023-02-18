@@ -376,20 +376,25 @@ class Database:
             conditions = []
             if 'and' in condition:
                 and_flag = True
-                for cond in condition.split('and'):
-                    if 'not' in cond:
-                        cond = cond.split('not')[1]
+                for cond in condition.split(' and '):
+                    if 'not ' in cond:
+                        cond = cond.split('not ')[1]
                         left, op, right = split_condition(cond)
                         op = not_op(op)
                         not_cond = left + op + right
                         conditions.append(not_cond)
+                    else:
+                        conditions.append(cond)
             else:
-                if 'not' in condition:
+                if 'and' not in condition and 'or' not in condition and 'not' in condition:
                     not_flag = True
                     without_non = condition.split('not')[1]
                     left, op, right = split_condition(without_non)
                     op = not_op(op)
                     condition_after_not = left + op + right
+
+
+
 
 
 
