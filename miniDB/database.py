@@ -101,7 +101,7 @@ class Database:
         self._update_meta_insert_stack()
 
 
-    def create_table(self, name, column_names, column_types,unique=None, primary_key=None, load=None):
+    def create_table(self, name, column_names, column_types, primary_key=None,unique=None, load=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
 
@@ -678,7 +678,6 @@ class Database:
         if self.tables[table_name].unique[0] not in self.tables[table_name].column_names:
             raise Exception('Column does not exist')
         if column_name not in self.tables[table_name].unique and column_name!=self.tables[table_name].pk:
-            print(self.tables[table_name].unique)
             raise Exception('Cannot create')
 
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
@@ -688,7 +687,7 @@ class Database:
                 if self.tables[table_name].pk == column_name or column_name in self.tables[table_name].unique:
                     logging.info('Creating Btree index.')
                     # insert a record with the name of the index and the table on which it's created to the meta_indexes table
-                    self.tables['meta_indexes']._insert([table_name, index_name,column_name,index_type])
+                    self.tables['meta_indexes']._insert([table_name, index_name,column_name])
                     # crate the actual index
                     self._construct_index(table_name, index_name,index_type, column_name)
                     self.save_database()

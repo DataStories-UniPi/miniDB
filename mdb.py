@@ -132,17 +132,10 @@ def create_query_plan(query, keywords, action):
         else:
             dic['force'] = False
 
-            # if action = create index
     if action == 'create index':
-        dic['on']=ql[3]
-        if '(' in ql:
-            dic['unique']=ql[5]
-    print(dic)
-
-        #dic['column name'] = dic['on'][dic['on'].index('(')+1:-1].split(',')
-        #for x in range(len(dic['column name'])):
-        #    dic['column name'][x] = dic['column name'][x].strip()
-        #dic['on'] = dic['on'][0:dic['on'].index('(')]
+        dic['column name'] = dic['on'][dic['on'].index('(')+1:-1]
+        dic['column name'] = dic['column name'].strip()
+        dic['on'] = dic['on'][0:dic['on'].index('(')]
 
     return dic
 
