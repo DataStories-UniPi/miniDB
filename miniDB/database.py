@@ -378,7 +378,8 @@ class Database:
         if len(condition_list) == 0:
             table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
         else:
-            if self._has_index(table_name) and '!=' not in condition_list[0] and (conditions_columns[0]==self.tables[table_name].column_names[self.tables[table_name].pk_idx] or (self.tables[table_name].unique is not None and conditions_columns[0] in self.tables[table_name].unique)):
+            if self._has_index(table_name) and '!=' not in condition_list[0] and (conditions_columns[0]==self.tables[table_name].column_names[self.tables[table_name].pk_idx] \
+                                                                                  or (self.tables[table_name].unique is not None and conditions_columns[0] in self.tables[table_name].unique)):
                 index_name,index_type = self.select('index_name,index_type', 'meta_indexes', f'table_name={table_name} and column_name={conditions_columns[0]}', return_object=True).data[0]
                 if index_name is not None and index_type == 'btree':
                     bt = self._load_idx(index_name)

@@ -349,7 +349,6 @@ class Table:
         else:
             return_cols = [self.column_names.index(colname) for colname in return_columns]
 
-
         column_name, operator, value = self._parse_condition(condition)
 
         # if the column in condition is not a primary key and unique, abort the select
@@ -357,18 +356,6 @@ class Table:
             print('Column is not PK or unique. Aborting')
         elif self.unique is None and column_name != self.column_names[self.pk_idx]:
             print('Column is not PK. Aborting')
-
-        # here we run the same select twice, sequentially and using the extedible hash.
-        # we then check the results match and compare performance (number of operation)
-        column = self.column_by_name(column_name)
-
-        # sequential
-        rows1 = []
-        opsseq = 0
-        for ind, x in enumerate(column):
-            opsseq+=1
-            if get_op(operator, x, value):
-                rows1.append(ind)
 
         # hash find
         if operator == '=':
