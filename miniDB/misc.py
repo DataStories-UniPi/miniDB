@@ -50,8 +50,8 @@ def check_logops(condition):
     '''
     Checks the condition for logic operators, removes them and returns them
     '''
-    log_ops = ['between ',
-               'not ',
+    log_ops = ['not ',
+               'between ',
                ' and',
                ' or'
                ]
