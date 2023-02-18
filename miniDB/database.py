@@ -378,12 +378,6 @@ class Database:
                 for cond in condition.split('and'):
                     conditions.append(cond)
 
-
-
-        
-        # self.lock_table(table_name, mode='x')
-
-
         if self.is_locked(table_name):
             return
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
