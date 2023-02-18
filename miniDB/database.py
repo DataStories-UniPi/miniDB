@@ -366,11 +366,13 @@ class Database:
 
         if condition is not None:
             if 'and' not in condition:
-                condition_column = split_condition(condition)[0]
+                if 'or' not in condition:
+                    condition_column = split_condition(condition)[0]
         else:
             condition_column = ''
 
         and_flag = False
+        # or_flag = False
         if condition is not None:
             conditions = []
             if 'and' in condition:
@@ -385,12 +387,13 @@ class Database:
             bt = self._load_idx(index_name)
             table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
         else:
-            if and_flag == False:
-                table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
-            else:
+            if and_flag == True:
                 table = self.tables[table_name]._select_where(columns, conditions[0], distinct, order_by, desc, limit)
                 for cond in conditions[1:]:
                     table = table._select_where(columns, cond, distinct, order_by, desc, limit)
+            else:
+                table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+                
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as

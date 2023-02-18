@@ -243,9 +243,14 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            list_of_indexes = []
+            for cond in condition.split(' or '):
+                column_name, operator, value = self._parse_condition(cond)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+                for idx in rows:
+                    list_of_indexes.append(idx)
+            rows = list(set(list_of_indexes))
         else:
             rows = [i for i in range(len(self.data))]
 
