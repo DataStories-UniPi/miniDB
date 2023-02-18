@@ -174,3 +174,11 @@
 
 
 #### Εικόνα 10: Query Plan, με τύπο ΣΑ:  σθ1 ∧ θ2(Ε) = σθ1(σθ2(Ε))
+
+
+
+![Screenshot 2023-02-18 142048](https://user-images.githubusercontent.com/43910499/219865715-b1451000-0310-4c6a-a76e-0f7323d0072e.png)
+
+
+
+#### Εικόνα 11: Screenshot από το άνοιγμα της miniDB σε virtual machine (linux)
