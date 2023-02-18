@@ -465,8 +465,8 @@ if __name__ == "__main__":
             elif line.startswith('explain'):
                 dic = interpret(line.removeprefix('explain '))
                 queries = multiple_query_plans(dic)
-                #pprint(dic, sort_dicts=False)
                 evaluate_query_plans(db,queries)
+                #pprint(dic, sort_dicts=False)
             else:
                 dic = interpret(line)
                 queries = multiple_query_plans(dic)

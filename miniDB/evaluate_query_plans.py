@@ -98,18 +98,18 @@ def evaluate_select_clause(db, subquery):
             table = db.tables[table_name]
             # Check if there is an index on the primary key column
             if db._has_index(table_name) and column_name_left == table.column_names[table.pk_idx]:
-                cost += 1
+                cost = 1
             elif db._has_index(table_name) and column_name_right == table.column_names[table.pk_idx]:
-                cost += 1
+                cost = 1
             else:
                 cost += stats[table_name]["size"]
         elif isinstance(where_clause, str):
              # If there is only one condition in the "where" clause, check if it uses the primary key
             column_name = re.findall(r'\w+', where_clause)[0]
             table = db.tables[table_name]
-              # If the condition uses the primary key, add 1 to the cost
+              # If the condition uses the primary key, the cost is 1
             if db._has_index(table_name) and column_name == table.column_names[table.pk_idx]:
-                cost += 1
+                cost = 1
             else:
                 # Otherwise, add the size of the table to the cost
                 cost += stats[table_name]["size"]
@@ -145,26 +145,31 @@ def evaluate_query_plans(db , queries):
     # Loop through each query and calculate its cost
     for query in queries:
         cost = 0
-
+        cost_of_table = 0
+        cost_of_distinct_values = 0
+       
         # Check if the query has a "from" clause
         if "from" not in query:
             continue
-
+        #if we have and in on_clause continue
+        on_clasue = query['from']['on']
+        if "and" in on_clasue:
+            continue
 
          # Get the table(s) in the "from" clause
         from_clause = query["from"]
         # If there is only one table, add the cost of each distinct value in each column
-        if isinstance(from_clause, str):
+        if isinstance(from_clause, str) :
             table_name = from_clause
-            cost_of_distinct_values = 0
+            
             for column in stats[table_name]["columns"]:
                 cost_of_distinct_values += stats[table_name]["columns"][column]["distinct_values"]
             if cost_of_distinct_values > stats[table_name]["size"]:
-                # If the cost of scanning the entire table is lower than the cost of scanning each column for distinct values, add the size of the table to the cost
-                cost += stats[table_name]["size"]
+                # If the cost of scanning the entire table is lower than the cost of scanning each column for distinct values, add the size of the table to the cost_of_table
+                cost_of_table += stats[table_name]["size"]
             else:
-                #Otherwise, add the cost_of_distinct_values to the cost
-                cost += cost_of_distinct_values
+                #Otherwise, add the cost_of_distinct_values to the cost_of_table
+                cost_of_table += cost_of_distinct_values
         elif isinstance(from_clause, dict):
             # If there is a subquery in the "from" clause, evaluate the subquery to get its cost
             if "select" in from_clause:
@@ -172,17 +177,28 @@ def evaluate_query_plans(db , queries):
                 cost,table_name = evaluate_select_clause(db, subquery)
             elif "join" in from_clause:
                 # If there is a join in the "from" clause, calculate the cost of the join
-
+                
                 join_type = from_clause["join"]
                 left_table = from_clause["left"]
                 right_table = from_clause["right"]
+                
 
-                # If the right table has an index on its primary key, use its size as the cost
+                # If the right table has an index on its primary key, use its size as the cost (INLJ)
                 if db._has_index(right_table):
-                    cost = stats[right_table]["size"]
+                    cost += stats[right_table]["size"]
+                    cost_of_table += stats[right_table]["size"]
+                    table_name = right_table
                 else:
-                    # Otherwise, use the product of the sizes of the two tables as the cost
-                    cost = stats[left_table]["size"] * stats[right_table]["size"]
+                    # Otherwise, use the product of the sizes of the two tables as the cost (BNLJ)
+                    cost += stats[left_table]["size"] * stats[right_table]["size"]
+                    cost_of_table += stats[left_table]["size"] * stats[right_table]["size"]
+                    #We check if left table has an index or if its smaller than the right table ,if it has or if it smaller table_name = left_table, otherwise table_name = right_table
+                    if db._has_index(left_table):
+                        table_name = left_table
+                    elif stats[left_table]["size"] < stats[right_table]["size"]:
+                        table_name = left_table
+                    else:
+                        table_name = right_table
 
 
         # Check if the query has a "where" clause           
@@ -201,26 +217,38 @@ def evaluate_query_plans(db , queries):
 
                 if db._has_index(table_name) and column_name_left == table.column_names[table.pk_idx]:
                      # If the left condition uses the primary key, add 1 to the cost
+                    if cost == 0:
+                        cost += 1
                     cost += 1
+                    
                 elif db._has_index(table_name) and column_name_right == table.column_names[table.pk_idx]:
                     # If the right condition uses the primary key, add 1 to the cost
+                    if cost == 0:
+                        cost += 1
                     cost += 1
                 else:
                     # Otherwise, add the size of the table to the cost
                     cost += stats[table_name]["size"]
+                    cost += cost_of_table
 
 
             elif isinstance(where_clause, str):
+                #if its a join, add the cost of the cost_of_table that we calculated earlier 
+                if "join" in from_clause:
+                    cost += cost_of_table
                  # If there is only one condition in the "where" clause, check if it uses the primary key
                 column_name = re.findall(r'\w+', where_clause)[0]
                 table = db.tables[table_name]
                 if db._has_index(table_name) and column_name == table.column_names[table.pk_idx]:
                      # If the condition uses the primary key, add 1 to the cost
+                    if cost == 0:
+                        cost += 1 
                     cost += 1
                 else:
                     cost += stats[table_name]["size"]
-
-
+                    cost += cost_of_table
+        else:
+            cost += cost_of_table
         # Add the cost of the query to the dictionary of query costs
         query_costs[str(query)] = cost
     

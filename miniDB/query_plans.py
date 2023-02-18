@@ -1,7 +1,7 @@
 import copy
 def get_final_from(dic):
     if 'from' in dic:
-        if type(dic['from']) == str:
+        if isinstance(dic['from'],str):
             return dic['from']
         else:
             return get_final_from(dic['from'])
@@ -31,15 +31,15 @@ def multiple_query_plans(dic):
             The third and final step updates the original query plan with the new values for 'from' and 'where', and adds it to the list of query plans to be executed.
 
             '''
-            query_plan_2 = copy.deepcopy(query_plan_1)
+            query_plan_2 = copy.deepcopy(query_plan_1) 
             query_plan_2['from'] = query_plan_2['from']['from']
-            query_plan_2['where'] = {'and':{'left':query_plan_1['where'],'right':query_plan_1['from']['where']}}
+            query_plan_2['where'] = {'and':{'left':query_plan_1['where'],'right':query_plan_1['from']['where']}}#first step
             Query_Plan_List.append(query_plan_2)
             query_plan_3 = copy.deepcopy(query_plan_2)
-            query_plan_3['where'] = {'and':{'left':query_plan_1['from']['where'],'right':query_plan_1['where']}}
+            query_plan_3['where'] = {'and':{'left':query_plan_1['from']['where'],'right':query_plan_1['where']}}#second step
             Query_Plan_List.append(query_plan_3)
             query_plan_4 = copy.deepcopy(query_plan_3)
-            query_plan_1['where'] = query_plan_4['where']['and']['left']
+            query_plan_1['where'] = query_plan_4['where']['and']['left']#third step
             query_plan_1['from'] = query_plan_4
             query_plan_1['from']['where'] = query_plan_4['where']['and']['right']
             Query_Plan_List.append(query_plan_1)
@@ -174,7 +174,7 @@ def multiple_query_plans(dic):
                         query_plan_1['from']['right'] = query_plan_2['from']['left']
                         Query_Plan_List.append(query_plan_1)
                 except:
-                    pass       
+                    pass    
     unique_dictionaries = []
     for dictionary in Query_Plan_List:
         if dictionary not in unique_dictionaries:
