@@ -189,6 +189,8 @@ def evaluate_where_clause(dic):
     #find the indices of the not and between keywords
     not_idx = [i for i,word in enumerate(where_split) if word=='not' and not in_paren(where_split,i)]
     between_idx = [i for i,word in enumerate(where_split) if word=='between' and not in_paren(where_split,i)]
+    not_between_idx = [i for i,word in enumerate(where_split) if word=='not' and where_split[i+1]=='between' and not in_paren(where_split,i)]
+
 
     operators = {'>=': '<',
                     '<=': '>',
@@ -198,6 +200,22 @@ def evaluate_where_clause(dic):
                     '=': '!=',
                     }
 
+    #for ever not between, delete not, between keywords and change it to < and >
+    while not_between_idx:
+        not_between_idx = not_between_idx[0]
+        column_name = where_split[not_between_idx-1]
+        value1= where_split[not_between_idx+2]
+        value2= where_split[not_between_idx+4]
+
+        where_split_right = ' '.join(where_split[not_between_idx+5:])
+        where_split_left = ' '.join(where_split[:not_between_idx-1])
+        dic['where'] = where_split_left + ' ' + column_name + " < " + value1 + " and " + column_name + " > " + value2 + ' ' + where_split_right
+
+        where_split = split_statement(dic['where'])
+        not_between_idx = [i for i,word in enumerate(where_split) if word=='not' and where_split[i+1]=='between' and not in_paren(where_split,i)]
+        not_idx = [i for i,word in enumerate(where_split) if word=='not' and not in_paren(where_split,i)]
+        between_idx = [i for i,word in enumerate(where_split) if word=='between' and not in_paren(where_split,i)]
+      
     # for every not keyword, delete not and change the operator to the opposite one
     while not_idx:
         not_idx = not_idx[0]
