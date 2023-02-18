@@ -11,6 +11,33 @@ class Hash:
      #self.prefix=[self.data[0],self.data[1]]
      #self.number_of_lsb=1
      #print(self.data)
+     
+    
+    def find(self,operator,value):
+
+      rows = []
+      for key in self.data: # in each key
+        for k,ind in self.data[key].bucket: # in each bucket
+          if operator == '=':
+            if k == value:
+              rows.append(ind)
+          elif operator == '>':
+            if k > value:
+              rows.append(ind)
+          elif operator == '>=':
+            if k >= value:
+              rows.append(ind)
+          elif operator == '<':
+            if k < value:
+              rows.append(ind)
+          elif operator == '<=':
+            if k <= value:
+              rows.append(ind)
+
+      #remove duplicates first
+      rows = list(dict.fromkeys(rows))
+      return rows
+
 
     def get_hash_index(self,key):
       print('Key is: ',key)
@@ -135,21 +162,14 @@ class Hash:
 
     def show(self):
         '''
-        Print the bucket's value and relevant information.
+        Print the whole dictionary (keys and values).
         '''
-        print("Show function here!")
-        print(self.data)
+
         for item in self.data:
          print("Key : {} , Value : {}".format(item,self.data[item].bucket))
          #print("LD ISS:",self.data[item].ld)
         
-        '''
-        for key in self.data:
-          self.data[key].bucket.show()
-        '''
-
-       
-
+        
 '''
   def directory_expansion(self):
       
@@ -169,13 +189,6 @@ class Bucket:
    self.ld=ld
    self.key=key
    
- def show(self):
-        '''
-        Print the buckets's tuples.
-        '''
-        for item in self.bucket:
-          print(item)
-        #print('Values', self.bucket)
         
    
   
