@@ -296,8 +296,15 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'not column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
-                
+                'value[<,<=,==,>=,>]column' or
+
+                'column[<,<=,==,>=,>]value and/or column[<,<=,==,>=,>]value and/or... ' or
+                'column[<,<=,==,>=,>]value and/or not column[<,<=,==,>=,>]value and/or... ' or
+                'not column[<,<=,==,>=,>]value and/or column[<,<=,==,>=,>]value and/or... ' or
+                'not column[<,<=,==,>=,>]value and/or not column[<,<=,==,>=,>]value and/or ...' or
+
+                'column between value1 and value2' .
+                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
         set_column, set_value = set_args.replace(' ','').split('=')
@@ -319,7 +326,14 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'not column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+                'value[<,<=,==,>=,>]column' or
+
+                'column[<,<=,==,>=,>]value and/or column[<,<=,==,>=,>]value and/or... ' or
+                'column[<,<=,==,>=,>]value and/or not column[<,<=,==,>=,>]value and/or... ' or
+                'not column[<,<=,==,>=,>]value and/or column[<,<=,==,>=,>]value and/or... ' or
+                'not column[<,<=,==,>=,>]value and/or not column[<,<=,==,>=,>]value and/or ...' or
+
+                'column between value1 and value2' .
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
@@ -349,8 +363,18 @@ class Database:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'not column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+                'value[<,<=,==,>=,>]column' or
                 
+                'column[<,<=,==,>=,>]value and/or column[<,<=,==,>=,>]value and/or... ' or
+                'column[<,<=,==,>=,>]value and/or not column[<,<=,==,>=,>]value and/or... ' or
+                'not column[<,<=,==,>=,>]value and/or column[<,<=,==,>=,>]value and/or... ' or
+                'not column[<,<=,==,>=,>]value and/or not column[<,<=,==,>=,>]value and/or ...' or
+
+                'column between value1 and value2 or not column[<,<=,==,>=,>]value or ... ' or
+                'column between value1 and value2 or column[<,<=,==,>=,>]value or ... ' or
+                'column[<,<=,==,>=,>]value or column between value1 and value2 or ... ' or
+                'not column[<,<=,==,>=,>]value or column between value1 and value2 or ... ' .
+                 
                 Operators supported: (<,<=,==,>=,>)
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (True by default).
