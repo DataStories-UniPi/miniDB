@@ -61,7 +61,7 @@ class Hash:
         pointer = int(self.get_binary(remainder_lsb,self.global_depth)[-self.global_depth:],2)
         for record in self.directory[pointer].records:
             if key == record[0]:
-                return [record[1]]#return index
+                return record[1]#return index
         return -1
 
     def get_binary(self, key, depth):

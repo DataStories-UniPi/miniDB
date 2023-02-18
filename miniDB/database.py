@@ -11,7 +11,7 @@ sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/
 from miniDB import table
 sys.modules['table'] = table
 
-from extendiblehash import ExtendibleHashIndex
+from extendiblehash import Hash
 from joins import Inlj, Smj
 from btree import Btree
 from misc import split_condition
@@ -375,6 +375,7 @@ class Database:
         if self.is_locked(table_name):
             return
         #select correct method select_where depending on the number of conditions, their operators and the existance of indexes on their column
+        if len(condition_list) == 0:
             table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
         else:
             if self._has_index(table_name) and '!=' not in condition_list[0] and (conditions_columns[0]==self.tables[table_name].column_names[self.tables[table_name].pk_idx] or (self.tables[table_name].unique is not None and conditions_columns[0] in self.tables[table_name].unique)):
@@ -733,7 +734,7 @@ class Database:
             index_name: string. Name of the created index.
             column_name: string. Name of the column on which the index will be created.
         '''
-        ht = ExtendibleHashIndex(3) # 3 is the bucket size
+        ht = Hash(4) # 3 is the bucket size
 
         if column_name is None:
             column_name = self.tables[table_name].pk
