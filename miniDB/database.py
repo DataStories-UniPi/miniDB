@@ -101,7 +101,7 @@ class Database:
         self._update_meta_insert_stack()
 
 
-    def create_table(self, name, column_names, column_types, primary_key=None, load=None):
+    def create_table(self, name, column_names, column_types, primary_key=None, unique=None, load=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
 
@@ -113,7 +113,7 @@ class Database:
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
         # print('here -> ', column_names.split(','))
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)})
+        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, unique=unique, load=load)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
@@ -270,8 +270,10 @@ class Database:
         lock_ownership = self.lock_table(table_name, mode='x')
         insert_stack = self._get_insert_stack_for_table(table_name)
         try:
+#             print('ins', table_name)
             self.tables[table_name]._insert(row, insert_stack)
         except Exception as e:
+            print(e)
             logging.info(e)
             logging.info('ABORTED')
         self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
@@ -582,6 +584,7 @@ class Database:
         Updates the meta_length table.
         '''
         for table in self.tables.values():
+            #print(table._name)
             if table._name[:4]=='meta': #skip meta tables
                 continue
             if table._name not in self.tables['meta_length'].column_by_name('table_name'): # if new table, add record with 0 no. of rows
@@ -659,21 +662,43 @@ class Database:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
         '''
-        if self.tables[table_name].pk_idx is None: # if no primary key, no index
-            raise Exception('Cannot create index. Table has no primary key.')
+        
+        #ADDED
+        column_name = None
+        if '(' in table_name:
+            words = table_name.split('(')
+            table_name = words[0].strip()
+            column_name = words[1].split(')')[0].strip()
+#         print(table_name, column_name)
+        
+        if column_name == None:
+            if self.tables[table_name].pk_idx is None: # if no primary key, no index
+                raise Exception('Cannot create index. Table has no primary key.')
+        else:
+            if column_name != self.tables[table_name].pk:
+                if not hasattr(self.tables[table_name], 'unique'):
+                    raise Exception('Cannot create index. Column is not primary key or unique.')
+                if column_name not in self.tables[table_name].unique:
+                    raise Exception('Cannot create index. Column is not primary key or unique.')
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
             # currently only btree is supported. This can be changed by adding another if.
-            if index_type=='btree':
+#             print(index_type)
+            if index_type=='btree' or index_type == None:
                 logging.info('Creating Btree index.')
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
                 self.tables['meta_indexes']._insert([table_name, index_name])
                 # crate the actual index
-                self._construct_index(table_name, index_name)
+                if column_name == None:
+                    column_name = self.tables[table_name].pk
+                self._construct_index(table_name, index_name, column_name)
                 self.save_database()
+                print("Index created using BTree")
+            else:
+                print('HASH IS NOT YET IMPLEMENTED')
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
-    def _construct_index(self, table_name, index_name):
+    def _construct_index(self, table_name, index_name, column_name):
         '''
         Construct a btree on a table and save.
 
@@ -684,7 +709,7 @@ class Database:
         bt = Btree(3) # 3 is arbitrary
 
         # for each record in the primary key of the table, insert its value and index to the btree
-        for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
+        for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
             if key is None:
                 continue
             bt.insert(key, idx)
