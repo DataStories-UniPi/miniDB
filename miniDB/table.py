@@ -354,6 +354,9 @@ class Table:
             if op == 'not ':
                 oppose = True
                 condition, op = check_logops(condition)
+                if op == 'between ':
+                    condition = condition[0] + '>= ' + condition[1][0] + 'and ' + condition[0] + '<= ' + condition[1][1]
+                    condition, op = check_logops(condition)
                 op = oppose_op(op)
 
             '''
