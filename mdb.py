@@ -120,6 +120,18 @@ def create_query_plan(query, keywords, action):
             dic['force'] = True
         else:
             dic['force'] = False
+            
+    if action == 'create index' :
+       split_con = dic[kw_in_query[1]].split()
+       split_con.remove("(")
+       split_con.remove("(")
+       dic['create_index'] = dic[kw_in_query[0]]
+       dic['on'] = split_con[0]
+       dic['column'] = split_con[1]
+       dic['using'] = dic[kw_in_query[2]]
+
+    
+               
 
     return dic
 
@@ -175,7 +187,7 @@ def interpret(query):
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
-                     'create index': ['create index', 'on', 'using'],
+                     'create index': ['create index', 'on', 'column', 'using'], #prosthiki column gia na dexetai san orisma kai tin stili
                      'drop index': ['drop index'],
                      'create view' : ['create view', 'as']
                      }
@@ -184,6 +196,7 @@ def interpret(query):
         query+=';'
     
     query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip()
+    
 
     for kw in kw_per_action.keys():
         if query.startswith(kw):

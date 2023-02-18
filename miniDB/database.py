@@ -351,6 +351,18 @@ class Database:
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
             distinct: boolean. If True, the resulting table will contain only unique rows.
         '''
+        if condition is not None:
+                
+            if "between" in condition.split() or "BETWEEN" in condition.split():
+                condition_column = condition.split("")[0]
+            elif "or" in condition.split() or "OR" in condition.split():
+                condition_column = condition.split("")[0]
+            elif "and" in condition.split() or "AND" in condition.split():
+                condition_column = condition.split("")[0]
+            elif "not" in condition.split() or "NOT" in condition.split():
+                condition_column = condition.split("")[0]
+            else:
+                condition_column = condition.split("")[0]
 
         # print(table_name)
         self.load_database()
@@ -369,7 +381,9 @@ class Database:
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+            try:
+              table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+            except: table = self.tables[table_name]._select_where_with_hash(columns, bt, condition, distinct, order_by, desc, limit) #se periptwsei pou den doulepsei to btree yparxei to hash
         else:
             table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
         # self.unlock_table(table_name)
@@ -666,9 +680,14 @@ class Database:
             if index_type=='btree':
                 logging.info('Creating Btree index.')
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
-                self.tables['meta_indexes']._insert([table_name, index_name])
+                self.tables['meta_indexes']._insert([table_name, index_name, column_name])
                 # crate the actual index
-                self._construct_index(table_name, index_name)
+                self._construct_index_btree(table_name, index_name,column_name)
+                self.save_database()
+            elif index_type == 'hash':
+                logging.info('Creating Hash index.')
+                self.tables['meta_indexes']._insert([table_name, index_name,column_name])
+                self._construct_index_hash(table_name, index_name, column_name)
                 self.save_database()
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
@@ -690,6 +709,41 @@ class Database:
             bt.insert(key, idx)
         # save the btree
         self._save_index(index_name, bt)
+
+        return
+
+    def _construct_index_hash(self, table_name, index_name, column_name):
+        row_len = len(self.tables[table_name].data)
+        hm = {}
+        hm[0] = {}
+        hm[0][0] = [str(row_len)] 
+        for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
+                if key is None:
+                    continue
+
+                hash_sum = 0
+                for letter in key:
+                    hash_sum += ord(letter)
+
+                hash_index = hash_sum % row_len
+
+                sub_hash_index = hash_index
+                if not(hash_index in hm):
+                    hm[hash_index] = {}
+                else:
+                    while True:
+                        if not(sub_hash_index in hm[hash_index]):
+                            break
+
+                        if (sub_hash_index == row_len):
+                            sub_hash_index = 0
+                        else:
+                            sub_hash_index += 1
+
+                hm[hash_index][sub_hash_index] = [idx, key]
+
+        self._save_index(index_name, hm)
+
 
 
     def _has_index(self, table_name):

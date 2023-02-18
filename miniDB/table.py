@@ -6,7 +6,7 @@ import sys
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
-from misc import get_op, split_condition
+from misc import get_op, split_condition,  reverse_op
 
 
 class Table:
@@ -223,6 +223,70 @@ class Table:
             desc: boolean. If True, order_by will return results in descending order (False by default).
             limit: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
+        if condition is not None:
+                if "not" in condition.split() or "NOT" in condition.split():
+                    conditlist = condiiton.split("not")
+                    conditlist = condition_list[0].split("NOT")
+                    column_name,operator,value = self._parse_condition(condition_list[1])
+                    column = self.column_by_name(column_name)
+                    #Antistrefoume to operator
+                    op = reverse_op(operator)
+                    rows = [i for i,j in enumerate(column) if get_op(op,j,value)]
+                elif "between" in condition.split() or "BETWEEN" in condition.split():
+                    #Apothikeusi tou condition.split se metavliti
+                    conspl=condition.split()
+                    if (conspl[3] == "and"):
+
+                       left = conspl[2] #H prwti timi pros sygkrisi 
+                       right = conspl[4] #H deyteri timi pros sygkrisi
+                       column_name = conspl[0]
+                       rows = []
+
+                       if (left.isdigit() && right.isdigit()):
+                        #Stin periptwsi pou i sygkrisi einai metaxy arithmwn 
+                           for i,j in enumerate(column):
+                               if int(i) >= left && int(j) <= int(right):
+                                #Prosthetoume ston pinaka tis times gia tis opoies isxuei i synthiki
+                                rows.append(i)
+                       else:
+                        #Metavlites typoy string den mporoume na tis sygkrinoume
+                                    print("To between operator den leitourgei gia strings")
+                                    exit()
+		            
+                    else:
+                         print("Leipei to and endiamesa apo tous arithmous")
+                         exit()			        
+			           			           
+                elif "and" in condition.split() or "AND" in condition.split():
+                     condlist = condiiton.split("and")
+                     condlist = condition_list[0].split("AND")
+                     rows2 = []
+                     for c in condition_list:
+                         #To trexoume gia kathe synthiki
+                         column_name,op,value = self._parse_condition(c)
+                         column = self.column_by_name(column_name)
+                         rows2.append([i for i,j in enumerate(column) if get_op(op,j,value)])
+                     rows = set(rows2[0].intersection(*rows2))
+                
+                elif "or" in condition.split() or "OR" in condition.split():
+                      conditlist = condiiton.split("or")
+                      conditlist = condition_list[0].split("OR")
+                      rows2=[]
+                      for c in condition_list:
+                          #To trexoume gia kathe synthiki
+                          column_name,op,value=self._parse_condition(c)
+                          column = self.column_by_name(column_name)
+                          rows2.append([i for i,j in enumerate(column) if get_op(op,j,value)])
+                      rows = []
+                      '''
+                      vazoume tis times tis seiras se monodiastato pinaka
+                      '''
+                      for i in rows2:
+                            for j in i:
+                                if not(j in rows):#gia na apofygoume thn dhmiourgia twn duplicate
+                                   rows.append(j)
+
+                     
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
@@ -323,6 +387,64 @@ class Table:
             s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
 
         return s_table
+    
+    def _select_where_with_hash(self, return_columns, hm, condition, distinct=False, order_by=None, desc=True, limit=None):
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
+        else:
+            return_cols = [self.column_names.index(colname) for colname in return_columns]
+
+        column_name, operator, value = self._parse_condition(condition)
+
+        if column_name != self.column_names[self.pk_idx]:
+            print('Column is not PK. Aborting')
+
+        rows = []
+        if (operator == '<' or operator == '>'):
+            column = self.column_by_name(column_name)
+   
+
+            opsseq = 0
+            for ind, x in enumerate(column):
+                opsseq+=1
+                if get_op(operator, x, value):
+                    rows.append(ind)
+
+        else:
+        
+            hash_sum = 0
+            for letter in value:
+                hash_sum += ord(letter)
+
+            hash_index = hash_sum % int(hm[0][0][0])
+
+           
+            for item in hm[hash_index]:
+                if hm[hash_index][item][0] == hm[0][0][0]:
+                    continue
+
+                if hm[hash_index][item][1] == value:
+                    rows.append(hm[hash_index][item][0])
+
+        try:
+            k = int(limit)
+        except TypeError:
+            k = None
+  
+        rows = rows[:k]
+        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+        dict['column_names'] = [self.column_names[i] for i in return_cols]
+        dict['column_types']   = [self.column_types[i] for i in return_cols]
+        s_table = Table(load=dict)
+        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+        if order_by:
+            s_table.order_by(order_by, desc)
+
+        if isinstance(limit,str):
+            s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
+
+        return s_table
+
 
     def order_by(self, column_name, desc=True):
         '''
