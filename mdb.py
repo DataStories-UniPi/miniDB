@@ -105,7 +105,20 @@ def create_query_plan(query, keywords, action):
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
-    
+
+        '''
+        The "create table" action gets updated in order to  
+        support unique columns
+        '''
+
+        if 'unique' in args:
+            dic['unique_columns'] = []
+            for idx, arg in enumerate(arglist):
+                if arg == 'unique' or arg == 'unique,':
+                    dic['unique_columns'].append(arglist[idx - 2])
+        else:
+            dic['unique_columns'] = None
+
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
@@ -121,9 +134,19 @@ def create_query_plan(query, keywords, action):
         else:
             dic['force'] = False
 
+    '''
+    The "create index" action gets updated to determine 
+    the column which is set to be indexed. This column
+    should either be of type primary key or unique.
+    '''
+    if action == 'create index':
+        if '(' in dic['on'] and ')' in dic['on']:
+            dic['on'] = dic['on'].replace(' ', '')
+            left_paren = dic['on'].find('(')
+            right_paren = dic['on'].find(')')
+            dic['column'] = dic['on'][left_paren + 1:right_paren]
+            dic['on'] = dic['on'][:dic['on'].index("(")]
     return dic
-
-
 
 def evaluate_from_clause(dic):
     '''
