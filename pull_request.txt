@@ -1,0 +1,230 @@
+Όνομα: Βαγιάνης Παναγιώτης, Τσιανάκα Κωνσταντίνα, Παπαθυμιόπουλος Μιχαήλ
+ΑΜ: Π18014, Π18158, Π18120
+
+--------------------------------------------------------------------------------
+ISSUE 1
+#1 - Enrich WHERE statement by supporting (a) NOT and BETWEEN operators
+(5/50) and (b) AND and OR operators (10/50)
+
+Τα κάνει όλα, ακόμα και με συνδυασμό αυτών, με ή χωρίς κενά!
+Για παράδειγμα θα ακολουθήσει screenshot των:
+select * from student
+select * from student where not (tot_cred < 100)
+select * from student where not(tot_cred<100)
+select * from student where tot_cred between 30 and 50
+select * from student where tot_cred > 50 and dept_name = physics
+select * from student where tot_cred > 50 or dept_name = physics
+select * from student where tot_cred > 50 and not (name = peltier)
+select * from student where not(tot_cred > 50) and not (name = peltier)
+select * from student where not(tot_cred > 50) or not (name = peltier)
+select * from student where not(not(tot_cred > 50))
+
+SCREENSHOT:
+DB=smdb python3.9 mdb.py
+
+             _         _  _____   ____  
+            (_)       (_)|  __ \ |  _ \     
+  _ __ ___   _  _ __   _ | |  | || |_) |
+ | '_ ` _ \ | || '_ \ | || |  | ||  _ < 
+ | | | | | || || | | || || |__| || |_) |
+ |_| |_| |_||_||_| |_||_||_____/ |____/   2022                              
+
+(smdb)> select * from student
+  id (str) #PK#  name (str)    dept_name (str)      tot_cred (int)
+---------------  ------------  -----------------  ----------------
+          00128  zhang         comp. sci.                      102
+          12345  shankar       comp. sci.                       32
+          19991  brandt        history                          80
+          23121  chavez        finance                         110
+          44553  peltier       physics                          56
+          45678  levy          physics                          46
+          54321  williams      comp. sci.                       54
+          55739  sanchez       music                            38
+          70557  snow          physics                           0
+          76543  brown         comp. sci.                       58
+          76653  aoi           elec. eng.                       60
+          98765  bourikas      elec. eng.                       98
+          98988  tanaka        biology                         120
+
+(smdb)> select * from student where not (tot_cred < 100)
+  id (str) #PK#  name (str)    dept_name (str)      tot_cred (int)
+---------------  ------------  -----------------  ----------------
+          00128  zhang         comp. sci.                      102
+          23121  chavez        finance                         110
+          98988  tanaka        biology                         120
+
+(smdb)> select * from student where not(tot_cred<100)
+  id (str) #PK#  name (str)    dept_name (str)      tot_cred (int)
+---------------  ------------  -----------------  ----------------
+          00128  zhang         comp. sci.                      102
+          23121  chavez        finance                         110
+          98988  tanaka        biology                         120
+
+(smdb)> select * from student where tot_cred between 30 and 50
+  id (str) #PK#  name (str)    dept_name (str)      tot_cred (int)
+---------------  ------------  -----------------  ----------------
+          12345  shankar       comp. sci.                       32
+          45678  levy          physics                          46
+          55739  sanchez       music                            38
+
+(smdb)> select * from student where tot_cred > 50 and dept_name = physics
+  id (str) #PK#  name (str)    dept_name (str)      tot_cred (int)
+---------------  ------------  -----------------  ----------------
+          44553  peltier       physics                          56
+
+(smdb)> select * from student where tot_cred > 50 or dept_name = physics
+  id (str) #PK#  name (str)    dept_name (str)      tot_cred (int)
+---------------  ------------  -----------------  ----------------
+          00128  zhang         comp. sci.                      102
+          19991  brandt        history                          80
+          23121  chavez        finance                         110
+          44553  peltier       physics                          56
+          45678  levy          physics                          46
+          54321  williams      comp. sci.                       54
+          70557  snow          physics                           0
+          76543  brown         comp. sci.                       58
+          76653  aoi           elec. eng.                       60
+          98765  bourikas      elec. eng.                       98
+          98988  tanaka        biology                         120
+
+(smdb)> select * from student where tot_cred > 50 and not (name = peltier)
+  id (str) #PK#  name (str)    dept_name (str)      tot_cred (int)
+---------------  ------------  -----------------  ----------------
+          00128  zhang         comp. sci.                      102
+          19991  brandt        history                          80
+          23121  chavez        finance                         110
+          54321  williams      comp. sci.                       54
+          76543  brown         comp. sci.                       58
+          76653  aoi           elec. eng.                       60
+          98765  bourikas      elec. eng.                       98
+          98988  tanaka        biology                         120
+
+(smdb)> select * from student where not(tot_cred > 50) and not (name = peltier)
+  id (str) #PK#  name (str)    dept_name (str)      tot_cred (int)
+---------------  ------------  -----------------  ----------------
+          12345  shankar       comp. sci.                       32
+          45678  levy          physics                          46
+          55739  sanchez       music                            38
+          70557  snow          physics                           0
+
+(smdb)> select * from student where not(tot_cred > 50) or not (name = peltier)
+  id (str) #PK#  name (str)    dept_name (str)      tot_cred (int)
+---------------  ------------  -----------------  ----------------
+          00128  zhang         comp. sci.                      102
+          12345  shankar       comp. sci.                       32
+          19991  brandt        history                          80
+          23121  chavez        finance                         110
+          45678  levy          physics                          46
+          54321  williams      comp. sci.                       54
+          55739  sanchez       music                            38
+          70557  snow          physics                           0
+          76543  brown         comp. sci.                       58
+          76653  aoi           elec. eng.                       60
+          98765  bourikas      elec. eng.                       98
+          98988  tanaka        biology                         120
+
+(smdb)> select * from student where not(not(tot_cred > 50))
+tot_cred > 50
+tot_cred > 50
+  id (str) #PK#  name (str)    dept_name (str)      tot_cred (int)
+---------------  ------------  -----------------  ----------------
+          00128  zhang         comp. sci.                      102
+          19991  brandt        history                          80
+          23121  chavez        finance                         110
+          44553  peltier       physics                          56
+          54321  williams      comp. sci.                       54
+          76543  brown         comp. sci.                       58
+          76653  aoi           elec. eng.                       60
+          98765  bourikas      elec. eng.                       98
+          98988  tanaka        biology                         120
+
+(smdb)>
+--------------------------------------------------------------------------------
+
+ISSUE 2
+#2 - Enrich indexing functionality by supporting (a) BTree index over unique
+(non-PK) columns (10/50) and (b) Hash index over PK or unique columns (10/50)
+
+Το BTree για unique στήλες έχει υλοποιηθεί - το HASH μόνο ένα μήνυμα. 
+Το UNIQUE παίζει σωστά!
+Όταν κάνουμε εισαγωγή σε πίνακα unique τιμή δεν γίνεται. Όταν κάνουμε select φαίνεται ποια πεδία είναι UNIQUE.
+
+Στο παρακάτω παράδειγμα το 3ο insert αποτυγχάνει γιατί η 2η στήλη είναι unique.
+create table test(a str primary key, b int unique, c int)
+insert into test values(1, 1, 1)
+insert into test values(2, 2, 1)
+insert into test values(3, 2, 1) 
+select * from test
+
+ DB=smdb python3.9 mdb.py
+
+             _         _  _____   ____  
+            (_)       (_)|  __ \ |  _ \     
+  _ __ ___   _  _ __   _ | |  | || |_) |
+ | '_ ` _ \ | || '_ \ | || |  | ||  _ < 
+ | | | | | || || | | || || |__| || |_) |
+ |_| |_| |_||_||_| |_||_||_____/ |____/   2022                              
+
+(smdb)> create table test(a str primary key, b int unique, c int)
+Created table "test".
+(smdb)> insert into test values(1, 1, 1)
+(smdb)> insert into test values(2, 2, 1)
+(smdb)> insert into test values(3, 2, 1)
+## ERROR -> Value 2 already exists in unique column.
+(smdb)> select * from test
+  a (str) #PK#    b (int) #UNIQUE#    c (int)
+--------------  ------------------  ---------
+             1                   1          1
+             2                   2          1
+
+(smdb)>
+
+Δημιουργία του INDEX, παραδείγματα:
+create index indexPK on test
+create index indexPK2 on test(a)
+create index indexUNIQUE on test(b)
+create index indexUNIQUE on test(c)
+create index indexUNIQUE2 on test(b) using hash
+
+DB=smdb python3.9 mdb.py
+
+             _         _  _____   ____  
+            (_)       (_)|  __ \ |  _ \     
+  _ __ ___   _  _ __   _ | |  | || |_) |
+ | '_ ` _ \ | || '_ \ | || |  | ||  _ < 
+ | | | | | || || | | || || |__| || |_) |
+ |_| |_| |_||_||_| |_||_||_____/ |____/   2022                              
+
+(smdb)> create index indexPK on test
+Index created using BTree
+(smdb)> create index indexPK2 on test(a)
+Index created using BTree
+(smdb)> create index indexUNIQUE on test(b)
+Index created using BTree
+(smdb)> create index indexUNIQUE on test(c)
+Traceback (most recent call last):
+  File "/home/dk/workspace/LiClipse Workspace/miniDB/mdb.py", line 308, in <module>
+    result = execute_dic(dic)
+  File "/home/dk/workspace/LiClipse Workspace/miniDB/mdb.py", line 217, in execute_dic
+    return getattr(db, action)(*dic.values())
+  File "/home/dk/workspace/LiClipse Workspace/miniDB/miniDB/database.py", line 682, in create_index
+    raise Exception('Cannot create index. Column is not primary key or unique.')
+Exception: Cannot create index. Column is not primary key or unique.
+
+(smdb)> create index indexUNIQUE2 on test(b) using hash
+HASH IS NOT YET IMPLEMENTED
+(smdb)>
+
+Στο παραπάνω παράδειγμα φαίνεται ότι μπορούμε να δημουργήσουμε index σε unique 
+στήλες, εδώ τη b.
+Η δημιουργία του index για τη στήλη c που δεν είναι ούτε primary, ούτε unique, 
+απέτυχε.
+--------------------------------------------------------------------------------
+
+ #3 - Implement miniDB’s query optimiser by (a) building equivalent query
+plans based on respective RA expressions (10/50) and (b) choosing the optimal
+query execution plan using a cost-based evaluation (20/50)
+
+Δεν υλοποιήθηκε :(
+
+
