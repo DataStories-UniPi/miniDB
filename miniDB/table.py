@@ -26,7 +26,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, unique=None, load=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -69,6 +69,9 @@ class Table:
 
             self.pk = primary_key
             # self._update()
+            
+            #ADDED
+            self.unique = unique
 
     # if any of the name, columns_names and column types are none. return an empty table object
 
@@ -112,7 +115,7 @@ class Table:
         '''
         if len(row)!=len(self.column_names):
             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
-
+#         print(row)
         for i in range(len(row)):
             # for each value, cast and replace it in row.
             try:
@@ -129,6 +132,13 @@ class Table:
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
             elif i==self.pk_idx and row[i] is None:
                 raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
+            
+#             print(self._name, row[i], self.column_names[i])
+            if hasattr(self,  'unique'):
+                if self.unique and self.column_names[i] in self.unique:
+                    for d in self.data:
+                        if d[i] == row[i]:
+                            raise ValueError(f'## ERROR -> Value {row[i]} already exists in unique column.')
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
@@ -230,12 +240,30 @@ class Table:
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
+        #ADDED
+        right_condition = None
+
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
+#             print('c',condition)
             column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            
+            #ADDED
+            if operator == 'and' or operator == 'AND':
+                right_condition = value
+                column_name, operator, value = self._parse_condition(column_name)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            if operator == 'or' or operator == 'OR':
+                column_name2, operator2, value2 = self._parse_condition(value)
+                column2 = self.column_by_name(column_name2)
+                column_name, operator, value = self._parse_condition(column_name)                    
+                column = self.column_by_name(column_name)
+                rows = list(set([ind for ind, x in enumerate(column) if get_op(operator, x, value)] + [ind for ind, x in enumerate(column2) if get_op(operator2, x, value2)])) 
+            else:
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -246,6 +274,11 @@ class Table:
         # only return some columns
         dict['column_names'] = [self.column_names[i] for i in return_cols]
         dict['column_types']   = [self.column_types[i] for i in return_cols]
+        
+#         print('sw',self._name)
+        #ADDED
+        if hasattr(self,  'unique'):
+            dict['unique'] = self.unique
 
         s_table = Table(load=dict)
 
@@ -266,7 +299,11 @@ class Table:
         #     s_table.data = s_table.data[:k]
         if isinstance(limit,str):
             s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
-
+        
+        #ADDED
+        if right_condition:
+            return s_table._select_where(return_columns, right_condition, distinct, order_by, desc, limit)
+            
         return s_table
 
 
@@ -533,6 +570,13 @@ class Table:
         if self.pk_idx is not None:
             # table has a primary key, add PK next to the appropriate column
             headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
+            
+        #ADDED
+        if hasattr(self,  'unique'):
+            for unique_col in self.unique:
+                unique_col_index = self.column_names.index(unique_col)
+                headers[unique_col_index] = headers[unique_col_index]+' #UNIQUE#'
+        
         # detect the rows that are no tfull of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]
@@ -558,8 +602,18 @@ class Table:
 
         # cast the value with the specified column's type and return the column name, the operator and the casted value
         left, op, right = split_condition(condition)
+#         print(left, right)
         if left not in self.column_names:
-            raise ValueError(f'Condition is not valid (cant find column name)')
+            
+            #ADDED
+            if op == "and" or op == "AND":
+                return left, op, right
+            if op == "or" or op == "OR":
+                return left, op, right
+            else:
+                
+                raise ValueError(f'Condition is not valid (cant find column name)')
+            
         coltype = self.column_types[self.column_names.index(left)]
 
         return left, op, coltype(right)
