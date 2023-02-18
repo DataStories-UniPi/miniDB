@@ -598,7 +598,7 @@ class Database:
         Updates the meta_length table.
         '''
         for table in self.tables.values():
-            if table._name[:4]=='meta': #skip meta tables
+            if table._name[:4] == 'meta': #skip meta tables
                 continue
             if table._name not in self.tables['meta_length'].column_by_name('table_name'): # if new table, add record with 0 no. of rows
                 self.tables['meta_length']._insert([table._name, 0])
