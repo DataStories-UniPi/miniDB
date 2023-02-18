@@ -6,7 +6,7 @@ import sys
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
-from misc import get_op, split_condition
+from misc import get_op, split_condition, logical_operator_on_rows
 
 
 class Table:
@@ -274,11 +274,26 @@ class Table:
         return s_table
 
     def _find_rows(self, condition, supported_btrees):
-        """
-        TODO:
-        1. add comments to methods
-        2. correct the priority of logical operations
-        """
+        '''
+        Find and return all the rows where condition is met.
+
+        Args:
+            condition: string or dict. 
+                String is using the following format:
+                    'column[<,<=,==,>=,>]value' or
+                    'value[<,<=,==,>=,>]column'.
+                Dict is using the following format:
+                    {'left': 'column[<,<=,==,>=,>]value',
+                     'operator': '[and,or]',
+                     'right': 'column[<,<=,==,>=,>]value',
+                    }
+            supported_btrees: dict.
+                Dict is using the following format:
+                {
+                    'column': btree object,
+                }   
+        '''
+        
         if isinstance(condition, str):
             final_rows = self._in_depth(condition, supported_btrees)
         elif isinstance(condition, dict):
@@ -291,19 +306,31 @@ class Table:
                 left_rows = None
             right_rows = self._in_depth(right_part, supported_btrees)
 
-            if(operator == 'and'):
-                final_rows = list(set(left_rows).intersection(right_rows))
-            elif(operator == 'or'):
-                final_rows = list(set(left_rows).union(set(right_rows)))
-            elif(operator == 'not'):
-                final_rows = [i for i in range(len(self.data)) if i not in right_rows]
-
-            else:
-                raise Exception('Not a valid logical operator.')
+            final_rows = logical_operator_on_rows(rows_len=len(self.data), left_rows=left_rows, operator=operator, right_rows=right_rows)
         
         return final_rows
 
     def _in_depth(self, condition, supported_btrees):
+        '''
+        This method is used for recursion for the nested dictionaries.
+
+        Args:
+            condition: string or dict. 
+                String is using the following format:
+                    'column[<,<=,==,>=,>]value' or
+                    'value[<,<=,==,>=,>]column'.
+                Dict is using the following format:
+                    {'left': 'column[<,<=,==,>=,>]value',
+                     'operator': '[and,or]',
+                     'right': 'column[<,<=,==,>=,>]value',
+                    }
+            supported_btrees: dict.
+                Dict is using the following format:
+                {
+                    'column': btree object,
+                }   
+        '''
+
         if isinstance(condition,str):
             column_name, operator, value = self._parse_condition(condition)
             if supported_btrees is not None and column_name in supported_btrees:
@@ -324,17 +351,8 @@ class Table:
             else:
                 left_rows = None
             right_rows = self._in_depth(right_part, supported_btrees)
-
-            if(operator == 'and'):
-                rows = list(set(left_rows).intersection(right_rows))
-            elif(operator == 'or'):
-                rows = list(set(left_rows).union(set(right_rows)))
-            elif(operator == 'not'):
-                rows = [i for i in range(len(self.data)) if i not in right_rows]
-
-
-            else:
-                raise Exception('Not a valid logical operator.')
+            
+            rows = logical_operator_on_rows(rows_len=len(self.data), left_rows=left_rows, operator=operator, right_rows=right_rows)
 
         else:
             raise Exception('Not a valid where type.')
@@ -342,6 +360,16 @@ class Table:
         return rows
 
     def _find_btree_rows(self, bt, column_name, operator, value):
+        '''
+        This method is used for finding row indexes using a btree.
+
+        Args:
+            bt: btree object.
+            column_name: string.
+            operator: string.
+            value: string or int.
+        '''
+
         column = self.column_by_name(column_name)
 
         # sequential
@@ -357,7 +385,7 @@ class Table:
 
         return rows
 
-
+    """
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
 
         # if * return all columns, else find the column indexes for the columns specified
@@ -412,6 +440,7 @@ class Table:
 
         return s_table
 
+    """
     def order_by(self, column_name, desc=True):
         '''
         Order table based on column.

@@ -49,3 +49,18 @@ def reverse_op(op):
         '<=' : '>=',
         '=' : '='
     }.get(op)
+
+def logical_operator_on_rows(rows_len, left_rows, operator, right_rows):
+    '''
+    Return the rows after the logical operation
+    '''
+
+    if(operator == 'and'):
+        row_idxs = list(set(left_rows).intersection(right_rows))
+    elif(operator == 'or'):
+        row_idxs = list(set(left_rows).union(set(right_rows)))
+    elif(operator == 'not'):
+        row_idxs = [i for i in range(rows_len) if i not in right_rows]
+    else:
+        raise Exception('Not a valid logical operator.')
+    return row_idxs
