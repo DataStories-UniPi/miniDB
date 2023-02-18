@@ -726,7 +726,8 @@ class Database:
         if column_name is None: # check if the table has any index.
             return table_name in self.tables['meta_indexes'].column_by_name('table_name')
         # else check if the specified column is indexed.
-        return table_name in self.tables['meta_indexes'].column_by_name('table_name') and column_name in self.tables['meta_indexes'].column_by_name('indexed_column')
+        return [table_name, column_name] in [[row[0], row[1]] for row in self.tables['meta_indexes'].data]
+        #return table_name in self.tables['meta_indexes'].column_by_name('table_name') and column_name in self.tables['meta_indexes'].column_by_name('indexed_column')
 
     def _save_index(self, index_name, index):
         '''
