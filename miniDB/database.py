@@ -664,7 +664,7 @@ class Database:
         self.tables['meta_insert_stack']._update_rows(new_stack, 'indexes', f'table_name={table_name}')
 
     # indexes
-    def create_index(self, index_name, table_name, column_name = None, index_type = 'btree'):
+    def create_index(self, index_name, table_name,  index_type = 'btree',column_name = None):
         '''
         Creates an index on a specified table with a given name.
         Important: An index can only be created on a primary key (the user does not specify the column).
@@ -673,6 +673,7 @@ class Database:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
         '''
+        table_name=table_name.strip()
         if table_name not in self.tables:
             raise Exception('Table does not exist')
         if self.tables[table_name].unique[0] not in self.tables[table_name].column_names:

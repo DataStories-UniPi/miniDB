@@ -193,7 +193,7 @@ def interpret(query):
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
-                     'create index': ['create index', 'on','unique', 'using'],
+                     'create index': ['create index', 'on', 'using'],
                      'drop index': ['drop index'],
                      'create view' : ['create view', 'as']
                      }
