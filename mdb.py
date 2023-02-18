@@ -121,7 +121,18 @@ def create_query_plan(query, keywords, action):
         else:
             dic['force'] = False
 
+    if action=='create index':
+        split_con=dic[kw_in_query[1]].split() 
+        split_con.remove("(")
+        split_con.remove(")")
+
+        dic['create index'] = dic[kw_in_query[0]]
+        dic['on'] = split_con[0]
+        dic['column'] = split_con[1]
+        dic['using'] = dic[kw_in_query[2]]
+
     return dic
+
 
 
 
@@ -175,7 +186,7 @@ def interpret(query):
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
-                     'create index': ['create index', 'on', 'using'],
+                     'create index': ['create index', 'on', 'column', 'using'],
                      'drop index': ['drop index'],
                      'create view' : ['create view', 'as']
                      }
@@ -296,3 +307,149 @@ if __name__ == "__main__":
                     result.show()
         except Exception:
             print(traceback.format_exc())
+
+# E1 ⊲⊳θ E2 = E2 ⊲⊳θ E1  and #σθ1∧θ2(E) = σθ2(σθ1(E))
+def create_query_plan(query, keywords, action):  
+    '''
+    Given a query, the set of keywords that we expect to pe present and the overall action, return the query plan for this query.
+    This can and will be used recursively
+    '''
+
+    dic = {val: None for val in keywords if val!=';'}
+
+    ql = [val for val in query.split(' ') if val !='']
+
+    kw_in_query = []
+    kw_positions = []
+    i=0
+    while i<len(ql):
+        if in_paren(ql, i): 
+            i+=1
+            continue
+        if ql[i] in keywords:
+            kw_in_query.append(ql[i])
+            kw_positions.append(i)
+
+        elif i!=len(ql)-1 and f'{ql[i]} {ql[i+1]}' in keywords:
+            kw_in_query.append(f'{ql[i]} {ql[i+1]}')
+            ql[i] = ql[i]+' '+ql[i+1]
+            ql.pop(i+1)
+            kw_positions.append(i)
+        i+=1
+
+
+    for i in range(len(kw_in_query)-1):
+        dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
+
+
+
+    if action=='select':
+        dic = evaluate_from_clause2(dic) 
+
+        
+        if "and" in dic[kw_in_query[2]]:    
+            split_con=dic[kw_in_query[2]].split() 
+            split_con.remove("(")
+            split_con.remove(")")
+            split_con.remove("(")
+            split_con.remove(")")
+
+            query_s1 = ''.join(split_con[0]) 
+            query_s2 = ''.join(split_con[2])    
+            query_s1_E= interpret("select" + dic[kw_in_query[0]] + "from" + dic[kw_in_query[1]] + "where" + query_s1 ) # execute s1(E)
+
+            query_se_e= interpret("select" + dic[kw_in_query[0]] + "from" + query_s1_E + "where" +  query_s2 ) # final execution 
+
+            dic['where'] = query_se_e 
+
+        if dic['distinct'] is not None:
+            dic['select'] = dic['distinct']
+            dic['distinct'] = True
+
+        if dic['order by'] is not None:
+            dic['from'] = dic['from']
+            if 'desc' in dic['order by']:
+                dic['desc'] = True
+            else:
+                dic['desc'] = False
+            dic['order by'] = dic['order by'].removesuffix(' asc').removesuffix(' desc')
+
+        else:
+            dic['desc'] = None
+
+        return dic    
+
+# E1 ⊲⊳ θ(E2) = E2 ⊲⊳ θ(E1) and σθ1∧θ2(E) = σθ1(σθ2(E)) 
+def create_query_plan2(query, keywords, action): 
+    '''
+    Given a query, the set of keywords that we expect to pe present and the overall action, return the query plan for this query.
+    This can and will be used recursively
+    '''
+
+    dic = {val: None for val in keywords if val!=';'}
+
+    ql = [val for val in query.split(' ') if val !='']
+
+    kw_in_query = []
+    kw_positions = []
+    i=0
+    while i<len(ql):
+        if in_paren(ql, i): 
+            i+=1
+            continue
+        if ql[i] in keywords:
+            kw_in_query.append(ql[i])
+            kw_positions.append(i)
+
+        elif i!=len(ql)-1 and f'{ql[i]} {ql[i+1]}' in keywords:
+            kw_in_query.append(f'{ql[i]} {ql[i+1]}')
+            ql[i] = ql[i]+' '+ql[i+1]
+            ql.pop(i+1)
+            kw_positions.append(i)
+        i+=1
+
+
+    for i in range(len(kw_in_query)-1):
+        dic[kw_in_query[i]]= ' ' .join(ql[kw_positions[i]+1:kw_positions[i+1]])
+
+
+
+    if action=='select':
+        dic = evaluate_from_clause2(dic) 
+        
+        if "and" in dic[kw_in_query[2]]:    
+            split_con=dic[kw_in_query[2]].split() 
+            split_con.remove("(")
+            split_con.remove(")")
+            split_con.remove("(")
+            split_con.remove(")")
+
+            query_s1 = ''.join(split_con[0]) 
+            query_s2 = ''.join(split_con[2])    
+            # execute s2(E)
+            query_s2_E= interpret("select" + dic[kw_in_query[0]] + "from" + dic[kw_in_query[1]] + "where" + query_s2 ) 
+
+            # final execution
+            query_se_e= interpret("select" + dic[kw_in_query[0]] + "from" + query_s2_E + "where" +  query_s1 ) 
+
+            #the final outcome
+            dic['where'] = query_se_e 
+
+        if dic['distinct'] is not None:
+            dic['select'] = dic['distinct']
+            dic['distinct'] = True
+
+        if dic['order by'] is not None:
+            dic['from'] = dic['from']
+            if 'desc' in dic['order by']:
+                dic['desc'] = True
+            else:
+                dic['desc'] = False
+            dic['order by'] = dic['order by'].removesuffix(' asc').removesuffix(' desc')
+
+        else:
+            dic['desc'] = None
+
+        return dic    
+
+
