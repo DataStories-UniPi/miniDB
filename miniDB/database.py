@@ -82,9 +82,9 @@ class Database:
         path = f'dbdata/{self._name}_db'
         for file in os.listdir(path):
 
-            if file[-3:]!='pkl': # if used to load only pkl files
+            if file[-3:] != 'pkl': # if used to load only pkl files
                 continue
-            f = open(path+'/'+file, 'rb')
+            f = open(path + '/' + file, 'rb')
             tmp_dict = pickle.load(f)
             f.close()
             name = f'{file.split(".")[0]}'
@@ -171,7 +171,7 @@ class Database:
         '''
         file = open(filename, 'r')
 
-        first_line=True
+        first_line = True
         for line in file.readlines():
             if first_line:
                 colnames = line.strip('\n')
@@ -184,7 +184,7 @@ class Database:
             self.tables[table_name]._insert(line.strip('\n').split(','))
 
         if lock_ownership:
-             self.unlock_table(table_name)
+            self.unlock_table(table_name)
         self._update()
         self.save_database()
 
@@ -198,8 +198,8 @@ class Database:
             filename: string. Output CSV filename.
         '''
         res = ''
-        for row in [self.tables[table_name].column_names]+self.tables[table_name].data:
-            res+=str(row)[1:-1].replace('\'', '').replace('"','').replace(' ','')+'\n'
+        for row in [self.tables[table_name].column_names] + self.tables[table_name].data:
+            res += str(row)[1:-1].replace('\'', '').replace('"','').replace(' ','') + '\n'
 
         if filename is None:
             filename = f'{table_name}.csv'
@@ -327,7 +327,7 @@ class Database:
         self._update()
         self.save_database()
         # we need the save above to avoid loading the old database that still contains the deleted elements
-        if table_name[:4]!='meta':
+        if table_name[:4] != 'meta':
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
 
