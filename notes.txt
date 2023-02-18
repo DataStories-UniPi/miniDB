@@ -30,3 +30,7 @@
 	If the distinct variable is set to False, then the line of code has no effect and s_table.data is unchanged.
 
 <> Η update_table(), delete_from() και select() έχει where clause (database.py).
+
+<> ΟΤΑΝ ΟΛΟΚΛΗΡΩΘΕΙ Η ΛΕΙΤΟΥΡΓΙΑ ΟΠΟΥ ΥΠΟΣΤΗΡΙΖΕΤΑΙ ΤΟ B+ TREE ΚΑΙ ΣΕ UNIQUE ΠΕΔΙΑ, ΕΛΕΓΧΩ ΤΑ ΣΧΟΛΙΑ (DOCSTRINGS) ΤΗΣ ΣΥΝΑΡΤΗΣΗΣ find_rows_by_condition() ΣΤΟ ΑΡΧΕΙΟ table.py ΚΑΙ ΤΗΣ create_index() ΣΤΟ ΑΡΧΕΙΟ database.py.
+
+<> Check all references of meta_indexes and _has_index -> Database: join(470-475)

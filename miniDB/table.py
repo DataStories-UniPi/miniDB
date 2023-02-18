@@ -18,6 +18,7 @@ class Table:
         - column names (list of strings)
         - column types (list of functions like str/int etc)
         - primary (name of the primary key column)
+        - unique (list of strings (column names) that are unique)
 
     OR
 
@@ -26,7 +27,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, unique_columns=None, load=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -68,8 +69,14 @@ class Table:
                 self.pk_idx = None
 
             self.pk = primary_key
+            
+            # if unique columns are set, keep their names and indexes as attributes.
+            self.unique_columns = None
+            if unique_columns is not None:
+                self.unique_columns = unique_columns
+                self.unique_columns_idx = [self.column_names.index(col) for col in self.column_names if col in self.unique_columns]
+                
             # self._update()
-
     # if any of the name, columns_names and column types are none. return an empty table object
 
     def column_by_name(self, column_name):
@@ -122,12 +129,16 @@ class Table:
                 if row[i] != None:
                     print(exc)
 
-            # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
+            # if value is to be appended to the primary_key column, check that it doesn't already exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
-                raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
-            elif i==self.pk_idx and row[i] is None:
+                raise ValueError(f'## ERROR -> Value "{row[i]}" already exists in primary key column.')
+            elif i==self.pk_idx and (row[i] is None or row[i] == ''):
                 raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
 
+            # if value already exists in a unique column, raise an error (no duplicate values in unique columns).
+            if self.unique_columns is not None and i in self.unique_columns_idx and row[i] in self.column_by_name(self.column_names[i]):
+                raise ValueError(f'## ERROR -> Value "{row[i]}" already exists in unique column "{self.column_names[i]}".')
+            
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
             self.data[insert_stack[-1]] = row
@@ -143,14 +154,13 @@ class Table:
             set_value: string. The provided set value.
             set_column: string. The column to be altered.
             condition: string or dict (the condition is the returned dic['where'] from interpret method).
-                
                 Operatores supported: (<,<=,=,>=,>)
         '''
 
         # get the set column index
         set_column_idx = self.column_names.index(set_column)
-
         # set_columns_indx = [self.column_names.index(set_column_name) for set_column_name in set_column_names]
+        
         if condition is not None:
             indexes_to_upd = self.find_rows_by_condition(condition) # get the indexes of the rows to be updated
         else: # if condition is None, update all rows
@@ -171,8 +181,7 @@ class Table:
 
         Args:
             condition: string or dict (the condition is the returned dic['where'] from interpret method).
-                
-                Operatores supported: (<,<=,==,>=,>)
+                Operatores supported: (<,<=,=,>=,>)
         '''
         if condition is not None:
             indexes_to_del = self.find_rows_by_condition(condition) # get the indexes of the rows to be deleted
@@ -201,8 +210,7 @@ class Table:
         Args:
             return_columns: list. The columns to be returned.
             condition: string or dict (the condition is the returned dic['where'] from interpret method).
-                
-                Operatores supported: (<,<=,==,>=,>)
+                Operatores supported: (<,<=,=,>=,>)
             distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (False by default).
@@ -252,7 +260,7 @@ class Table:
 
         return s_table
 
-    def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
+    def _select_where_with_btree(self, return_columns, bt_dic, condition, distinct=False, order_by=None, desc=True, limit=None):
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
@@ -275,7 +283,7 @@ class Table:
                 rows1.append(ind)
         """
 
-        rows = self.find_rows_by_condition(condition, bt)
+        rows = self.find_rows_by_condition(condition, bt_dic) # get the rows where condition is met
 
         try:
             k = int(limit)
@@ -508,6 +516,12 @@ class Table:
         if self.pk_idx is not None:
             # table has a primary key, add PK next to the appropriate column
             headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
+            
+        if self.unique_columns is not None:
+            # table has unique columns, add UNIQUE next to the appropriate columns
+            for idx in self.unique_columns_idx:
+                headers[idx] = headers[idx]+' #UNIQUE#'
+                
         # detect the rows that are no tfull of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]
@@ -551,44 +565,45 @@ class Table:
 
         self.__dict__.update(tmp_dict.__dict__)
 
-    def find_rows_by_condition(self, condition, bt=None):
+    def find_rows_by_condition(self, condition, bt_dic=None):
         '''
         Traverse the dictionary and return the rows that satisfy the condition.
         Args:
-            condition: string or dict (the condition is the returned dic['where'] from interpret method).
-            bt: BTree. None if the table does not support btree index (works only for primary key).
+            condition: string or dictionary (the condition is the returned dic['where'] from interpret method).
+            bt_dic: dictionary. Dictionary structure: {indexed_column_1: btree_1 , indexed_column_2: btree_2, ...}.
+            None if the table does not support btree index (works for primary key and unique columns).
         '''
         if isinstance(condition, str):
             column_name, operator, value = self._parse_condition(condition)
-            if bt is not None and column_name == self.column_names[self.pk_idx]:
+            if bt_dic is not None and column_name in bt_dic.keys():
                 '''
-                If bt is not None and the column is the primary key, we use the btree to find the rows.
+                If bt_dic is not None and the column_name is in the bt_dic keys, we use the btree to find the rows.
                 '''
-                rows = bt.find(operator, value)
+                rows = bt_dic[column_name].find(operator, value)
             else:
                 '''
-                If bt is None or the column is not the primary key, we use the column to find the rows.
+                If bt_dic is None or the column_name is not in the bt_dic keys, we use the linear search to find the rows.
                 '''
                 column = self.column_by_name(column_name)
                 rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
             return rows
         elif 'and' in condition:
-            left = self.find_rows_by_condition(condition['and']['left'], bt)
-            right = self.find_rows_by_condition(condition['and']['right'], bt)
+            left = self.find_rows_by_condition(condition['and']['left'], bt_dic)
+            right = self.find_rows_by_condition(condition['and']['right'], bt_dic)
             intersection = set(left).intersection(set(right)) # get the intersection of left and right
             return list(intersection)
         elif 'or' in condition:
-            left = self.find_rows_by_condition(condition['or']['left'], bt)
-            right = self.find_rows_by_condition(condition['or']['right'], bt)
+            left = self.find_rows_by_condition(condition['or']['left'], bt_dic)
+            right = self.find_rows_by_condition(condition['or']['right'], bt_dic)
             union = set(left).union(set(right)) # get the union of left and right
             return list(union)
         elif 'not' in condition:
             all_rows = [i for i in range(len(self.data))] # get all rows
-            result = self.find_rows_by_condition(condition['not'], bt)
+            result = self.find_rows_by_condition(condition['not'], bt_dic)
             not_result = set(all_rows) - set(result) # get the difference of all rows and result
             return list(not_result)
         elif 'between' in condition:
             column_name = condition['column']
             condition['between']['and']['left'] = f"{column_name}>={condition['between']['and']['left']}" # build the condition for left side of between
             condition['between']['and']['right'] = f"{column_name}<={condition['between']['and']['right']}" # build the condition for right side of between
-            return self.find_rows_by_condition(condition['between'], bt)
+            return self.find_rows_by_condition(condition['between'], bt_dic)

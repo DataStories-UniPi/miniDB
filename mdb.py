@@ -5,13 +5,12 @@ import sys
 import readline
 import traceback
 import shutil
-import ast
+
 sys.path.append('miniDB')
 
 from miniDB.database import Database
 from miniDB.table import Table
 from miniDB.query_plans import multiple_query_plans
-from miniDB.evaluate_query_plans import evaluate_query_plans
 # art font is "big"
 art = '''
              _         _  _____   ____  
@@ -100,16 +99,26 @@ def create_query_plan(query, keywords, action):
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
-        arg_nopk = args.replace('primary key', '')[1:-1]
-        arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
+        temp_args = args.replace('primary key', '')[1:-1] # remove primary key and parentheses
+        temp_args = temp_args.replace('unique', '') # remove unique
+        arglist = [val.strip().split(' ') for val in temp_args.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+        
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
-    
+            
+        if 'unique' in args:
+            arglist = args[1:-1].split(',')
+            arglist = [val.strip().split(' ') for val in arglist]
+            column_names = [val[0] for val in arglist if len(val)>2 and val[2]=='unique']
+            dic['unique_columns'] = ','.join(column_names)
+        else:
+            dic['unique_columns'] = None
+
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
@@ -137,6 +146,16 @@ def create_query_plan(query, keywords, action):
         else:
             dic['where'] = None
 
+    if action=='create index':
+        # Check if 'on' clause is not None and if is of the form 'table_name (column_name)'
+        if dic['on'] is not None and '(' in dic['on'] and ')' in dic['on'] and dic['on'].count('(') == dic['on'].count(')') == 1:
+            on_clause = dic['on'].split('(')
+            table_name = on_clause[0].strip()
+            column_name = on_clause[1][:-1].strip()
+            dic['on'] = { 'table_name': table_name, 'column_name': column_name }
+        else:
+            raise ValueError('\nWrong syntax: "on" clause must be of the form "table_name (column_name, ...)"\n')
+        
     return dic
 
 def evaluate_from_clause(dic):
@@ -210,7 +229,7 @@ def evaluate_where_clause(dic):
                 if ' '.join(where_split[:oprt_idx[0]]).__contains__('between'):
                     btwn_idx = where_split[:oprt_idx[0]].index('between')
                     if not in_paren(where_split, btwn_idx):
-                        raise Exception(f'\nWrong syntax: "between" clause must be in parentheses.\n')
+                        raise ValueError(f'\nWrong syntax: "between" clause must be in parentheses.\n')
 
             oprt_dic['left'] = evaluate_where_clause( { 'where':  oprt_dic['left'] } )['where']
             oprt_dic['right'] = ' '.join(where_split[oprt_idx[0]+1:])
@@ -358,7 +377,6 @@ def execute_dic(dic):
     
     action = list(dic.keys())[0].replace(' ','_')
     return getattr(db, action)(*dic.values())
-    
 
 def interpret_meta(command):
     '''
@@ -410,8 +428,6 @@ if __name__ == "__main__":
 
     db = Database(dbname, load=True)
 
-    
-
     if fname is not None:
         for line in open(fname, 'r').read().splitlines():
             if line.startswith('--'): continue
@@ -447,9 +463,8 @@ if __name__ == "__main__":
                 interpret_meta(line)
             elif line.startswith('explain'):
                 dic = interpret(line.removeprefix('explain '))
-                queries = multiple_query_plans(dic)
+                multiple_query_plans(dic)
                 #pprint(dic, sort_dicts=False)
-                evaluate_query_plans(db,queries)
             else:
                 dic = interpret(line)
                 queries = multiple_query_plans(dic)
