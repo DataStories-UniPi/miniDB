@@ -243,6 +243,28 @@ class Table:
                 sec_op = reverse_op(operator)
                 rows = [ind for ind, x in enumerate(
                     column) if get_op(sec_op, x, value)]
+            # between
+            elif "BETWEEN" in condition.split() or "between" in condition.split():
+                con_split = condition.split()
+                # Tsekarw an yparxei "and" meta tin prwth synthiki gia na nai swstos o kwdikas
+                if (con_split[3] != 'and'):
+                    print('Bale "and" anamesa stoys arithmoys')
+                    exit()
+                else:
+                    # H synthiki meta anamesa sto "between" kai to "and"
+                    first_value = con_split[4]
+                    second_value = con_split[2]  # H synthiki meta to "and"
+                    column_name = con_split[0]
+                    column = self.column_by_name(column_name)
+                    rows = []
+                    # Elegxw an oi times einai arithmoi
+                    if (first_value.isdigit() and second_value.isdigit()):
+                        for i, j in enumerate(column):
+                            if int(j) >= int(first_value) and int(j) <= int(second_value):
+                                rows.append(i)
+                    else:
+                        print("Not allowed strings")
+                        exit()
             
         else:
             rows = [i for i in range(len(self.data))]
