@@ -471,11 +471,36 @@ class Database:
                 res = None
                 raise Exception('Index-nested-loop join cannot be executed. Use inner join instead.\n')
             elif rightIndexExists:
-                index_name = self.select('*', 'meta_indexes', f'table_name={right_table._name}', return_object=True).column_by_name('index_name')[0]
-                res = Inlj(condition, left_table, right_table, self._load_idx(index_name), 'right').join()
+                # Get the 'meta_indexes' table object, which contains the indexes of the right table.
+                table_indexes = self.select('*', 'meta_indexes', f'table_name={right_table._name}', return_object=True)
+                
+                # Check if the indexed column of the right table is the same as the condition column ('on' clause).
+                column_name = condition.split('=')[0]
+                column_exist = [right_table._name, column_name] in [[row[0], row[1]] for row in table_indexes.data]
+                
+                # If the column exists, get the specific index name and use it to join the tables.
+                if column_exist:
+                    for row in table_indexes.data:
+                        if row[0]==right_table._name and row[1]==column_name:
+                            index_name = row[2] # Get the index name
+                            break
+                    res = Inlj(condition, left_table, right_table, self._load_idx(index_name), 'right').join()
+
             elif leftIndexExists:
-                index_name = self.select('*', 'meta_indexes', f'table_name={left_table._name}', return_object=True).column_by_name('index_name')[0]
-                res = Inlj(condition, left_table, right_table, self._load_idx(index_name), 'left').join()
+                # Get the 'meta_indexes' table object, which contains the indexes of the left table.
+                table_indexes = self.select('*', 'meta_indexes', f'table_name={left_table._name}', return_object=True)
+                
+                # Check if the indexed column of the left table is the same as the condition column ('on' clause).
+                column_name = condition.split('=')[0]
+                column_exist = [left_table._name, column_name] in [[row[0], row[1]] for row in table_indexes.data]
+                
+                # If the column exists, get the specific index name and use it to join the tables.
+                if column_exist:
+                    for row in table_indexes.data:
+                        if row[0]==left_table._name and row[1]==column_name:
+                            index_name = row[2] # Get the index name
+                            break
+                    res = Inlj(condition, left_table, right_table, self._load_idx(index_name), 'left').join()
 
         elif mode=='sm':
             res = Smj(condition, left_table, right_table).join()
@@ -717,7 +742,8 @@ class Database:
 
     def _has_index(self, table_name, column_name=None):
         '''
-        Check whether the specified table's primary key column is indexed.
+        Check whether the specified table has an index in the specified column.
+        If column_name is None, check if the table has any index.
 
         Args:
             table_name: string. Table name (must be part of database).
