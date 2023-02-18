@@ -244,21 +244,26 @@ class Table:
         # if not, return the rows with values where condition is met for value
         if condition is not None:
             list_of_indexes = []
-            for cond in condition.split(' or '):
-                if 'not ' in cond:
-                    cond = cond.split('not ')[1]
-                    column_name, operator, value = self._parse_condition(cond)
-                    column = self.column_by_name(column_name)
-                    operator = not_op(operator)
-                    cond = column_name + operator + str(value)
-                else:
-                    column_name, operator, value = self._parse_condition(cond)
-                    column = self.column_by_name(column_name)
+            if ' and ' not in condition:
+                for cond in condition.split(' or '):
+                    if 'not ' in cond:
+                        cond = cond.split('not ')[1]
+                        column_name, operator, value = self._parse_condition(cond)
+                        column = self.column_by_name(column_name)
+                        operator = not_op(operator)
+                        cond = column_name + operator + str(value)
+                    else:
+                        column_name, operator, value = self._parse_condition(cond)
+                        column = self.column_by_name(column_name)
 
-                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
-                for idx in rows:
-                    list_of_indexes.append(idx)
-            rows = list(set(list_of_indexes))
+                    rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+                    for idx in rows:
+                        list_of_indexes.append(idx)
+                rows = list(set(list_of_indexes))
+            else:
+                print('')
+
+
         else:
             rows = [i for i in range(len(self.data))]
 

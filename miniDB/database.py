@@ -370,33 +370,6 @@ class Database:
         else:
             condition_column = ''
 
-        and_flag = False
-        not_flag = False
-        if condition is not None:
-            conditions = []
-            if 'and' in condition:
-                and_flag = True
-                for cond in condition.split(' and '):
-                    if 'not ' in cond:
-                        cond = cond.split('not ')[1]
-                        left, op, right = split_condition(cond)
-                        op = not_op(op)
-                        not_cond = left + op + right
-                        conditions.append(not_cond)
-                    else:
-                        conditions.append(cond)
-            else:
-                if 'and' not in condition and 'or' not in condition and 'not' in condition:
-                    not_flag = True
-                    without_non = condition.split('not')[1]
-                    left, op, right = split_condition(without_non)
-                    op = not_op(op)
-                    condition_after_not = left + op + right
-
-
-
-
-
 
 
         if self.is_locked(table_name):
@@ -406,14 +379,7 @@ class Database:
             bt = self._load_idx(index_name)
             table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
         else:
-            if not_flag:
-                table = self.tables[table_name]._select_where(columns, condition_after_not, distinct, order_by, desc, limit)
-            elif and_flag:
-                table = self.tables[table_name]._select_where(columns, conditions[0], distinct, order_by, desc, limit)
-                for cond in conditions[1:]:
-                    table = table._select_where(columns, cond, distinct, order_by, desc, limit)
-            else:
-                table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+            table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
 
         # self.unlock_table(table_name)
         if save_as is not None:
