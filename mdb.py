@@ -221,7 +221,6 @@ def form_where_clause(where_split):
             
     return where_dic
 
-
 def interpret(query):
     '''
     Interpret the query.
