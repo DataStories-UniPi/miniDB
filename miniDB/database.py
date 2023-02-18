@@ -17,7 +17,7 @@ from btree import Btree
 from misc import split_condition
 from misc import split_not_condition
 from table import Table
-from hash2 import Hash
+from hash import Hash
 
 
 # readline.clear_history()
