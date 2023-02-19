@@ -65,6 +65,13 @@ class Table:
             #self.unique_idx = [self.column_names.index(i) for i in columns_unique] if columns_unique is not None else []
             #print("unique columns: ", columns_unique)
 
+            '''
+            for col_un in columns_unique:
+                if columns_unique[col_un] is not None:
+                    self.unique_idx = self.column_names.index(columns_unique[col_un]) #!!!!
+                else:
+                    self.unique_idx = None
+            '''
 
             # if primary key is set, keep its index as an attribute
             if primary_key is not None:
@@ -164,49 +171,25 @@ class Table:
                 Operatores supported: (<,<=,=,>=,>)
         '''
         # parse the condition
-        column_name, operator, value = self._parse_condition(condition)
+        #column_name, operator, value = self._parse_condition(condition)
 
         # get the condition and the set column
-        column = self.column_by_name(column_name)
+        #column = self.column_by_name(column_name)
         set_column_idx = self.column_names.index(set_column)
 
-        # set_columns_indx = [self.column_names.index(set_column_name) for set_column_name in set_column_names]
-
-        # for each value in column, if condition, replace it with set_value
-        for row_ind, column_value in enumerate(column):
-            if get_op(operator, column_value, value):
-                self.data[row_ind][set_column_idx] = set_value
-
-        # self._update()
-                # print(f"Updated {len(indexes_to_del)} rows")
-
-
-    def _delete_where(self, condition):
-        '''
-        Deletes rows where condition is met.
-
-        Important: delete replaces the rows to be deleted with rows filled with Nones.
-        These rows are then appended to the insert_stack.
-
-        Args:
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
-                
-                Operatores supported: (<,<=,==,>=,>)
-        '''
-        #column_name, operator, value = self._parse_condition(condition)
-        
-        indexes_to_del = []
+        #set_columns_indx = [self.column_names.index(set_column_name) for set_column_name in set_column_names]
 
         if 'not ' in condition and ' between ' not in condition:
                 condition = condition.replace('not ', '')
                # condition_columnn, op, value = split_condition(condition,True)
                 #print(condition_column)
-                print(condition)
+                #print(condition)
                 column_name, operator, value = self._parse_condition(condition, False, True)
                 column = self.column_by_name(column_name)
                 rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+                for row_ind, column_value in enumerate(column):
+                    if get_op(operator, column_value, value):
+                        self.data[row_ind][set_column_idx] = set_value
 
         elif ' between ' and ' and ' in condition:
                 if 'not ' in condition:
@@ -237,10 +220,115 @@ class Table:
 
                 values = []
                 
-                if notcheck:
-                    values = [x for x in column_to_str if(x < value1 or x > value2)]
+                if notcheck: # we reverse the operators in case there is the 'not' keyword in front of the 'between' keyowrd
+                    # not between 67000 and 75000 => value < 67000 or value > 75000
+                    if value1.isdigit() and value2.isdigit(): #if values are numbers
+                        values = [x for x in column_to_str if(x!='None' and int(x) < int(value1) or int(x) > int(value2))] # exclude None in case of deleted record
+                    else: # else if we compare strings, it kinda works if we check: name between a and k
+                        values = [x for x in column_to_str if(x < value1 or x > value2)]
+                else: # normal between format
+                    # between 67000 and 75000 => value >= 67000 and value <= 75000
+                    if value1.isdigit() and value2.isdigit():
+                        values = [x for x in column_to_str if(x!='None' and int(x) >= int(value1) and int(x) <= int(value2))]
+                    else:
+                        values = [x for x in column_to_str if(x >= value1 and x <= value2)] 
+                
+                set_column_idx = self.column_names.index(set_column)
+
+                column = self.column_by_name(column_name)
+                for row_ind, column_value in enumerate(column_to_str):
+                    for i in range(len(values)):
+                        if (column_value == values[i]):
+                            self.data[row_ind][set_column_idx] = set_value
+        
+        else:
+            # parse the condition
+            column_name, operator, value = self._parse_condition(condition)
+
+            # get the condition and the set column
+            column = self.column_by_name(column_name)
+            set_column_idx = self.column_names.index(set_column)
+
+            # for each value in column, if condition, replace it with set_value
+            for row_ind, column_value in enumerate(column):
+                if get_op(operator, column_value, value):
+                    self.data[row_ind][set_column_idx] = set_value
+
+        # self._update()
+                # print(f"Updated {len(indexes_to_del)} rows")
+
+
+    def _delete_where(self, condition):
+        '''
+        Deletes rows where condition is met.
+
+        Important: delete replaces the rows to be deleted with rows filled with Nones.
+        These rows are then appended to the insert_stack.
+
+        Args:
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+                
+                Operatores supported: (<,<=,==,>=,>)
+        '''
+        #column_name, operator, value = self._parse_condition(condition)
+        
+        indexes_to_del = []
+
+        if 'not ' in condition and ' between ' not in condition:
+                condition = condition.replace('not ', '')
+               # condition_columnn, op, value = split_condition(condition,True)
+                #print(condition_column)
+                #print(condition)
+                column_name, operator, value = self._parse_condition(condition, False, True)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+                for index, row_value in enumerate(column):
+                    if get_op(operator, row_value, value):
+                        indexes_to_del.append(index)
+
+        elif ' between ' and ' and ' in condition:
+                if 'not ' in condition:
+                    condition = condition.replace('not ', '') 
+                    notcheck = True
                 else:
-                     values = [x for x in column_to_str if(x >= value1 and x <= value2)]
+                    notcheck = False
+
+                splt = condition.split(' between ', 1) # split condition one time on between keyword
+
+                # if splt is more than 1 characters, split "splt" one time on the 'and' keyword
+                if len(splt)>1:
+                    if len(splt[1])>1:
+
+                        # column name, between ... and ...
+                        # splt[0], 'between', splt[1]
+                        splt_and = splt[1].split(' and ', 1)
+                        #value1 and value2
+                        #splt_and[0], 'and', splt_and[1]
+
+                        #remove whitespace
+                        condition_column = splt[0].replace(' ', '') # name of column
+                        value1 = splt_and[0].replace(' ', '') # name of the first value
+                        value2 = splt_and[1].replace(' ', '') # name of second value
+                
+                column = self.column_by_name(condition_column) # get column as a list
+                column_to_str = [str(x) for x in column] # make column list of strings
+
+                values = []
+                
+                if notcheck: # we reverse the operators in case there is the 'not' keyword in front of the 'between' keyowrd
+                    # not between 67000 and 75000 => value < 67000 or value > 75000
+                    if value1.isdigit() and value2.isdigit(): #if values are numbers
+                        values = [x for x in column_to_str if(x!='None' and int(x) < int(value1) or int(x) > int(value2))] # exclude None in case of deleted record
+                    else: # else if we compare strings, it kinda works if we check: name between a and k
+                        values = [x for x in column_to_str if(x < value1 or x > value2)]
+                else: # normal between format
+                    # between 67000 and 75000 => value >= 67000 and value <= 75000
+                    if value1.isdigit() and value2.isdigit():
+                        values = [x for x in column_to_str if(x!='None' and int(x) >= int(value1) and int(x) <= int(value2))]
+                    else:
+                        values = [x for x in column_to_str if(x >= value1 and x <= value2)] 
 
                 column = self.column_by_name(column_name)
                 for index, row_value in enumerate(column):
@@ -305,7 +393,7 @@ class Table:
             notcheck = False
             if 'not ' in condition and ' between ' not in condition: 
                 condition = condition.replace('not ', '') # split condition one time on 'not' keyword
-                print(condition)
+                #print(condition)
                 column_name, operator, value = self._parse_condition(condition, False, True) # thrid parameter is about 'notcheck', a variable set to true if 'not' exists in said condition
                 column = self.column_by_name(column_name)
                 rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
@@ -754,6 +842,11 @@ class Table:
         if self.pk_idx is not None:
             # table has a primary key, add PK next to the appropriate column
             headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
+
+        '''
+        if self.unique_idx is not None:
+            headers[self.unique_idx] = headers[self.unique_idx]+' #U#'
+        '''
 
         # detect the rows that are no tfull of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
