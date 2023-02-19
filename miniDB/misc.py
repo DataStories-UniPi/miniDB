@@ -25,7 +25,7 @@ def replace_char(string, index, char):
 
 def split_bettwen_con(condition):
 
-    print(condition)
+
     #when you find the word BETWEEN you split the condition in 2 parts
     #the first part is the column name
     betpos = condition.find('between')
@@ -36,7 +36,7 @@ def split_bettwen_con(condition):
     small = condition[small:big].strip()
     big = condition[big:].strip()
     big= big[big.find(' '):]
-    print(column,small,big)
+
 
     return column, small, big
 
