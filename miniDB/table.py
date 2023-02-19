@@ -235,7 +235,7 @@ class Table:
         # if not, return the rows with values where condition is met for value
         if condition is not None:
             
-            if re.match(r"^\w+\s*(=|<=|>=|<|>|!=)\s*\w+$", condition) or condition.startswith("not "):#simple condition
+            if re.match(r"^\w+\s*(=|<=|>=|<|>|!=)\s*\w+$", condition) or condition.startswith("not "):#simple condition or not
                 column_name, operator, value = self._parse_condition(condition)
                 column = self.column_by_name(column_name)
                 rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
@@ -251,14 +251,35 @@ class Table:
                 for i,j in enumerate(column):
                     if int(j) >= int(megalutero) and int(j) <= int(mikrotero):
                         rows.append(i)
-            elif re.match(r"^\w+\s*(=|<=|>=|<|>|!=)\s*\w+\s+AND\s+\w+\s*(=|<=|>=|<|>|!=)\s*\w+$", condition):
+            elif re.match(r"^\w+\s*(=|<=|>=|<|>|!=)\s*\w+\s+or\s+\w+\s*(=|<=|>=|<|>|!=)\s*\w+$", condition):
                 
-            elif re.match(r"^\w+\s*(=|<=|>=|<|>|!=)\s*\w+\s+OR\s+\w+\s*(=|<=|>=|<|>|!=)\s*\w+$", condition):
-                return 1, condition
-            #else:
-               # column_name, operator, value = self._parse_condition(condition)
-                #column = self.column_by_name(column_name)
-                #rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+                column_name = condition.split()[0]
+                conditions = condition.split("or")
+                rows_L=[]
+                for condition_ in conditions:
+                    column_name, operator, value = self._parse_condition(condition_)
+                    column = self.column_by_name(column_name)
+                    rows_L.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)])
+
+                rows=[]
+                for rlist in rows_L:
+                    for row in rlist:
+                        rows.append(row)
+            elif re.match(r"^\w+\s*(=|<=|>=|<|>|!=)\s*\w+\s+and\s+\w+\s*(=|<=|>=|<|>|!=)\s*\w+$", condition):
+                column_name = condition.split()[0]
+                conditions = condition.split("and")
+                rows_L=[]
+                for condition_ in conditions:
+                    column_name, operator, value = self._parse_condition(condition_)
+                    column = self.column_by_name(column_name)
+                    rows_L.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)])
+
+                
+                rows = set(rows_L[0]).intersection(*rows_L)
+                rows = list(rows)
+                
+            else:
+               raise("invalid where condition")
         else:
             rows = [i for i in range(len(self.data))]
 
