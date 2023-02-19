@@ -265,7 +265,17 @@ class Table:
                     else:
                         print("Not allowed strings")
                         exit()
-            
+            # and
+            elif "AND" in condition.split() or "and" in condition.split():
+                con_lst = condition.split("AND")
+                con_lst = con_lst[0].spit("and")
+                lists_for_rows = []
+                for i in con_lst:
+                    column_name, operator, value = self._parse_condition(i)
+                    column = self.column_by_name(column_name)
+                    lists_for_rows.append([ind for ind, x in enumerate(
+                        column) if get_op(operator, x, value)])
+                    rows = set(lists_for_rows[0].intersection(*lists_for_rows))
         else:
             rows = [i for i in range(len(self.data))]
 
