@@ -367,27 +367,50 @@ class Database:
                 condition_column=condition.split(" ")[0]
             elif "and" in condition:
                 condition_AND=True
+                condition_column = ''
             elif "or" in condition:
                 condition_OR=True
+                condition_column = ''
+            elif "not " in condition:
+                cond=condition[4:]
+                condition_column = split_condition(cond)[0]
             else:
                 condition_column = split_condition(condition)[0]
         else:
             condition_column = ''
 
-        
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
+        
+        # contains all indexes related to the condition column
+        if condition_column != '':
+            meta_data = self.select('*', 'meta_indexes', f'table_name={table_name} and index_column={condition_column}', return_object=True).data
+        else:
+            meta_data = [[]]
 
         if condition_AND is True or condition_OR is True:
-            table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
-        #comment!!!!!
-        
-        #elif self._has_index(table_name) and (condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx] or condition_column in self.tables[table_name].column_names[self.tables[table_name].unique_idx]):
-        elif self._has_index(table_name,condition_column):
-            index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
-            bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+            table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)  
+        elif meta_data!=[[]]: # if there is an index for the condition column
+            index_name=None
+            # search for a hash index since we prefer it from a btree in identity queries
+            if "not " not in condition and ">" not in condition and "<" not in condition:
+                for row in meta_data:
+                    if row[3]=="hash":
+                        index_name=row[1]
+            # if no hash was found or condition is range query , select the most recently created btree
+            if index_name is None: 
+                for row in meta_data:
+                    if row[3]=="btree":
+                        index_name=row[1]
+                if index_name is None: # if no index was found
+                    table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+                else:
+                    bt = self._load_idx(index_name)
+                    table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+            else:
+                hsh = self._load_idx(index_name)
+                table = self.tables[table_name]._select_where_with_hash(columns, hsh, condition)
         else:
             table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
         # self.unlock_table(table_name)
@@ -686,11 +709,13 @@ class Database:
             else:
                 raise Exception('Cannot create index. Table has no primary key.')# if no primary key, no index
         else:
-            if index_column not in self.tables[table_name].column_names:
-                raise ValueError('The requested column to index does not exist in the table.')  
-            elif (index_column!=self.tables[table_name].pk) or (self.tables[table_name].unique is not None and index_column not in self.tables[table_name].unique):
-                raise Exception('Cannot create index on a column that is not unique.')
-           
+            try:
+                col_names=self.tables[table_name].column_names #we find the column names of the table
+                index_column_idx=col_names.index(index_column) #the index of the given column(on which we create the index) in the list of column names
+                if index_column_idx not in self.tables[table_name].unique_idx:
+                    raise Exception('Cannot create index on a column that is not unique.')
+            except:
+                raise ValueError('The requested column to index does not exist in the table.')
 
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):#if there isn't already an index with the same name
             if index_type=='btree':
@@ -698,7 +723,7 @@ class Database:
                 # insert a record with the name of the index,the table and the column on which it's created to the meta_indexes table
                 self.tables['meta_indexes']._insert([table_name, index_name,index_column,index_type])
                 # create the actual index
-                self._construct_index(table_name, index_name,index_column)
+                self._construct_index(table_name, index_name,index_column,index_type)
                 self.save_database()
             if index_type=='hash':
                 logging.info('Creating Hash index.')
@@ -725,7 +750,6 @@ class Database:
             if key is None:
                 continue
             bt.insert(key, idx)
-        bt.show()
         # save the btree
         self._save_index(index_name, bt)
 
@@ -744,31 +768,17 @@ class Database:
             if key is None:
                 continue
             hash_table.insert(key, idx)
-        hash_table.show()
+        
         # save the hashtable
         self._save_index(index_name, hash_table)
 
     def _has_index(self, table_name, index_column, index_type):
         '''
-        Check whether the specified table's column is indexed.
-
+        Check whether the specified table's primary key column is indexed.
         Args:
             table_name: string. Table name (must be part of database).
-            index_column: string. Column name to be checked for index.
-
-        Returns:
-            True if the index column if it is indexed, false otherwise.
         '''
-        # Get all the data from meta_indexes - this is most likely a small table so this is not a problem
-        data=self.tables['meta_indexes'].data
-        for row in data:
-            # Check rows that have a corresponding index to the selected table and column combination
-            if row[0]==table_name and row[2]==index_column:
-                index_type=row[3]
-                print(table_name,"has a",index_type,"index on",index_column)
-                return row[1],row[3] # return index name and type combo
-
-        return False
+        return table_name in self.tables['meta_indexes'].column_by_name('table_name')
 
     def _save_index(self, index_name, index):
         '''

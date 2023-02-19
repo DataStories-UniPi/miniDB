@@ -50,7 +50,16 @@ class Hash:
         bits=self.i_MSB(bin_val)       
         return self.hash_prefix[bits] # selected bucket (pointer)
     
+    def find(self, value):
+        '''
+        Returns the pointer of the given value.
 
+        Args:
+            value: float or string. The value being searched for.  
+        '''
+        bucket=self._search(value)#the bucket that the given value exists or should exist in
+        return bucket.find(value)
+    
     def split(self, bucket_j,bits):
         '''
         Splits the bucket_j into two buckets and updates the hash_prefix dictionary

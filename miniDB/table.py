@@ -7,6 +7,7 @@ import sys
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
 from misc import get_op, reverse_op_not, split_condition
+from hash import Hash
 
 
 class Table:
@@ -264,7 +265,6 @@ class Table:
                         rows = [ind for ind, x in enumerate(column) if value1 <= x <= value2]#append index of row if x between value1 and value2
                     except:
                         raise TypeError('You need to provide numeric values inside a between statement')
-                        #print("You need to provide only arithmetical values in order to evaluate between clause")
             # AND case
             elif "and" in condition:
                 all_rows=[]
@@ -284,13 +284,6 @@ class Table:
                     column = self.column_by_name(column_name)
                     all_rows+=[ind for ind, x in enumerate(column) if get_op(operator, x, value)]#add indexes to all_rows
                 rows=[*set(all_rows)] #keep all rows that match either of the conditions but first remove the double values
-            elif "not" in condition:
-                # NOT case
-                condition=condition.replace('not ','') # remove not keyword
-                column_name, operator, value = self._parse_condition(condition)
-                operator=reverse_op_not(operator) # reverse operator
-                column = self.column_by_name(column_name)
-                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
             else:
                 column_name, operator, value = self._parse_condition(condition)
                 column = self.column_by_name(column_name)
@@ -356,7 +349,6 @@ class Table:
                     rows1.append(ind)
 
             # btree find
-            bt.show()
             rows = bt.find(operator, value)
 
             try:
@@ -385,6 +377,41 @@ class Table:
         else:
             print('Column is neither a PK nor unique. Aborting')# if the column in condition is not a primary key or a unique column, abort the select
             return
+
+    def _select_where_with_hash(self, return_columns, hsh, condition):
+        
+        # if * return all columns, else find the column indexes for the columns specified
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
+        else:
+            return_cols = [self.column_names.index(colname) for colname in return_columns]
+
+
+        column_name, operator, value = self._parse_condition(condition)
+
+        if operator != '=':
+            print('Hash index only supports equality. Aborting')
+            return
+        
+        #if the column in condition is a primary key or a unique column,continue the select
+        if column_name in self.unique or (self.pk is not None and column_name==self.pk) :
+            column = self.column_by_name(column_name)
+            #hash index find
+            ptr = hsh.find(value)
+            dict = {(key):([[self.data[ptr][j] for j in return_cols]] if key=="data" else value) for key,value in self.__dict__.items()}
+
+            dict['column_names'] = [self.column_names[i] for i in return_cols]
+            dict['column_types']   = [self.column_types[i] for i in return_cols]
+
+            s_table = Table(load=dict)
+            return s_table
+        
+        else:
+            print('Column is neither a PK nor unique. Aborting')# if the column in condition is not a primary key or a unique column, abort the select
+            return
+            
+        
+
 
     def order_by(self, column_name, desc=True):
         '''
@@ -618,6 +645,11 @@ class Table:
                 Operatores supported: (<,<=,==,>=,>)
             join: boolean. Whether to join or not (False by default).
         '''
+        not_condition = False
+        if "not " in condition: #not condition
+            condition=condition[4:] # remove not keyword
+            not_condition = True
+
         # if both_columns (used by the join function) return the names of the names of the columns (left first)
         if join:
             return split_condition(condition)
@@ -627,7 +659,8 @@ class Table:
         if left not in self.column_names:
             raise ValueError(f'Condition is not valid (cant find column name)')
         coltype = self.column_types[self.column_names.index(left)]
-
+        if not_condition:
+            return left,reverse_op_not(op), coltype(right)
         return left, op, coltype(right)
 
 
