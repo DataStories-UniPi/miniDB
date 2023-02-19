@@ -262,7 +262,7 @@ class Table:
                         column=self.column_by_name(condition_list[0])
                         value1=int(condition_list[2])
                         value2=int(condition_list[4])
-                        rows = [ind for ind, x in enumerate(column) if value1 <= x <= value2]#append index of row if x between value1 and value2
+                        rows = [ind for ind, x in enumerate(column) if value1 <= x <= value2] #append index of row if x between value1 and value2
                     except:
                         raise TypeError('You need to provide numeric values inside a between statement')
             # AND case
@@ -331,8 +331,23 @@ class Table:
         else:
             return_cols = [self.column_names.index(colname) for colname in return_columns]
 
-
-        column_name, operator, value = self._parse_condition(condition)
+        rows=[]
+        if "between" in condition: # Supporting between search on btree 
+            condition_list=condition.split(" ")
+            if len(condition_list)!=5 or condition_list[1]!="between" or condition_list[3]!="and":
+                raise Exception("Condition containing between keyword must have the following format: column between value1 and value2")
+            else:
+                try:
+                    column_name=self.column_by_name(condition_list[0])
+                    value1=int(condition_list[2])
+                    value2=int(condition_list[4])
+                    rows1 = bt.find(">=",value1) # lower bound rows
+                    rows2 = bt.find("<=",value2) # upper bound rows
+                    rows = [row for row in rows1 if row in rows2] # intersection
+                except:
+                    raise TypeError('You need to provide numeric values inside a between statement')
+        else: # simple where statement
+            column_name, operator, value = self._parse_condition(condition)
 
         #if the column in condition is a primary key or a unique column,continue the select
         if column_name in self.unique or (self.pk is not None and column_name==self.pk) : 
@@ -349,7 +364,8 @@ class Table:
                     rows1.append(ind)
 
             # btree find
-            rows = bt.find(operator, value)
+            if rows==[]:
+                rows = bt.find(operator, value)
 
             try:
                 k = int(limit)
