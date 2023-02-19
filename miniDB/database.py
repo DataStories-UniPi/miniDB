@@ -356,7 +356,7 @@ h
 
         if condition is not None:
             if 'between' in condition or 'BETWEEN' in condition:
-                conddition_column = split_bettwen_con(condition)[0]
+                condition_column = split_bettwen_con(condition)[0]
             else:
                 condition_column = split_condition(condition)[0]
         else:
@@ -378,20 +378,23 @@ h
                                                                      limit)
         else:
             if condition is not None:
+                if 'BETWEEN' in condition or 'between' in condition:
+                    table = self.tables[table_name]._select_where_between(columns, condition, distinct, order_by,
+                                                                          desc, limit)
+                else:
+                    if and_or:
+                        table = self.tables[table_name]._select_where_ornand(columns, condition, distinct, order_by,
+                                                                             desc,
+                                                                             limit)
 
-             if 'BETWEEN' in condition or 'between' in condition:
-                 table = self.tables[table_name]._select_where_between(columns, condition, distinct, order_by,
-                                                                      desc, limit)
-             else:
-              if and_or:
-                  table = self.tables[table_name]._select_where_ornand(columns, condition, distinct, order_by, desc,
-                                                                     limit)
-
-              else:
-                  table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc,
+                    else:
+                        table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc,
                                                                       limit)
             else:
                 table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+
+
+
 
         if save_as is not None:
             table._name = save_as
@@ -680,7 +683,6 @@ h
             column_name: string. Name of the column to create index on.
                          If not specified, primary key will be used.
         '''
-        print(column_name)
         if column_name:
             # column_idx = self.tables.column_names.index(column_name)
             # # Check if the specified column is unique
