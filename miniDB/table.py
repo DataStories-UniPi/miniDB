@@ -331,19 +331,19 @@ class Table:
         else:
             return_cols = [self.column_names.index(colname) for colname in return_columns]
 
-        rows=[]
+        value1=None
+        value2=None
+        conditionBetween=False
         if "between" in condition: # Supporting between search on btree 
             condition_list=condition.split(" ")
             if len(condition_list)!=5 or condition_list[1]!="between" or condition_list[3]!="and":
                 raise Exception("Condition containing between keyword must have the following format: column between value1 and value2")
             else:
                 try:
-                    column_name=self.column_by_name(condition_list[0])
+                    column_name=condition_list[0]
                     value1=int(condition_list[2])
                     value2=int(condition_list[4])
-                    rows1 = bt.find(">=",value1) # lower bound rows
-                    rows2 = bt.find("<=",value2) # upper bound rows
-                    rows = [row for row in rows1 if row in rows2] # intersection
+                    conditionBetween=True
                 except:
                     raise TypeError('You need to provide numeric values inside a between statement')
         else: # simple where statement
@@ -352,19 +352,22 @@ class Table:
         #if the column in condition is a primary key or a unique column,continue the select
         if column_name in self.unique or (self.pk is not None and column_name==self.pk) : 
             # here we run the same select twice, sequentially and using the btree.
-            # we then check the results match and compare performance (number of operation)
-            column = self.column_by_name(column_name)
+            # we then check the results match and compare performance (number of operations)
+            if conditionBetween:
+                    rows1 = bt.find(">=",value1) # lower bound rows
+                    rows2 = bt.find("<=",value2) # upper bound rows
+                    rows = [row for row in rows1 if row in rows2] # intersection
+            else:            
+                column = self.column_by_name(column_name)
+                # sequential
+                rows1 = []
+                opsseq = 0
+                for ind, x in enumerate(column):
+                    opsseq+=1
+                    if get_op(operator, x, value):
+                        rows1.append(ind)
 
-            # sequential
-            rows1 = []
-            opsseq = 0
-            for ind, x in enumerate(column):
-                opsseq+=1
-                if get_op(operator, x, value):
-                    rows1.append(ind)
-
-            # btree find
-            if rows==[]:
+                # btree find
                 rows = bt.find(operator, value)
 
             try:

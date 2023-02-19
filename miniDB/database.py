@@ -394,7 +394,7 @@ class Database:
         elif meta_data!=[[]]: # if there is an index for the condition column
             index_name=None
             # search for a hash index since we prefer it from a btree in identity queries
-            if "not " not in condition and ">" not in condition and "<" not in condition:
+            if "not " not in condition and ">" not in condition and "<" not in condition and "between" not in condition and "like" not in condition and "in" not in condition and "is" not in condition:
                 for row in meta_data:
                     if row[3]=="hash":
                         index_name=row[1]
@@ -772,7 +772,7 @@ class Database:
         # save the hashtable
         self._save_index(index_name, hash_table)
 
-    def _has_index(self, table_name, index_column, index_type):
+    def _has_index(self, table_name):
         '''
         Check whether the specified table's primary key column is indexed.
         Args:
