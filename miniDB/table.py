@@ -9,7 +9,22 @@ sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/
 from misc import get_op, split_condition
 
 
+
+
 class Table:
+    def split_bettwen_con(self,condition):
+        # when you find the word BETWEEN you split the condition in 2 parts
+        # the first part is the column name
+        betpos = condition.find('between')
+        column = condition[:betpos].strip()
+        # find the index of the first and the last number
+        small = condition.find(' ', betpos)
+        big = condition.find(' ', small + 2)
+        small = condition[small:big].strip()
+        big = condition[big:].strip()
+        big = big[big.find(' '):]
+
+        return column, small, big
     '''
     Table object represents a table inside a database
 
@@ -26,7 +41,8 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, unique=None, load=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -42,7 +58,7 @@ class Table:
 
             self._name = name
 
-            if len(column_names)!=len(column_types):
+            if len(column_names) != len(column_types):
                 raise ValueError('Need same number of column names and types.')
 
             self.column_names = column_names
@@ -59,16 +75,26 @@ class Table:
                     raise Exception(f'"{col}" attribute already exists in "{self.__class__.__name__} "class.')
 
             self.column_types = [eval(ct) if not isinstance(ct, type) else ct for ct in column_types]
-            self.data = [] # data is a list of lists, a list of rows that is.
+            self.data = []  # data is a list of lists, a list of rows that is.
 
+            self.unique = unique
+            print(self.unique)
             # if primary key is set, keep its index as an attribute
+            if unique is not None:
+                print("bike")
+                self.unique_idx = self.column_names.index(unique)
+            else:
+
+                self.unique_idx = None
+                print(self.unique_idx)
             if primary_key is not None:
                 self.pk_idx = self.column_names.index(primary_key)
             else:
                 self.pk_idx = None
 
             self.pk = primary_key
-            # self._update()
+
+
 
     # if any of the name, columns_names and column types are none. return an empty table object
 
@@ -110,6 +136,7 @@ class Table:
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             insert_stack: list. The insert stack (empty by default).
         '''
+
         if len(row)!=len(self.column_names):
             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
 
@@ -124,11 +151,16 @@ class Table:
                 if row[i] != None:
                     print(exc)
 
+            # print(self.pk_idx)
+            # print("1")
+            # print(self.unique_idx)
             # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
             elif i==self.pk_idx and row[i] is None:
                 raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
+            # elif i == self.unique_idx and row[i] in self.column_by_name(self.unique):
+            #     raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
@@ -206,6 +238,174 @@ class Table:
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
 
+    def _select_where_between(self, return_columns, condition=None, distinct=False, order_by=None, desc=True,
+                              limit=None):
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
+        else:
+            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+
+        if condition is not None:
+            column_name, smmall, big = self.split_bettwen_con(condition)
+            column = self.column_by_name(column_name)
+
+            smop='>'
+
+            smmallrows = [ind for ind, x in enumerate(column) if get_op(smop, x, int(smmall))]
+            bigrows = [ind for ind, x in enumerate(column) if get_op('<', x, int(big))]
+
+            rows = []
+
+
+            for i in smmallrows:
+                if i in bigrows:
+                    rows.append(i)
+
+            # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
+        dict = {(key): ([[self.data[i][j] for j in return_cols] for i in rows] if key == "data" else value) for
+                key, value in self.__dict__.items()}
+
+        # we need to set the new column names/types and no of columns, since we might
+        # only return some columns
+        dict['column_names'] = [self.column_names[i] for i in return_cols]
+        dict['column_types'] = [self.column_types[i] for i in return_cols]
+
+        s_table = Table(load=dict)
+
+        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+
+        if order_by:
+            s_table.order_by(order_by, desc)
+
+        # if isinstance(limit, str):
+        #     try:
+        #         k = int(limit)
+        #     except ValueError:
+        #         raise Exception("The value following 'top' in the query should be a number.")
+
+        #     # Remove from the table's data all the None-filled rows, as they are not shown by default
+        #     # Then, show the first k rows
+        #     s_table.data.remove(len(s_table.column_names) * [None])
+        #     s_table.data = s_table.data[:k]
+        if isinstance(limit, str):
+            s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
+
+        return s_table
+
+    def _select_where_ornand(self, return_columns, condition=None, distinct=False, order_by=None, desc=True,
+                             limit=None):
+        listall = []
+        andpoos = 100000000
+        orpoos = 100000000
+        if 'and' in condition:
+            andpoos = condition.find('and')
+        if 'or' in condition:
+            orpoos = condition.find('or')
+
+        if orpoos < andpoos:
+            splited = condition.split('or', 1)
+            listall.append(splited[0])
+            listall.append('or')
+
+        else:
+            splited = condition.split('and', 1)
+            listall.append(splited[0])
+            listall.append('and')
+
+        while 'or' in splited[1] or 'and' in splited[1]:
+
+            andpoos = 100000000
+            orpoos = 100000000
+            if 'and' in splited[1]:
+                andpoos = splited[1].find('and')
+            if 'or' in splited[1]:
+                orpoos = splited[1].find('or')
+            if orpoos < andpoos:
+                splited = splited[1].split('or', 1)
+                listall.append(splited[0])
+                listall.append('or')
+            else:
+                splited = splited[1].split('and', 1)
+                listall.append(splited[0])
+                listall.append('and')
+        listall.append(splited[1])
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
+        else:
+            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+
+            # if condition is None, r0eturn all rows
+            # if not, return the rows with values where condition is met for value
+
+        i = 0
+        column_name, operator, value = self._parse_condition(listall[0])
+        column = self.column_by_name(column_name)
+        rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+        while i + 2 < len(listall):
+            orin = False
+            if listall[1+i] == 'or':
+
+                orin = True
+            column_name, operator, value = self._parse_condition(listall[i+2])
+            column = self.column_by_name(column_name)
+            tmprows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+
+            i=i+2
+            if orin:
+                if len(rows) > len(tmprows):
+                    maxllen = len(rows)
+                else:
+                    maxllen = len(tmprows)
+                for j in range(maxllen):
+                    if j < len(rows):
+                        rows.append(rows[j])
+                    if j < len(tmprows):
+                        rows.append(tmprows[j])
+                rows = list(set(rows))
+            else:
+                copyrows=[]
+                for y in rows:
+                    if y in tmprows:
+                        copyrows.append(y)
+                rows = copyrows
+
+
+
+
+
+        dict = {(key): ([[self.data[i][j] for j in return_cols] for i in rows] if key == "data" else value) for
+                key, value
+                in self.__dict__.items()}
+
+        # we need to set the new column names/types and no of columns, since we might
+        # only return some columns
+        dict['column_names'] = [self.column_names[i] for i in return_cols]
+        dict['column_types'] = [self.column_types[i] for i in return_cols]
+
+        s_table = Table(load=dict)
+
+        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+
+        if order_by:
+            s_table.order_by(order_by, desc)
+
+        # if isinstance(limit, str):
+        #     try:
+        #         k = int(limit)
+        #     except ValueError:
+        #         raise Exception("The value following 'top' in the query should be a number.")
+
+        #     # Remove from the table's data all the None-filled rows, as they are not shown by default
+        #     # Then, show the first k rows
+        #     s_table.data.remove(len(s_table.column_names) * [None])
+        #     s_table.data = s_table.data[:k]
+        if isinstance(limit, str):
+            s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
+
+        return s_table
+
 
     def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
         '''
@@ -235,10 +435,13 @@ class Table:
         if condition is not None:
             column_name, operator, value = self._parse_condition(condition)
             column = self.column_by_name(column_name)
+
+
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+           
         else:
             rows = [i for i in range(len(self.data))]
-
+   
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
 
@@ -559,7 +762,7 @@ class Table:
         # cast the value with the specified column's type and return the column name, the operator and the casted value
         left, op, right = split_condition(condition)
         if left not in self.column_names:
-            raise ValueError(f'Condition is not valid (cant find column name)')
+            raise ValueError(f'Condition is not valid (cant find column name+= {left})')
         coltype = self.column_types[self.column_names.index(left)]
 
         return left, op, coltype(right)
