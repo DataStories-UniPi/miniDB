@@ -234,15 +234,19 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            
+              #Regex για τα σύμβολα ή για το αν υπάρχει not μέσα
             if re.match(r"^\w+\s*(=|<=|>=|<|>|!=)\s*\w+$", condition) or condition.startswith("not "):#simple condition or not
                 column_name, operator, value = self._parse_condition(condition)
                 column = self.column_by_name(column_name)
                 rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
             elif re.match(r"^\w+\s+between\s+\w+\s+and\s+\w+$", condition):
-                
+                #Regex για να παίρνουμε το between  
+                #Σπάμε το condition 
                 query = condition.split()
+                #Αναθέτουμε στο index το index του between (δλδ που βρίσκεται στο query)
                 index = query.index("between")
+                #megalutero είναι η 2η συνθήκη ενώ μικρότερο είναι η 1η π.χ select * from table where column between x and y
+                #Το megalutero = x , το μικρότερο = y και το column_name = column
                 megalutero = query[index+1]
                 mikrotero = query[index+3]
                 column_name = query[index-1]
@@ -252,7 +256,7 @@ class Table:
                     if int(j) >= int(megalutero) and int(j) <= int(mikrotero):
                         rows.append(i)
             elif re.match(r"^\w+\s*(=|<=|>=|<|>|!=)\s*\w+\s+or\s+\w+\s*(=|<=|>=|<|>|!=)\s*\w+$", condition):
-                
+                #σπάμε τα δύο conditions και για καθένα βάζουμε τα rows που θα επιστραφούν σε ένα list. Στο τέλος συνδέουμε τα δυο lists που θα γυρίσουν
                 column_name = condition.split()[0]
                 conditions = condition.split("or")
                 rows_L=[]
@@ -266,6 +270,7 @@ class Table:
                     for row in rlist:
                         rows.append(row)
             elif re.match(r"^\w+\s*(=|<=|>=|<|>|!=)\s*\w+\s+and\s+\w+\s*(=|<=|>=|<|>|!=)\s*\w+$", condition):
+            #σπάμε τα δύο conditions και για καθένα βάζουμε τα rows που θα επιστραφούν σε ένα list. Στο τέλος πέρνουμε τα κοινα των δυο λιστών
                 column_name = condition.split()[0]
                 conditions = condition.split("and")
                 rows_L=[]
