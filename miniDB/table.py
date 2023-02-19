@@ -350,6 +350,38 @@ class Table:
 
         return s_table
 
+    def _select_where_with_hash(self, return_columns, hash, condition):
+        '''
+        This is my addition for select with hash.
+        return_columns:string , the columns we want returned in the final result.
+        hash: an instance of a ExHash object , the hash index
+        condition:string , the actual condition we are checking.We only keep the value
+        part since hash index only supports identification queries.
+        The value is the passed to ExHash method search and returns either a tuple (value,ptr)
+        where ptr is the row the value is in the main file or None.
+        '''
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
+        else:
+            return_cols = [self.column_names.index(colname) for colname in return_columns]
+
+        column_name, operator, value = self._parse_condition(condition)
+        key=hash.get_key(value)
+        print(key)
+        res=hash.search(value)
+        row=-1
+        if res is not None:
+            row=res[1]  #second arg is the ptr
+        else:
+            return None
+        #for the specified row , keep only the needed columns
+        dic = {(key):([[self.data[row][j] for j in return_cols]] if key=="data" else value) for key,value in self.__dict__.items()}
+
+        dic['column_names'] = [self.column_names[i] for i in return_cols]
+        dic['column_types']   = [self.column_types[i] for i in return_cols]
+        s_table = Table(load=dic)
+        return s_table
+
     def order_by(self, column_name, desc=True):
         '''
         Order table based on column.
