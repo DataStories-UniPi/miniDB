@@ -20,7 +20,7 @@ def multiple_query_plans(dic):
     if query_plan_1['where'] and query_plan_1['from'] is None:
         return dic
     
-    try:
+    if isinstance(query_plan_1['from'],dict):
         # Check if the first and second rules of relational algebra (RA) can be applied to the query plan
         if 'select' in  query_plan_1['from'].keys() and query_plan_1['where'] != None:#if isinstance(query_plan_1['from'],dict) 'select' in  query_plan_1['from'].keys() and query_plan_1['where'] != None
             '''
@@ -46,7 +46,7 @@ def multiple_query_plans(dic):
 
 
         # Apply the third rule of relational algebra (RA) to the query plan
-        elif ('select' in query_plan_1['from'].keys() and query_plan_1['where'] == None) or (isinstance(query_plan_1['from'], str) and query_plan_1['where'] == None):
+        elif 'select' in query_plan_1['from'].keys() and query_plan_1['where'] == None:
             '''
 
             The third rule of RA is applied to the query plan when it only contains a SELECT clause and no WHERE clause.
@@ -74,6 +74,12 @@ def multiple_query_plans(dic):
             All new query plans are added to the Query_Plan_List for further evaluation and optimization.
 
             '''
+            on_clause = copy.deepcopy(query_plan_1['from']['on'])
+            split_on_clause = on_clause.split("=")
+            split_on_clause.insert(1, "=")
+            split_on_clause[0], split_on_clause[2] = split_on_clause[2], split_on_clause[0]
+            new_on_clause = "".join(split_on_clause)
+            second_on_clause = copy.deepcopy(new_on_clause)
             query_plan_2 = copy.deepcopy(query_plan_1)
             query_plan_1['from']['on'] = {'and':{'left':query_plan_2['where'],'right':query_plan_2['from']['on']}}
             query_plan_1['where'] = None
@@ -83,10 +89,13 @@ def multiple_query_plans(dic):
             query_plan_3['from']['on']['and']['right'] = query_plan_1['from']['on']['and']['left']
             Query_Plan_List.append(query_plan_3)
             query_plan_4 = copy.deepcopy(dic)
+            query_plan_4['from']['on'] = second_on_clause
             query_plan_4['from']['left'] = dic['from']['right']
             query_plan_4['from']['right'] = dic['from']['left']
             Query_Plan_List.append(query_plan_4)
             query_plan_5 = copy.deepcopy(query_plan_1)
+            
+            
             query_plan_5['from']['left'] = query_plan_1['from']['right']
             query_plan_5['from']['right'] = query_plan_1['from']['left']
             Query_Plan_List.append(query_plan_5)
@@ -112,10 +121,17 @@ def multiple_query_plans(dic):
             All new query plans are added to the Query_Plan_List for further evaluation and optimization.
 
             '''
+            
             query_plan_2 = copy.deepcopy(query_plan_1)
             query_plan_1['from']['on'] = query_plan_2['from']['on']['and']['right']
             query_plan_1['where'] = query_plan_2['from']['on']['and']['left']
             Query_Plan_List.append(query_plan_1)
+            on_clause = copy.deepcopy(query_plan_1['from']['on'])
+            split_on_clause = on_clause.split("=")
+            split_on_clause.insert(1, "=")
+            split_on_clause[0], split_on_clause[2] = split_on_clause[2], split_on_clause[0]
+            new_on_clause = "".join(split_on_clause)
+            second_on_clause = copy.deepcopy(new_on_clause)
             query_plan_3 = copy.deepcopy(query_plan_1)
             query_plan_3['from']['on'] = {'and':{'left':query_plan_1['from']['on'],'right':query_plan_1['where']}}
             query_plan_3['where'] = None
@@ -125,6 +141,7 @@ def multiple_query_plans(dic):
             query_plan_4['from']['right'] = dic['from']['left']
             Query_Plan_List.append(query_plan_4)
             query_plan_5 = copy.deepcopy(query_plan_1)
+            query_plan_5['from']['on'] = second_on_clause
             query_plan_5['from']['left'] = query_plan_1['from']['right']
             query_plan_5['from']['right'] = query_plan_1['from']['left']
             Query_Plan_List.append(query_plan_5)
@@ -132,49 +149,64 @@ def multiple_query_plans(dic):
             query_plan_6['from']['left'] = query_plan_3['from']['right']
             query_plan_6['from']['right'] = query_plan_3['from']['left']
             Query_Plan_List.append(query_plan_6)
-    except:
-            try:
-                #This block of code checks if the first and second rules of relational algebra can be applied to the given query plan.
-                and_idx = [i for i,word in enumerate(query_plan_1['where'].keys()) if word=='and']
-                '''
 
-                If so, it creates several new query plans and appends them to the Query_Plan_List for further evaluation.
-                'and' is used in the WHERE clause of the query_plan_1, therefore, this block of code checks if the WHERE clause contains 'and'
-                If 'and' is found in the WHERE clause, create new query plans by applying the first and second rules of RA
-                
-                All new query plans are added to the Query_Plan_List for further evaluation and optimization.
+        # This block of code applies the fifth rule of relational algebra to the query plan.    
+        elif ('join' in query_plan_1['from'].keys() and query_plan_1['where'] == None) and isinstance(query_plan_1['from']['on'],str): 
+            '''
 
-                '''
-                if and_idx :
-                    query_plan_2 = copy.deepcopy(query_plan_1)
-                    query_plan_1['where'] = query_plan_2['where']['and']['left']
-                    query_plan_1['from'] = query_plan_2
-                    query_plan_1['from']['where'] = query_plan_2['where']['and']['right']
-                    Query_Plan_List.append(query_plan_1)
-                    query_plan_3 = copy.deepcopy(query_plan_1)
-                    query_plan_3['where'] = query_plan_1['from']['where']
-                    query_plan_3['from']['where'] = query_plan_1['where']
-                    Query_Plan_List.append(query_plan_3)
-                    query_plan_4 = copy.deepcopy(query_plan_3)
-                    query_plan_4['from'] = query_plan_4['from']['from']
-                    query_plan_4['where'] = {'and':{'left':query_plan_3['where'],'right':query_plan_3['from']['where']}}
-                    Query_Plan_List.append(query_plan_4)
-            except:
-                try:
-                    # This block of code applies the fifth rule of relational algebra to the query plan. 
-                    if 'join' in query_plan_1['from'].keys() and query_plan_1['where'] == None:
-                        '''
-
-                        If the query involves a join and doesn't have a WHERE clause, the left and right operands of the join are swapped.
-                        A new query plan is created by copying the original query plan and modifying its 'from' clause, and then it is added to Query_Plan_List for further evaluation and optimization.
+            If the query involves a join and doesn't have a WHERE clause, the left and right operands of the join are swapped.
+            A new query plan is created by copying the original query plan and modifying its 'from' clause, and then it is added to Query_Plan_List for further evaluation and optimization.
                         
-                        '''
-                        query_plan_2 = copy.deepcopy(query_plan_1)
-                        query_plan_1['from']['left'] = query_plan_2['from']['right']
-                        query_plan_1['from']['right'] = query_plan_2['from']['left']
-                        Query_Plan_List.append(query_plan_1)
-                except:
-                    pass    
+            '''
+            on_clause = copy.deepcopy(query_plan_1['from']['on'])
+            split_on_clause = on_clause.split("=")
+            split_on_clause.insert(1, "=")
+            split_on_clause[0], split_on_clause[2] = split_on_clause[2], split_on_clause[0]
+            new_on_clause = "".join(split_on_clause)
+            second_on_clause = copy.deepcopy(new_on_clause)
+            query_plan_2 = copy.deepcopy(query_plan_1)
+            query_plan_1['from']['on'] = second_on_clause
+            query_plan_1['from']['left'] = query_plan_2['from']['right']
+            query_plan_1['from']['right'] = query_plan_2['from']['left']
+            Query_Plan_List.append(query_plan_1)
+    else:
+        if isinstance(query_plan_1['from'], str) and query_plan_1['where'] == None:
+            '''
+
+            The third rule of RA is applied to the query plan when it only contains a SELECT clause and no WHERE clause.
+            The 'get_final_from' function is called to recursively retrieve the final source relation(s) and replace them in the query plan.
+            The updated query plan is then added to the list of query plans to be executed.
+
+            '''
+            query_plan_1['from'] = get_final_from(query_plan_1)
+            Query_Plan_List.append(query_plan_1)
+        elif isinstance(query_plan_1['where'],dict):
+            #This block of code checks if the first and second rules of relational algebra can be applied to the given query plan.
+            and_idx = [i for i,word in enumerate(query_plan_1['where'].keys()) if word=='and']
+            '''
+
+            If so, it creates several new query plans and appends them to the Query_Plan_List for further evaluation.
+            'and' is used in the WHERE clause of the query_plan_1, therefore, this block of code checks if the WHERE clause contains 'and'
+            If 'and' is found in the WHERE clause, create new query plans by applying the first and second rules of RA
+                
+            All new query plans are added to the Query_Plan_List for further evaluation and optimization.
+
+            '''
+            if and_idx :
+                query_plan_2 = copy.deepcopy(query_plan_1)
+                query_plan_1['where'] = query_plan_2['where']['and']['left']
+                query_plan_1['from'] = query_plan_2
+                query_plan_1['from']['where'] = query_plan_2['where']['and']['right']
+                Query_Plan_List.append(query_plan_1)
+                query_plan_3 = copy.deepcopy(query_plan_1)
+                query_plan_3['where'] = query_plan_1['from']['where']
+                query_plan_3['from']['where'] = query_plan_1['where']
+                Query_Plan_List.append(query_plan_3)
+                query_plan_4 = copy.deepcopy(query_plan_3)
+                query_plan_4['from'] = query_plan_4['from']['from']
+                query_plan_4['where'] = {'and':{'left':query_plan_3['where'],'right':query_plan_3['from']['where']}}
+                Query_Plan_List.append(query_plan_4)
+               
     unique_dictionaries = []
     for dictionary in Query_Plan_List:
         if dictionary not in unique_dictionaries:
