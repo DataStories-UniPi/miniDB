@@ -353,35 +353,77 @@ class Database:
             save_as: string. The name that will be used to save the resulting table into the database (no save if None).
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
             distinct: boolean. If True, the resulting table will contain only unique rows.
+
+            Comment:I perform the && (and) operation by running a loop through the conditions.In first iteration ,
+            i check whether there is an index on the first column passed in the where clause , in order to perform
+            the select using an index (supposing that the query optimizer passes the columns in the where clause providing
+            indexed columns first).The in the next iterations i check if table is None to stop performing queries and return
+            None or if table is an instance of Table class , to perform the next select clause on that particular object and
+            filter results on the partial result we have from the previous select queries.
         '''
 
         # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
-
-        table = None
-        conjuctive_conditions = []
+        
+        table=None
+        conjuctive_conditions=[]
         if condition is not None:
+            '''
+            if '&&' in condition:
+                conditions=[split_condition(col.strip()) for col in condition.split('&&')]
+                condition_column = conditions[0] #this is temporary!!!!
+                #condition_column=split_condition(condition)[0]
+            '''
             if '||' in condition:
-                table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+                table=self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
             else:
-                conjuctive_conditions = [split_condition(col.strip()) for col in condition.split('&&')]
+                conjuctive_conditions=[split_condition(col.strip()) for col in condition.split('&&')]
                 condition_column = conjuctive_conditions[0]
         else:
-            table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+            table=self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
 
         
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
-        if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
-            index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
-            bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
-        else:
-            table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
-        # self.unlock_table(table_name)
+
+        if (conjuctive_conditions!=[]):
+            for i in range(len(conjuctive_conditions)):
+                single_condition=conjuctive_conditions[i]
+                condition_column=single_condition[0]
+                operator=single_condition[1]
+                #operator=condition_mixed[1]
+                #val=condition_mixed[2]
+                
+                if i==0:    #If this is the first iteration of conditions , we only check the first column for index , supposing multiple AND queries are passed in order
+                            #from the lowest cost to highest (first indexed columns) by the query optimizer
+                    if self._has_index_on_col(table_name,condition_column):  #checking whether column is indexed , meaning its pk or unique
+                        index_name = self.select('*', 'meta_indexes', f'table_name={table_name} && column_name={condition_column}', return_object=True).column_by_name('index_name')[0]
+                        #i've altered the select statement to support and queries and also support indexing over pk or unique columns , specifying the column
+                        #and the index type,thats why i change the select condition from meta_indexes table above
+                        index = self._load_idx(index_name)
+                        if isinstance(index,Btree):
+                            table = self.tables[table_name]._select_where_with_btree(columns, index, ''.join(single_condition), distinct, order_by, desc, limit)
+                        elif isinstance(index,ExHash):
+                            #only identification queries are supported by hash,if not we perform a normal select query
+                            index.print_hash()
+                            if operator!='=':
+                                table=self.tables[table_name]._select_where(columns, ''.join(single_condition), distinct, order_by, desc, limit)
+                            else:
+                                table=self.tables[table_name]._select_where_with_hash(columns,index,''.join(single_condition))
+                    else:   #if no index on first column passed , perform normal select
+                        table=self.tables[table_name]._select_where(columns, ''.join(single_condition), distinct, order_by, desc, limit)
+                else:
+                    if table is None:   #if after first iteration , the result becomes None , we return.
+                        return table
+                    if isinstance(table,Table): #perform select on table object to filter
+                        table=table._select_where(columns, ''.join(single_condition), distinct, order_by, desc, limit)
+                    else:
+                        table = self.tables[table_name]._select_where(columns, ''.join(single_condition), distinct, order_by, desc, limit)
+            
+            # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as
             self.table_from_object(table)
