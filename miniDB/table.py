@@ -166,6 +166,14 @@ class Table:
 
         # # self._update()
         #         # print(f"Updated {len(indexes_to_del)} rows")
+
+        if condition is not None:
+            if len(condition.split(' ')) == 5  and 'between' in condition and 'and' in condition:
+                condition = condition.split(' ')[0] + ' >= ' + \
+                            condition.split(' ')[2] + ' and ' + \
+                            condition.split(' ')[0] + '<=' +  \
+                            condition.split(' ')[4]
+
         set_column_idx = self.column_names.index(set_column)
         if ' and ' in condition:
             lists_of_indexes = []
@@ -227,6 +235,12 @@ class Table:
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
+        if condition is not None:
+            if len(condition.split(' ')) == 5  and 'between' in condition and 'and' in condition:
+                condition = condition.split(' ')[0] + ' >= ' + \
+                            condition.split(' ')[2] + ' and ' + \
+                            condition.split(' ')[0] + '<=' +  \
+                            condition.split(' ')[4]
 
         if ' and ' in condition:
             lists_of_indexes = []
@@ -314,6 +328,11 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
+            if len(condition.split(' ')) == 5  and 'between' in condition and 'and' in condition:
+                condition = condition.split(' ')[0] + ' >= ' + \
+                            condition.split(' ')[2] + ' and ' + \
+                            condition.split(' ')[0] + '<=' +  \
+                            condition.split(' ')[4]
             list_of_indexes = []
             if ' and ' not in condition:
                 for cond in condition.split(' or '):
