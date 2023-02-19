@@ -358,8 +358,7 @@ class Database:
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
         if condition is not None:
-            if((" between " not in condition) and ("not " not in condition)):
-                condition_column = split_condition(condition)[0]
+            condition_column = split_condition(condition)[0]
         else:
             condition_column = ''
 
@@ -746,4 +745,4 @@ class Database:
                 warnings.warn(f'"{self.savedir}/indexes/meta_{index_name}_index.pkl" not found.')
 
             self.save_database()
-            
+        
