@@ -572,7 +572,6 @@ class Database:
             right_table: string. Name of the right table (must be in DB) or Table obj.
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
-                'not column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
                 Operators supported: (<,<=,==,>=,>)
@@ -866,6 +865,7 @@ class Database:
             column_name: string. Name of the table's column where the index is created over (must be part of database).
             index_name: string. Name of the created index.
         '''
+    
         h=Hash()
         for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
             if key is None:
