@@ -381,7 +381,8 @@ if __name__ == "__main__":
     while 1:
         try:
             line = session.prompt(f'({db._name})> ', auto_suggest=AutoSuggestFromHistory()).lower()
-            if line[-1]!=';':
+            if line=='': continue
+            elif line[-1]!=';':
                 line+=';'
         except (KeyboardInterrupt, EOFError):
             print('\nbye!')

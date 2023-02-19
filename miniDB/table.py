@@ -123,33 +123,37 @@ class Table:
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             insert_stack: list. The insert stack (empty by default).
         '''
-        if len(row)!=len(self.column_names):
-            raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
+        try:
+            if len(row)!=len(self.column_names):
+                raise ValueError(f'## ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
 
-        for i in range(len(row)):
-            # for each value, cast and replace it in row.
-            try:
-                row[i] = self.column_types[i](row[i])
-            except ValueError:
-                if row[i] != 'NULL':
-                    raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
-            except TypeError as exc:
-                if row[i] != None:
-                    print(exc)
+            for i in range(len(row)):
+                # for each value, cast and replace it in row.
+                try:
+                    row[i] = self.column_types[i](row[i])
+                except ValueError:
+                    if row[i] != 'NULL':
+                        raise ValueError(f'## ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
+                except TypeError as exc:
+                    if row[i] != None:
+                        print(exc)
 
-            # if value is to be appended to the primary_key column, check that it doesnt already exist (no duplicate primary keys)
-            if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
-                raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
-            elif i==self.pk_idx and row[i] is None:
-                raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
+                # if value is to be appended to the primary_key column, check that it doesnt already exist (no duplicate primary keys)
+                if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
+                    raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
+                elif i==self.pk_idx and row[i] is None:
+                    raise ValueError(f'## ERROR -> The value of the primary key cannot be None.')
 
-            # if value is to be appended to a unique column, check that it doesnt already exist (no duplicate unique values)
-            if self.unique is not None:
-                for j in range(len(self.unique)):
-                    if i==self.unique_idx[j] and row[i] in self.column_by_name(self.unique[j]):
-                        raise ValueError(f'## ERROR -> Value {row[i]} already exists in unique {self.unique[j]} column.')
-                    elif i==self.unique_idx[j] and row[i] is None:
-                        raise ValueError(f'ERROR -> The value of the unique column {self.unique[j]} cannot be None.')
+                # if value is to be appended to a unique column, check that it doesnt already exist (no duplicate unique values)
+                if self.unique is not None:
+                    for j in range(len(self.unique)):
+                        if i==self.unique_idx[j] and row[i] in self.column_by_name(self.unique[j]):
+                            raise ValueError(f'## ERROR -> Value {row[i]} already exists in unique {self.unique[j]} column.')
+                        elif i==self.unique_idx[j] and row[i] is None:
+                            raise ValueError(f'## ERROR -> The value of the unique column {self.unique[j]} cannot be None.')
+        except ValueError as exc:
+            print(exc)
+            return
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
