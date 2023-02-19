@@ -77,7 +77,11 @@ def create_query_plan(query, keywords, action):
 
     if action=='select':
         dic = evaluate_from_clause(dic)
-
+        if dic['where'] is not None:
+            if 'between' in dic['where']:
+                dic['where'] = format_between(dic['where'])  # format between first so that if not is included , its formatted later reversing the operators
+            if 'not' in dic['where']:
+                dic['where'] = format_not(dic['where'])
         if dic['distinct'] is not None:
             dic['select'] = dic['distinct']
             dic['distinct'] = True
@@ -100,11 +104,13 @@ def create_query_plan(query, keywords, action):
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+        unique_cols=",".join([val[0] for val in arglist if "unique" in val])    #if a column had keyword unique in its declaration,keep it in a string
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
+        dic['unique']=unique_cols   #set the key unique for unique columns in dictionary that is to be executed
     
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
@@ -121,8 +127,69 @@ def create_query_plan(query, keywords, action):
         else:
             dic['force'] = False
 
+    if action=='create index':  #format dictionary to be executed to include index type
+        if dic['on'] is not None:
+            on_temp=dic['on'].replace('(','')
+            on_temp=on_temp.replace(')',' ')
+            on_temp=on_temp.split(' ')
+            dic['on']=on_temp[0]
+            dic['column']=on_temp[2]
+
     return dic
 
+
+def format_not(clause):
+    '''
+    The NOT command has been implemented as a simple reverse of operations.
+    This function formats the query if NOT is included in the where clause , reversing
+    the given operators, for instance if where clause is where not id=20 , this function will
+    format the clause to where id!=20.
+    '''
+    operator_substitutions={
+        '=':'!=',
+        '!=':'=',
+        '<':'>=',
+        '<=':'>',
+        '>':'<=',
+        '>=':'<',
+        '&&':'||',
+        '||':'&&'
+    }
+
+    clause=clause[4:]   #remove not
+    i=0
+    while i<len(clause):
+        if i!=len(clause)-2 and clause[i:i+2] in operator_substitutions:
+            #j=len(keyword_substitutions[clause[i:i+2]])
+            clause=clause.replace(clause[i:i+2],operator_substitutions[clause[i:i+2]])
+            i+=2
+            continue
+        if  i<len(clause) and clause[i] in operator_substitutions:
+            #j=len(keyword_substitutions[clause[i]])+1
+            clause=clause.replace(clause[i],operator_substitutions[clause[i]])
+            i+=3
+            continue
+        i+=1
+
+    return clause
+
+def format_between(clause):
+    '''
+    This function formats the where clause if BETWEEN keyword is included.
+    It changes the where clause from the format 'where column between val1 and val2' to
+    'where column>=val1 and column<=val2'.
+    '''
+    clause=clause.replace('and','&&')
+    clause=clause.replace('between','')
+    words=clause.split(' ')
+    if words[1]=='not': #keep 'not' in clause so we can format it later
+        words.pop(2)
+        clause=words[1]+' '+words[0]+">="+words[2]+' '+words[3]+' '+words[0]+"<="+words[4]
+    else:
+        words.pop(1)
+        clause=words[0]+">="+words[1]+' '+words[2]+' '+words[0]+"<="+words[3]
+
+    return clause
 
 
 def evaluate_from_clause(dic):
