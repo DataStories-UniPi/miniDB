@@ -1,0 +1,1 @@
+Select * from section where  semester ='Spring' AND (building='Taylor' OR building='Packard');
