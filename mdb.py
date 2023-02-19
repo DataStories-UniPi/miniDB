@@ -9,7 +9,12 @@ sys.path.append('miniDB')
 
 from database import Database
 from table import Table
+import misc
+from optimizer import *
 # art font is "big"
+
+Verbose = True
+
 art = '''
              _         _  _____   ____  
             (_)       (_)|  __ \ |  _ \     
@@ -36,6 +41,63 @@ def in_paren(qsplit, ind):
     Split string on space and return whether the item in index 'ind' is inside a parentheses
     '''
     return qsplit[:ind].count('(')>qsplit[:ind].count(')')
+
+
+def fix_not(dic_where):
+
+    if dic_where == None:
+        return dic_where
+    
+    if dic_where.count("not") == 1:
+        where = dic_where.replace("not", " ")
+        left, op, right = misc.split_condition(where)
+
+        dic_where =  left +' '+misc.antitheta_op(op) + ' '+ '"'+right+'"'
+    else:
+        where = dic_where
+        left, op, right = misc.split_condition(where)
+        dic_where =  left +' '+op + ' '+ '"'+right+'"'
+
+    return dic_where
+
+
+def fix_between(dic_where):
+    if dic_where == None:
+        return dic_where
+
+    if dic_where.count(" between ") > 0:
+        z = dic_where.split(" between ")
+        lf = z[0]
+        f = z[1]
+        if f.count(" and ") == 1:
+            k =  f.split(" and ")
+            f1  = k[0]
+            f2  = k[1]
+            dic_where = lf + ' >= '  + '"'+ f1 + '"' + ' and ' + lf +' <= ' +'"'+ f2+ '"'
+        else:
+            temp = f.split(" and ", 2)
+            f1 = temp[0]
+            f2 = temp[1]
+            rest = temp[2]
+            dic_where = lf + ' >= '  + '"'+ f1 + '"' + ' and ' + lf +' <= ' +'"'+ f2+ '"' + ' and ' + rest
+    return dic_where
+
+def get_and_of(dic_where):
+    if dic_where == None:
+        return dic_where
+
+    ret = []
+    or_islands = dic_where.split(' or ')
+
+    for isl in or_islands:
+        without_between = fix_between(isl)
+        inter = without_between.split(' and ')
+        inner_ret = []
+        for inner in inter:
+            inner_ret.append(fix_not(inner))
+        ret.append(inner_ret)
+    
+    return ret
 
 
 def create_query_plan(query, keywords, action):
@@ -77,7 +139,7 @@ def create_query_plan(query, keywords, action):
 
     if action=='select':
         dic = evaluate_from_clause(dic)
-
+        
         if dic['distinct'] is not None:
             dic['select'] = dic['distinct']
             dic['distinct'] = True
@@ -93,10 +155,12 @@ def create_query_plan(query, keywords, action):
         else:
             dic['desc'] = None
 
+        dic["where"] = get_and_of(dic["where"])
+
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
-        arg_nopk = args.replace('primary key', '')[1:-1]
+        arg_nopk = args.replace('primary key', '').replace('unique', '')[1:-1]
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
@@ -105,7 +169,16 @@ def create_query_plan(query, keywords, action):
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
-    
+        
+        if 'unique' in args:
+            arglist = args[1:-1].split(' ')
+            try:
+                dic['unique key'] = arglist[arglist.index('unique,')-2]
+            except:
+                dic['unique key'] = arglist[arglist.index('unique')-2]
+        else:
+            dic['unique key'] = None
+
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
@@ -252,8 +325,6 @@ if __name__ == "__main__":
 
     db = Database(dbname, load=True)
 
-    
-
     if fname is not None:
         for line in open(fname, 'r').read().splitlines():
             if line.startswith('--'): continue
@@ -291,7 +362,22 @@ if __name__ == "__main__":
                 pprint(dic, sort_dicts=False)
             else:
                 dic = interpret(line)
-                result = execute_dic(dic)
+                rel = create_rel(dic)
+                rels = create_alt_rels(rel)
+                costs = []
+                for rel in rels:
+                    if Verbose:
+                        print_rel(rel)
+                        print("-----")
+                    costs.append(comp_cost(rel, db))
+                best_rel = rels[costs.index(min(costs))]
+                if Verbose:
+                    print("Tree costs:", costs, " Best tree: Ind. ", costs.index(min(costs)) )
+                    print("===== Best Tree =====")
+                    print_rel(best_rel)
+                    print("=====================")
+
+                result = exec_rel(best_rel, db)
                 if isinstance(result,Table):
                     result.show()
         except Exception:

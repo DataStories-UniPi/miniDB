@@ -7,6 +7,7 @@ def get_op(op, a, b):
     ops = {'>': operator.gt,
                 '<': operator.lt,
                 '>=': operator.ge,
+                '!=': operator.ne,
                 '<=': operator.le,
                 '=': operator.eq}
 
@@ -17,6 +18,7 @@ def get_op(op, a, b):
 
 def split_condition(condition):
     ops = {'>=': operator.ge,
+           '!=': operator.ne,
            '<=': operator.le,
            '=': operator.eq,
            '>': operator.gt,
@@ -47,4 +49,15 @@ def reverse_op(op):
         '<' : '>',
         '<=' : '>=',
         '=' : '='
+    }.get(op)
+
+
+def antitheta_op(op):
+    return {
+        '>' : '<=',
+        '>=' : '<',
+        '<' : '>=',
+        '<=' : '>',
+        '=' : '!=',
+        '!=': '='
     }.get(op)
