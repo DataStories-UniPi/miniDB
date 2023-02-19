@@ -27,25 +27,27 @@ class Database:
         self.tables = {}
         self._name = name
         self.verbose = verbose
-
+        self.stats = {} # dictionary of statistics for each table.
         self.savedir = f'dbdata/{name}_db'
 
         if load:
             try:
                 self.load_database()
+                self.load_statistics()
                 logging.info(f'Loaded "{name}".')
                 return
             except:
                 if verbose:
                     warnings.warn(f'Database "{name}" does not exist. Creating new.')
 
-        # create dbdata directory if it doesnt exist
+        # create dbdata directory if it doesn't exist
         if not os.path.exists('dbdata'):
             os.mkdir('dbdata')
 
         # create new dbs save directory
         try:
             os.mkdir(self.savedir)
+            os.mkdir(f'{self.savedir}/stats_dir') # create stats directory.
         except:
             pass
 
@@ -125,6 +127,7 @@ class Database:
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
         self._update()
+        self.calculate_tables_statistics() # update statistics.
         self.save_database()
         # (self.tables[name])
         if self.verbose:
@@ -143,6 +146,7 @@ class Database:
         self.tables.pop(table_name)
         if os.path.isfile(f'{self.savedir}/{table_name}.pkl'):
             os.remove(f'{self.savedir}/{table_name}.pkl')
+            self.calculate_tables_statistics() # update statistics.
         else:
             warnings.warn(f'"{self.savedir}/{table_name}.pkl" not found.')
         self.delete_from('meta_locks', f'table_name={table_name}')
@@ -226,7 +230,6 @@ class Database:
             raise Exception(f'"{new_table._name}" attribute already exists in class "{self.__class__.__name__}".')
         self._update()
         self.save_database()
-
 
 
     ##### table functions #####
@@ -677,6 +680,50 @@ class Database:
         '''
         self.tables['meta_insert_stack']._update_rows(new_stack, 'indexes', f'table_name={table_name}')
 
+    def save_statistics(self):
+        '''
+        Save statistics to file.
+        '''
+        with open(f'{self.savedir}/stats_dir/stats.pkl', 'wb') as f:
+            pickle.dump(self.stats, f)
+
+    def load_statistics(self):
+        '''
+        Load statistics from file.
+        '''
+        path = f'{self.savedir}/stats_dir/stats.pkl'
+        try:
+            with open(path, 'rb') as f:
+                tmp_dict = pickle.load(f)
+        except EOFError as e:
+            print(f"Error loading statistics: {e}")
+        self.stats.update(tmp_dict)
+
+    def calculate_tables_statistics(self):
+        '''
+        Calculate statistics for all the tables in the database.
+        '''
+        if self.tables == {}: # if no tables in db.
+            return # do nothing
+        
+        stats = {}
+        for table_name in self.tables:
+            if table_name.startswith('meta'):
+                continue
+            table = self.tables[table_name] # get table object
+            size = len(table.data) # number of rows
+            column_names = table.column_names # list of column names
+            columns = {}
+            for col_name in column_names:
+                distinct_values = [row for row in table.column_by_name(col_name)]
+                distinct_values = len(set(distinct_values))
+                columns[col_name] = {"distinct_values": distinct_values}
+            stats[table_name] = {
+                    "size": size,
+                    "columns": columns
+                }
+        self.stats = stats
+        self.save_statistics()
 
     # indexes
     def create_index(self, index_name, on_clause, index_type='btree'):

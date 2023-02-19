@@ -469,7 +469,6 @@ if __name__ == "__main__":
                 #pprint(dic, sort_dicts=False)
             else:
                 dic = interpret(line)
-                
                 #if 'select' in dic.keys() and not dic['from'].startswith('meta'):
                 queries = multiple_query_plans(dic)
                 dic = evaluate_query_plans(db,queries)
