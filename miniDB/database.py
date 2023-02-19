@@ -735,7 +735,7 @@ class Database:
             index_name: string. Name of the created index.
             column_name: string. Name of the column on which the index will be created.
         '''
-        ht = Hash(4) # 3 is the bucket size
+        ht = Hash(4) # 4 is the bucket size
 
         if column_name is None:
             column_name = self.tables[table_name].pk

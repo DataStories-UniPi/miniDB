@@ -14,9 +14,9 @@ class Bucket:
         self.records = []
 
 class Hash: 
-    def __init__(self, bucket_size = 3, global_depth = 1, directory_size = 2):
+    def __init__(self, bucket_size = 4, global_depth = 1, directory_size = 2):
         '''
-        Initialize a hash table with the given parameters.
+        Initialize an exendible hash table with the given parameters.
 
         Args:
             bucket_size: the size of each bucket
@@ -76,7 +76,7 @@ class Hash:
 
     def binary_hash_value(self, key):
         '''
-        Convert the given key to a binary string of the global depth.
+        Convert the given key to a binary string of the global depth using LSB.
 
         Args:
             key: the key to be converted
@@ -156,6 +156,12 @@ class Hash:
         return new_ptr
     
     def delete(self,key):
+        '''
+        Delete the record with the given key from the bucket.
+
+        Args:
+            key: the key to be deleted
+        '''
         remainder_lsb = self.get_remainder(key)
         pointer = int(self.get_binary(remainder_lsb,self.global_depth)[-self.global_depth:],2)
         for record in self.directory[pointer].records:
