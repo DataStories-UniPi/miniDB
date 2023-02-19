@@ -127,6 +127,14 @@ def create_query_plan(query, keywords, action):
         else:
             dic['force'] = False
 
+    if action=='create index':  #format dictionary to be executed to include index type
+        if dic['on'] is not None:
+            on_temp=dic['on'].replace('(','')
+            on_temp=on_temp.replace(')',' ')
+            on_temp=on_temp.split(' ')
+            dic['on']=on_temp[0]
+            dic['column']=on_temp[2]
+
     return dic
 
 
