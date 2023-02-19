@@ -3,6 +3,7 @@ from tabulate import tabulate
 import pickle
 import os
 import sys
+import re
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
@@ -233,9 +234,31 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            
+            if re.match(r"^\w+\s*(=|<=|>=|<|>|!=)\s*\w+$", condition) or condition.startswith("not "):#simple condition
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            elif re.match(r"^\w+\s+between\s+\w+\s+and\s+\w+$", condition):
+                
+                query = condition.split()
+                index = query.index("between")
+                megalutero = query[index+1]
+                mikrotero = query[index+3]
+                column_name = query[index-1]
+                column = self.column_by_name(column_name)
+                rows = []
+                for i,j in enumerate(column):
+                    if int(j) >= int(megalutero) and int(j) <= int(mikrotero):
+                        rows.append(i)
+            elif re.match(r"^\w+\s*(=|<=|>=|<|>|!=)\s*\w+\s+AND\s+\w+\s*(=|<=|>=|<|>|!=)\s*\w+$", condition):
+                
+            elif re.match(r"^\w+\s*(=|<=|>=|<|>|!=)\s*\w+\s+OR\s+\w+\s*(=|<=|>=|<|>|!=)\s*\w+$", condition):
+                return 1, condition
+            #else:
+               # column_name, operator, value = self._parse_condition(condition)
+                #column = self.column_by_name(column_name)
+                #rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
 
