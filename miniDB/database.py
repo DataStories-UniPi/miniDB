@@ -728,6 +728,24 @@ class Database:
             table_name: string. Table name (must be part of database).
         '''
         return table_name in self.tables['meta_indexes'].column_by_name('table_name')
+    
+    def _has_index_on_col(self,table_name,column_name):
+        '''
+        Check whether the table has an index on column_name , used to support indexing over unique columns and multiple columns per table.
+        ''' 
+        indexed_tables=self.tables['meta_indexes'].column_by_name('table_name')
+        if table_name in indexed_tables:
+            table_rows=[i for i in range(len(indexed_tables)) if table_name==indexed_tables[i]] #we can have multiple indexes for a table
+        else :
+            return False    #no index on given table
+        if column_name in self.tables['meta_indexes'].column_by_name('column_name'):
+            column_row=self.tables['meta_indexes'].column_by_name('column_name').index(column_name)
+            if column_row in table_rows:
+                return True
+        else:
+            return False    #index exists on table , but not on specified column
+
+        return False
 
     def _save_index(self, index_name, index):
         '''
