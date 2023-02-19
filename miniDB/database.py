@@ -873,8 +873,7 @@ class Database:
             h.insert(key, idx)
             print("\n")
         self._save_index(index_name,h) 
-        #print('H is:',h.show()) # object's address
-
+       
 
     def _has_index(self, table_name):
         '''
