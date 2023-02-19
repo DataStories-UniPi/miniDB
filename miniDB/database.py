@@ -723,7 +723,7 @@ class Database:
                 # insert a record with the name of the index,the table and the column on which it's created to the meta_indexes table
                 self.tables['meta_indexes']._insert([table_name, index_name,index_column,index_type])
                 # create the actual index
-                self._construct_index(table_name, index_name,index_column,index_type)
+                self._construct_index(table_name, index_name,index_column)
                 self.save_database()
             if index_type=='hash':
                 logging.info('Creating Hash index.')
@@ -763,7 +763,7 @@ class Database:
             index_column: string. Name of the column on which we create the index
         '''
         hash_table=Hash(3) # argument is blocking factor
-        # for each record of the table, insert its column value and index to the btree
+        # for each record of the table, insert its column value and index to the hash index
         for idx, key in enumerate(self.tables[table_name].column_by_name(index_column)):
             if key is None:
                 continue
