@@ -1,0 +1,8 @@
+name: mdb
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - tabulate
+  - prompt_toolkit
+  - graphviz
