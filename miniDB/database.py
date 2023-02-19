@@ -376,7 +376,11 @@ class Database:
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+            try:
+                table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+            #hash index in case first fails
+            except:
+                table = self.tables[table_name]._select_where_with_hash(columns, bt, condition, distinct, order_by, desc, limit) 
         else:
             table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
         # self.unlock_table(table_name)
@@ -683,6 +687,13 @@ class Database:
                 # crate the actual index
                 self._construct_index(table_name, index_name, column_name)
                 self.save_database()
+             elif index_type == 'hash' or index_type == 'HASH':
+                logging.info('Creating Hash index')
+                # insert a record with the name of the index and the table on which it's created to the meta_indexes table
+                self.tables['meta_indexes']._insert([table_name, index_name, column_name])
+                # crate the actual index
+                self._construct_index_hash(table_name, index_name, column_name)
+                self.save_database()
         else:
             raise Exception('Index creation stopped. This index name is already in use.')
 
@@ -706,6 +717,37 @@ class Database:
         self._save_index(index_name, bt)
         return
 
+    def _construct_index_hash(self, table_name, index_name, column_name):
+        r_length = len(self.tables[table_name].data)
+        hash_map = {}
+        hash_map[0] = {}
+        hash_map[0][0] = [str(r_length)] # store the number of the rows
+        for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
+                if key is None:
+                    continue
+
+                hash_sum = 0
+                for letter in key:
+                    hash_sum += ord(letter)
+
+                hash_index = hash_sum % r_length
+
+                sub_hash_index = hash_index
+                if not(hash_index in hash_map):
+                    hash_map[hash_index] = {}
+                else:
+                    while True:
+                        if not(sub_hash_index in hash_map[hash_index]):
+                            break
+
+                        if (sub_hash_index == r_length):
+                            sub_hash_index = 0
+                        else:
+                            sub_hash_index += 1
+
+                hash_map[hash_index][sub_hash_index] = [idx, key]
+
+        self._save_index(index_name, hash_map)
 
     def _has_index(self, table_name):
         '''
@@ -760,4 +802,6 @@ class Database:
                 warnings.warn(f'"{self.savedir}/indexes/meta_{index_name}_index.pkl" not found.')
 
             self.save_database()
-        
+        else:
+            #ειδικη περιπτωση για την αδυναμια ευρεσης του index
+            raise Exception('Cannot find index')  
