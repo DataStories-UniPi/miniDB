@@ -54,7 +54,7 @@ class Database:
         self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
-        self.create_table('meta_indexes', 'table_name, table_column, index_name', 'str,str,str')
+        self.create_table('meta_indexes', 'table_name,table_column,index_name', 'str,str,str')
         self.save_database()
 
     def save_database(self):
@@ -274,8 +274,10 @@ class Database:
         # check the insert_stack meta table
         lock_ownership = self.lock_table(table_name, mode='x')
         insert_stack = self._get_insert_stack_for_table(table_name)
+
+        index = self._find_idxs(table_name)
         try:
-            self.tables[table_name]._insert(row, insert_stack)
+            self.tables[table_name]._insert(row, insert_stack, index)
         except Exception as e:
             logging.info(e)
             logging.info('ABORTED')
@@ -362,24 +364,21 @@ class Database:
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
             distinct: boolean. If True, the resulting table will contain only unique rows.
         '''
+        # self.lock_table(table_name, mode='x')
+        if self.is_locked(table_name):
+            return
         
         # print(table_name)
         self.load_database()
         if isinstance(table_name, Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
-        # self.lock_table(table_name, mode='x')
-        if self.is_locked(table_name):
-            return
-        
-        supported_btrees = None
-        if self._has_index(table_name):
-            index_names = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')
-            supported_btrees = {}
-            for index_name in index_names:
-                supported_btrees[self.tables[table_name].pk] = self._load_idx(index_name)
+        if condition is not None:
+            supported_idxs = self._find_idxs(table_name)
+        else:
+            supported_idxs = None
 
-        table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit, supported_btrees)
+        table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit, supported_idxs)
         
 
         # self.unlock_table(table_name)
@@ -663,7 +662,7 @@ class Database:
     def create_index(self, index_name, table_name, table_column=None, index_type='btree'):
         '''
         Creates an index on a specified table with a given name.
-        Important: An index can only be created on a primary key (the user does not specify the column).
+        Important: An index can only be created on a primary key or unique column.
 
         Args:
             table_name: string. Table name (must be part of database).
@@ -758,6 +757,27 @@ class Database:
 
         with open(f'{self.savedir}/indexes/meta_{index_name}_index.pkl', 'wb') as f:
             pickle.dump(index, f)
+
+    def _find_idxs(self, table_name, table_column=None):
+        '''
+        Find all the indexes for that table object.
+
+        Args:
+            table_name: string.
+        '''
+        if self._has_index(table_name):
+            supported_idxs = {}
+            if table_column is None:
+                index_rows = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).data
+            else:
+                index_rows = self.select('*', 'meta_indexes', f'table_name={table_name} and table_column={table_column}', return_object=True).data
+        
+            for row in index_rows:
+                supported_idxs[row[1]] = self._load_idx(row[2])
+        else:
+            supported_idxs = None
+
+        return supported_idxs
 
     def _load_idx(self, index_name):
         '''

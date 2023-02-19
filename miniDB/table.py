@@ -102,7 +102,7 @@ class Table:
         # self._update()
 
 
-    def _insert(self, row, insert_stack=[]):
+    def _insert(self, row, insert_stack=[], indexes=None):
         '''
         Insert row to table.
 
@@ -110,6 +110,7 @@ class Table:
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             insert_stack: list. The insert stack (empty by default).
         '''
+        
         if len(row)!=len(self.column_names):
             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
 
@@ -137,7 +138,12 @@ class Table:
                     raise ValueError(f'## ERROR -> Value {row[i]} already exists in {column_name} unique column.')
             
             
-                    
+        # add the value to the index
+        if indexes is not None:
+            for column_name, btree in indexes.items():
+                column_pointer = self.column_names.index(column_name)
+                row_pointer = len(self.data) + 1
+                btree.insert(row[column_pointer], row_pointer)
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
@@ -343,7 +349,7 @@ class Table:
         if isinstance(condition,str):
             column_name, operator, value = self._parse_condition(condition)
             if supported_btrees is not None and column_name in supported_btrees:
-                rows = self._find_btree_rows(supported_btrees[column_name], column_name, operator, value)
+                rows = self._find_btree_rows(supported_btrees[column_name], operator, value)
             else:
                 column = self.column_by_name(column_name)
                 rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
@@ -368,7 +374,7 @@ class Table:
 
         return rows
 
-    def _find_btree_rows(self, bt, column_name, operator, value):
+    def _find_btree_rows(self, bt, operator, value):
         '''
         This method is used for finding row indexes using a btree.
 
@@ -378,16 +384,6 @@ class Table:
             operator: string.
             value: string or int.
         '''
-
-        column = self.column_by_name(column_name)
-
-        # sequential
-        rows1 = []
-        opsseq = 0
-        for ind, x in enumerate(column):
-            opsseq+=1
-            if get_op(operator, x, value):
-                rows1.append(ind)
 
         # btree find
         rows = bt.find(operator, value)
