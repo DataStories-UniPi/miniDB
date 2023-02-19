@@ -77,7 +77,11 @@ def create_query_plan(query, keywords, action):
 
     if action=='select':
         dic = evaluate_from_clause(dic)
-
+        if dic['where'] is not None:
+            if 'between' in dic['where']:
+                dic['where'] = format_between(dic['where'])  # format between first so that if not is included , its formatted later reversing the operators
+            if 'not' in dic['where']:
+                dic['where'] = format_not(dic['where'])
         if dic['distinct'] is not None:
             dic['select'] = dic['distinct']
             dic['distinct'] = True
@@ -123,6 +127,59 @@ def create_query_plan(query, keywords, action):
 
     return dic
 
+
+def format_not(clause):
+    '''
+    The NOT command has been implemented as a simple reverse of operations.
+    This function formats the query if NOT is included in the where clause , reversing
+    the given operators, for instance if where clause is where not id=20 , this function will
+    format the clause to where id!=20.
+    '''
+    operator_substitutions={
+        '=':'!=',
+        '!=':'=',
+        '<':'>=',
+        '<=':'>',
+        '>':'<=',
+        '>=':'<',
+        '&&':'||',
+        '||':'&&'
+    }
+
+    clause=clause[4:]   #remove not
+    i=0
+    while i<len(clause):
+        if i!=len(clause)-2 and clause[i:i+2] in operator_substitutions:
+            #j=len(keyword_substitutions[clause[i:i+2]])
+            clause=clause.replace(clause[i:i+2],operator_substitutions[clause[i:i+2]])
+            i+=2
+            continue
+        if  i<len(clause) and clause[i] in operator_substitutions:
+            #j=len(keyword_substitutions[clause[i]])+1
+            clause=clause.replace(clause[i],operator_substitutions[clause[i]])
+            i+=3
+            continue
+        i+=1
+
+    return clause
+
+def format_between(clause):
+    '''
+    This function formats the where clause if BETWEEN keyword is included.
+    It changes the where clause from the format 'where column between val1 and val2' to
+    'where column>=val1 and column<=val2'.
+    '''
+    clause=clause.replace('and','&&')
+    clause=clause.replace('between','')
+    words=clause.split(' ')
+    if words[1]=='not': #keep 'not' in clause so we can format it later
+        words.pop(2)
+        clause=words[1]+' '+words[0]+">="+words[2]+' '+words[3]+' '+words[0]+"<="+words[4]
+    else:
+        words.pop(1)
+        clause=words[0]+">="+words[1]+' '+words[2]+' '+words[0]+"<="+words[3]
+
+    return clause
 
 
 def evaluate_from_clause(dic):
