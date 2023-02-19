@@ -357,10 +357,16 @@ class Database:
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
+        table = None
+        conjuctive_conditions = []
         if condition is not None:
-            condition_column = split_condition(condition)[0]
+            if '||' in condition:
+                table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+            else:
+                conjuctive_conditions = [split_condition(col.strip()) for col in condition.split('&&')]
+                condition_column = conjuctive_conditions[0]
         else:
-            condition_column = ''
+            table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
 
         
         # self.lock_table(table_name, mode='x')
