@@ -699,7 +699,6 @@ class Table:
         Args:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
-                'not column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
                 Operators supported: (<,<=,==,>=,>)
@@ -744,7 +743,6 @@ class Table:
         Args:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
-                'not column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
                 Operators supported: (<,<=,==,>=,>)
@@ -775,7 +773,6 @@ class Table:
         Args:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
-                'not column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
                 Operators supported: (<,<=,==,>=,>)
@@ -807,7 +804,6 @@ class Table:
         Args:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
-                'not column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
                 Operators supported: (<,<=,==,>=,>)
@@ -839,7 +835,6 @@ class Table:
         Args:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
-                'not column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
                 Operators supported: (<,<=,==,>=,>)
