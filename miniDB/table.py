@@ -7,7 +7,7 @@ import re
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
-from misc import get_op, split_condition
+from misc import get_op, split_condition, reverse_op
 
 
 class Table:
@@ -151,19 +151,77 @@ class Table:
                 
                 Operatores supported: (<,<=,=,>=,>)
         '''
+        if condition is not None:
+            
+            if re.match(r"^\w+\s*(=|<=|>=|<|>|!=)\s*\w+$", condition) or condition.startswith("not "):#simple condition or not
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                set_column_idx = self.column_names.index(set_column)
+                for row_ind, column_value in enumerate(column):
+                    if get_op(operator, column_value, value):
+                        self.data[row_ind][set_column_idx] = set_value
+            elif re.match(r"^\w+\s+between\s+\w+\s+and\s+\w+$", condition):
+                
+                query = condition.split()
+                index = query.index("between")
+                megalutero = query[index+1]
+                mikrotero = query[index+3]
+                column_name = query[index-1]
+                column = self.column_by_name(column_name)
+                set_column_idx = self.column_names.index(set_column)
+                
+                for i,j in enumerate(column):
+                    if j >= megalutero and j <= mikrotero:
+                        self.data[i][set_column_idx] = set_value
+            elif re.match(r"^\w+\s*(=|<=|>=|<|>|!=)\s*\w+\s+or\s+\w+\s*(=|<=|>=|<|>|!=)\s*\w+$", condition):
+                
+                
+                conditions = condition.split("or")
+                set_column_idx = self.column_names.index(set_column)
+                for condition_ in conditions:
+                    column_name, operator, value = self._parse_condition(condition_)
+                    column = self.column_by_name(column_name)
+                    
+                    for row_ind, column_value in enumerate(column):
+                        if get_op(operator, column_value, value):
+                            self.data[row_ind][set_column_idx] = set_value
+
+                
+            elif re.match(r"^\w+\s*(=|<=|>=|<|>|!=)\s*\w+\s+and\s+\w+\s*(=|<=|>=|<|>|!=)\s*\w+$", condition):
+                column_name = condition.split()[0]
+                conditions = condition.split("and")
+                set_column_idx = self.column_names.index(set_column)
+                rows_L=[]
+                for condition_ in conditions:
+                    column_name, operator, value = self._parse_condition(condition_)
+                    column = self.column_by_name(column_name)
+                    
+                    rows_L.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)])
+
+                print(rows_L)
+                 
+                rows = set(rows_L[0]).intersection(*rows_L)
+                
+                for row in rows:
+                    self.data[row][set_column_idx] = set_value
+                
+            else:
+               raise("invalid where condition")
+        #else:
+            #rows = [i for i in range(len(self.data))]
         # parse the condition
-        column_name, operator, value = self._parse_condition(condition)
+        ###column_name, operator, value = self._parse_condition(condition)
 
         # get the condition and the set column
-        column = self.column_by_name(column_name)
-        set_column_idx = self.column_names.index(set_column)
+       ### column = self.column_by_name(column_name)
+       ### set_column_idx = self.column_names.index(set_column)
 
         # set_columns_indx = [self.column_names.index(set_column_name) for set_column_name in set_column_names]
 
         # for each value in column, if condition, replace it with set_value
-        for row_ind, column_value in enumerate(column):
-            if get_op(operator, column_value, value):
-                self.data[row_ind][set_column_idx] = set_value
+       ### for row_ind, column_value in enumerate(column):
+           ### if get_op(operator, column_value, value):
+            ####    self.data[row_ind][set_column_idx] = set_value
 
         # self._update()
                 # print(f"Updated {len(indexes_to_del)} rows")
@@ -182,15 +240,59 @@ class Table:
                 'value[<,<=,==,>=,>]column'.
                 
                 Operatores supported: (<,<=,==,>=,>)
+            
         '''
-        column_name, operator, value = self._parse_condition(condition)
-
         indexes_to_del = []
+        if re.match(r"^\w+\s*(=|<=|>=|<|>|!=)\s*\w+$", condition) or condition.startswith("not "):#simple condition or not
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                for index, row_value in enumerate(column):
+                    if get_op(operator, row_value, value):
+                        indexes_to_del.append(index)
+        elif re.match(r"^\w+\s+between\s+\w+\s+and\s+\w+$", condition):
+                
+                query = condition.split()
+                index = query.index("between")
+                megalutero = query[index+1]
+                mikrotero = query[index+3]
+                column_name = query[index-1]
+                column = self.column_by_name(column_name)
+                
+                for i,j in enumerate(column):
+                    if str(j) >= megalutero and str(j) <= mikrotero:
+                         indexes_to_del.append(i)
+        elif re.match(r"^\w+\s*(=|<=|>=|<|>|!=)\s*\w+\s+or\s+\w+\s*(=|<=|>=|<|>|!=)\s*\w+$", condition):
+                
+                column_name = condition.split()[0]
+                conditions = condition.split(" or ")
+                rows_L=[]
+                for condition_ in conditions:
+                    
+                    column_name, operator, value = self._parse_condition(condition_)
+                    column = self.column_by_name(column_name)
+                    rows_L.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)])
 
-        column = self.column_by_name(column_name)
-        for index, row_value in enumerate(column):
-            if get_op(operator, row_value, value):
-                indexes_to_del.append(index)
+                
+                for rlist in rows_L:
+                    for index in rlist:
+                        indexes_to_del.append(index)
+        elif re.match(r"^\w+\s*(=|<=|>=|<|>|!=)\s*\w+\s+and\s+\w+\s*(=|<=|>=|<|>|!=)\s*\w+$", condition):
+                column_name = condition.split()[0]
+                conditions = condition.split(" and ")
+                rows_L=[]
+                for condition_ in conditions:
+                    column_name, operator, value = self._parse_condition(condition_)
+                    column = self.column_by_name(column_name)
+                    rows_L.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)])
+
+                
+                indexes_to_del = set(rows_L[0]).intersection(*rows_L)
+                rows = list(rows)
+                
+        else:
+               raise("invalid where condition")
+        
+        
 
         # we pop from highest to lowest index in order to avoid removing the wrong item
         # since we dont delete, we dont have to to pop in that order, but since delete is used
@@ -234,29 +336,25 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-              #Regex για τα σύμβολα ή για το αν υπάρχει not μέσα
+            
             if re.match(r"^\w+\s*(=|<=|>=|<|>|!=)\s*\w+$", condition) or condition.startswith("not "):#simple condition or not
                 column_name, operator, value = self._parse_condition(condition)
                 column = self.column_by_name(column_name)
                 rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
             elif re.match(r"^\w+\s+between\s+\w+\s+and\s+\w+$", condition):
-                #Regex για να παίρνουμε το between  
-                #Σπάμε το condition 
+                
                 query = condition.split()
-                #Αναθέτουμε στο index το index του between (δλδ που βρίσκεται στο query)
                 index = query.index("between")
-                #megalutero είναι η 2η συνθήκη ενώ μικρότερο είναι η 1η π.χ select * from table where column between x and y
-                #Το megalutero = x , το μικρότερο = y και το column_name = column
                 megalutero = query[index+1]
                 mikrotero = query[index+3]
                 column_name = query[index-1]
                 column = self.column_by_name(column_name)
                 rows = []
                 for i,j in enumerate(column):
-                    if int(j) >= int(megalutero) and int(j) <= int(mikrotero):
+                    if j >= megalutero and j <= mikrotero:
                         rows.append(i)
             elif re.match(r"^\w+\s*(=|<=|>=|<|>|!=)\s*\w+\s+or\s+\w+\s*(=|<=|>=|<|>|!=)\s*\w+$", condition):
-                #σπάμε τα δύο conditions και για καθένα βάζουμε τα rows που θα επιστραφούν σε ένα list. Στο τέλος συνδέουμε τα δυο lists που θα γυρίσουν
+                
                 column_name = condition.split()[0]
                 conditions = condition.split("or")
                 rows_L=[]
@@ -270,7 +368,6 @@ class Table:
                     for row in rlist:
                         rows.append(row)
             elif re.match(r"^\w+\s*(=|<=|>=|<|>|!=)\s*\w+\s+and\s+\w+\s*(=|<=|>=|<|>|!=)\s*\w+$", condition):
-            #σπάμε τα δύο conditions και για καθένα βάζουμε τα rows που θα επιστραφούν σε ένα list. Στο τέλος πέρνουμε τα κοινα των δυο λιστών
                 column_name = condition.split()[0]
                 conditions = condition.split("and")
                 rows_L=[]
@@ -607,11 +704,18 @@ class Table:
 
         # cast the value with the specified column's type and return the column name, the operator and the casted value
         left, op, right = split_condition(condition)
-        if left not in self.column_names:
+        if right in self.column_names:#'value[<,<=,==,>=,>]column' fromat
+            coltype = self.column_types[self.column_names.index(right)]
+            op =reverse_op(op)  
+            return right, op, coltype(left)
+           
+        elif left in self.column_names:#'column[<,<=,==,>=,>]value' format 
+            coltype = self.column_types[self.column_names.index(left)]
+            
+            return left, op, coltype(right)
+        else:
+            #raise ValueError(f'Condition is not valid (cant find column name)')
             raise ValueError(f'Condition is not valid (cant find column name)')
-        coltype = self.column_types[self.column_names.index(left)]
-
-        return left, op, coltype(right)
 
 
     def _load_from_file(self, filename):

@@ -17,9 +17,7 @@ def get_op(op, a, b):
     except TypeError:  # if a or b is None (deleted record), python3 raises typerror
         return False
 
-def find_condition_operator(condition):
-    if condition.startswith("not "):
-        return -1, condition[4:].strip()
+
     
 
 
@@ -76,5 +74,6 @@ def reverse_op(op):
         '>=' : '<=',
         '<' : '>',
         '<=' : '>=',
-        '=' : '='
+        '=' : '=',
+        '!=': '!='
     }.get(op)

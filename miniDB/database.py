@@ -268,6 +268,7 @@ class Database:
         self.load_database()
         # fetch the insert_stack. For more info on the insert_stack
         # check the insert_stack meta table
+       
         lock_ownership = self.lock_table(table_name, mode='x')
         insert_stack = self._get_insert_stack_for_table(table_name)
         try:
@@ -357,14 +358,27 @@ class Database:
         self.load_database()
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
-
+        
         if condition is not None:
-            if "between" in condition.split() or "and" in condition.split() or "or" in condition.split():
-                
+            if "between" in condition.split():
                 condition_column = condition.split()[0]
+            elif "and" in condition.split() :
+                columns2=[]
+                conditions=[]
+                conditions=condition.split("and")
+                for con in conditions:
+                    col=self.tables[table_name]._parse_condition(con)
+                    columns2.append(col)
+                for con in columns2:
+                    if con[0] == self.tables[table_name].column_names[self.tables[table_name].pk_idx] :#since only pk supports index , and only one pk per table we keep the column if it is pk
+                        condition_column = con[0]
+                        
+                
+            elif " or " in condition.split():
+                ca=[]
             else:
                 
-                condition_column = split_condition(condition)[0]
+                condition_column = self.tables[table_name]._parse_condition(condition)
         else:
             condition_column = ''
 
