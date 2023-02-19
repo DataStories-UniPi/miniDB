@@ -3,39 +3,29 @@ https://en.wikipedia.org/wiki/B%2B_tree
 '''
 
 class Node:
-    '''
-    Node abstraction. Represents a single bucket
-    '''
-    def __init__(self, b, values=None, ptrs=None,left_sibling=None, right_sibling=None, parent=None, is_leaf=False):
-        self.b = b # branching factor
-        self.values = [] if values is None else values # Values (the data from the pk column)
-        self.ptrs = [] if ptrs is None else ptrs # ptrs (the indexes of each datapoint or the index of another bucket)
-        self.left_sibling = left_sibling # the index of a buckets left sibling
-        self.right_sibling = right_sibling # the index of a buckets right sibling
-        self.parent = parent # the index of a buckets parent
-        self.is_leaf = is_leaf # a boolean value signaling whether the node is a leaf or not
-
+    def init(self, b, values=None, ptrs=None,left_sibling=None, right_sibling=None, parent=None, is_leaf=False, unique_index=None):
+        self.b = b
+        self.values = [] if values is None else values
+        self.ptrs = [] if ptrs is None else ptrs
+        self.left_sibling = left_sibling
+        self.right_sibling = right_sibling
+        self.parent = parent
+        self.is_leaf = is_leaf
+        self.unique_index = unique_index
 
     def find(self, value, return_ops=False):
-        '''
-        Returns the index of the next node to search for a value if the node is not a leaf (a ptrs of the available ones).
-        If it is a leaf (we have found the appropriate node), nothing is returned.
+        ops = 0
+        if self.is_leaf:
+            if value in self.values:
+                return self.unique_index[value]
+            else:
+                return None
 
-        Args:
-            value: float. The value being searched for.
-            return_ops: boolean. Set to True if you want to use the number of operations (for benchmarking).
-        '''
-        ops = 0 # number of operations (<>= etc). Used for benchmarking
-        if self.is_leaf: #
-            return
-
-        # for each value in the node, if the user supplied value is smaller, return the btrees value index
-        # else (no value in the node is larger) return the last ptr
         for index, existing_val in enumerate(self.values):
-            ops+=1
+            ops += 1
             if value is None or existing_val is None:
                 continue
-            if value<type(value)(existing_val):
+            if value < existing_val:
                 if return_ops:
                     return self.ptrs[index], ops
                 else:
@@ -46,34 +36,22 @@ class Node:
         else:
             return self.ptrs[-1]
 
-
     def insert(self, value, ptr, ptr1=None):
-        '''
-        Insert the value and its ptr/s to the appropriate place (node wise).
-        User can input two ptrs to insert to a non leaf node.
-
-        Args:
-            value: float. The value we are inserting to the node.
-            ptr: float. The ptr of the inserted value (e.g. its index).
-            ptr1: float. The 2nd ptr (e.g. in case the user wants to insert into a nonleaf node).
-        '''
-        # for each value in the node, if the user supplied value is smaller, insert the value and its ptr into that position
-        # if a second ptr is provided, insert it right next to the 1st ptr
-        # else (no value in the node is larger) append value and ptr/s to the back of the list.
-
         for index, existing_val in enumerate(self.values):
-            if value<existing_val:
-
+            if value < existing_val:
                 self.values.insert(index, value)
-                self.ptrs.insert(index+1, ptr)
-
+                self.ptrs.insert(index + 1, ptr)
                 if ptr1:
-                    self.ptrs.insert(index+1, ptr1)
+                    self.ptrs.insert(index + 1, ptr1)
+                if value not in self.unique_index:
+                    self.unique_index[value] = ptr
                 return
         self.values.append(value)
         self.ptrs.append(ptr)
         if ptr1:
             self.ptrs.append(ptr1)
+        if value not in self.unique_index:
+            self.unique_index[value] = ptr
 
 
 
@@ -89,15 +67,16 @@ class Node:
 
 
 class Btree:
-    def __init__(self, b):
+    def __init__(self, b, unique=None):
         '''
         The tree abstraction.
         '''
-        self.b = b # branching factor
-        self.nodes = [] # list of nodes. Every new node is appended here
-        self.root = None # the index of the root node
+        self.b = b  # branching factor
+        self.nodes = []  # list of nodes. Every new node is appended here
+        self.root = None  # the index of the root node
+        self.unique = unique if unique is not None else []
 
-    def insert(self, value, ptr, rptr=None):
+    def insert(self, value, ptr, column, rptr=None):
         '''
         Insert the value and its ptr/s to the appropriate node (node-level insertion is covered by the node object).
         User can input two ptrs to insert to a non leaf node.
@@ -105,18 +84,26 @@ class Btree:
         Args:
             value: float. The input value.
             ptr: float. The ptr of the inserted value (e.g. its index).
+            column: str. The name of the column being indexed.
         '''
         # if the tree is empty, add the first node and set the root index to 0 (the only node's index)
         if self.root is None:
-            self.nodes.append(Node(self.b, is_leaf=True))
+            self.nodes.append(Node(self.b, is_leaf=True, unique_index={}))
             self.root = 0
+
+        # if the column is declared as "unique", only allow unique values to be inserted
+        if column in self.unique:
+            index = self._search(value)
+            node = self.nodes[index]
+            if value in node.unique_index:
+                raise ValueError(f"Value {value} already exists in the unique column {column}")
 
         # find the index of the node that the value and its ptr/s should be inserted to (_search)
         index = self._search(value)
         # insert to it
-        self.nodes[index].insert(value,ptr)
+        self.nodes[index].insert(value, ptr, unique_index=node.unique_index if column in self.unique else None)
         # if the node has more elements than b-1, split the node
-        if len(self.nodes[index].values)==self.b:
+        if len(self.nodes[index].values) == self.b:
             self.split(index)
 
     def _search(self, value, return_ops=False):
