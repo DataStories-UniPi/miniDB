@@ -104,11 +104,13 @@ def create_query_plan(query, keywords, action):
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+        unique_cols=",".join([val[0] for val in arglist if "unique" in val])    #if a column had keyword unique in its declaration,keep it in a string
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
+        dic['unique']=unique_cols   #set the key unique for unique columns in dictionary that is to be executed
     
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
