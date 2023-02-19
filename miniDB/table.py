@@ -6,7 +6,7 @@ import sys
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
-from misc import get_op, split_condition
+from misc import get_op, split_condition, reverse_op
 
 
 class Table:
@@ -233,9 +233,40 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            #Between operator
+            condition_list = condition.split() # split the condition by spaces
+            between_the_values = condition_list[3] # the word "and" between the values
+            if "between" in condition_list: # if the condition is between
+                if between_the_values != 'and': # if the word "and" is not between the values
+                    print('You have to use "and" between the values') # print error
+                else: # if the word "and" is between the values
+                    column_name, left_value, right_value = condition_list[0], condition_list[2], condition_list[4] # get the column name, left value and right value
+                    column = self.column_by_name(column_name) # get the column
+                    rows = [i for i, j in enumerate(column) if int(left_value) <= int(j) <= int(right_value) and (left_value.isdigit() and right_value.isdigit())] # get the rows where the value is between the left and right values
+                    if not rows: # if there are no rows
+                        print("Cannot compare strings") # print error
+            #Not operator
+            elif "not" in condition_list: # if the condition is not
+                column_name, operator, value = self._parse_condition(condition.split("not")[1]) # get the column name, operator and value
+                column = self.column_by_name(column_name) # get the column 
+                rows = [ind for ind, x in enumerate(column) if get_op(reverse_op(operator), x, value)] # get the rows where the value is not the value
+            #Or operator
+            elif "or" in condition_list: # if the condition is or 
+                condition_list = condition.split("or") #  split the condition by "or"
+                rows = set() # create a set
+                for cond in condition_list: # for each condition
+                    column_name, operator, value = self._parse_condition(cond) # get the column name, operator and value
+                    column = self.column_by_name(column_name) # get the column
+                    rows.update([ind for ind, x in enumerate(column) if get_op(operator, x, value)]) # update the rows with the rows where the value is the value
+            #And operator
+            elif "and" in condition_list: # if the condition is and
+                condition_list = condition.split("and") # split the condition by "and"
+                row_lists = [{ind for ind, x in enumerate(self.column_by_name(self._parse_condition(cond)[0])) if get_op(self._parse_condition(cond)[1], x, self._parse_condition(cond)[2])} for cond in condition_list] # get the rows where the value is the value
+                rows = row_lists[0].intersection(*row_lists[1:]) # get the intersection of the rows
+            else:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -322,7 +353,40 @@ class Table:
         if isinstance(limit,str):
             s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
 
-        return s_table
+        return s_table 
+
+    def _select_where_with_hash(self, return_columns, hash_map, condition, distinct=False, order_by=None, desc=True, limit=None): # select with hash map 
+        col_name, op, value = self._parse_condition(condition) # parse the condition
+        if col_name != self.column_names[self.pk_idx]: # if the column is not a primary key, abort the select
+            print('The specified column is not a primary key. Aborting operation.') # print error message
+            return
+
+        if return_columns == '*': # if * return all columns, else find the column indexes for the columns specified
+            return_cols = list(range(len(self.column_names))) # return all columns
+        else: # return the specified columns
+            return_cols = [self.column_names.index(col) for col in return_columns] # return the specified columns
+
+        hash_sum = sum(ord(c) for c in value) # get the hash sum of the value
+        hash_idx = hash_sum % int(hash_map[0][0][0]) # get the hash index of the value 
+
+        rows = [item[0] for item in hash_map[hash_idx] if item[1] == value]  # get the rows that match the condition 
+        s_table = Table({ # create a new table with the selected rows
+            'data': [[self.data[i][j] for j in return_cols] for i in rows], 
+            'column_names': [self.column_names[i] for i in return_cols],
+            'column_types': [self.column_types[i] for i in return_cols]
+        })
+
+        if isinstance(limit, str): # if the limit is a string   
+            s_table.data = s_table.data[:int(limit)] # get the first k rows
+
+        if order_by: # if order by is specified 
+            s_table.order_by(order_by, desc) # order the table by the specified column
+
+        if distinct: # if distinct is specified 
+            s_table.data = list(set(tuple(row) for row in s_table.data)) # remove duplicate rows 
+
+        return s_table # return the table 
+
 
     def order_by(self, column_name, desc=True):
         '''

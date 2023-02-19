@@ -4,3 +4,4 @@ dbdata/
 __pycache__/
 .idea/
 .pytest_cache
+.DS_Store

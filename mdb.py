@@ -121,9 +121,20 @@ def create_query_plan(query, keywords, action):
         else:
             dic['force'] = False
 
+    if action=='create index': #if the query is a create index query 
+        split_con=dic[kw_in_query[1]].split() #split the condition
+        split_con.remove("(")
+        split_con.remove(")")  #remove the parentheses
+
+        dic.update({
+            'create index': dic[kw_in_query[0]],#update the dictionary with the index name
+            'on': split_con[0], #update the dictionary with the table name
+            'column': split_con[1], #update the dictionary with the column name
+            'using': dic[kw_in_query[2]] #update the dictionary with the index type
+        })
+
+
     return dic
-
-
 
 def evaluate_from_clause(dic):
     '''
@@ -162,6 +173,7 @@ def evaluate_from_clause(dic):
 
 def interpret(query):
     '''
+    Dimiourgisame extra keyword gia to create index wste na dilonoume kai stilh
     Interpret the query.
     '''
     kw_per_action = {'create table': ['create table'],
@@ -175,7 +187,7 @@ def interpret(query):
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
-                     'create index': ['create index', 'on', 'using'],
+                     'create index': ['create index', 'on', 'column', 'using'],
                      'drop index': ['drop index'],
                      'create view' : ['create view', 'as']
                      }
@@ -296,3 +308,58 @@ if __name__ == "__main__":
                     result.show()
         except Exception:
             print(traceback.format_exc())
+
+
+def query_plan1(query, keywords, action):
+
+        dict = {val: None for val in keywords if val != ';'} #create dictionary with all keywords
+
+        query_list = [val for val in query.split(' ') if val != ''] #split query into list
+
+        kw_in_query = []
+        kw_positions = []
+        i = 0
+        while i < len(query_list): #find all keywords in query
+            if in_paren(query_list, i): 
+                i += 1
+                continue
+            if query_list[i] in keywords: #if keyword is found, add it to the list of keywords in query
+                kw_in_query.append(query_list[i])
+                kw_positions.append(i)
+
+            elif i != len(query_list)-1 and f'{query_list[i]} {query_list[i+1]}' in keywords: #if keyword is found, add it to the list of keywords in query
+                kw_in_query.append(f'{query_list[i]} {query_list[i+1]}')
+                query_list[i] = query_list[i] + ' ' + query_list[i+1]
+                query_list.pop(i+1)
+                kw_positions.append(i)
+            i += 1
+
+        for i in range(len(kw_in_query)-1): #add all keywords to the dictionary
+            dict[kw_in_query[i]] = ' '.join(query_list[kw_positions[i]+1:kw_positions[i+1]])
+
+        if action == 'select': #if action is select, add the last keyword to the dictionary
+            dict = evaluate_from_clause(dict)
+
+            if "and" in dict[kw_in_query[2]]: #if there is an and in the where clause, split it into two
+                split_con = dict[kw_in_query[2]].split() 
+                split_con.remove("(")
+                split_con.remove(")")
+                split_con.remove("(")
+                split_con.remove(")")
+
+            if dict['distinct'] is not None: #if distinct is not none, set distinct to true
+                dict['select'] = dict['distinct']
+                dict['distinct'] = True
+
+            if dict['order by'] is not None: #if order by is not none, set desc to true if desc is in the order by clause
+                dict['from'] = dict['from']
+                if 'desc' in dict['order by']:
+                    dict['desc'] = True
+                else:
+                    dict['desc'] = False
+                dict['order by'] = dict['order by'].removesuffix(' asc').removesuffix(' desc')
+
+            else: #if order by is none, set desc to none
+                dict['desc'] = None
+
+            return dict
