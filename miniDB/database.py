@@ -189,7 +189,7 @@ class Database:
             self.tables[table_name]._insert(line.strip('\n').split(','))
 
         if lock_ownership:
-             self.unlock_table(table_name)
+            self.unlock_table(table_name)
         self._update()
         self.save_database()
 
@@ -204,13 +204,13 @@ class Database:
         res = ''
         for row in [self.tables[table_name].column_names]+self.tables[table_name].data:
             res += str(row)[1:-1].replace('\'',
-                       '').replace('"', '').replace(' ', '')+'\n'
+                                          '').replace('"', '').replace(' ', '')+'\n'
 
         if filename is None:
             filename = f'{table_name}.csv'
 
         with open(filename, 'w') as file:
-           file.write(res)
+            file.write(res)
 
     def table_from_object(self, new_table):
         '''
@@ -361,11 +361,11 @@ class Database:
             # An nai tote eisagoyme to prwto stoixeio ths syntikis meta to split sto condition column
 
             if "BETWEEN" in condition.split() or "NOT" in condition.split() or "AND" in condition.split() or "OR" in condition.split():
-               condition_column = condition.split(" ")[0]
+                condition_column = condition.split(" ")[0]
             elif "between" in condition.split() or "not" in condition.split() or "and" in condition.split() or "or" in condition.split():
-               condition_column = condition.split(" ")[0]
+                condition_column = condition.split(" ")[0]
             else:
-               condition_column = split_condition(" ")[0]
+                condition_column = split_condition(" ")[0]
 
         else:
             condition_column = ''
@@ -705,17 +705,19 @@ class Database:
                 # crate the actual index
                 self._construct_index(table_name, index_name, column_name)
                 self.save_database()
-             elif index_type == 'hash' or index_type == 'HASH':
+            elif index_type == 'hash' or index_type == 'HASH':
                 logging.info('Creating Hash index')
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
-                self.tables['meta_indexes']._insert([table_name, index_name, column_name])
+                self.tables['meta_indexes']._insert(
+                    [table_name, index_name, column_name])
                 # crate the actual index
                 self._construct_index_hash(table_name, index_name, column_name)
                 self.save_database()
         else:
-            raise Exception('Index creation stopped. This index name is already in use.')
+            raise Exception(
+                'Index creation stopped. This index name is already in use.')
 
-    #προσθηκη argument του column του index
+    # προσθηκη argument του column του index
     def _construct_index(self, table_name, index_name,  column_name):
         '''
         Construct a btree on a table and save.
@@ -724,10 +726,10 @@ class Database:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
         '''
-        bt = Btree(3) # 3 is arbitrary
+        bt = Btree(3)  # 3 is arbitrary
 
         # for each record in the primary key of the table, insert its value and index to the btree
-        for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):                
+        for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
             if key is None:
                 continue
             bt.insert(key, idx)
@@ -739,31 +741,31 @@ class Database:
         r_length = len(self.tables[table_name].data)
         hash_map = {}
         hash_map[0] = {}
-        hash_map[0][0] = [str(r_length)] # store the number of the rows
+        hash_map[0][0] = [str(r_length)]  # store the number of the rows
         for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
-                if key is None:
-                    continue
+            if key is None:
+                continue
 
-                hash_sum = 0
-                for letter in key:
-                    hash_sum += ord(letter)
+            hash_sum = 0
+            for letter in key:
+                hash_sum += ord(letter)
 
-                hash_index = hash_sum % r_length
+            hash_index = hash_sum % r_length
 
-                sub_hash_index = hash_index
-                if not(hash_index in hash_map):
-                    hash_map[hash_index] = {}
-                else:
-                    while True:
-                        if not(sub_hash_index in hash_map[hash_index]):
-                            break
+            sub_hash_index = hash_index
+            if not (hash_index in hash_map):
+                hash_map[hash_index] = {}
+            else:
+                while True:
+                    if not (sub_hash_index in hash_map[hash_index]):
+                        break
 
-                        if (sub_hash_index == r_length):
-                            sub_hash_index = 0
-                        else:
-                            sub_hash_index += 1
+                    if (sub_hash_index == r_length):
+                        sub_hash_index = 0
+                    else:
+                        sub_hash_index += 1
 
-                hash_map[hash_index][sub_hash_index] = [idx, key]
+            hash_map[hash_index][sub_hash_index] = [idx, key]
 
         self._save_index(index_name, hash_map)
 
@@ -815,11 +817,13 @@ class Database:
             self.delete_from('meta_indexes', f'index_name = {index_name}')
 
             if os.path.isfile(f'{self.savedir}/indexes/meta_{index_name}_index.pkl'):
-                os.remove(f'{self.savedir}/indexes/meta_{index_name}_index.pkl')
+                os.remove(
+                    f'{self.savedir}/indexes/meta_{index_name}_index.pkl')
             else:
-                warnings.warn(f'"{self.savedir}/indexes/meta_{index_name}_index.pkl" not found.')
+                warnings.warn(
+                    f'"{self.savedir}/indexes/meta_{index_name}_index.pkl" not found.')
 
             self.save_database()
         else:
-            #ειδικη περιπτωση για την αδυναμια ευρεσης του index
-            raise Exception('Cannot find index')  
+            # ειδικη περιπτωση για την αδυναμια ευρεσης του index
+            raise Exception('Cannot find index')
