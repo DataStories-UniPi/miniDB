@@ -50,8 +50,8 @@ class ExHash:
         retrieve the self.lsb bits
         '''
         
-        val=hash(val)  
-        return bin(val%self.key).replace('0b','').zfill(32)[-self.lsb-1:-1]
+        hashedVal=hash(val)  
+        return bin(hashedVal%self.key).replace('0b','').zfill(64)[-self.lsb-1:-1]
     
     def split(self):
         '''
