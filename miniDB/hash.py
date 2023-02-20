@@ -57,7 +57,7 @@ class Hash:
      '''
       Checks the global depth in relation to the local depth.If the global depth is equal to the local depth
       then directory expansion,rehashing of the bucket and increment by one of the local and global depth occur.If the
-      local depth is less than the global depth then only rehashing of the bucket and increment by of the local depth occur.
+      local depth is less than the global depth then only rehashing of the bucket and increment by one of the local depth occur.
 
       Args:
         key:The key used for placing the tuple in the correct bucket.
