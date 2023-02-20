@@ -1,8 +1,8 @@
 from __future__ import annotations
-from table import Table
-from misc import split_condition
-from btree import Btree
-from joins import Inlj, Smj
+from miniDB.table import Table
+from miniDB.misc import split_condition
+from miniDB.btree import Btree
+from miniDB.joins import Inlj, Smj
 from miniDB import table
 import pickle
 from time import sleep, localtime, strftime

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from misc import get_op, split_condition,  reverse_op
+from miniDB.misc import get_op, split_condition,  reverse_op
 from tabulate import tabulate
 import pickle
 import os
@@ -298,7 +298,7 @@ class Table:
                 for l in lists_for_rows:  # metakinhse ola ta rows sthn 1h lista
                     for row in l:
                         if not (row in rows):
-                            rows.append(row)         
+                            rows.append(row)
         else:
             rows = [i for i in range(len(self.data))]
 
