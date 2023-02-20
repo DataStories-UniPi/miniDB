@@ -71,7 +71,33 @@ class Table:
             # self._update()
 
     # if any of the name, columns_names and column types are none. return an empty table object
+    def _select_whereBetween(self,column_name,value1,value2):
+        s_table = Table(load=dict)
+        for data in s_table.column_by_name(column_name):
+            if value1 <= data <= value2:
+              s_table += data 
 
+        return s_table
+    def _select_whereNot(self,column_name,value):
+        s_table = Table(load=dict)
+        for data in s_table.column_by_name(column_name):
+            if data is not value:
+              s_table += data 
+
+        return s_table
+    def _select_whereOr(self,column_name,value,value2):
+        s_table = Table(load=dict)
+        for data in s_table.column_by_name(column_name):
+            if data is value or data is value2:
+              s_table += data 
+
+        return s_table
+
+    def _select_whereAnd(self,column_name,value,column_name2,value2):
+        for data in self: 
+            if data.column_by_name(column_name) is value and data.column_by_name(column_name2) is value2:
+              s_table += data
+        return s_table
     def column_by_name(self, column_name):
         return [row[self.column_names.index(column_name)] for row in self.data]
 
