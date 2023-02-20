@@ -13,7 +13,7 @@ from table import Table
 # art font is "big"
 art = '''
              _         _  _____   ____
-            (_)       (_)|  __ \ |  _ \
+            (_)       (_)|  __ \ |  _ \ 
   _ __ ___   _  _ __   _ | |  | || |_) |
  | '_ ` _ \ | || '_ \ | || |  | ||  _ <
  | | | | | || || | | || || |__| || |_) |
@@ -123,6 +123,12 @@ def create_query_plan(query, keywords, action):
             dic['force'] = True
         else:
             dic['force'] = False
+
+    if action=='create index':
+        on_split = dic['on'].split(" ")
+        if len(on_split) == 4:
+            dic["on"] = on_split[0]
+            dic["column"] = on_split[2]
 
     return dic
 
@@ -246,7 +252,7 @@ def interpret(query):
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
-                     'create index': ['create index', 'on', 'using'],
+                     'create index': ['create index', 'on', 'column', 'using'],
                      'drop index': ['drop index'],
                      'create view' : ['create view', 'as']
                      }
