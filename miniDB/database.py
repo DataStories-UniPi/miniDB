@@ -358,29 +358,35 @@ class Database:
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
         if condition is not None:
-            condition_column = split_condition(condition)[0]
+            condition_column,op,right = split_condition(condition)
         else:
             condition_column = ''
+            op=None
 
-        
+        pass_controls=False
+
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
-        if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
+        if(condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx] and op=='='):
+            self.tables[table_name]._select_where_with_hash_table(right,columns)
+            pass_controls=True
+        elif self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
             table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
         else:
             table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
         # self.unlock_table(table_name)
-        if save_as is not None:
-            table._name = save_as
-            self.table_from_object(table)
-        else:
-            if return_object:
-                return table
+        if(pass_controls is False):
+            if save_as is not None:
+                table._name = save_as
+                self.table_from_object(table)
             else:
-                return table.show()
+                if return_object:
+                    return table
+                else:
+                    return table.show()
 
 
     def show_table(self, table_name, no_of_rows=None):
