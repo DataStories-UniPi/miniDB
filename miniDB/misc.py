@@ -16,7 +16,6 @@ def get_op(op, a, b):
            }
 
     try:
-        # print(ops[op](a, b))
         return ops[op](a, b)
     except TypeError:  # if a or b is None (deleted record), python3 raises typeError
         return False

@@ -62,17 +62,12 @@ class Table:
             self.data = [] # data is a list of lists, a list of rows that is.
 
             # if primary key is set, keep its index as an attribute
-            #print("PK")
-            #print(primary_key)
             if primary_key is not None:
                 self.pk_idx = self.column_names.index(primary_key)
             else:
                 self.pk_idx = None
             self.pk = primary_key
 
-
-            #print("UC")
-            #print(unique_columns)
             if unique_columns is not None:
                 self.unique_idx = self.column_names.index(unique_columns)
             else:
@@ -143,18 +138,12 @@ class Table:
             if i==self.unique_idx and row[i] in self.column_by_name(self.unique):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in unique key column.')
 
-
-
-            #TODO unique SOS
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
             self.data[insert_stack[-1]] = row
         else: # else append to the end
             self.data.append(row)
         # self._update()
-
-# TODO and
-# TODO or
 
     def _update_rows(self, set_value, set_column, condition):
         '''
@@ -209,14 +198,12 @@ class Table:
                         indexes_to_del = self._and_parse_condition(condition, has_between)
                     elif " or " in condition or " OR " in condition and " and " not in condition and " AND " not in condition:
                         indexes_to_del = self._or_parse_condition(condition, has_between)
-                     # TODO or με between
                 else:
                     has_between = False
                     if " and " in condition or " AND " in condition:
                         indexes_to_del = self._and_parse_condition(condition, has_between)
                     elif " or " in condition or " OR " in condition and " and " not in condition and " AND " not in condition:
                         indexes_to_del = self._or_parse_condition(condition, has_between)
-                    # TODO or με between
             else:
                 column_name, operator, value = self._parse_condition(condition)
                 column = self.column_by_name(column_name)
@@ -270,14 +257,12 @@ class Table:
                         rows = self._and_parse_condition(condition, has_between)
                     elif " or " in condition or " OR " in condition and " and " not in condition and " AND " not in condition:
                         rows = self._or_parse_condition(condition, has_between)
-                     # TODO or με between
                 else:
                     has_between = False
                     if " and " in condition or " AND " in condition:
                         rows = self._and_parse_condition(condition, has_between)
                     elif " or " in condition or " OR " in condition and " and " not in condition and " AND " not in condition:
                         rows = self._or_parse_condition(condition, has_between)
-                    # TODO or με between
             else:
                 column_name, operator, value = self._parse_condition(condition)
                 column = self.column_by_name(column_name)
@@ -317,11 +302,7 @@ class Table:
 
         return s_table
 
-    # TODO and
-    # TODO or
-    # TODO not
 
-#TODO check when each index is selected/used
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
 
         # if * return all columns, else find the column indexes for the columns specified
@@ -332,13 +313,11 @@ class Table:
 
 
         column_name, operator, value = self._parse_condition(condition)
-        print(operator)
 
-        #TODO unique
 
         # if the column in condition is not a primary key, abort the select
-        if column_name != self.column_names[self.pk_idx]:
-            print('Column is not PK. Aborting')
+        if column_name != self.column_names[self.pk_idx] or column_name != self.column_names[self.unique_idx]:
+            print('Column is not PK or unique. Aborting')
 
         # here we run the same select twice, sequentially and using the btree.
         # we then check the results match and compare performance (number of operation)
@@ -353,7 +332,6 @@ class Table:
                 rows1.append(ind)
 
         print("using btree index for select")
-
 
 
         # btree find
@@ -383,9 +361,6 @@ class Table:
 
         return s_table
 
-    # TODO and
-    # TODO or
-    # TODO not
 
     def _select_where_with_hash(self, return_columns, eh, condition, distinct=False, order_by=None, desc=True,
                                 limit=None):
@@ -396,6 +371,10 @@ class Table:
             return_cols = [self.column_names.index(colname) for colname in return_columns]
 
         column_name, operator, value = self._parse_condition(condition)
+
+        # if the column in condition is not a primary key, abort the select
+        if column_name != self.column_names[self.pk_idx] or column_name != self.column_names[self.unique_idx]:
+            print('Column is not PK or unique. Aborting')
 
         rows = []
         # Check if it is a range query that is not supported by Hash index
@@ -409,9 +388,6 @@ class Table:
                     rows.append(ind)
         else:
             # If the query is point query
-            print(eh)
-            print(value)
-            print(eh.get(value))
             idx = eh.get(value)  # Find the index of the row of the column that is equal to value
             rows.append(idx)
             print("using hash index for select")

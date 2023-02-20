@@ -90,38 +90,24 @@ def create_query_plan(query, keywords, action):
             
         else:
             dic['desc'] = None
-    #TODO 2 unique columns
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
-        #print(args)
         dic['create table'] = dic['create table'].removesuffix(args).strip()
-        #print(args.replace('primary key', ''))
         arg_nopk = args.replace('primary key', '')
-        #print("FIRST")
-        #print(arg_nopk)
         arg_nopk = arg_nopk.replace('unique', '')[1:-1]
-        #print("SECOND")
-        #print(arg_nopk)
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
-        #print(arglist)
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
-            #print("in PK")
-            #print(arglist)
             dic['primary key'] = arglist[arglist.index('primary')-2]
-            #print(arglist[arglist.index('primary')-2])
         else:
             dic['primary key'] = None
 
         if 'unique' in args:
             arglist = args[1:-1].replace(',', '')
             arglist = arglist.split(' ')
-            #print("in UNIQUE")
-            #print(arglist)
             dic['unique'] = arglist[arglist.index('unique')-2]
-            #print(arglist[arglist.index('unique') - 2])
         else:
             dic['unique'] = None
 

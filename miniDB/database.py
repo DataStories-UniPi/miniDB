@@ -359,12 +359,10 @@ class Database:
             distinct: boolean. If True, the resulting table will contain only unique rows.
         '''
 
-        # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
-# TODO fix split_condition gia na mpainei sta btree kai hash otan exi not mprosta
         if condition is not None:
             '''
             if "BETWEEN" in condition.split() or "between" in condition.split():
@@ -372,62 +370,21 @@ class Database:
             else:
             '''
             if (' and ' in condition or ' AND ' in condition) and (' between ' not in condition or ' BETWEEN ' not in condition):
-                print(condition)
                 conditions = tuple(condition.split(' and '))
-                print("cond1")
-                print(conditions)
             elif (' or ' in condition or ' OR ' in condition) and (' between ' not in condition or ' BETWEEN ' not in condition):
-                print(condition)
                 conditions = tuple(condition.split(' or '))
-                print("cond1")
-                print(conditions)
             else:
-                print("this is the condition (1)")
-                print(condition)
                 condition_column = split_condition(condition)[0]
-                # print(condition_column)
         else:
             condition_column = ''
-
-            '''
-            if 'not' in condition or 'NOT' in condition:
-                # print("cond")
-                # print(condition)
-                condition = (condition.split('not '))[1]
-                # print("cond1")
-                # print(condition)
-                left, op, right = split_condition(condition)
-                condition_column = left
-                print(condition_column)
-                print(op)
-                # print("first")
-                # print(op)
-                # print("left")
-                # print(left)
-                # print("right")
-                # print(right)
-                # column = self.column_by_name(column_name)
-                # operator = reverse_op(op)
-                # print("after")
-                # print(operator)
-                # coltype = self.column_types[self.column_names.index(left)]
-                # return left, operator, coltype(right)
-            '''
-
-
 
 
 
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
-        # TODO fix breaks
 
         if self._has_index(table_name) and (condition_column == self.tables[table_name].pk or condition_column == self.tables[table_name].unique):
-            #print(self.tables['meta_indexes'].column_by_name('index_name')[0])
-
-            #print(self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_type'))
-            #table1 = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True)
             selected_table = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True)
             for row, t in enumerate(selected_table.column_by_name('index_type')):
                 if t == "btree":
@@ -743,7 +700,7 @@ class Database:
                 raise Exception('Cannot create index. Table has no primary key. You have to add a unique column to create an index.')
             else:
                 column_name = self.tables[table_name].column_names[0]
-#TODO without index type error
+
         if (column_name == self.tables[table_name].pk or column_name == self.tables[table_name].unique):
             if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
                 if index_type == 'btree':
@@ -778,17 +735,17 @@ class Database:
         if index_type == "btree":
             bt = Btree(3) # 3 is arbitrary
 
-            if column_name == self.tables[table_name].column_by_name(self.tables[table_name].pk):
             # for each record in the primary key of the table, insert its value and index to the btree
+            #    print(self.tables[table_name].column_by_name(self.tables[table_name].pk))
+            if column_name is None:
                 for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
                     if key is None:
                         continue
                     bt.insert(key, idx)
-            else:  # TODO check add unique column index
-
-                # Create the index on the specified column that has the UNIQUE constraint
-                # for each record in the specified column of the table, insert its value and index to the btree
-                for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].unique)):
+            # Create the index on the specified column that has the UNIQUE constraint
+            # for each record in the specified column of the table, insert its value and index to the btree
+            else:
+                for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
                     if key is None:
                         continue
                     bt.insert(key, idx)
@@ -797,22 +754,15 @@ class Database:
         elif index_type == "hash":
             bucket_hashing = Bucket(7)
 
-            # TODO primary key and unique columns
             if column_name is None:
                 # for each record in the primary key of the table, insert its value and index to the hash
                 for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
                     if key is None:
                         continue
-                    print(key)
-                    print(idx)
                     bucket_hashing.add(key, idx)
             else:  # Create the index on the specified column that has the UNIQUE constraint
                 # for each record in the specified column of the table, insert its value and index to the btree
-                # TODO check add unique column index
                 for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
-                    print(key)
-                    print(idx)
-                    #bucket_hashing.add(key, idx)
                     bucket_hashing.add(idx, key)
                 # save the hash
                 self._save_index(index_name, bucket_hashing)
