@@ -8,6 +8,10 @@ class ExtendibleHashing:
     def __init__(self, bits=0, bucket_size=3):
         '''
         Initializes the hash table with a given number of bits and a given bucket size.
+        
+        args:
+            <> bits: The number of bits used to index the buckets of the hash table.
+            <> bucket_size: The maximum number of records that can be stored in a bucket.
         '''
         self.bits = bits # number of bits used to index the buckets of the hash table.
         self.buckets = {i: [] for i in range(2 ** self.bits)} # initializing the bucket with 2 ** depth empty buckets.
