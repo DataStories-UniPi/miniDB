@@ -9,6 +9,7 @@ create table takes (ID str, course_id str, sec_id str, semester str, year int, g
 create table advisor (s_ID str primary key, i_ID str);
 create table time_slot (time_slot_id str, day str, start_hr int, start_min int, end_hr str, end_min str);
 create table prereq (course_id str, prereq_id str);
+CREATE TABLE users (id int primary key,username str UNIQUE,email str UNIQUE,age int);
 insert into classroom values (Packard,101,500);
 insert into classroom values (Painter,514,10);
 insert into classroom values (Taylor,3128,70);
@@ -147,3 +148,6 @@ insert into prereq values (CS-315,CS-101);
 insert into prereq values (CS-319,CS-101);
 insert into prereq values (CS-347,CS-101);
 insert into prereq values (EE-181,PHY-101);
+insert into users values (1, 'harisbohtis', 'haris@gmail.com', 35);
+insert into users values (2, 'georgesfalagakos', 'george@gmail.com', 20);
+insert into users values (3, 'mariapapadopoulou', 'mariap@yahoo.com', 25);

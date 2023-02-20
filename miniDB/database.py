@@ -634,8 +634,8 @@ class Database:
         Args:
             table_name: string. Table name (must be part of database).
         '''
-        return self.tables['meta_insert_stack']._select_where('*', f'table_name={table_name}').column_by_name('indexes')[0 ]
-        # res = self.select('meta_insert_stack', '*', f'table_name={table_name}', return_object=True).indexes[0]
+        return self.tables['meta_insert_stack']._select_where('*', f'table_name={table_name}').column_by_name('indexes')[0]
+        #res = self.select('meta_insert_stack', '*', f'table_name={table_name}', return_object=True).indexes[0]
         # return res
 
     def _update_meta_insert_stack_for_tb(self, table_name, new_stack):

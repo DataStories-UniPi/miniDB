@@ -349,12 +349,17 @@ class Btree:
         # print the number of operations (usefull for benchamrking)
         # print(f'With BTree -> {ops} comparison operations')
         return results
-    
+    '''
+    creating  Row class which is responsible fora single row in a table, and is defined with two attributes
+    table and values
+    '''
 class Row:
     def __init__(self, table, values):
         self.table = table
         self.values = values
-   
+    '''
+    table class responsible for class .. with specific attributes and methods 
+    '''
 class Table:
     def __init__(self, name, columns):
         self.name = name
@@ -362,7 +367,10 @@ class Table:
         self.rows = []
         self.primary_key_index = None
         self.unique_indexes = {}
-
+    '''
+    insert fior unique columns 
+    takes a list of values and inserts a new row into the table
+    '''
     def insert(self, values):
         if len(values) != len(self.columns):
             raise ValueError("the number of values is not the same as columns number")
@@ -377,7 +385,9 @@ class Table:
                     self.unique_indexes[column.name] = Btree(column)
                     self.unique_indexes[column.name].insert(row)
                     self.rows.append(row)
-
+    '''
+    this method returns a list of rows from the table based on column names kai sto where clause
+    '''
     def select(self, column_names=None, where=None):
         if where is None:
             rows = self.rows
@@ -394,7 +404,10 @@ class Table:
             for row in rows:
                 result.append([row.values[index] for index in indices])
             return result
-
+    '''
+    get_index method a method that returns the index object for a given column name 
+    raises errror if column doesnt exist in the table...
+    '''
     def get_index(self, column_name):
         if column_name in [column.name for column in self.columns]:
             for column in self.columns:

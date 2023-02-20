@@ -9,6 +9,7 @@ create table takes (ID str, course_id str, sec_id str, semester str, year int, g
 create table advisor (s_ID str primary key, i_ID str);
 create table time_slot (time_slot_id str, day str, start_hr int, start_min int, end_hr str, end_min str);
 create table prereq (course_id str, prereq_id str);
+CREATE TABLE users (id int primary key,username str UNIQUE,email str UNIQUE,age int);
 insert into time_slot values ( 'A', 'M', 8, 0, 8, 50);
 insert into time_slot values ( 'A', 'W', 8, 0, 8, 50);
 insert into time_slot values ( 'A', 'F', 8, 0, 8, 50);
@@ -34629,3 +34630,6 @@ insert into prereq values('830', '748');
 insert into prereq values('558', '130');
 insert into prereq values('877', '599');
 insert into prereq values('349', '612');
+insert into users (1, 'harisbohtis', 'haris@gmail.com', 35);
+insert into users (2, 'georgesfalagakos', 'george@gmail.com', 20);
+insert into users (3, 'mariapapadopoulou', 'mariap@yahoo.com', 25);
