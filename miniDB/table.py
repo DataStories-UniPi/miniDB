@@ -2,6 +2,7 @@
 from asyncio.windows_events import NULL
 from audioop import reverse
 from msilib.schema import Condition
+from multiprocessing import Value
 from random import random
 import string
 import re
@@ -253,7 +254,7 @@ class Table:
         #print(condition)
         #print(split_condition(condition))
         if condition is not None:
-            column_name, operator, value, column_name2, operator2, value2 = self._parse_condition(condition)
+            column_name, operator, value, column_name2, operator2, value2,con = self._parse_condition(condition)
             column = self.column_by_name(column_name)
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
 
@@ -283,18 +284,75 @@ class Table:
 
             #print(" ")
 
-            if (operator == '='):
+            if (operator == '=') and ( (con == 'and') or (con =='or') ):
                 dict['data']=dict['data']+temp #PROSTHETO TA DATA TOU VALUE1 KAI VALUE2 MAZI
                 #print(dict)
 
-            if ( value == value2 ): # Auto to kanoume stin periptosi pou o xristsis vali dio fores ta idia values
+            #max_row=rows
+            #min_row=rows2
+            if ( (operator == '>=' ) and ( operator2 == '<=' ) and ( con == 'and' ) ):
+                if ( value >  value2 ):
+                    rows3= list(set(rows) & set(rows2))
+                    print(rows3)
+                    dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows3] if key=="data" else value) for key,value in self.__dict__.items()}
+                elif ( value < value2 ):
+                    rows3= list(set(rows) & set(rows2))
+                    print(rows3)
+                    dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows3] if key=="data" else value2) for key,value2 in self.__dict__.items()}
+                else: #Otan einai i idia timi  
+                    rows3 = [ind for ind, x in enumerate(column2) if get_op('=', x, value2)]
+                    dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows3] if key=="data" else value2) for key,value2 in self.__dict__.items()}
+
+            elif ( (operator == '<=' ) and ( operator2 == '>=' ) and ( con == 'and' ) ):
+                if ( value >  value2 ):
+                    rows3= list(set(rows) & set(rows2))
+                    print(rows3)
+                    dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows3] if key=="data" else value) for key,value in self.__dict__.items()}
+                elif ( value < value2 ):
+                    rows3= list(set(rows) & set(rows2))
+                    print(rows3)
+                    dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows3] if key=="data" else value2) for key,value2 in self.__dict__.items()}
+                else: #Otan einai i idia timi  
+                    rows3 = [ind for ind, x in enumerate(column2) if get_op('=', x, value2)]
+                    dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows3] if key=="data" else value2) for key,value2 in self.__dict__.items()}
+
+            if ( ( operator == '>=' ) and ( operator2 == '=') and (con == 'and') ) or ( ( operator == '=' ) and ( operator2 == '>=') and (con == 'and') ) :
+                print(rows,"rows")
+                print(rows2,"rows2")
+                rows3= list(set(rows) & set(rows2))
+                print(rows3)
+                dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows3] if key=="data" else value2) for key,value2 in self.__dict__.items()}
+
+            elif ( ( operator == '<=' ) and ( operator2 == '=') and (con == 'and') ) or ( ( operator == '=' ) and ( operator2 == '<=') and (con == 'and') ):
+                rows3= list(set(rows) & set(rows2))
+                print(rows3)
+                dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows3] if key=="data" else value2) for key,value2 in self.__dict__.items()}
+
+            
+            elif ( ( value == value2 ) and (con == 'or') ) : # Auto to kanoume stin periptosi pou o xristsis vali dio fores ta idia values
                 dict= {(key):([[self.data[i][j] for j in return_cols] for i in rows2] if key=="data" else value2) for key,value2 in self.__dict__.items()}
-               
+            
+            if ( (type(value) == str ) and (type(value2) == str) and (value2 != value) and (con =='and') ): 
+                # Auto to kanoume gia to and to opio den mpori na vgali apantisi otan oi dio stiles einai idies 
+                # (px) building="watson" and building="taylor" oute 
+                # (px) building="watson" and building="watson" 
+                print("1")
+                dict= {(key):([[self.data[i][j] for j in return_cols] for i in rows2] if key=="data" else value2) for key,value2 in self.__dict__.items()}
+                del dict['data']
+                dict['data']=[" "]
+
+            if ( (operator == '=' ) and (operator2 == '=') and (value == value2 ) and (con =='and') ):
+                print("2")
+                dict= {(key):([[self.data[i][j] for j in return_cols] for i in rows2] if key=="data" else value2) for key,value2 in self.__dict__.items()}
+            
+            
+                
+            ''' 
             if ( column_name != column_name2): #EN GIA TO AND
                  for i in range(len(temp)):
                       if value.strip("'") == temp[i][1]:
                             print(temp[i][1])
-                
+            '''
             #print(dict)
         else:
             #copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
@@ -674,9 +732,21 @@ class Table:
 
         # cast the value with the specified column's type and return the column name, the operator and the casted value
         left, op, right = split_condition(condition)
+        print(left,"left")
+        print(op,"op")
+        print(right,"right")
+        list_between=left.split()
+        
+        if "between" in list_between:
+            del list_between[0:2]
+            print(list_between)
+            left = ' '.join(list_between)
+            print(left)
+
         if op=='and ':
             left2,op2,right2=split_condition(left)
             left3,op3,right3=split_condition(right)
+            con='and'
             if left2 not in self.column_names:
                 raise ValueError(f'Condition is not valid (cant find column name)')
             coltype2 = self.column_types[self.column_names.index(left2)]
@@ -685,12 +755,13 @@ class Table:
                 raise ValueError(f'Condition is not valid (cant find column name)')
             coltype3 = self.column_types[self.column_names.index(left3)]
     
-            return left2, op2, coltype2(right2), left3, op3, coltype3(right3)
+            return left2, op2, coltype2(right2), left3, op3, coltype3(right3),con
                 
 
         if op=='or ':
             left2,op2,right2=split_condition(left)
             left3,op3,right3=split_condition(right)
+            con='or'
             if left2 not in self.column_names:
                 raise ValueError(f'Condition is not valid (cant find column name)')
             coltype2 = self.column_types[self.column_names.index(left2)]
@@ -699,7 +770,7 @@ class Table:
                 raise ValueError(f'Condition is not valid (cant find column name)')
             coltype3 = self.column_types[self.column_names.index(left3)]
 
-            return left2, op2, coltype2(right2), left3, op3, coltype3(right3)
+            return left2, op2, coltype2(right2), left3, op3, coltype3(right3),con
             
 
         my_str = left
@@ -732,7 +803,7 @@ class Table:
             raise ValueError(f'Condition is not valid (cant find column name)')
         coltype = self.column_types[self.column_names.index(left)]
 
-        return left, op, coltype(right), ' ', ' ', ' '
+        return left, op, coltype(right), ' ', ' ', ' ',' '
 
 
     def _load_from_file(self, filename):
