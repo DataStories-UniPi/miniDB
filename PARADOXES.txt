@@ -1,0 +1,7 @@
+gia na kano genika uniques prepei anamesa se kathe koma na yparxei space gia paradeigma: 
+
+create table testimus1 (ena str unique , dio str)
+
+create table testimus1 (ena str unique , dio str primary key , tria str )
+
+create index indo on testimus1(ena) using btree (MONO B TREE SUPPORTED)

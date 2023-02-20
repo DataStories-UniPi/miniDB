@@ -5,10 +5,17 @@ import sys
 import readline
 import traceback
 import shutil
+import pickle
+import pandas as panda 
 sys.path.append('miniDB')
 
-from database import Database
-from table import Table
+from miniDB.database import Database
+from miniDB.table import Table
+
+from miniDB.database import Database
+from miniDB.table import Table
+
+from tabulate import tabulate
 # art font is "big"
 art = '''
              _         _  _____   ____  
@@ -16,7 +23,7 @@ art = '''
   _ __ ___   _  _ __   _ | |  | || |_) |
  | '_ ` _ \ | || '_ \ | || |  | ||  _ < 
  | | | | | || || | | || || |__| || |_) |
- |_| |_| |_||_||_| |_||_||_____/ |____/   2022                              
+ |_| |_| |_||_||_| |_||_||_____/ |____/   2023                            
 '''   
 
 
@@ -39,6 +46,9 @@ def in_paren(qsplit, ind):
 
 
 def create_query_plan(query, keywords, action):
+    #print('2.0 Create QueryPlan Start')
+    #print("2.1 query: ",query)
+    #print("2.1.1 keywords, should be identical to 1.2: ",keywords)
     '''
     Given a query, the set of keywords that we expect to pe present and the overall action, return the query plan for this query.
 
@@ -46,8 +56,10 @@ def create_query_plan(query, keywords, action):
     '''
 
     dic = {val: None for val in keywords if val!=';'}
+    #print("2.2 dic: ",dic) # crafts the dictionary template with none values for each key
 
-    ql = [val for val in query.split(' ') if val !='']
+    ql = [val for val in query.split(' ') if val !=''] # ql stands for querylist, its the query, but in list form
+    #print("2.3 ql: ",ql)
 
     kw_in_query = []
     kw_positions = []
@@ -66,16 +78,22 @@ def create_query_plan(query, keywords, action):
             ql.pop(i+1)
             kw_positions.append(i)
         i+=1
+    #print ("kw_in_query: ",kw_in_query)
+    #print ("kw_positions: ",kw_positions)
         
 
 
     for i in range(len(kw_in_query)-1):
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
+        #print ("dic[kw_in_query[i]]: ",dic[kw_in_query[i]])
+    #print("dic after loop: ",dic)
     
     if action == 'create view':
+        #print('ACTION = CREATE VIEW')
         dic['as'] = interpret(dic['as'])
 
     if action=='select':
+        #print('ACTION = SELECT')
         dic = evaluate_from_clause(dic)
 
         if dic['distinct'] is not None:
@@ -94,34 +112,94 @@ def create_query_plan(query, keywords, action):
             dic['desc'] = None
 
     if action=='create table':
+        #print('ACTION = CREATE TABLE')
+
+        query_list = query.split()
+        table_index = query_list.index("table")
+        tab_name = query_list[table_index + 1]
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
+        
         dic['create table'] = dic['create table'].removesuffix(args).strip()
         arg_nopk = args.replace('primary key', '')[1:-1]
+        arg_noUnique=args.replace('unique', '')[1:-1]
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
+       
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+
+        keyboy=0
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]
+            keyboy=arglist[arglist.index('primary')-2]
+            
         else:
             dic['primary key'] = None
+
+        
+        if 'unique' in arg_nopk:
+            '''
+            Here we check if there are unique arguments in arg nopk and if there is,
+            we create pkl fine to add them in , so that we can later use them and change them 
+            in case of deletion or to check if there is indeed a unique column when trying to index a 
+            unique column using B+Tree indexing
+            '''
+            split_arg = arg_nopk.split()
+            
+            row1= split_arg[split_arg.index('unique') - 2]
+            
+            table1=tab_name
+            data = {"tab_name": table1,"primary_key":keyboy, "unique_column": row1}
+            #data=row1,'',keyboy
+
+            '''
+            Here we start creating the file and checking each case ,
+            if there is a file etc
+            '''
+            if 'unique_table' in locals():
+               
+                dataFR=unique_table
+                
+                
+                
+            elif os.path.isfile('./unique_table.pkl'):
+                dataFR=panda.read_pickle('./unique_table.pkl')  
+
+            else:
+                dataFR = panda.DataFrame(columns=['tab_name', 'primary_key', 'unique_column'])
+                
+                
+
+            dataFR=dataFR.append({'tab_name': table1, 'primary_key': keyboy, 'unique_column': row1},ignore_index=True)
+
+            unique_table=dataFR
+            dataFR.to_pickle('./unique_table.pkl')           
     
     if action=='import': 
+        #print('ACTION = IMPORT')
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
     if action=='insert into':
+        #print('ACTION = INSERT INTO')
         if dic['values'][0] == '(' and dic['values'][-1] == ')':
             dic['values'] = dic['values'][1:-1]
         else:
-            raise ValueError('Your parens are not right m8')
+            raise ValueError('Your parens are not right m8') #wut?
     
     if action=='unlock table':
+        #print('ACTION= UNLOCK TABLE')
         if dic['force'] is not None:
             dic['force'] = True
         else:
             dic['force'] = False
 
     return dic
+def create_and_write_to_file(file_name, content):
+    with open(file_name, "w") as file:
+        file.write(content)
+    print(f"File '{file_name}' created and written to successfully!")
+
+#create_and_write_to_file("new_file.txt", "This is the content written to the file.")
 
 
 
@@ -161,9 +239,47 @@ def evaluate_from_clause(dic):
     return dic
 
 def interpret(query):
+    #print('1. Interpret Start')
     '''
     Interpret the query.
     '''
+    #INTERVENTION FOR B+TREE INDEX ON A UNIQUE COLUMN 
+    '''
+    The way we are checking and interpreting the query of : 
+    create index INDEX_NAME on TABLE_THAT_HAS_A_UNIQUE_COLUMN(UNIQUE_COLUMN_NAME) using btree --->(ONLY B+TREE SUPPORTED)
+    is to check if the inserted query is equal to similar1 and then we make an overwrite on the index unique file
+    the new overwriten data will be used inside the Database.py file to check before creating an index
+    if the new index is create on a unique column or on its PK 
+    '''
+
+    similar1 = r"create index (\w+) on (\w+)\((\w+)\) using btree"
+    similar_to= re.search(similar1,query)
+    ok='ok'
+    if similar_to:
+        
+        index_name=similar_to.group(1)
+        table_name=similar_to.group(2)
+        table_column=similar_to.group(3)
+        print(index_name,"  ",table_name,"  ",table_column)
+        if os.path.isfile('./index_uniques.pkl'):
+            dataFR5=panda.read_pickle('./index_uniques.pkl')
+            dataFR5.loc[0]=table_name,table_column,index_name
+            dataFR5.to_pickle('./index_uniques.pkl')
+
+            dataFR5=panda.read_pickle('index_uniques.pkl')
+           
+        else:
+            dataFR5=panda.DataFrame(columns=['table_name','table_column','index_name'])
+            dataFR5.loc[0]=table_name,table_column,index_name
+            dataFR5.to_pickle('./index_uniques.pkl')
+            dataFR5=panda.read_pickle('index_uniques.pkl')
+            
+
+        
+        
+
+
+    #keyword per action?
     kw_per_action = {'create table': ['create table'],
                      'drop table': ['drop table'],
                      'cast': ['cast', 'from', 'to'],
@@ -171,6 +287,7 @@ def interpret(query):
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
                      'select': ['select', 'from', 'where', 'distinct', 'order by', 'limit'],
+                     #'select': ['select', 'from', 'where', 'distinct', 'between', 'and', 'order by', 'limit'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
@@ -178,18 +295,67 @@ def interpret(query):
                      'create index': ['create index', 'on', 'using'],
                      'drop index': ['drop index'],
                      'create view' : ['create view', 'as']
-                     }
+                     } # ta keys einai ta aristera, to eidos.
 
-    if query[-1]!=';':
+    if query[-1]!=';': # add ; if it doesnt exist (at the end)
         query+=';'
     
-    query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip()
+    query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip() # vazei kena gia kapio logo deksia-aristera apo tis parenthesis ( kai ), to idio kai gia to ;, vazei ena keno prin, stin periptosi poy kolitike example; ==> example ;
 
-    for kw in kw_per_action.keys():
-        if query.startswith(kw):
-            action = kw
+    # for kw in kw_per_action.keys(): #gia kathe key sta keys psakse
+    #     if query.startswith(kw): #finds what type of action we have to deal with by checking the first string that exists inside the query
+    #         action = kw # example: query string starts with: "select ..." --> action = "select"
+    #         print ("1.1 action type: ",action)
 
-    return create_query_plan(query, kw_per_action[action]+[';'], action)
+    # #print("1.2 kw_per_action[action]+[';'] == ",kw_per_action[action]+[';'])
+    # return create_query_plan(query, kw_per_action[action]+[';'], action)
+    multipleQueries=False
+    word_query=query.split() #splits query into words
+    for keyword in word_query: # detects if query has and's/or's
+        if(keyword=="or" or keyword=="and"): 
+            multipleQueries=True
+            logical_operator=keyword
+
+    if(multipleQueries): #if the query contains and's/or's, splits the query into smaller individual ones, then passes them for query planning
+        base_query=[]
+        for word in word_query: # forming the base query (query start until "where")
+            base_query.append(word) 
+            if(word=='where'):
+                stopIndex = word_query.index("where") # will need the index later
+                break   # base query has now been formed        
+        tails=[] # each logical operator equals one more independent query to construct
+        query_tail=[] # reformed queries = query_base + query tail
+        for i in range(stopIndex+1,len(word_query)): # continue right after "where"
+            if(word_query[i]=='or' or word_query[i]=='and'):
+                query_tail.append(";") # end of query
+                tails.append(query_tail) 
+                query_tail=[] #if or/and is found save appended tail to list, clear tail and continue with the next one (if any)
+            else:
+                query_tail.append(word_query[i])
+        tails.append(query_tail) #last tail
+        #print (*tails)
+        formed_queries=[]
+        for query_tail in tails: # connect base_query + query_tails to form final independent queries 
+            formed_queries.append(base_query+query_tail)
+        #print ("reformed QUERY",*formed_queries)
+        final_query = []
+        for ref_query in formed_queries: # finalizing query form for query planning
+            ref_query = ' '.join(ref_query)
+            final_query.append(ref_query)
+        query_plans=[]
+        for query in final_query: # query plans
+            for kw in kw_per_action.keys():
+                if query.startswith(kw):
+                    action = kw
+            query_plans.append(create_query_plan(query, kw_per_action[action]+[';'], action))
+        return query_plans,logical_operator # each query plan goes hand to hand with a logical operator indication in order to be handled accordingly
+    else:
+        for kw in kw_per_action.keys():
+            if query.startswith(kw):
+                action = kw
+        return create_query_plan(query, kw_per_action[action]+[';'], action),'none' # regular query = tag for logical operator will be 'none'
+
+
 
 def execute_dic(dic):
     '''
@@ -282,17 +448,72 @@ if __name__ == "__main__":
             print('\nbye!')
             break
         try:
-            if line=='exit':
+            #print('0. This is program Start')
+            if line=='exit': # exit program 
                 break
-            if line.split(' ')[0].removesuffix(';') in ['lsdb', 'lstb', 'cdb', 'rmdb']:
+            if line.split(' ')[0].removesuffix(';') in ['lsdb', 'lstb', 'cdb', 'rmdb']: #only for meta commands
                 interpret_meta(line)
             elif line.startswith('explain'):
                 dic = interpret(line.removeprefix('explain '))
                 pprint(dic, sort_dicts=False)
-            else:
-                dic = interpret(line)
-                result = execute_dic(dic)
-                if isinstance(result,Table):
-                    result.show()
-        except Exception:
+            else: # normal operation goes here
+                # print("--- INTERPRET START ----")
+                # dic = interpret(line)
+                # print("--- EXECUTE START --- ")
+                # result = execute_dic(dic)
+                # #print("--- TRY SHOW RESULT---")
+                # showResult = False
+                # if isinstance(result,Table):
+                #     showResult = True
+                #     print("--- SHOW RESULT SUCCESS ---")
+                #     result.show()
+                # if (showResult==False):
+                #     print("---SHOW RESULT FAIL--- (isinstance(result,Table)==False)")
+                results=[]
+                result_table=[]
+                temp_table = []
+                
+                allQueryResults = []
+                dic,logical_operator = interpret(line)
+                #print("SPECIAL",logical_operator,"DIC",dic)
+                if(logical_operator=='none'): #no change
+                    result = execute_dic(dic)
+                    if isinstance(result,Table):
+                        result.show()
+                elif(logical_operator=='and'): # and operations
+                    for query in dic:
+                        results.append(execute_dic(query))
+                    for r in results:
+                        header,qr=r.show(print_output=False)
+                        #print("QueryResult:",qr)
+                        allQueryResults.append(qr)
+                    for qr in allQueryResults:
+                        for row in qr:
+                            if (row in temp_table):
+                                result_table.append(row)
+                                #print(row,"(AND) DUPE - OK") # debug
+                            else:
+                                temp_table.append(row)
+                                #print(row,"(AND) Denied") # debug
+                    print(tabulate(result_table[:None], headers=header)+'\n')
+                elif(logical_operator=='or'): # or operations
+                    results=[]
+                    result_table=[]
+                    allQueryResults = []
+                    for query in dic:
+                        results.append(execute_dic(query))
+                    for r in results:
+                        header,qr=r.show(print_output=False)
+                        #print("QueryResult:",qr)
+                        allQueryResults.append(qr)
+                    for qr in allQueryResults:
+                        for row in qr:
+                            if (row not in result_table):
+                                result_table.append(row)
+                                #print(row,"(OR) OK") # debug
+                            else:
+                                #print(row,"(OR) DUPLICATE (Denied)") # debug
+                                pass
+                    print(tabulate(result_table[:None], headers=header)+'\n')
+        except Exception: # errors
             print(traceback.format_exc())
