@@ -257,46 +257,48 @@ class Table:
                 else:
                     raise Exception("You must enter integers. For example: between 1 and 10")
 
+            # if condition contains string "not"
             elif "not" in condition.split():
                 splt = condition.split("not")
                 cond = splt[1]
                 column_name, operator, value = self._parse_condition(cond)
                 column = self.column_by_name(column_name)
-                reversed_operator = reverse_op(operator)
+                reversed_operator = reverse_op(operator)    # reversing operator
                 if reversed_operator == '=':
                     for i,j in enumerate(column):
-                        if j!=value:
+                        if j!=value:    # adding a row only if given value is not equal to the value of the row's column
                             rows.append(i)
 
                 else:
                     rows = [ind for ind, x in enumerate(column) if get_op(reversed_operator, x, value)]
 
+            # if condition contains string "and"
             elif "and" in condition.split():
-                splt= condition.split("and")
+                splt= condition.split("and")    # splitting condition on string "and"
                 iteration = 0
                 for conditions in splt:
                     column_name, operator, value = self._parse_condition(conditions)
                     column = self.column_by_name(column_name)
                     list_of_rows= [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
-                    if iteration == 0:
+                    if iteration == 0:  # runs only for first condition given
                         r = list_of_rows
                     else:
-                        r = set(r).intersection(list_of_rows)
+                        r = set(r).intersection(list_of_rows)   # keeping only the items that exist both in list r and list list_of_rows
                     iteration += 1
                 rows = r
 
-
+            # if condition contains string "or"
             elif "or" in condition.split():
-                splt = condition.split("or")
+                splt = condition.split("or")    # splitting condition on string "and"
                 list_of_rows=[]
                 for conditions in splt:
                     column_name, operator, value = self._parse_condition(conditions)
                     column = self.column_by_name(column_name)
-                    list_of_rows.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)])
+                    list_of_rows.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)]) # appending every no. of row to list_of_rows
 
                 for row in list_of_rows:
                         for r in row:
-                            if r not in rows:
+                            if r not in rows:   # avoiding duplicates
                                 rows.append(r)
 
             else:
