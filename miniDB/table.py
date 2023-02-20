@@ -266,6 +266,15 @@ class Table:
                 column_name, operator2, value2 = self._parse_condition(condition2)
                 column = self.column_by_name(column_name)
                 rows = [ind for ind, x in enumerate(column) if get_op(operator1, x, value1) and get_op(operator2, x, value2)]
+            elif 'or' in condition.split():
+                cond1 = condition1.split('or')
+                condition = cond1[0].split('or')
+                row_lists = []
+                for cond in condition:
+                    column_name, operator, value = self._parse_condition(cond)
+                    column = self.column_by_name(column_name)
+                    row_lists.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)])
+                    
             else:
                 column_name, operator, value = self._parse_condition(condition)
                 column = self.column_by_name(column_name)
