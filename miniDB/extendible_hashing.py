@@ -1,11 +1,11 @@
 from pprint import pprint
-
+import hashlib
 
 class ExtendibleHashing:
     '''
-    A class that implements an extendible hashing data structure.
+    A class that implements an LSB (Least Significant Bit) extendible hashing data structure.
     '''
-    def __init__(self, bits=0, bucket_size=3):
+    def __init__(self, bits=1, bucket_size=3):
         '''
         Initializes the hash table with a given number of bits and a given bucket size.
         
@@ -24,21 +24,13 @@ class ExtendibleHashing:
         Args:
             <> key: The object to be hashed.
             <> value: The object to be stored in the hash table.
-            
-        Notes:
-            <> We use the 'zfill' method to pad the binary string with zeros to the left until it has n bits,
-            because we have to be sure that the binary string is always greater than or equal to the depth of the hash table.
         '''
-        h = self._hash(key) # get the hash value of the key.
-        n = self.bits + 1 # n is the maximum number of bits that can be used to index the buckets of the hash table.
-        binary_string = bin(h)[2:].zfill(n) # convert the hash value to a binary string with n bits.
-        msb = binary_string[:self.bits] # extract the MSB (most significant bits).
-        msb = int(msb, 2) # convert the MSB to an integer (from binary to decimal).
-        bucket = self.buckets[msb]
+        lsb = self._hash(key) # the LSB (least significant bits) is the hash value of the key.
+        bucket = self.buckets[lsb]
         if len(bucket) < self.bucket_size:
             bucket.append((key, value))
         else:
-            self._split(bucket.copy(), msb)
+            self._split(bucket.copy(), lsb)
             self._add(key, value)
 
     def _remove(self, key):
@@ -49,12 +41,8 @@ class ExtendibleHashing:
         Args:
             <> key: The object which is used to find the key-value pair to be removed.
         '''
-        h = self._hash(key) # get the hash value of the key.
-        n = self.bits + 1 # n is the maximum number of bits that can be used to index the buckets of the hash table.
-        binary_string = bin(h)[2:].zfill(n) # convert the hash value to a binary string with n bits.
-        msb = binary_string[:self.bits] # extract the MSB (most significant bits).
-        msb = int(msb, 2) # convert the MSB to an integer (from binary to decimal).
-        bucket = self.buckets[msb]
+        lsb = self._hash(key) # the LSB (least significant bits) is the hash value of the key.
+        bucket = self.buckets[lsb]
         for i, (k, v) in enumerate(bucket):
             if k == key:
                 del bucket[i]
@@ -68,12 +56,8 @@ class ExtendibleHashing:
         Args:
             <> key: The object which is used to find the key-value pair.
         '''
-        h = self._hash(key) # get the hash value of the key.
-        n = self.bits + 1 # n is the maximum number of bits that can be used to index the buckets of the hash table.
-        binary_string = bin(h)[2:].zfill(n) # convert the hash value to a binary string with n bits.
-        msb = binary_string[:self.bits] # extract the MSB (most significant bits).
-        msb = int(msb, 2) # convert the MSB to an integer (from binary to decimal).
-        bucket = self.buckets[msb]
+        lsb = self._hash(key) # the LSB (least significant bits) is the hash value of the key.
+        bucket = self.buckets[lsb]
         for k, v in bucket:
             if k == key:
                 return v
@@ -88,13 +72,15 @@ class ExtendibleHashing:
             <> key: The object to be hashed.
             
         Notes:
-            <> The 'hash' built-in function returns a hash value for the specified object.
+            <> hashlib.sha256 is used to be sure that the hash value for the specified key
+            is unique and will be the same for every execution of the program.
         '''
-        return hash(key) % len(self.buckets)
+        value = int(hashlib.sha256(str(key).encode()).hexdigest(), 16)
+        return value % len(self.buckets)
     
-    def _split(self, bucket, msb):
+    def _split(self, bucket, lsb):
         '''
-        Splits the bucket with the given MSB (most significant bits) into 2^(bits + 1) buckets.
+        Splits the bucket with the given LSB (least significant bits) into 2^(bits + 1) buckets.
         
         Args:
             <> bucket: The bucket to be split.
@@ -102,7 +88,7 @@ class ExtendibleHashing:
         self.bits += 1
         temp_buckets = {i: [] for i in range(2 ** self.bits)}
         for key in self.buckets.keys():
-            if key == msb:
+            if key == lsb:
                 continue
             temp_buckets[key] = self.buckets[key]
         self.buckets = temp_buckets
@@ -114,27 +100,3 @@ class ExtendibleHashing:
         Prints the hash table.
         '''
         pprint(self.buckets)
-
-if __name__ == '__main__':
-    # Create an extendible hashing data structure with 1 bit and a bucket size of 4.
-    hash_table = ExtendibleHashing(1,4)
-
-    # Add some key-value pairs to the hash table.
-    hash_table._add(1, "one")
-    hash_table._add(2, "two")
-    hash_table._add(3, "three")
-    hash_table._add(4, "four")
-    hash_table._add(5, "five")
-
-    # Lookup some values by key.
-    print(hash_table._get(1)) # Output: one
-    print(hash_table._get(2)) # Output: two
-    print(hash_table._get(3)) # Output: three
-    print(hash_table._get(4)) # Output: four
-    print(hash_table._get(5)) # Output: five
-
-    # Remove a key-value pair from the hash table.
-    hash_table._remove(2)
-
-    # Print the hash table.
-    hash_table._print()
