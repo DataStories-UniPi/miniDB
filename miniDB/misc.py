@@ -5,10 +5,12 @@ def get_op(op, a, b):
     Get op as a function of a and b by using a symbol
     '''
     ops = {'>': operator.gt,
-                '<': operator.lt,
-                '>=': operator.ge,
-                '<=': operator.le,
-                '=': operator.eq}
+            '<': operator.lt,
+            '>=': operator.ge,
+            '<=': operator.le,
+            '!=': operator.ne,
+            '=': operator.eq
+}
 
     try:
         return ops[op](a,b)
@@ -18,9 +20,11 @@ def get_op(op, a, b):
 def split_condition(condition):
     ops = {'>=': operator.ge,
            '<=': operator.le,
+           '!=': operator.ne,
            '=': operator.eq,
            '>': operator.gt,
-           '<': operator.lt}
+           '<': operator.lt
+           }
 
     for op_key in ops.keys():
         splt=condition.split(op_key)
@@ -46,5 +50,6 @@ def reverse_op(op):
         '>=' : '<=',
         '<' : '>',
         '<=' : '>=',
+        '!=' : '!=',
         '=' : '='
     }.get(op)

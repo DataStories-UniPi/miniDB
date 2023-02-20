@@ -77,7 +77,7 @@ def create_query_plan(query, keywords, action):
 
     if action=='select':
         dic = evaluate_from_clause(dic)
-
+        dic = evaluate_where_clause(dic)
         if dic['distinct'] is not None:
             dic['select'] = dic['distinct']
             dic['distinct'] = True
@@ -93,11 +93,18 @@ def create_query_plan(query, keywords, action):
         else:
             dic['desc'] = None
 
+    if action=='update table':
+        dic = evaluate_where_clause(dic)
+
+    if action=='delete from':
+        dic = evaluate_where_clause(dic)
+
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
-        arg_nopk = args.replace('primary key', '')[1:-1]
-        arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
+
+        arg_nopk_nounique = args.replace('primary key', '').replace('unique', '')[1:-1]
+        arglist = [val.strip().split(' ') for val in arg_nopk_nounique.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
         if 'primary key' in args:
@@ -105,7 +112,21 @@ def create_query_plan(query, keywords, action):
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
+
+        if 'unique' in args:
+            unique_list = [i for i, x in enumerate(arglist) if x=='unique' or x=='unique,']
+            dic['unique'] = ','.join(arglist[i-2] for i in unique_list)
+        else:
+            dic['unique'] = None
     
+    if action=='create index':
+        args = dic['on'].split(' ', 1)
+        if len(args) == 2:
+            dic['on'] = args[0]
+            dic['column'] = args[1].strip().replace('(','').replace(')','').replace(' ','')
+        else:
+            dic['column'] = None
+
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
@@ -122,8 +143,6 @@ def create_query_plan(query, keywords, action):
             dic['force'] = False
 
     return dic
-
-
 
 def evaluate_from_clause(dic):
     '''
@@ -159,6 +178,92 @@ def evaluate_from_clause(dic):
         dic['from'] = join_dic
         
     return dic
+
+def evaluate_where_clause(dic):
+    '''
+    Evaluate the part of the query that is supplied as the 'where' argument
+    '''
+    if dic['where'] is None:
+        return dic
+    where_split = split_statement(dic['where'])
+    #find the indices of the not and between keywords
+    not_idx = [i for i,word in enumerate(where_split) if word=='not' and not in_paren(where_split,i)]
+    between_idx = [i for i,word in enumerate(where_split) if word=='between' and not in_paren(where_split,i)]
+    not_between_idx = [i for i,word in enumerate(where_split) if word=='not' and where_split[i+1]=='between' and not in_paren(where_split,i)]
+
+
+    operators = {'>=': '<',
+                    '<=': '>',
+                    '!=': '=',
+                    '>': '<=',
+                    '<': '>=',
+                    '=': '!=',
+                    }
+
+    #for ever not between, delete not, between keywords and change the condition to "column < value1 and column > value2"
+    while not_between_idx:
+        not_between_idx = not_between_idx[0]
+        column_name = where_split[not_between_idx-1]
+        value1= where_split[not_between_idx+2]
+        value2= where_split[not_between_idx+4]
+
+        where_split_right = ' '.join(where_split[not_between_idx+5:])
+        where_split_left = ' '.join(where_split[:not_between_idx-1])
+        dic['where'] = where_split_left + ' ' + column_name + " < " + value1 + " or " + column_name + " > " + value2 + ' ' + where_split_right
+
+        where_split = split_statement(dic['where'])
+        not_between_idx = [i for i,word in enumerate(where_split) if word=='not' and where_split[i+1]=='between' and not in_paren(where_split,i)]
+        not_idx = [i for i,word in enumerate(where_split) if word=='not' and not in_paren(where_split,i)]
+        between_idx = [i for i,word in enumerate(where_split) if word=='between' and not in_paren(where_split,i)]
+      
+    # for every not keyword, delete not and change the operator to the opposite one
+    while not_idx:
+        not_idx = not_idx[0]
+        condition_right = ' '.join(where_split[not_idx+1:not_idx+4])
+        where_split_right = ' '.join(where_split[not_idx+4:])
+        where_split_left = ' '.join(where_split[:not_idx])
+
+        for key, value in operators.items():
+            if key in condition_right:
+                dic['where'] = where_split_left + ' ' + condition_right.replace(key, value) + ' ' + where_split_right
+                break
+        where_split = split_statement(dic['where'])
+        not_idx = [i for i,word in enumerate(where_split) if word=='not' and not in_paren(where_split,i)]
+    # for every between keyword, delete between and change it to >= and <=
+    while between_idx:
+        between_idx = between_idx[0]
+        column_name = where_split[between_idx-1]
+        value1= where_split[between_idx+1]
+        value2= where_split[between_idx+3]
+
+        where_split_right = ' '.join(where_split[between_idx+4:])
+        where_split_left = ' '.join(where_split[:between_idx-1])
+
+        dic['where'] = where_split_left + ' ' + column_name + " >= " + value1 + " and " + column_name + " <= " + value2 + ' ' + where_split_right
+
+        where_split = split_statement(dic['where'])
+        between_idx = [i for i,word in enumerate(where_split) if word=='between' and not in_paren(where_split,i)]
+
+    return dic
+
+def split_statement(statement):
+    '''
+    Split a statement into a list of words, but keep the words in quotes together.
+    '''
+    result = []
+    current = ""
+    in_quote = False
+    for char in statement:
+        if char == "\"":
+            in_quote = not in_quote
+            current += char
+        elif char == " " and not in_quote:
+            result.append(current)
+            current = ""
+        else:
+            current += char
+    result.append(current)
+    return result
 
 def interpret(query):
     '''
@@ -276,7 +381,8 @@ if __name__ == "__main__":
     while 1:
         try:
             line = session.prompt(f'({db._name})> ', auto_suggest=AutoSuggestFromHistory()).lower()
-            if line[-1]!=';':
+            if line=='': continue
+            elif line[-1]!=';':
                 line+=';'
         except (KeyboardInterrupt, EOFError):
             print('\nbye!')
