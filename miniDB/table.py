@@ -6,7 +6,7 @@ import sys
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
-from misc import get_op, split_condition
+from misc import get_op, split_condition, not_op
 
 
 class Table:
@@ -26,7 +26,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, unique=None, load=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -39,7 +39,6 @@ class Table:
 
         # if name, columns_names and column types are not none
         elif (name is not None) and (column_names is not None) and (column_types is not None):
-
             self._name = name
 
             if len(column_names)!=len(column_types):
@@ -61,6 +60,11 @@ class Table:
             self.column_types = [eval(ct) if not isinstance(ct, type) else ct for ct in column_types]
             self.data = [] # data is a list of lists, a list of rows that is.
 
+            # print("Column types: ",self.column_types)
+            # print("Column names: ",self.column_names)
+            # print("PK: ",primary_key)
+            # print("Unique: ",unique)
+
             # if primary key is set, keep its index as an attribute
             if primary_key is not None:
                 self.pk_idx = self.column_names.index(primary_key)
@@ -69,6 +73,20 @@ class Table:
 
             self.pk = primary_key
             # self._update()
+            self.unique_columns = []    ## ---> A list of unique column indexes
+            self.unique_column_names = [unique]   ## ---> A list of unique column names
+
+            if unique is not None:
+                self.unique_columns.append(column_names.index(unique))
+                self.unique_column_names.append(unique)
+            else: 
+                self.unique_columns = None
+                self.unique_column_names = None
+            
+            # Set  unique attributes
+            # setattr(self,unique_columns,self.unique_columns)
+            # setattr(self,unique_column_names,self.unique_column_names)
+            
 
     # if any of the name, columns_names and column types are none. return an empty table object
 
@@ -83,7 +101,7 @@ class Table:
         self.columns = [[row[i] for row in self.data] for i in range(len(self.column_names))]
         for ind, col in enumerate(self.column_names):
             setattr(self, col, self.columns[ind])
-
+        
     def _cast_column(self, column_name, cast_type):
         '''
         Cast all values of a column using a specified type.
@@ -130,12 +148,21 @@ class Table:
             elif i==self.pk_idx and row[i] is None:
                 raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
 
+            #if value is to be appended to a unique column, check that it doesnt already exist
+            
+            if self.unique_columns is not None: 
+                if i in self.unique_columns: 
+                    for unique in self.unique_columns:
+                        if row[i] in self.column_names[unique]:
+                            raise ValueError(f'## ERROR -> Value {row[i]} already exists in unique column {self.column_names[unique]}.')
+
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
             self.data[insert_stack[-1]] = row
         else: # else append to the end
             self.data.append(row)
         # self._update()
+        
 
     def _update_rows(self, set_value, set_column, condition):
         '''
@@ -150,22 +177,75 @@ class Table:
                 
                 Operatores supported: (<,<=,=,>=,>)
         '''
-        # parse the condition
-        column_name, operator, value = self._parse_condition(condition)
+        # # parse the condition
+        # column_name, operator, value = self._parse_condition(condition)
 
-        # get the condition and the set column
-        column = self.column_by_name(column_name)
+        # # get the condition and the set column
+        # column = self.column_by_name(column_name)
+        # set_column_idx = self.column_names.index(set_column)
+
+        # # set_columns_indx = [self.column_names.index(set_column_name) for set_column_name in set_column_names]
+
+        # # for each value in column, if condition, replace it with set_value
+        # for row_ind, column_value in enumerate(column):
+        #     if get_op(operator, column_value, value):
+        #         self.data[row_ind][set_column_idx] = set_value
+
+        # # self._update()
+        #         # print(f"Updated {len(indexes_to_del)} rows")
+
+        if condition is not None:
+            if len(condition.split(' ')) == 5  and 'between' in condition and 'and' in condition:
+                condition = condition.split(' ')[0] + ' >= ' + \
+                            condition.split(' ')[2] + ' and ' + \
+                            condition.split(' ')[0] + '<=' +  \
+                            condition.split(' ')[4]
+
         set_column_idx = self.column_names.index(set_column)
+        if ' and ' in condition:
+            lists_of_indexes = []
+            for cond in condition.split('and'):
+                if 'not ' in cond:
+                    cond = cond.split('not ')[1]
+                    column_name, operator, value = self._parse_condition(cond)
+                    column = self.column_by_name(column_name)
+                    operator = not_op(operator)
+                    cond = column_name + operator + str(value)
+                indexes = []
+                column_name, operator, value = self._parse_condition(cond)
 
-        # set_columns_indx = [self.column_names.index(set_column_name) for set_column_name in set_column_names]
+                column = self.column_by_name(column_name)
+                for index, row_value in enumerate(column):
+                    if get_op(operator, row_value, value):
+                        indexes.append(index)
 
-        # for each value in column, if condition, replace it with set_value
-        for row_ind, column_value in enumerate(column):
-            if get_op(operator, column_value, value):
-                self.data[row_ind][set_column_idx] = set_value
+                lists_of_indexes.append(indexes)
 
-        # self._update()
-                # print(f"Updated {len(indexes_to_del)} rows")
+            intersection_set = set(lists_of_indexes[0])
+            for l in lists_of_indexes[1:]:
+                intersection_set = intersection_set.intersection(l)
+
+            indexes_to_del = list(intersection_set)
+        else:
+            list_of_indexes = []
+            for cond in condition.split(' or '):
+                if 'not ' in cond:
+                    cond = cond.split('not ')[1]
+                    column_name, operator, value = self._parse_condition(cond)
+                    column = self.column_by_name(column_name)
+                    operator = not_op(operator)
+                    cond = column_name + operator + str(value)
+                column_name, operator, value = self._parse_condition(cond)
+
+                column = self.column_by_name(column_name)
+                for index, row_value in enumerate(column):
+                    if get_op(operator, row_value, value):
+                        list_of_indexes.append(index)
+
+            indexes_to_del = list(set(list_of_indexes))
+            
+        for row_index in indexes_to_del:
+            self.data[row_index][set_column_idx] = set_value
 
 
     def _delete_where(self, condition):
@@ -182,14 +262,56 @@ class Table:
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
-        column_name, operator, value = self._parse_condition(condition)
+        if condition is not None:
+            if len(condition.split(' ')) == 5  and 'between' in condition and 'and' in condition:
+                condition = condition.split(' ')[0] + ' >= ' + \
+                            condition.split(' ')[2] + ' and ' + \
+                            condition.split(' ')[0] + '<=' +  \
+                            condition.split(' ')[4]
 
-        indexes_to_del = []
+        if ' and ' in condition:
+            lists_of_indexes = []
+            for cond in condition.split('and'):
+                if 'not ' in cond:
+                    cond = cond.split('not ')[1]
+                    column_name, operator, value = self._parse_condition(cond)
+                    column = self.column_by_name(column_name)
+                    operator = not_op(operator)
+                    cond = column_name + operator + str(value)
+                indexes = []
+                column_name, operator, value = self._parse_condition(cond)
 
-        column = self.column_by_name(column_name)
-        for index, row_value in enumerate(column):
-            if get_op(operator, row_value, value):
-                indexes_to_del.append(index)
+                column = self.column_by_name(column_name)
+                for index, row_value in enumerate(column):
+                    if get_op(operator, row_value, value):
+                        indexes.append(index)
+
+                lists_of_indexes.append(indexes)
+
+            intersection_set = set(lists_of_indexes[0])
+            for l in lists_of_indexes[1:]:
+                intersection_set = intersection_set.intersection(l)
+
+            indexes_to_del = list(intersection_set)
+        else:
+            list_of_indexes = []
+            for cond in condition.split(' or '):
+                if 'not ' in cond:
+                    cond = cond.split('not ')[1]
+                    column_name, operator, value = self._parse_condition(cond)
+                    column = self.column_by_name(column_name)
+                    operator = not_op(operator)
+                    cond = column_name + operator + str(value)
+                column_name, operator, value = self._parse_condition(cond)
+
+                column = self.column_by_name(column_name)
+                for index, row_value in enumerate(column):
+                    if get_op(operator, row_value, value):
+                        list_of_indexes.append(index)
+
+            indexes_to_del = list(set(list_of_indexes))
+
+
 
         # we pop from highest to lowest index in order to avoid removing the wrong item
         # since we dont delete, we dont have to to pop in that order, but since delete is used
@@ -233,9 +355,49 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            if len(condition.split(' ')) == 5  and 'between' in condition and 'and' in condition:
+                condition = condition.split(' ')[0] + ' >= ' + \
+                            condition.split(' ')[2] + ' and ' + \
+                            condition.split(' ')[0] + '<=' +  \
+                            condition.split(' ')[4]
+            list_of_indexes = []
+            if ' and ' not in condition:
+                for cond in condition.split(' or '):
+                    if 'not ' in cond:
+                        cond = cond.split('not ')[1]
+                        column_name, operator, value = self._parse_condition(cond)
+                        column = self.column_by_name(column_name)
+                        operator = not_op(operator)
+                    else:
+                        column_name, operator, value = self._parse_condition(cond)
+                        column = self.column_by_name(column_name)
+
+                    rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+                    for idx in rows:
+                        list_of_indexes.append(idx)
+                rows = list(set(list_of_indexes))
+            else:
+                # print('')
+                lists_of_indexes = []
+                for cond in condition.split('and'):
+                    if 'not ' in cond:
+                        cond = cond.split('not ')[1]
+                        column_name, operator, value = self._parse_condition(cond)
+                        column = self.column_by_name(column_name)
+                        operator = not_op(operator)
+                        cond = column_name + operator + str(value)
+                    indexes = []
+                    column_name, operator, value = self._parse_condition(cond)
+                    column = self.column_by_name(column_name)
+                    for index, row_value in enumerate(column):
+                        if get_op(operator, row_value, value):
+                            indexes.append(index)
+                    lists_of_indexes.append(indexes)
+
+                intersection_set = set(lists_of_indexes[0])
+                for l in lists_of_indexes[1:]:
+                    intersection_set = intersection_set.intersection(l)
+                rows = list(intersection_set)
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -245,12 +407,12 @@ class Table:
         # we need to set the new column names/types and no of columns, since we might
         # only return some columns
         dict['column_names'] = [self.column_names[i] for i in return_cols]
-        dict['column_types']   = [self.column_types[i] for i in return_cols]
+        dict['column_types'] = [self.column_types[i] for i in return_cols]
 
         s_table = Table(load=dict)
 
         s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
-
+        
         if order_by:
             s_table.order_by(order_by, desc)
 
@@ -281,9 +443,10 @@ class Table:
 
         column_name, operator, value = self._parse_condition(condition)
 
-        # if the column in condition is not a primary key, abort the select
-        if column_name != self.column_names[self.pk_idx]:
-            print('Column is not PK. Aborting')
+        # if the column in condition is not a primary key or unique abort the select
+        if column_name != self.column_names[self.pk_idx] or\
+                     column_name not in (self.column_names[unique] for unique in self.unique_columns):
+            print('Column is not PK neither Unique. Aborting')
 
         # here we run the same select twice, sequentially and using the btree.
         # we then check the results match and compare performance (number of operation)
@@ -533,6 +696,12 @@ class Table:
         if self.pk_idx is not None:
             # table has a primary key, add PK next to the appropriate column
             headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
+        
+        if self.unique_columns is not None:
+            #table has unique columns
+            for unique in self.unique_columns:
+                headers[unique] = headers[unique]+' #Unq#'
+
         # detect the rows that are no tfull of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]

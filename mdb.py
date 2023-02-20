@@ -44,9 +44,7 @@ def create_query_plan(query, keywords, action):
 
     This can and will be used recursively
     '''
-
     dic = {val: None for val in keywords if val!=';'}
-
     ql = [val for val in query.split(' ') if val !='']
 
     kw_in_query = []
@@ -105,6 +103,17 @@ def create_query_plan(query, keywords, action):
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
+
+        # parse unique arg
+        arg_no_unique = args.replace('unique', '')[1:-1]
+        arglist = [val.strip().split(' ') for val in arg_no_unique.split(',')]
+        dic['column_names'] = ','.join([val[0] for val in arglist])
+        dic['column_types'] = ','.join([val[1] for val in arglist])
+        if 'unique' in args:
+            arglist = args[1:-1].split(' ')
+            dic['unique'] = arglist[arglist.index('unique')-2]
+        else:
+            dic['unique'] = None
     
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
@@ -121,6 +130,7 @@ def create_query_plan(query, keywords, action):
         else:
             dic['force'] = False
 
+    # print("create query plan - dic:",dic)
     return dic
 
 
