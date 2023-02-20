@@ -158,11 +158,6 @@ def evaluate_from_clause(dic):
             join_dic['right'] = interpret(join_dic['right'][1:-1].strip())
 
         dic['from'] = join_dic
-<<<<<<< Updated upstream
-
-    return dic
-
-=======
 
     return dic
 
@@ -232,7 +227,6 @@ def form_where_clause(where_split):#diko mas
         where_dic['right'] = right
         return where_dic
 
->>>>>>> Stashed changes
 def interpret(query):
     '''
     Interpret the query.

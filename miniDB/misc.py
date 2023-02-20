@@ -62,7 +62,10 @@ def convert_to_RA(dic):
         RA_expression += "δ \n "
     if projection != '*':
         RA_expression += "Π " + projection + "\n  "
-    RA_expression += "σ " + selection + " (" + table +")"
+    if selection is not None:
+        RA_expression += "σ " + selection + " (" + table +")"
+    else:
+        RA_expression += "σ(" + table +")"
     return RA_expression
 
 def convert_query_dic_to_RA_dic(dic):
@@ -78,7 +81,6 @@ def convert_query_dic_to_RA_dic(dic):
     RA_expression['projection'] = dic['select']
     RA_expression['selection'] = dic['where']
     RA_expression['table'] = simplify_from(dic['from'])
-    print(RA_expression['table'])
     if dic['distinct'] is not None:
         RA_expression['distinct'] = True
     return RA_expression
@@ -92,17 +94,9 @@ def simplify_from(condition):
     else:
         return ''.join(condition)
 
-def evaluate_selection(condition):
-    if (isinstance(condition, dict)) and isinstance(condition['right'], dict):
-        condition['right'] = evaluate_selection(condition['right'])
-        return condition
-    elif isinstance(condition, dict):
-        return condition
-    else:
-        table_string = condition
-        return table_string
-
 def selection_to_string(condition):
+    if condition is None:
+        return None
     if isinstance(condition, dict):
         if (condition['left'] == None):
             temp_string = condition['operator'] + '(' + selection_to_string(condition['right']) + ')'
