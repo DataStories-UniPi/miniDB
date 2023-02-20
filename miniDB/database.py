@@ -34,6 +34,7 @@ class Database:
             try:
                 self.load_database()
                 self.load_statistics()
+                self.calculate_tables_statistics() # update statistics.
                 logging.info(f'Loaded "{name}".')
                 return
             except:

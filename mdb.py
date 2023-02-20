@@ -455,10 +455,12 @@ if __name__ == "__main__":
                 line+=';'
         except (KeyboardInterrupt, EOFError):
             print('\nbye!')
+            db.calculate_tables_statistics() # calculate statistics before exiting.
             break
         try:
             if line=='exit;':
                 print('\nbye!')
+                db.calculate_tables_statistics() # calculate statistics before exiting.
                 break
             if line.split(' ')[0].removesuffix(';') in ['lsdb', 'lstb', 'cdb', 'rmdb']:
                 interpret_meta(line)
