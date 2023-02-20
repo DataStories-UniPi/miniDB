@@ -55,7 +55,7 @@ class Table:
 
     def _cast_column(self, column_name, cast_type):
         '''
-        Args:
+        Xrhsima:
             column_name: string. The column that will be casted.
             cast_type: type. Cast type (do not encapsulate in quotes).
         '''
@@ -108,9 +108,7 @@ class Table:
         
     def diagrafi_opou(self, synthiki):
         '''
-        Important: delete replaces the rows to be deleted with rows filled with Nones.
-        These rows are then appended to the insert_stack.
-        Args:
+        Xrhsima:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
@@ -125,16 +123,15 @@ class Table:
         
         for index in sorted(indexes_pros_diagrafi, reverse=True):
             if self._name[:4] != 'meta':
-                # if the table is not a metatable, replace the row with a row of nones
                 self.data[index] = [None for _ in range(len(self.column_names))]
             else:
                 self.data.pop(index)
         return indexes_pros_diagrafi
 
 
-    def _select_where(self, emfanisi_stilwn, condition=None, distinct=False, order_by=None, desc=True, orion=None): #Returns specific rows and columns where a condition is met
+    def _select_where(self, emfanisi_stilwn, condition=None, distinct=False, order_by=None, desc=True, orion=None): #To gnosto select...from...where
         '''
-        Args:
+        Xrhsima:
             return_columns: list. The columns to be returned.
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
@@ -217,7 +214,7 @@ class Table:
         return pros_emfanisi
 
 
-    def epilogi_alla_me_btree(self, return_columns, b_dendro, synthiki, distinct=False, order_by=None, desc=True, orion=None):# Selecting with Btree
+    def epilogi_alla_me_btree(self, return_columns, b_dendro, synthiki, distinct=False, order_by=None, desc=True, orion=None): #Eurethrio b-dendro
         if return_columns == '*':
             emfanisi_stilwn = [i for i in range(len(self.column_names))]
         else:
@@ -251,7 +248,7 @@ class Table:
         return pros_emfanisi
 
 
-    def epilogi_alla_me_hash(self, return_columns, hm, synthiki, distinct=False, order_by=None, desc=True, orion=None):  #Selecting with hash
+    def epilogi_alla_me_hash(self, return_columns, hm, synthiki, distinct=False, order_by=None, desc=True, orion=None):  #I periptosi tou hash
         if return_columns == '*':
             emfanisi_stilwn = [i for i in range(len(self.column_names))]
         else:
