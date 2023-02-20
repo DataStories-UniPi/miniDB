@@ -155,7 +155,7 @@ def create_query_plan(query, keywords, action):
             column_name = on_clause[1][:-1].strip()
             dic['on'] = { 'table_name': table_name, 'column_name': column_name }
         else:
-            raise ValueError('\nWrong syntax: "on" clause must be of the form "table_name (column_name, ...)"\n')
+            raise ValueError('\nWrong syntax: "on" clause must be of the form "table_name (column_name)"\n')
         
     return dic
 
@@ -473,11 +473,7 @@ if __name__ == "__main__":
                 interpret_meta(line)
             elif line.startswith('explain'):
                 dic = interpret(line.removeprefix('explain '))
-                
-                if 'select' in dic.keys() and not (isinstance(dic['from'],str) and dic['from'].startswith('meta')):
-                    queries, is_valid = multiple_query_plans(dic)
-                    if(is_valid):
-                        dic = evaluate_query_plans(db,queries)
+             
                         
                 pprint(dic, sort_dicts=False)
             else:
