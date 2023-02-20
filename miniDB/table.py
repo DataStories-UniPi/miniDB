@@ -26,7 +26,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, unique=None, load=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -67,7 +67,14 @@ class Table:
             else:
                 self.pk_idx = None
 
+            if unique is not None:
+                print("unique_idx", unique, self.column_names.index(unique))
+                self.unique_idx = self.column_names.index(unique)
+            else:
+                self.unique_idx = None
+
             self.pk = primary_key
+            self.unique = unique
             # self._update()
 
     # if any of the name, columns_names and column types are none. return an empty table object
@@ -465,7 +472,7 @@ class Table:
         join_table_name = ''
         join_table_colnames = left_names+right_names
         join_table_coltypes = self.column_types+table_right.column_types
-        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
+        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types=join_table_coltypes)
 
         return join_table, column_index_left, column_index_right, operator
 
@@ -620,6 +627,10 @@ class Table:
         if self.pk_idx is not None:
             # table has a primary key, add PK next to the appropriate column
             headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
+        if self.unique_idx is not None:
+            # table has unique column, add UNIQUE next to the appropriate column
+            headers[self.unique_idx] = headers[self.unique_idx] + ' #UNIQUE#'
+
         # detect the rows that are no tfull of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]
