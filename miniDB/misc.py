@@ -8,7 +8,12 @@ def get_op(op, a, b):
                 '<': operator.lt,
                 '>=': operator.ge,
                 '<=': operator.le,
-                '=': operator.eq}
+                '=': operator.eq,
+                '!=': operator.ne,
+                'not': operator.not_,
+                'or': operator.or_,
+                'and': operator.and_,
+                'between':btw}
 
     try:
         return ops[op](a,b)
@@ -20,7 +25,12 @@ def split_condition(condition):
            '<=': operator.le,
            '=': operator.eq,
            '>': operator.gt,
-           '<': operator.lt}
+           '<': operator.lt,
+           '!=': operator.ne,
+            'not': operator.not_,
+           'or': operator.or_,
+            'and': operator.and_,
+            'between':btw}
 
     for op_key in ops.keys():
         splt=condition.split(op_key)
@@ -48,3 +58,7 @@ def reverse_op(op):
         '<=' : '>=',
         '=' : '='
     }.get(op)
+
+
+def btw (a,b):
+    return operator.ge(a,b) and operator.le(a,b)
