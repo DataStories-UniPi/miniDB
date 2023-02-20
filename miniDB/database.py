@@ -274,7 +274,7 @@ class Database:
         lock_ownership = self.lock_table(table_name, mode='x')
         insert_stack = self._get_insert_stack_for_table(table_name)
         try:
-            self.tables[table_name]._insert(self,row, insert_stack)
+            self.tables[table_name]._insert(row, insert_stack)
         except Exception as e:
             logging.info(e)
             logging.info('ABORTED')
@@ -674,10 +674,9 @@ class Database:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
         '''
-        if self.tables[table_name].pk_idx is None: # if no primary key, no index
-            raise Exception('Cannot create index. Table has no primary key.')
-        elif self.tables[table_name].unique_columns is None:
-            raise Exception('Cannot create index. Table has no primary key.')
+        if self.tables[table_name].pk_idx is None and self.tables[table_name].unique_columns is None: # if no primary key, no index
+            raise Exception('Cannot create index. Table has no primary key nor unique.')
+        
             
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
             # currently only btree is supported. This can be changed by adding another if.
