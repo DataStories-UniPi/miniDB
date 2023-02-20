@@ -32,7 +32,7 @@ class Table:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
             if isinstance(load, dict):
                 self.__dict__.update(load)
-                self._update()
+                # self._update()
             # if load is str, load from a file
             elif isinstance(load, str):
                 self._load_from_file(load)
@@ -60,10 +60,10 @@ class Table:
             self.column_types = [eval(ct) if not isinstance(ct, type) else ct for ct in column_types]
             self.data = [] # data is a list of lists, a list of rows that is.
 
-            print("Column types: ",self.column_types)
-            print("Column names: ",self.column_names)
-            print("PK: ",primary_key)
-            print("Unique: ",unique)
+            # print("Column types: ",self.column_types)
+            # print("Column names: ",self.column_names)
+            # print("PK: ",primary_key)
+            # print("Unique: ",unique)
 
             # if primary key is set, keep its index as an attribute
             if primary_key is not None:
@@ -162,6 +162,7 @@ class Table:
         else: # else append to the end
             self.data.append(row)
         # self._update()
+        
 
     def _update_rows(self, set_value, set_column, condition):
         '''
@@ -411,7 +412,7 @@ class Table:
         s_table = Table(load=dict)
 
         s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
-
+        
         if order_by:
             s_table.order_by(order_by, desc)
 
@@ -442,8 +443,9 @@ class Table:
 
         column_name, operator, value = self._parse_condition(condition)
 
-        # if the column in condition is not a primary key, abort the select
-        if column_name != self.column_names[self.pk_idx] or column_name not in (self.column_names[unique] for unique in self.unique_columns):
+        # if the column in condition is not a primary key or unique abort the select
+        if column_name != self.column_names[self.pk_idx] or\
+                     column_name not in (self.column_names[unique] for unique in self.unique_columns):
             print('Column is not PK neither Unique. Aborting')
 
         # here we run the same select twice, sequentially and using the btree.
@@ -698,7 +700,7 @@ class Table:
         if self.unique_columns is not None:
             #table has unique columns
             for unique in self.unique_columns:
-                headers[unique] = headers[unique]+' #Unique#'
+                headers[unique] = headers[unique]+' #Unq#'
 
         # detect the rows that are no tfull of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions

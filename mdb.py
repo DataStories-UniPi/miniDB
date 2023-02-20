@@ -130,7 +130,7 @@ def create_query_plan(query, keywords, action):
         else:
             dic['force'] = False
 
-    print("create query plan - dic:",dic)
+    # print("create query plan - dic:",dic)
     return dic
 
 
