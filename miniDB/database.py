@@ -123,7 +123,26 @@ class Database:
         if self.verbose:
             print(f'Created table "{name}".')
 
-
+    def selectBetween(self,table_name,columnname,value1,value2):
+        # print(table_name)
+        self.load_database()
+        if isinstance(table_name,Table):
+            return table_name._select_whereBetween(columnname, value1, value2)
+    def selectNot(self,table_name,columnname,value1):
+        # print(table_name)
+        self.load_database()
+        if isinstance(table_name,Table):
+            return table_name._select_whereNot(columnname, value1)
+    def selectAnd(self,table_name,columnname,value1,columnname2,value2):
+        # print(table_name)
+        self.load_database()
+        if isinstance(table_name,Table):
+            return table_name._select_whereAnd(columnname, value1,columnname2,value2)
+    def selectOr(self,table_name,columnname,value1,value2):
+        # print(table_name)
+        self.load_database()
+        if isinstance(table_name,Table):
+            return table_name._select_whereOr(columnname, value1, value2)
     def drop_table(self, table_name):
         '''
         Drop table from current database.
