@@ -26,6 +26,11 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
+    
+
+
+
+
     def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
 
         if load is not None:
@@ -151,7 +156,7 @@ class Table:
                 Operatores supported: (<,<=,=,>=,>)
         '''
         # parse the condition
-        column_name, operator, value = self._parse_condition(condition)
+        column_name,column_name_right, operator, value,isnot = self._parse_condition(condition)
 
         # get the condition and the set column
         column = self.column_by_name(column_name)
@@ -182,7 +187,7 @@ class Table:
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
-        column_name, operator, value = self._parse_condition(condition)
+        column_name,column_nameRight, operator, value,isnot= self._parse_condition(condition)
 
         indexes_to_del = []
 
@@ -223,19 +228,51 @@ class Table:
             desc: boolean. If True, order_by will return results in descending order (False by default).
             limit: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
-
+        
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
-
+        
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
+        '''
+        we have split what used to be y into column_name1 and column_name2. Using operator and condition.split we are able to decide if we want to run code for AND or OR
+        '''
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            column_name1,column_name2, operator, value,isnot = self._parse_condition(condition)
+            column1, column2 = self.column_by_name(column_name1),self.column_by_name(column_name2)
+            if isnot == True and operator == '=' and len(condition.split(' and '))>1:
+                left_condition, right_condition = condition.split(' and ')
+                left_value,right_value  = self._parse_condition(left_condition.strip()),self._parse_condition(right_condition.strip())
+                right_value = self._parse_condition(right_condition.strip())
+                left_value,right_value= left_value[:-1],right_value[:-1]
+                operator1, operator2 = left_value[-2], right_value[-2]
+                w,u = left_value[-1],right_value[-1]
+                rows =  [ind for ind, (x,y) in enumerate(zip(column1,column2)) if get_op(operator1,x,w) and get_op(operator2,y,u)] #compares x and y and if both are True then it gets assigned to rows
+                print("these are the correct Indexes for the rows",rows)#prints the indexes for the correct answers
+            #both AND and OR use left_value and right_value which is a list that contains each condition, left condition being the first one and right being the second.
+            #both AND and OR work in the same ways
+            elif isnot == True and len(condition.split('or'))>1:
+                left_condition, right_condition = condition.split('or')
+                left_value,right_value  = self._parse_condition(left_condition.strip()),self._parse_condition(right_condition.strip())
+                left_value,right_value= left_value[:-1],right_value[:-1]
+                operator1, operator2 = left_value[-2], right_value[-2]
+                w,u = left_value[-1],right_value[-1]
+                rows1 = [ind for ind, x in enumerate(column1) if get_op(operator1, x, w)]
+                rows2 = [ind for ind, y in enumerate(column2) if get_op(operator2, y, u)]
+                rows = list(set(rows1) | set(rows2))  #compares rows1 and rows2 and prints either one if it is correct
+                print("these are the correct Indexes for the rows",rows)
+            
+            else:
+              column_name1,column_name2, operator, value,isnot = self._parse_condition(condition)
+              column = self.column_by_name(column_name1)
+            column = self.column_by_name(column_name1)
+            if isnot == True:#NOT
+              rows = [ind for ind, x in enumerate(column) if not get_op(operator, x, value)]
+            else:
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -266,7 +303,6 @@ class Table:
         #     s_table.data = s_table.data[:k]
         if isinstance(limit,str):
             s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
-
         return s_table
 
 
@@ -279,7 +315,7 @@ class Table:
             return_cols = [self.column_names.index(colname) for colname in return_columns]
 
 
-        column_name, operator, value = self._parse_condition(condition)
+        column_name,column_nameRight, operator, value,isnot = self._parse_condition(condition)
 
         # if the column in condition is not a primary key, abort the select
         if column_name != self.column_names[self.pk_idx]:
@@ -351,7 +387,7 @@ class Table:
                 Operators supported: (<,<=,==,>=,>)
         '''
         # get columns and operator
-        column_name_left, operator, column_name_right = self._parse_condition(condition, join=True)
+        column_name_left, operator, column_name_right,isnot = self._parse_condition(condition, join=True)
         # try to find both columns, if you fail raise error
 
         if(operator != '=' and join_type in ['left','right','full']):
@@ -555,14 +591,68 @@ class Table:
         # if both_columns (used by the join function) return the names of the names of the columns (left first)
         if join:
             return split_condition(condition)
-
         # cast the value with the specified column's type and return the column name, the operator and the casted value
-        left, op, right = split_condition(condition)
+        isnot = True
+        index1 = False
+        index2 = False 
+        index = []
+        condition_list = condition.split()
+        '''
+        we look for 'and' within the condition_list, if we find it we change index1 to True as well as find the index for where 'and' is in the condition_list() list
+        something similar happens with the elif line but instead of index1 it uses index2 and checks for 'or' within the condition_list() list
+        '''
+        if "and" in condition_list :
+            index = condition_list.index('and')
+            index1 = True
+        elif "or" in condition_list:
+            index = condition_list.index('or')
+            index2 = True
+        '''
+        here we check if there is 'and', 'or' statement in condition_list() if not then we move on to 'not' or no statement
+        '''
+        if index1 == True:#THIS IS AND
+            left_condition = " ".join(condition_list[:index])
+            right_condition = " ".join(condition_list[index+1:])
+            left_value = self._parse_condition(left_condition)
+            right_value = self._parse_condition(right_condition)
+            left_value= left_value[:-1]
+            right_value= right_value[:-1]
+            coltype = self.column_types[self.column_names.index(left_value[0])]
+            x = (left_value[-1], right_value[-1])
+            y = left_value[1]
+            w = (right_value[0])
+            op = "="
+            isnot = True
+            return y,w, op, coltype(x), isnot 
+        elif index2 == True:# THIS IS OR
+            left_condition = " ".join(condition_list[:index])
+            right_condition = " ".join(condition_list[index+1:])
+            left_value = self._parse_condition(left_condition)
+            right_value = self._parse_condition(right_condition)
+            left_value= left_value[:-1]
+            right_value= right_value[:-1]
+            coltype = self.column_types[self.column_names.index(left_value[0])]
+            x = (left_value[-1], right_value[-1])
+            y = left_value[1]
+            w = (right_value[0])
+            op = "="
+            isnot = True
+            return y,w, op, coltype(x), isnot 
+        elif index1 == False and index2 == False:
+          left, op, right = split_condition(condition)
+          result1 = left.split(" ")
+          isnot = False
+        if len(result1) > 1 and result1[0] == "not":#THIS IS NOT 
+            left = result1[1] 
+            isnot = True
+            x = left
+            y = right
         if left not in self.column_names:
             raise ValueError(f'Condition is not valid (cant find column name)')
         coltype = self.column_types[self.column_names.index(left)]
-
-        return left, op, coltype(right)
+        x = left
+        y = left
+        return x,y, op, coltype(right), isnot
 
 
     def _load_from_file(self, filename):
