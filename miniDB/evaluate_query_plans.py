@@ -237,8 +237,8 @@ def evaluate_query_plans(db , queries):
             min_cost = cost
             min_cost_query = query
     min_cost_query = ast.literal_eval(min_cost_query)
-    print(min_cost_query)
-    print(min_cost)
+    #print(min_cost_query)
+    #print(min_cost)
     return min_cost_query
 
 
