@@ -48,3 +48,18 @@ def reverse_op(op):
         '<=' : '>=',
         '=' : '='
     }.get(op)
+    
+def not_op(op):
+    '''
+    Return opposite of the operator given
+    '''
+    return {
+        '>' : '<=',
+        '>=' : '<',
+        '<' : '>=',
+        '<=' : '>',
+        '=' : '!=',
+        '!=' : '='
+    }.get(op)
+
+    
