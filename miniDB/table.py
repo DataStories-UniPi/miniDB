@@ -282,6 +282,23 @@ class Table:
                     lists_for_rows.append([ind for ind, x in enumerate(
                         column) if get_op(operator, x, value)])
                     rows = set(lists_for_rows[0].intersection(*lists_for_rows))
+            # or
+            elif "OR" in condition.split() or "or" in condition.split():
+                con_lst = condition.split("OR")
+                con_lst = con_lst[0].split("or")
+
+                lists_for_rows = []
+                for i in con_lst:  # gia kathe synthiki ksexwrista
+                    column_name, operator, value = self._parse_condition(i)
+                    column = self.column_by_name(column_name)
+                    lists_for_rows.append([ind for ind, x in enumerate(
+                        column) if get_op(operator, x, value)])
+
+                rows = []
+                for l in lists_for_rows:  # metakinhse ola ta rows sthn 1h lista
+                    for row in l:
+                        if not (row in rows):
+                            rows.append(row)         
         else:
             rows = [i for i in range(len(self.data))]
 
