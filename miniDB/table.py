@@ -1,13 +1,31 @@
-from __future__ import annotations
+﻿from __future__ import annotations
+from asyncio.windows_events import NULL
+from audioop import reverse
+from msilib.schema import Condition
+from multiprocessing import Value
+from random import random
+import string
+import re
 from tabulate import tabulate
 import pickle
 import os
 import sys
+import hashlib
+import base64
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
 from misc import get_op, split_condition
 
+
+def _msb_hash(data,num_bits):
+        data=data.encode('utf-8')
+        # Compute the hash using SHA-256
+        hash_object = hashlib.sha256(data)
+        hash_value = int.from_bytes(hash_object.digest(), byteorder='big')
+        # Take the most significant bits of the hash value
+        msb = hash_value >> (256 - num_bits)
+        return msb
 
 class Table:
     '''
@@ -205,12 +223,12 @@ class Table:
         # self._update()
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
-
-
+    
     def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
+        
         '''
         Select and return a table containing specified columns and rows where condition is met.
-
+         
         Args:
             return_columns: list. The columns to be returned.
             condition: string. A condition using the following format:
@@ -229,23 +247,122 @@ class Table:
             return_cols = [i for i in range(len(self.column_names))]
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
-
+            print(return_cols,"1")
+        
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
+        #print(condition)
+        #print(split_condition(condition))
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
+            column_name, operator, value, column_name2, operator2, value2,con = self._parse_condition(condition)
             column = self.column_by_name(column_name)
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
         else:
             rows = [i for i in range(len(self.data))]
+            column_name2=' '
+            print(rows,"2")
 
-        # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
-        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+        #print(column_name,operator,value,column_name2,operator2,value2)
+        if column_name2 != ' ':
+            column2 = self.column_by_name(column_name2)
+            rows2 = [ind for ind, x in enumerate(column2) if get_op(operator2, x, value2)]
+            #print(column2,rows2)
+            dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows2] if key=="data" else value2) for key,value2 in self.__dict__.items()}
+
+            temp=dict['data']
+            #temp2=dict['data']
+            #print(temp)
+
+            #rint("  ")
+            dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+            #print(dict)
+
+            
+            #for data in dict['data']:
+            #    print(data[2])
+
+            #print(" ")
+
+            if (operator == '=') and ( (con == 'and') or (con =='or') ):
+                dict['data']=dict['data']+temp #PROSTHETO TA DATA TOU VALUE1 KAI VALUE2 MAZI
+                #print(dict)
+
+            #max_row=rows
+            #min_row=rows2
+            if ( (operator == '>=' ) and ( operator2 == '<=' ) and ( con == 'and' ) ):
+                if ( value >  value2 ):
+                    rows3= list(set(rows) & set(rows2))
+                    print(rows3)
+                    dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows3] if key=="data" else value) for key,value in self.__dict__.items()}
+                elif ( value < value2 ):
+                    rows3= list(set(rows) & set(rows2))
+                    print(rows3)
+                    dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows3] if key=="data" else value2) for key,value2 in self.__dict__.items()}
+                else: #Otan einai i idia timi  
+                    rows3 = [ind for ind, x in enumerate(column2) if get_op('=', x, value2)]
+                    dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows3] if key=="data" else value2) for key,value2 in self.__dict__.items()}
+
+            elif ( (operator == '<=' ) and ( operator2 == '>=' ) and ( con == 'and' ) ):
+                if ( value >  value2 ):
+                    rows3= list(set(rows) & set(rows2))
+                    print(rows3)
+                    dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows3] if key=="data" else value) for key,value in self.__dict__.items()}
+                elif ( value < value2 ):
+                    rows3= list(set(rows) & set(rows2))
+                    print(rows3)
+                    dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows3] if key=="data" else value2) for key,value2 in self.__dict__.items()}
+                else: #Otan einai i idia timi  
+                    rows3 = [ind for ind, x in enumerate(column2) if get_op('=', x, value2)]
+                    dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows3] if key=="data" else value2) for key,value2 in self.__dict__.items()}
+
+            if ( ( operator == '>=' ) and ( operator2 == '=') and (con == 'and') ) or ( ( operator == '=' ) and ( operator2 == '>=') and (con == 'and') ) :
+                print(rows,"rows")
+                print(rows2,"rows2")
+                rows3= list(set(rows) & set(rows2))
+                print(rows3)
+                dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows3] if key=="data" else value2) for key,value2 in self.__dict__.items()}
+
+            elif ( ( operator == '<=' ) and ( operator2 == '=') and (con == 'and') ) or ( ( operator == '=' ) and ( operator2 == '<=') and (con == 'and') ):
+                rows3= list(set(rows) & set(rows2))
+                print(rows3)
+                dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows3] if key=="data" else value2) for key,value2 in self.__dict__.items()}
+
+            
+            elif ( ( value == value2 ) and (con == 'or') ) : # Auto to kanoume stin periptosi pou o xristsis vali dio fores ta idia values
+                dict= {(key):([[self.data[i][j] for j in return_cols] for i in rows2] if key=="data" else value2) for key,value2 in self.__dict__.items()}
+            
+            if ( (type(value) == str ) and (type(value2) == str) and (value2 != value) and (con =='and') ): 
+                # Auto to kanoume gia to and to opio den mpori na vgali apantisi otan oi dio stiles einai idies 
+                # (px) building="watson" and building="taylor" oute 
+                # (px) building="watson" and building="watson" 
+                print("1")
+                dict= {(key):([[self.data[i][j] for j in return_cols] for i in rows2] if key=="data" else value2) for key,value2 in self.__dict__.items()}
+                del dict['data']
+                dict['data']=[" "]
+
+            if ( (operator == '=' ) and (operator2 == '=') and (value == value2 ) and (con =='and') ):
+                print("2")
+                dict= {(key):([[self.data[i][j] for j in return_cols] for i in rows2] if key=="data" else value2) for key,value2 in self.__dict__.items()}
+            
+            
+                
+            ''' 
+            if ( column_name != column_name2): #EN GIA TO AND
+                 for i in range(len(temp)):
+                      if value.strip("'") == temp[i][1]:
+                            print(temp[i][1])
+            '''
+            #print(dict)
+        else:
+            #copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
+            dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+            print(dict)
 
         # we need to set the new column names/types and no of columns, since we might
         # only return some columns
         dict['column_names'] = [self.column_names[i] for i in return_cols]
-        dict['column_types']   = [self.column_types[i] for i in return_cols]
+        dict['column_types'] = [self.column_types[i] for i in return_cols]
 
         s_table = Table(load=dict)
 
@@ -264,27 +381,84 @@ class Table:
         #     # Then, show the first k rows 
         #     s_table.data.remove(len(s_table.column_names) * [None])
         #     s_table.data = s_table.data[:k]
+        
         if isinstance(limit,str):
             s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
 
         return s_table
 
+    
+
+    def _select_where_with_hash(self, return_columns, condition, distinct=False, order_by=None, desc=True, limit=None):
+        
+        list = return_columns.split()
+        column=list[1]
+        hash_name=list[-1]
+
+        return_cols = [self.column_names.index(col.strip()) for col in column.split(',')]
+        
+        
+        temp=[]
+        num_bits=16
+
+        rows = [i for i in range(len(self.data))]
+        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else column) for key,column in self.__dict__.items()}
+
+        for data in dict['data']:
+            ck=_msb_hash(data[0],num_bits)
+            print(data[0])
+            temp.append(ck)
+
+        print(temp)
+
+
+        return 
 
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
+        
+        print(condition)
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
         else:
             return_cols = [self.column_names.index(colname) for colname in return_columns]
+        
+        print(return_cols,"1")
 
+        if condition != None :
+            column_name, operator, value ,a ,b ,c = self._parse_condition(condition)
+        else:
+            rows = [i for i in range(len(self.data))]
+            print(rows,"2")
 
-        column_name, operator, value = self._parse_condition(condition)
+            dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else return_columns) for key,return_columns in self.__dict__.items()}
+
+            dict['column_names'] = [self.column_names[i] for i in return_cols]
+            dict['column_types'] = [self.column_types[i] for i in return_cols]
+
+            s_table = Table(load=dict)
+
+            s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+
+            if order_by:
+                s_table.order_by(order_by, desc)
+
+            if isinstance(limit,str):
+                s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
+
+            return s_table
 
         # if the column in condition is not a primary key, abort the select
-        if column_name != self.column_names[self.pk_idx]:
-            print('Column is not PK. Aborting')
-
+        '''
+        for i in range (10):
+            if column_name != self.column_names[self.pk_idx]:
+                for j in rows:
+        '''         
+                    
+                #print('Column is not PK. Aborting')
+                    
+                    
         # here we run the same select twice, sequentially and using the btree.
         # we then check the results match and compare performance (number of operation)
         column = self.column_by_name(column_name)
@@ -539,7 +713,7 @@ class Table:
         # print using tabulate
         print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
 
-
+        
     def _parse_condition(self, condition, join=False):
         '''
         Parse the single string condition and return the value of the column and the operator.
@@ -558,11 +732,78 @@ class Table:
 
         # cast the value with the specified column's type and return the column name, the operator and the casted value
         left, op, right = split_condition(condition)
+        print(left,"left")
+        print(op,"op")
+        print(right,"right")
+        list_between=left.split()
+        
+        if "between" in list_between:
+            del list_between[0:2]
+            print(list_between)
+            left = ' '.join(list_between)
+            print(left)
+
+        if op=='and ':
+            left2,op2,right2=split_condition(left)
+            left3,op3,right3=split_condition(right)
+            con='and'
+            if left2 not in self.column_names:
+                raise ValueError(f'Condition is not valid (cant find column name)')
+            coltype2 = self.column_types[self.column_names.index(left2)]
+
+            if left3 not in self.column_names:
+                raise ValueError(f'Condition is not valid (cant find column name)')
+            coltype3 = self.column_types[self.column_names.index(left3)]
+    
+            return left2, op2, coltype2(right2), left3, op3, coltype3(right3),con
+                
+
+        if op=='or ':
+            left2,op2,right2=split_condition(left)
+            left3,op3,right3=split_condition(right)
+            con='or'
+            if left2 not in self.column_names:
+                raise ValueError(f'Condition is not valid (cant find column name)')
+            coltype2 = self.column_types[self.column_names.index(left2)]
+
+            if left3 not in self.column_names:
+                raise ValueError(f'Condition is not valid (cant find column name)')
+            coltype3 = self.column_types[self.column_names.index(left3)]
+
+            return left2, op2, coltype2(right2), left3, op3, coltype3(right3),con
+            
+
+        my_str = left
+
+        my_list = re.split(r'', my_str)  # 👈️ split on comma or hyphen
+
+       # print(my_list)  
+       # print("/n")
+       # print(my_list[0])  
+       # print("/n")
+        
+
+        if (my_list[1]=='n') and ( my_list[2]=='o') and (my_list[3]=='t'):
+            my_list.remove('')
+            my_list.remove('n')
+            my_list.remove('o')
+            my_list.remove('t')
+            my_list.remove(' ')
+            my_list.remove('')
+            #print(my_list)
+            #print("/n")
+            left=''
+            for i in my_list:
+                left+=i
+            op='!='
+            #print(left)
+
+
         if left not in self.column_names:
             raise ValueError(f'Condition is not valid (cant find column name)')
         coltype = self.column_types[self.column_names.index(left)]
 
-        return left, op, coltype(right)
+        return left, op, coltype(right), ' ', ' ', ' ',' '
 
 
     def _load_from_file(self, filename):

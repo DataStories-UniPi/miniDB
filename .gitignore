@@ -4,3 +4,6 @@ dbdata/
 __pycache__/
 .idea/
 .pytest_cache
+/miniDB/.vs
+/.vs/miniDB-1/v17
+*.json

@@ -5,6 +5,8 @@ import sys
 import readline
 import traceback
 import shutil
+import math
+
 sys.path.append('miniDB')
 
 from database import Database
@@ -18,6 +20,15 @@ art = '''
  | | | | | || || | | || || |__| || |_) |
  |_| |_| |_||_||_| |_||_||_____/ |____/   2022                              
 '''   
+#first_key = next(iter(dic))
+def explainSA(dic, new_list):
+    new_list = []
+    aksd = len(dic)
+    for keys in range(aksd):
+        new_list = dic
+        new_list = list(dic.keys())[0:aksd]
+    return new_list
+
 
 
 def search_between(s, first, last):
@@ -26,7 +37,7 @@ def search_between(s, first, last):
     '''
     try:
         start = s.index( first ) + len( first )
-        end = s.index( last, start )
+        end = s.index( last, start )     
     except:
         return
     return s[start:end].strip()
@@ -44,6 +55,8 @@ def create_query_plan(query, keywords, action):
 
     This can and will be used recursively
     '''
+
+ 
 
     dic = {val: None for val in keywords if val!=';'}
 
@@ -77,11 +90,13 @@ def create_query_plan(query, keywords, action):
 
     if action=='select':
         dic = evaluate_from_clause(dic)
+        print(dic) #EN TOUTO DAME
+        
 
         if dic['distinct'] is not None:
             dic['select'] = dic['distinct']
             dic['distinct'] = True
-
+        
         if dic['order by'] is not None:
             dic['from'] = dic['from']
             if 'desc' in dic['order by']:
@@ -160,6 +175,8 @@ def evaluate_from_clause(dic):
         
     return dic
 
+# EKANA ALLAGI STO KW_PER_ACTION KAI EVALA TO WHERE = AND OR NOT
+# DEN EVALA TO BETWEEN GIATI EXEI TO PIO PANO ETOIMO
 def interpret(query):
     '''
     Interpret the query.
@@ -246,6 +263,7 @@ def interpret_meta(command):
     commands_dict[action](db_name)
 
 
+
 if __name__ == "__main__":
     fname = os.getenv('SQL')
     dbname = os.getenv('DB')
@@ -288,11 +306,61 @@ if __name__ == "__main__":
                 interpret_meta(line)
             elif line.startswith('explain'):
                 dic = interpret(line.removeprefix('explain '))
+                #KALOUME SYNARTISI LOGIKA
+                
+                aksd = len(dic)
+                for keys in range(aksd):
+                    new_list = dic
+                    new_list = list(dic.keys())[0:aksd]
+
+                newer_list = []
+                newer_list = list(dic.values())
+
+                first_table = dic['from']['right']['from']
+                second_table = dic['from']['left']
+
+                '''
+                first_table = dic['from']['right']
+                second_table = dic['from']['left']
+                '''
+
+                #explain select * from student inner join(select * from department where budget>120000) on dept_name = dept_name
+
+                for i in range(len(new_list)):
+                    if new_list[i] == "from":
+                        for i in range(len(newer_list)):
+                            if 'join' in dic['from'] and dic['from']['join'] == 'inner':
+                                if first_table in dic['from']['right']['from']:
+                                    for key in range (len(first_table)):
+                                        key_size = sys.getsizeof(key)  
+                                        Rr = len(first_table)
+                                        br = 1024
+                                        rr = key_size
+                                        bfrr = math.floor(br/rr)
+                                        Br = math.ceil(Rr/bfrr)
+                                        #^1ou pinaka
+
+                                if second_table in dic['from']['left']:
+                                    for key in range (len(second_table)):
+                                        key_size = sys.getsizeof(key)
+                                        Rs = len(second_table)
+                                        rs = key_size
+                                        bs = 1024
+                                        bfrs = bs/rs
+                                        Bs = Rs/bfrs
+                                        #^2ou pinaka
+
+                kostos_epilogis = Br + Bs
+                kostos_syndesis = Br * Bs +1
+                synoliko_kostos = math.ceil(kostos_syndesis + kostos_epilogis)
+                print("Synoliko Kostos = ", synoliko_kostos)
+
+
                 pprint(dic, sort_dicts=False)
             else:
                 dic = interpret(line)
                 result = execute_dic(dic)
-                if isinstance(result,Table):
+                if isinstance(result,Table):                  
                     result.show()
         except Exception:
             print(traceback.format_exc())
