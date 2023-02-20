@@ -119,7 +119,10 @@ def create_query_plan(query, keywords, action):
         else:
             dic['unique'] = None
     
- 
+    if action == 'delete from':
+        if dic['where'] is not None:
+            dic = evaluate_where_clause(dic)
+    
     if action=='import':
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 

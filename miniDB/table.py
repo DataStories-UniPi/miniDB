@@ -191,17 +191,21 @@ class Table:
         These rows are then appended to the insert_stack.
 
         Args:
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
-
-                Operatores supported: (<,<=,==,>=,>)
+            condition: string or dict. 
+                String is using the following format:
+                    'column[<,<=,==,>=,>]value' or
+                    'value[<,<=,==,>=,>]column'.
+                Dict is using the following format:
+                    {'left': 'column[<,<=,==,>=,>]value',
+                     'operator': '[and,or]',
+                     'right': 'column[<,<=,==,>=,>]value',
+                    }
         '''
         if condition is not None:
             indexes_to_del = self._find_rows(condition)
         else:
             indexes_to_del = [i for i in range(len(self.data))]
-
+        
         # we pop from highest to lowest index in order to avoid removing the wrong item
         # since we dont delete, we dont have to to pop in that order, but since delete is used
         # to delete from meta tables too, we still implement it.
