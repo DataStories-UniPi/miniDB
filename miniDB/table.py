@@ -136,14 +136,6 @@ class Table:
                 column_name = self.column_names[i]
                 if column_name in self.unique_columns and row[i] in self.column_by_name(column_name):
                     raise ValueError(f'## ERROR -> Value {row[i]} already exists in {column_name} unique column.')
-            
-            
-        # add the value to the index
-        if indexes is not None:
-            for column_name, btree in indexes.items():
-                column_pointer = self.column_names.index(column_name)
-                row_pointer = len(self.data) + 1
-                btree.insert(row[column_pointer], row_pointer)
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
@@ -151,6 +143,13 @@ class Table:
         else: # else append to the end
             self.data.append(row)
         # self._update()
+
+        # add row values to the index
+        if indexes is not None:
+            for column_name, btree in indexes.items():
+                column_pointer = self.column_names.index(column_name)
+                row_pointer = len(self.data)
+                btree.insert(row[column_pointer], row_pointer)
 
     def _update_rows(self, set_value, set_column, condition):
         '''

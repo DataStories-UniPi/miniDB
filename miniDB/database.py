@@ -275,9 +275,9 @@ class Database:
         lock_ownership = self.lock_table(table_name, mode='x')
         insert_stack = self._get_insert_stack_for_table(table_name)
 
-        index = self._find_idxs(table_name)
+        indexes = self._find_idxs(table_name)
         try:
-            self.tables[table_name]._insert(row, insert_stack, index)
+            self.tables[table_name]._insert(row, insert_stack, indexes)
         except Exception as e:
             logging.info(e)
             logging.info('ABORTED')
