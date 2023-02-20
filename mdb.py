@@ -10,6 +10,7 @@ sys.path.append('miniDB')
 
 from database import Database
 from table import Table
+from misc import convert_to_RA
 # art font is "big"
 art = '''
              _         _  _____   ____
@@ -354,6 +355,9 @@ if __name__ == "__main__":
             if line.startswith('explain'):
                 dic = interpret(line.removeprefix('explain '))
                 pprint(dic, sort_dicts=False)
+            if line.startswith('convert'):
+                dic = convert_to_RA(interpret(line.removeprefix('convert ')))
+                pprint(dic, sort_dicts=False)
             else:
                 dic = interpret(line.lower())
                 result = execute_dic(dic)
@@ -384,6 +388,9 @@ if __name__ == "__main__":
             elif line.startswith('explain'):
                 dic = interpret(line.removeprefix('explain '))
                 pprint(dic, sort_dicts=False)
+            elif line.startswith('convert'):
+                RA_expression = convert_to_RA(interpret(line.removeprefix('convert ')))
+                print(RA_expression)
             else:
                 dic = interpret(line)
                 result = execute_dic(dic)
