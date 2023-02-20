@@ -220,9 +220,9 @@ class Database:
             all written as parameters, plus the boolean variable distinct.
         '''
         if condition is not None:
-            if "BETWEEN" in condition.split() or "between" in condition.split():#Does the condition contain between?
+            if "BETWEEN" in condition.split() or "between" in condition.split(): #Epitelous leitourgise kai me to BETWEEN, meta apo pollh prospatheia
                 condition_column = condition.split(" ")[0]
-            elif "NOT" in condition.split() or "not" in condition.split():#Looking for condition with NOT operator
+            elif "NOT" in condition.split() or "not" in condition.split(): #I periptosi tou telesti NOT
                 condition_column = condition.split(" ")[0]
             elif "AND" in condition.split() or "and" in condition.split() or "OR" in condition.split() or "or" in condition.split():#Looking for condition containing AND or OR
                 condition_column = condition.split(" ")[0]
