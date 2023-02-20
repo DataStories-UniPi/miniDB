@@ -39,8 +39,8 @@ def split_condition(condition):
         if len(splt)>1:
             left, right = splt[0].strip(), splt[1].strip()
 
-            print(len(right))
-            print("/n")
+            #print(len(right))
+            #print("/n")
             i=0
 
             for n in left:
@@ -61,11 +61,11 @@ def split_condition(condition):
 
             if right.find('"') != -1: # If there are any double quotes in the value, throw. (Notice we've already removed the leading and trailing ones)
                 raise ValueError(f'Invalid condition: {condition}\nDouble quotation marks are not allowed inside values.')
-            print(left)
-            print("/n")
+            #print(left)
+            #print("/n")
 
-            print(right)
-            print("/n")
+            #print(right)
+            #print("/n")
             return left, op_key, right
 
 

@@ -5,6 +5,7 @@ import sys
 import readline
 import traceback
 import shutil
+
 sys.path.append('miniDB')
 
 from database import Database
@@ -78,10 +79,11 @@ def create_query_plan(query, keywords, action):
     if action=='select':
         dic = evaluate_from_clause(dic)
         print(dic)
+
         if dic['distinct'] is not None:
             dic['select'] = dic['distinct']
             dic['distinct'] = True
-
+        
         if dic['order by'] is not None:
             dic['from'] = dic['from']
             if 'desc' in dic['order by']:

@@ -1,9 +1,13 @@
 from __future__ import annotations
+from email.headerregistry import ContentDispositionHeader
+from msilib.schema import Condition, ControlCondition
 import pickle
 from time import sleep, localtime, strftime
 import os,sys
 import logging
+#from typing_extensions import Self
 import warnings
+from winreg import ConnectRegistry
 #import pyreadline3
 from pyreadline3 import Readline
 readline = Readline()
@@ -333,6 +337,11 @@ class Database:
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
 
+    def _is_unique(self, column_name, table_name):
+        values = self.select(column_name, table_name, return_object=True)
+        return len(set(values)) == len(values)
+
+
     def select(self, columns, table_name, condition, distinct=None, order_by=None, \
                limit=True, desc=None, save_as=None, return_object=True):
         '''
@@ -353,24 +362,49 @@ class Database:
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
             distinct: boolean. If True, the resulting table will contain only unique rows.
         '''       
-        # print(table_name)
+        print(columns) #name 
+        print(table_name) #instructor
+        print(condition) #None
+        print(distinct) #true
+
+        list = columns.split()
+        print(list[0])
+
+
         self.load_database()
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
         if condition is not None:
-            condition_column = split_condition(condition)[0]
+            condition_column = split_condition(condition)[0] # ("course_id","=","bios-101")
         else:
             condition_column = ''
 
-        
+        #print(condition_column,"helelellelele")
+        #print(self.tables[table_name].column_names[self.tables[table_name].pk_idx],"hahahhsgvdijao")
+        #print(table_name,"ahdhbkald;jbfjddfk")
         # self.lock_table(table_name, mode='x')
+
         if self.is_locked(table_name):
             return
-        if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
+
+        # example: create index indx on instructor using btree
+        # example: create index indx2 on instructor using hash
+        # example: select * from instructor where id=12121 distinct true
+        # example: select distinct dept_name from instructor 
+        # example: select msb(name) as name_hash from instructor 
+
+        
+        if  distinct == columns or (self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]):# B tree
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+            table = self.tables[table_name]._select_where_with_btree(columns,bt, condition, distinct, order_by, desc, limit)
+        # or (self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx])
+        # index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
+        # hs = self._load_idx(index_name)
+        elif list[0]=='msb' :# Hash tree
+            table = self.tables[table_name]._select_where_with_hash(columns, condition, distinct, order_by, desc, limit)
+
         else:
             table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
         # self.unlock_table(table_name)
@@ -671,6 +705,15 @@ class Database:
                 # crate the actual index
                 self._construct_index(table_name, index_name)
                 self.save_database()
+
+            elif index_type=='hash': 
+                logging.info('Creating hash index.')
+                # insert a record with the name of the index and the table on which it's created to the meta_indexes table
+                self.tables['meta_indexes']._insert([table_name, index_name])
+                # crate the actual index
+                self._construct_index_hash(table_name, index_name)
+                self.save_database()
+                # EDO I ASKISI 2 B 
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
@@ -692,6 +735,24 @@ class Database:
         # save the btree
         self._save_index(index_name, bt)
 
+    def _construct_index_hash(self, table_name, index_name):
+        '''
+        Construct a hash on a table and save.
+
+        Args:
+            table_name: string. Table name (must be part of database).
+            index_name: string. Name of the created index.
+        '''
+        hs = {} # 3 is arbitrary
+
+        # for each record in the primary key of the table, insert its value and index to the hash
+        for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
+            if key is None:
+                continue
+            hs[key]=idx
+        # save the hash
+        self._save_index_hash(index_name, hs)
+
 
     def _has_index(self, table_name):
         '''
@@ -701,6 +762,22 @@ class Database:
             table_name: string. Table name (must be part of database).
         '''
         return table_name in self.tables['meta_indexes'].column_by_name('table_name')
+
+    def _save_index_hash(self, index_name, index):
+        '''
+        Save the index object.
+
+        Args:
+            index_name: string. Name of the created index.
+            index: obj. The actual index object (hash object).
+        '''
+        try:
+            os.mkdir(f'{self.savedir}/indexes')
+        except:
+            pass
+
+        with open(f'{self.savedir}/indexes/meta_{index_name}_index.pkl', 'wb') as f:
+            pickle.dump(index, f)
 
     def _save_index(self, index_name, index):
         '''
