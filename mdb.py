@@ -213,6 +213,7 @@ def interpret(query):
         if query.startswith(kw):
             action = kw
 
+    #return Optimizer._build_equivalent_query_plan(query)
     return create_query_plan(query, kw_per_action[action]+[';'], action)
 
 def execute_dic(dic):

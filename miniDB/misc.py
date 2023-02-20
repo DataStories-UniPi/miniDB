@@ -45,16 +45,16 @@ def split_condition(condition,notcheck=False):
         else:
             raise SyntaxError(f'Invalid format: {condition}\nCorrect syntax: Condition must contain whitespaces, e.g. column_name >= value.')
 
-        print(list_condition)
+        #print(list_condition)
         for op_key in ops.keys():
             for i,n in enumerate(list_condition):
                 if n == op_key:
-                    print(op_key)
+                    #print(op_key)
                     not_op_key = not_op(op_key) # negate the operator
                     list_condition[i] = str(not_op_key) # replace operator in the list 
                     found = True
                     new_op = not_op_key # used later to split the condition in the correct and reversed operator
-                    print(not_op(op_key))              
+                    #print(not_op(op_key))              
             if found: # if the operator is found and changed
                 # this is used because the function would otherwise continue to reverse the already reversed operator,
                 # because it loops through all the operators in the ops dictionary
@@ -62,7 +62,7 @@ def split_condition(condition,notcheck=False):
             
                     
         condition = ''.join(str(x) for x in list_condition) # re-construct the initial condition
-        print(condition)
+        #print(condition)
 
 
     for op_key in ops.keys():
