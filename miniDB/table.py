@@ -233,9 +233,53 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            if "between" in condition.split():
+                splitCondition = condition.split()
+                if(splitCondition[3]=='and'):
+                    low = splitCondition[2]
+                    high = splitCondition[4]
+                    name = splitCondition[0]
+                    column = self.column_by_name(column_name)
+                    rows = []
+
+                    if(low.isdigit() and high.isdigit()):
+                         x = int(low) 
+                         y = int(high)
+                         for i,j in enumerate(column):
+                            z = int(j)
+                            if z>=x and z<=y:
+                                rows.append(i)
+                    else:
+                        print('Please use integers.')
+            elif "or" in condition.split():
+                conditions = condition.split("OR")
+                conditions = conditions[0].split("or")
+                row_lists =[]
+                for i in conditions:
+                    name, operator, value = self._parse_condition(i)
+                    column = self.column_by_name(name)
+                    row_lists.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)])
+
+                rows = []
+                for k in row_lists:
+                    for row in k:
+                        if not(row in rows):
+                            rows.append(row)
+            elif "and" in condition.split():
+                conditions = condition.split("AND")
+                conditions = conditions[0].split("and")
+                row_lists =[]                
+                for i in conditions:
+                    name, operator, value = self._parse_condition(i)
+                    column = self.column_by_name(name)
+                    row_lists.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)])
+                rows = set(row_lists[0]).intersection(*row_lists)
+
+            else:
+                name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
         else:
             rows = [i for i in range(len(self.data))]
 
