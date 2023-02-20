@@ -9,6 +9,7 @@ create table takes (ID str, course_id str, sec_id str, semester str, year int, g
 create table advisor (s_ID str primary key, i_ID str);
 create table time_slot (time_slot_id str, day str, start_hr int, start_min int, end_hr str, end_min str);
 create table prereq (course_id str, prereq_id str);
+create table schedule (day_time str unique, course str);
 insert into classroom values (Packard,101,500);
 insert into classroom values (Painter,514,10);
 insert into classroom values (Taylor,3128,70);
@@ -147,3 +148,10 @@ insert into prereq values (CS-315,CS-101);
 insert into prereq values (CS-319,CS-101);
 insert into prereq values (CS-347,CS-101);
 insert into prereq values (EE-181,PHY-101);
+insert into schedule values (Monday 8:00 - 9:00,genetics);
+insert into schedule values (Monday 9:00 - 10:00,intro_to_biology);
+insert into schedule values (Tuesday 10:00 - 11:00,computational biology);
+insert into schedule values (Wednesday 11:00 - 12:00,robotics);
+insert into schedule values (Thursday 12:00 - 13:00,music video production);
+insert into schedule values (Friday 12:00 - 13:00,game design);
+insert into schedule values (Friday 14:00 - 16:00,image processing);
