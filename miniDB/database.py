@@ -115,10 +115,8 @@ class Database:
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
         # print('here -> ', column_names.split(','))
-
         self.tables.update({name: Table(name=name, column_names=column_names.split(','), 
-                            column_types=column_types.split(','), primary_key=primary_key, unique=unique, load=load)})
-                            
+                                column_types=column_types.split(','), primary_key=primary_key, unique=unique, load=load)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
@@ -382,7 +380,7 @@ class Database:
         # if (condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx] or \
         #                         condition_column in self.tables[table_name].unique_column_names):
         #                         #condition_column in (self.tables[table_name].column_names[self.tables[table_name].unique] for unique in self.unique_columns)):
-        if (condition_column in self.tables['meta_indexes'].column_names):
+        if (condition_column in self.tables['meta_indexes'].column_name):
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
             table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
@@ -677,8 +675,10 @@ class Database:
             index_name: string. Name of the created index.
         '''
         if self.tables[table_name].pk_idx is None: # if no primary key, no index
-            if self.tables[table_name].unique_columns is None:
-                raise Exception('Cannot create index. Table has no primary key.')
+            raise Exception('Cannot create index. Table has no primary key.')
+        elif self.tables[table_name].unique_columns is None:
+            raise Exception('Cannot create index. Table has no primary key.')
+            
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
             # currently only btree is supported. This can be changed by adding another if.
             if index_type=='btree':
