@@ -1,3 +1,4 @@
+#First import the necessary modules
 import os
 import re
 from pprint import pprint
@@ -6,10 +7,8 @@ import readline
 import traceback
 import shutil
 sys.path.append('miniDB')
-
 from database import Database
 from table import Table
-# art font is "big"
 art = '''
              _         _  _____   ____  
             (_)       (_)|  __ \ |  _ \     
@@ -18,70 +17,49 @@ art = '''
  | | | | | || || | | || || |__| || |_) |
  |_| |_| |_||_||_| |_||_||_____/ |____/   2022                              
 '''   
-
-
-def search_between(s, first, last):
-    '''
-    Search in 's' for the substring that is between 'first' and 'last'
-    '''
+def anazitisi_anamesa(s, proto, teleutaio): #Search the substring between arxh and telos.
     try:
-        start = s.index( first ) + len( first )
-        end = s.index( last, start )
+        arxh = s.index( proto ) + len(proto)
+        telos = s.index( teleutaio, start )
     except:
         return
-    return s[start:end].strip()
+    return s[arxh:telos].strip()
 
-def in_paren(qsplit, ind):
+def entos_parenthesis(qsplit, ind):
     '''
     Split string on space and return whether the item in index 'ind' is inside a parentheses
     '''
     return qsplit[:ind].count('(')>qsplit[:ind].count(')')
 
 
-def create_query_plan(query, keywords, action):
-    '''
-    Given a query, the set of keywords that we expect to pe present and the overall action, return the query plan for this query.
-
-    This can and will be used recursively
-    '''
-
-    dic = {val: None for val in keywords if val!=';'}
-
-    ql = [val for val in query.split(' ') if val !='']
-
-    kw_in_query = []
-    kw_positions = []
-    i=0
-    while i<len(ql):
-        if in_paren(ql, i): 
-            i+=1
+def dimiourgia_protou_planou(frasi, lexeis_kleidia, energeia): #Ena plano ektelesis mias sql entolis
+    dic = {val: None for val in lexeis_kleidia if val!=';'}
+    ql = [val for val in frasi.split(' ') if val !='']
+    keyword_in_query = []
+    keyword_positions = []
+    metritis=0
+    while metritis<len(ql):
+        if entos_parenthesis(ql, metritis): 
+            metritis+=1
             continue
-        if ql[i] in keywords:
-            kw_in_query.append(ql[i])
-            kw_positions.append(i)
-        
-        elif i!=len(ql)-1 and f'{ql[i]} {ql[i+1]}' in keywords:
-            kw_in_query.append(f'{ql[i]} {ql[i+1]}')
-            ql[i] = ql[i]+' '+ql[i+1]
-            ql.pop(i+1)
-            kw_positions.append(i)
-        i+=1
-        
-
-
-    for i in range(len(kw_in_query)-1):
-        dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
-    
-    if action == 'create view':
-        dic['as'] = interpret(dic['as'])
-
-    if action=='select':
-        dic = evaluate_from_clause(dic)
-
+        if ql[metritis] in lexeis_kleidia:
+            keyword_in_query.append(ql[metritis])
+            keyword_positions.append(metritis)
+        elif metritis!=len(ql)-1 and f'{ql[metritis]} {ql[metritis+1]}' in lexeis_kleidia:
+            keyword_in_query.append(f'{ql[metritis]} {ql[metritis+1]}')
+            ql[metritis] = ql[metritis]+' '+ql[metritis+1]
+            ql.pop(metritis+1)
+            keyword_positions.append(metritis)
+        metritis+=1
+    for metritis in range(len(keyword_in_query)-1):
+        dic[keyword_in_query[metritis]] = ' '.join(ql[keyword_positions[metritis]+1:keyword_positions[metritis+1]])
+    if energeia == 'create view':
+        dic['as'] = diermineia(dic['as'])
+    if energeia=='select':
+        dic = poio_einai_from(dic)
         if dic['distinct'] is not None:
             dic['select'] = dic['distinct']
             dic['distinct'] = True
-
         if dic['order by'] is not None:
             dic['from'] = dic['from']
             if 'desc' in dic['order by']:
@@ -89,11 +67,9 @@ def create_query_plan(query, keywords, action):
             else:
                 dic['desc'] = False
             dic['order by'] = dic['order by'].removesuffix(' asc').removesuffix(' desc')
-            
         else:
             dic['desc'] = None
-
-    if action=='create table':
+    if energeia=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
         arg_nopk = args.replace('primary key', '')[1:-1]
@@ -105,64 +81,61 @@ def create_query_plan(query, keywords, action):
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
-    
-    if action=='import': 
+    if energeia=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
-
-    if action=='insert into':
+    if energeia=='insert into':
         if dic['values'][0] == '(' and dic['values'][-1] == ')':
             dic['values'] = dic['values'][1:-1]
         else:
-            raise ValueError('Your parens are not right m8')
-    
-    if action=='unlock table':
+            raise ValueError('Syntaktiko lathos. Prospathiste ksana.')
+    if energeia=='unlock table':
         if dic['force'] is not None:
             dic['force'] = True
         else:
             dic['force'] = False
-
+    if energeia=='create index':
+        split_con=dic[keyword_in_query[1]].split() 
+        split_con.remove("(")
+        split_con.remove(")")
+        dic['create index'] = dic[keyword_in_query[0]]
+        dic['on'] = split_con[0]
+        dic['column'] = split_con[1]
+        dic['using'] = dic[keyword_in_query[2]]
     return dic
 
-
-
-def evaluate_from_clause(dic):
+def poio_einai_from(lexikon):
     '''
     Evaluate the part of the query (argument or subquery) that is supplied as the 'from' argument
     '''
-    join_types = ['inner', 'left', 'right', 'full', 'sm', 'inl']
-    from_split = dic['from'].split(' ')
-    if from_split[0] == '(' and from_split[-1] == ')':
-        subquery = ' '.join(from_split[1:-1])
-        dic['from'] = interpret(subquery)
-
-    join_idx = [i for i,word in enumerate(from_split) if word=='join' and not in_paren(from_split,i)]
-    on_idx = [i for i,word in enumerate(from_split) if word=='on' and not in_paren(from_split,i)]
-    if join_idx:
-        join_idx = join_idx[0]
-        on_idx = on_idx[0]
-        join_dic = {}
-        if from_split[join_idx-1] in join_types:
-            join_dic['join'] = from_split[join_idx-1]
-            join_dic['left'] = ' '.join(from_split[:join_idx-1])
+    enoseis = ['inner', 'left', 'right', 'full', 'sm', 'inl']
+    diaxorise_from = lexikon['from'].split(' ')
+    if diaxorise_from[0] == '(' and diaxorise_from[-1] == ')':
+        tmima_tou_query = ' '.join(diaxorise_from[1:-1])
+        lexikon['from'] = diermineia(tmima_tou_query)
+    join_index = [i for i,word in enumerate(diaxorise_from) if word=='join' and not entos_parenthesis(diaxorise_from,i)]
+    on_index = [i for i,word in enumerate(diaxorise_from) if word=='on' and not entos_parenthesis(diaxorise_from,i)]
+    if join_index:
+        join_index = join_index[0]
+        on_index = on_index[0]
+        enose_lexiko = {}
+        if diaxorise_from[join_index-1] in enoseis:
+            enose_lexiko['join'] = diaxorise_from[join_index-1]
+            enose_lexiko['left'] = ' '.join(diaxorise_from[:join_index-1])
         else:
-            join_dic['join'] = 'inner'
-            join_dic['left'] = ' '.join(from_split[:join_idx])
-        join_dic['right'] = ' '.join(from_split[join_idx+1:on_idx])
-        join_dic['on'] = ''.join(from_split[on_idx+1:])
+            enose_lexiko['join'] = 'inner'
+            enose_lexiko['left'] = ' '.join(diaxorise_from[:join_index])
+        enose_lexiko['right'] = ' '.join(diaxorise_from[join_index+1:on_index])
+        enose_lexiko['on'] = ''.join(diaxorise_from[on_index+1:])
+        if enose_lexiko['left'].startswith('(') and enose_lexiko['left'].endswith(')'):
+            enose_lexiko['left'] = diermineia(enose_lexiko['left'][1:-1].strip())
+        if enose_lexiko['right'].startswith('(') and enose_lexiko['right'].endswith(')'):
+            enose_lexiko['right'] = diermineia(enose_lexiko['right'][1:-1].strip())
+        lexikon['from'] = enose_lexiko
+    return lexikon
 
-        if join_dic['left'].startswith('(') and join_dic['left'].endswith(')'):
-            join_dic['left'] = interpret(join_dic['left'][1:-1].strip())
-
-        if join_dic['right'].startswith('(') and join_dic['right'].endswith(')'):
-            join_dic['right'] = interpret(join_dic['right'][1:-1].strip())
-
-        dic['from'] = join_dic
-        
-    return dic
-
-def interpret(query):
+def diermineia(query):
     '''
-    Interpret the query.
+    Interprets the query.
     '''
     kw_per_action = {'create table': ['create table'],
                      'drop table': ['drop table'],
@@ -175,124 +148,174 @@ def interpret(query):
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
-                     'create index': ['create index', 'on', 'using'],
+                     'create index': ['create index', 'on', 'column', 'using'],
                      'drop index': ['drop index'],
                      'create view' : ['create view', 'as']
                      }
-
     if query[-1]!=';':
         query+=';'
-    
     query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip()
-
     for kw in kw_per_action.keys():
         if query.startswith(kw):
-            action = kw
+            energeia = kw
+    return dimiourgia_protou_planou(query, kw_per_action[energeia]+[';'], energeia)
 
-    return create_query_plan(query, kw_per_action[action]+[';'], action)
-
-def execute_dic(dic):
+def ektelesi_lexikou(dic):
     '''
     Execute the given dictionary
     '''
     for key in dic.keys():
         if isinstance(dic[key],dict):
-            dic[key] = execute_dic(dic[key])
-    
-    action = list(dic.keys())[0].replace(' ','_')
-    return getattr(db, action)(*dic.values())
+            dic[key] = ektelesi_lexikou(dic[key])
+    energeia = list(dic.keys())[0].replace(' ','_')
+    return getattr(db, energeia)(*dic.values())
 
-def interpret_meta(command):
+def diermineia_meta(entoli):
     """
-    Interpret meta commands. These commands are used to handle DB stuff, something that can not be easily handled with mSQL given the current architecture.
-
-    The available meta commands are:
-
-    lsdb - list databases
-    lstb - list tables
-    cdb - change/create database
-    rmdb - delete database
+    Diermineia entolon meta.
     """
-    action = command.split(' ')[0].removesuffix(';')
-
-    db_name = db._name if search_between(command, action,';')=='' else search_between(command, action,';')
-
+    energeia = entoli.split(' ')[0].removesuffix(';')
+    db_name = db._name if anazitisi_anamesa(entoli, energeia,';')=='' else anazitisi_anamesa(entoli, energeia,';')
     verbose = True
-    if action == 'cdb' and ' -noverb' in db_name:
+    if energeia == 'cdb' and ' -noverb' in db_name:
         db_name = db_name.replace(' -noverb','')
         verbose = False
-
-    def list_databases(db_name):
+    def katalogos_vaseon(db_name):
         [print(fold.removesuffix('_db')) for fold in os.listdir('dbdata')]
-    
-    def list_tables(db_name):
+    def katalogos_pinakon(db_name):
         [print(pklf.removesuffix('.pkl')) for pklf in os.listdir(f'dbdata/{db_name}_db') if pklf.endswith('.pkl')\
             and not pklf.startswith('meta')]
-
-    def change_db(db_name):
+    def allagi_sti_vasi(db_name):
         global db
         db = Database(db_name, load=True, verbose=verbose)
-    
-    def remove_db(db_name):
+    def afairesi_tis_vasis(db_name):
         shutil.rmtree(f'dbdata/{db_name}_db')
-
-    commands_dict = {
-        'lsdb': list_databases,
-        'lstb': list_tables,
-        'cdb': change_db,
-        'rmdb': remove_db,
+    lista_entolon = {
+        'lsdb': katalogos_vaseon,
+        'lstb': katalogos_pinakon,
+        'cdb': allagi_sti_vasi,
+        'rmdb': afairesi_tis_vasis,
     }
 
-    commands_dict[action](db_name)
-
+    lista_entolon[action](db_name)
 
 if __name__ == "__main__":
     fname = os.getenv('SQL')
     dbname = os.getenv('DB')
-
     db = Database(dbname, load=True)
-
-    
-
     if fname is not None:
         for line in open(fname, 'r').read().splitlines():
             if line.startswith('--'): continue
             if line.startswith('explain'):
-                dic = interpret(line.removeprefix('explain '))
+                dic = diermineia(line.removeprefix('explain '))
                 pprint(dic, sort_dicts=False)
             else :
-                dic = interpret(line.lower())
-                result = execute_dic(dic)
+                dic = diermineia(line.lower())
+                result = ektelesi_lexikou(dic)
                 if isinstance(result,Table):
                     result.show()
-        
-
     from prompt_toolkit import PromptSession
     from prompt_toolkit.history import FileHistory
     from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
-
     print(art)
-    session = PromptSession(history=FileHistory('.inp_history'))
+    synedria = PromptSession(history=FileHistory('.inp_history'))
     while 1:
         try:
-            line = session.prompt(f'({db._name})> ', auto_suggest=AutoSuggestFromHistory()).lower()
+            line = synedria.prompt(f'({db._name})> ', auto_suggest=AutoSuggestFromHistory()).lower()
             if line[-1]!=';':
                 line+=';'
         except (KeyboardInterrupt, EOFError):
-            print('\nbye!')
+            print('Telos.')
             break
         try:
             if line=='exit':
                 break
             if line.split(' ')[0].removesuffix(';') in ['lsdb', 'lstb', 'cdb', 'rmdb']:
-                interpret_meta(line)
+                diermineia_meta(line)
             elif line.startswith('explain'):
-                dic = interpret(line.removeprefix('explain '))
+                dic = diermineia(line.removeprefix('explain '))
                 pprint(dic, sort_dicts=False)
             else:
-                dic = interpret(line)
-                result = execute_dic(dic)
+                dic = diermineia(line)
+                result = ektelesi_lexikou(dic)
                 if isinstance(result,Table):
                     result.show()
         except Exception:
             print(traceback.format_exc())
+
+def dimiourgia_deuterou_planou(frasi, lexeis_kleidia, energeia): #Etero plano gia tin ektelesi mias sql entolis: σθ1∧θ2(E) = σθ1(σθ2(E))
+    dic = {val: None for val in lexeis_kleidia if val!=';'}
+    ql = [val for val in frasi.split(' ') if val !='']
+    keyword_in_query = []
+    keyword_positions = []
+    metritis=0
+    while metritis<len(ql):
+        if entos_parenthesis(ql, metritis): 
+            metritis+=1
+            continue
+        if ql[metritis] in lexeis_kleidia:
+            keyword_in_query.append(ql[metritis])
+            keyword_positions.append(metritis)
+        elif metritis!=len(ql)-1 and f'{ql[metritis]} {ql[metritis+1]}' in lexeis_kleidia:
+            keyword_in_query.append(f'{ql[metritis]} {ql[metritis+1]}')
+            ql[metritis] = ql[metritis]+' '+ql[metritis+1]
+            ql.pop(metritis+1)
+            keyword_positions.append(metritis)
+        metritis+=1
+    for metritis in range(len(keyword_in_query)-1):
+        dic[keyword_in_query[metritis]] = ' '.join(ql[keyword_positions[metritis]+1:keyword_positions[metritis+1]])
+    if energeia=='select':
+        dic = poio_einai_from_deuterou_planou(dic) 
+        if "and" in dic[keyword_in_query[2]]:    
+            split_con=dic[keyword_in_query[2]].split() 
+            if ("()" in split_con) or (")" in split_con):
+                split_con.remove("(")
+                split_con.remove(")")
+                split_con.remove("(")
+                split_con.remove(")")
+            query_s1 = ''.join(split_con[0]) 
+            query_s2 = ''.join(split_con[2])    
+            query_s2_E= diermineia("select" + dic[keyword_in_query[0]] + "from" + dic[keyword_in_query[1]] + "where" + query_s2 ) #stelnoume gia ektelesi to kommati s2(E)
+            query_se_e= diermineia("select" + dic[keyword_in_query[0]] + "from" + query_s2_E + "where" +  query_s1) #stelnoume gia ektelesi thn teliki synthiki
+            dic['where'] = query_se_e #to apotelesmaa twn 2 praksewn to vazoume to dic['where'] 
+        if dic['distinct'] is not None:
+            dic['select'] = dic['distinct']
+            dic['distinct'] = True
+        if dic['order by'] is not None:
+            dic['from'] = dic['from']
+            if 'desc' in dic['order by']:
+                dic['desc'] = True
+            else:
+                dic['desc'] = False
+            dic['order by'] = dic['order by'].removesuffix(' asc').removesuffix(' desc')
+        else:
+            dic['desc'] = None
+        return dic    
+
+
+def poio_einai_from_deuterou_planou(dic): #Find the 'from' argument
+    enoseis = ['inner', 'left', 'right', 'full', 'sm', 'inl']
+    diaxorise_from = dic['from'].split(' ')
+    if diaxorise_from[0] == '(' and diaxorise_from[-1] == ')':
+        subquery = ' '.join(diaxorise_from[1:-1])
+        dic['from'] = diermineia(subquery)
+    join_index = [i for i,word in enumerate(diaxorise_from) if word=='join' and not entos_parenthesis(diaxorise_from,i)]
+    on_index = [i for i,word in enumerate(diaxorise_from) if word=='on' and not entos_parenthesis(diaxorise_from,i)]
+    if join_index:
+        join_index = join_index[0]
+        on_index = on_index[0]
+        enose_lexiko = {}
+        if diaxorise_from[join_index-1] in join_types:
+            enose_lexiko['join'] = diaxorise_from[join_index-1]
+            enose_lexiko['right'] = ' '.join(diaxorise_from[:join_index-1])
+        else:
+            enose_lexiko['join'] = 'inner'
+            enose_lexiko['right'] = ' '.join(diaxorise_from[:join_index])
+        enose_lexiko['left'] = ' '.join(diaxorise_from[join_index+1:on_index])
+        enose_lexiko['on'] = ''.join(diaxorise_from[on_index+1:])
+        if enose_lexiko['right'].startswith('(') and enose_lexiko['right'].endswith(')'):
+            enose_lexiko['right'] = diermineia(enose_lexiko['right'][1:-1].strip())
+        if enose_lexiko['left'].startswith('(') and enose_lexiko['left'].endswith(')'):
+            enose_lexiko['left'] = diermineia(enose_lexiko['left'][1:-1].strip())
+        dic['from'] = enose_lexiko
+    return dic
