@@ -40,9 +40,7 @@ def check_query(dic):
         elif isinstance(dic['from'], dict):
             # recursively call function with 'from' key as new dictionary
             return check_query(dic['from'])
-            
-    elif 'join' in dic:
-        return dic,count
+          
     else:        
         return None,count
 
