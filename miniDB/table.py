@@ -18,6 +18,7 @@ class Table:
         - column names (list of strings)
         - column types (list of functions like str/int etc)
         - primary (name of the primary key column)
+        - unique (name of the unique columns)
 
     OR
 
@@ -122,33 +123,37 @@ class Table:
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             insert_stack: list. The insert stack (empty by default).
         '''
-        if len(row)!=len(self.column_names):
-            raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
+        try:
+            if len(row)!=len(self.column_names):
+                raise ValueError(f'## ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
 
-        for i in range(len(row)):
-            # for each value, cast and replace it in row.
-            try:
-                row[i] = self.column_types[i](row[i])
-            except ValueError:
-                if row[i] != 'NULL':
-                    raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
-            except TypeError as exc:
-                if row[i] != None:
-                    print(exc)
+            for i in range(len(row)):
+                # for each value, cast and replace it in row.
+                try:
+                    row[i] = self.column_types[i](row[i])
+                except ValueError:
+                    if row[i] != 'NULL':
+                        raise ValueError(f'## ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
+                except TypeError as exc:
+                    if row[i] != None:
+                        print(exc)
 
-            # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
-            if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
-                raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
-            elif i==self.pk_idx and row[i] is None:
-                raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
+                # if value is to be appended to the primary_key column, check that it doesnt already exist (no duplicate primary keys)
+                if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
+                    raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
+                elif i==self.pk_idx and row[i] is None:
+                    raise ValueError(f'## ERROR -> The value of the primary key cannot be None.')
 
-            # if value is to be appended to a unique column, check that it doesnt alrady exist (no duplicate unique values)
-            if self.unique is not None:
-                for j in range(len(self.unique)):
-                    if i==self.unique_idx[j] and row[i] in self.column_by_name(self.unique[j]):
-                        raise ValueError(f'## ERROR -> Value {row[i]} already exists in unique {self.unique[j]} column.')
-                    elif i==self.unique_idx[j] and row[i] is None:
-                        raise ValueError(f'ERROR -> The value of the unique column {self.unique[j]} cannot be None.')
+                # if value is to be appended to a unique column, check that it doesnt already exist (no duplicate unique values)
+                if self.unique is not None:
+                    for j in range(len(self.unique)):
+                        if i==self.unique_idx[j] and row[i] in self.column_by_name(self.unique[j]):
+                            raise ValueError(f'## ERROR -> Value {row[i]} already exists in unique {self.unique[j]} column.')
+                        elif i==self.unique_idx[j] and row[i] is None:
+                            raise ValueError(f'## ERROR -> The value of the unique column {self.unique[j]} cannot be None.')
+        except ValueError as exc:
+            print(exc)
+            return
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
@@ -165,10 +170,10 @@ class Table:
             set_value: string. The provided set value.
             set_column: string. The column to be altered.
             condition: string. A condition using the following format:
-                'column[<,<=,=,>=,>]value' or
-                'value[<,<=,=,>=,>]column'.
+                'column[<,<=,=,>=,>,!=]value' or
+                'value[<,<=,=,>=,>,!=]column'.
                 
-                Operatores supported: (<,<=,=,>=,>)
+                Operatores supported: (<,<=,=,>=,>,!=)
         '''
         # parse multiple conditions
         rows = self._parse_multiple_conditions(condition)
@@ -195,10 +200,10 @@ class Table:
 
         Args:
             condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+                'column[<,<=,==,>=,>,!=]value' or
+                'value[<,<=,==,>=,>,!=]column'.
                 
-                Operatores supported: (<,<=,==,>=,>)
+                Operatores supported: (<,<=,==,>=,>,!=)
         '''
 
         indexes_to_del = list(self._parse_multiple_conditions(condition))
@@ -242,7 +247,7 @@ class Table:
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
-         # if condition is None, return all rows
+        # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
             rows = self._parse_multiple_conditions(condition)
@@ -281,7 +286,9 @@ class Table:
 
 
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
-
+        '''
+        Returns the table of a select where condition is met, using a btree.
+        '''
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
@@ -291,7 +298,7 @@ class Table:
 
         column_name, operator, value = self._parse_condition(condition)
 
-        # if the column in condition is not a primary key and unique, abort the select
+        # if the column in condition is not a primary key or unique, abort the select
         if self.unique is not None and column_name != self.column_names[self.pk_idx] and column_name not in self.unique:
             print('Column is not PK or unique. Aborting')
         elif self.unique is None and column_name != self.column_names[self.pk_idx]:
@@ -337,14 +344,14 @@ class Table:
         return s_table
 
     def _select_where_with_hash(self, return_columns, ht, condition, distinct=False, order_by=None, desc=True, limit=None):
-
-
+        '''
+        Returns the table of a select where condition is met, using an extendible hash.
+        '''
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
         else:
             return_cols = [self.column_names.index(colname) for colname in return_columns]
-
 
         column_name, operator, value = self._parse_condition(condition)
 
@@ -353,18 +360,6 @@ class Table:
             print('Column is not PK or unique. Aborting')
         elif self.unique is None and column_name != self.column_names[self.pk_idx]:
             print('Column is not PK. Aborting')
-
-        # here we run the same select twice, sequentially and using the btree.
-        # we then check the results match and compare performance (number of operation)
-        column = self.column_by_name(column_name)
-
-        # sequential
-        rows1 = []
-        opsseq = 0
-        for ind, x in enumerate(column):
-            opsseq+=1
-            if get_op(operator, x, value):
-                rows1.append(ind)
 
         # hash find
         if operator == '=':
@@ -387,7 +382,7 @@ class Table:
         if isinstance(limit,str):
             s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
 
-        return s_table    
+        return s_table
 
     def order_by(self, column_name, desc=True):
         '''
@@ -612,15 +607,20 @@ class Table:
     def get_rows_for_and(self, conditions_list_of_and):
         '''
         Get the rows that satisfy "and" conditions in the list of conditions and then return them.
+
+        Args:
+            conditions_columns_of_and: list of strings.
+            splitted_conditions_list_of_and: list of strings.
+            rows_for_and: set of integers.
         '''
-        conditions_columns_of_and = []
+        conditions_columns_of_and = [] 
         splitted_conditions_list_of_and = []
         rows_for_and = set(range(len(self.data)))
-
+        # get the columns and the conditions for each and condition
         for sub_conditions in conditions_list_of_and:
             conditions_columns_of_and.append(split_condition(sub_conditions)[0])
             splitted_conditions_list_of_and.append(self._parse_condition(sub_conditions))
-
+        # get the rows that satisfy the and conditions
         for index in range(len(conditions_list_of_and)):
             column = self.column_by_name(conditions_columns_of_and[index])
             rows_for_and = rows_for_and.intersection([ind for ind, x in enumerate(column) if get_op(splitted_conditions_list_of_and[index][1], x, splitted_conditions_list_of_and[index][2])])
@@ -630,17 +630,22 @@ class Table:
     def _parse_multiple_conditions(self, conditions):
         '''
         Get the rows that satisfy "where" statement for "or" and "and" operators.
+
+        Args:
+            conditions_list_of_or: list of strings.
+            rows_for_or: set of integers.
+            sub_conditions_rows_list: list of sets of integers.
         '''
         conditions_temp = conditions
-
+        # check if there is any or operator
         if ' or ' in conditions_temp:
             conditions_list_of_or = conditions_temp.split(' or ')
             rows_for_or = set(range(0))
             sub_conditions_rows_list = []
-
+            
             for sub_conditions in conditions_list_of_or:
                 sub_conditions_rows_list.append(self.get_rows_for_and(sub_conditions.split(' and ')))
-
+            # get the rows that satisfy the or conditions
             for rows in sub_conditions_rows_list:
                 rows_for_or = rows_for_or.union(rows)
 
@@ -654,13 +659,13 @@ class Table:
 
         Args:
             condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+                'column[<,<=,==,>=,>,!=]value' or
+                'value[<,<=,==,>=,>,!=]column'.
                 
-                Operatores supported: (<,<=,==,>=,>)
+                Operators supported: (<,<=,==,>=,>,!=)
             join: boolean. Whether to join or not (False by default).
         '''
-        # if both_columns (used by the join function) return the names of the names of the columns (left first)
+        # if both_columns (used by the join function) return the names of the columns (left first)
         if join:
             return split_condition(condition)
 
