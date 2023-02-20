@@ -263,7 +263,7 @@ class Table:
                 column_name, operator, value = self._parse_condition(cond)
                 column = self.column_by_name(column_name)
                 reversed_operator = reverse_op(operator)
-                if reversed_operator=='=':
+                if reversed_operator == '=':
                     for i,j in enumerate(column):
                         if j!=value:
                             rows.append(i)
@@ -273,24 +273,28 @@ class Table:
 
             elif "and" in condition.split():
                 splt= condition.split("and")
-                count = 0
+                iteration = 0
                 for conditions in splt:
                     column_name, operator, value = self._parse_condition(conditions)
                     column = self.column_by_name(column_name)
                     list_of_rows= [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
-                    if count == 0:
+                    if iteration == 0:
                         r = list_of_rows
                     else:
                         r = set(r).intersection(list_of_rows)
-                    count += 1
-                rows += r
+                    iteration += 1
+                rows = r
+
+
             elif "or" in condition.split():
                 splt = condition.split("or")
+                list_of_rows=[]
                 for conditions in splt:
                     column_name, operator, value = self._parse_condition(conditions)
                     column = self.column_by_name(column_name)
-                    rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
-
+                    list_of_rows.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)])
+                for row in list_of_rows:
+                    rows.append(row[0])
 
             else:
                 column_name, operator, value = self._parse_condition(condition)
