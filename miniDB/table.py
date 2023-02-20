@@ -536,7 +536,8 @@ class Table:
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
         else:
-            return_cols = [self.column_names.index(colname) for colname in return_columns]
+            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
+
 
        
         column_name, operator, value = self._parse_condition(condition)
@@ -614,9 +615,9 @@ class Table:
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
         else:
-            return_cols = [self.column_names.index(colname) for colname in return_columns]
+            return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
-       
+
         column_name, operator, value = self._parse_condition(condition)
 
         flag = False
