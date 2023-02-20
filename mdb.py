@@ -195,7 +195,7 @@ def evaluate_from_clause(dic):
 
 def evaluate_where_clause(dic):
     '''
-    Evaluate the part of the query (argument or subquery) that is supplied as the 'where' argument
+    Evaluate the part of the query (argument or subquery) that is supplied as the 'where' argument.
     '''
     def convert_list_to_dict(lst):
         '''
@@ -306,7 +306,7 @@ def evaluate_where_clause(dic):
     if oprt_idx:
         '''
         If there are operators ('and' or 'or'), we build a list of dictionaries and then convert it into a dictionary.
-        The 'OPR' string is used as a placeholder for the actual operator and then is replaced with the correct operator from left to right.
+        The 'OPR' string is used as a placeholder for the actual operator and then is replaced with the correct operator.
         '''
         List = []
         build_list(oprt_idx, where_split)
