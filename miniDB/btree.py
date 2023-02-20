@@ -297,9 +297,9 @@ class Btree:
             # if the element exist, append to list, else pass and return
             try:
                 results.append(target_node.ptrs[target_node.values.index(value)])
-                # print('Found')
+                print('Found')
             except:
-                # print('Not found')
+                print('Not found')
                 pass
 
         # for all other ops, the code is the same, only the operations themselves and the sibling indexes change

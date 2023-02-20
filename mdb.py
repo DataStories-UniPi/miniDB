@@ -40,7 +40,7 @@ def in_paren(qsplit, ind):
 
 def create_query_plan(query, keywords, action):
     '''
-    Given a query, the set of keywords that we expect to pe present and the overall action, return the query plan for this query.
+    Given a query, the set of keywords that we expect to be present and the overall action, return the query plan for this query.
 
     This can and will be used recursively
     '''
@@ -71,7 +71,7 @@ def create_query_plan(query, keywords, action):
 
     for i in range(len(kw_in_query)-1):
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
-    
+
     if action == 'create view':
         dic['as'] = interpret(dic['as'])
 
@@ -83,16 +83,15 @@ def create_query_plan(query, keywords, action):
             dic['distinct'] = True
 
         if dic['order by'] is not None:
-            dic['from'] = dic['from']
+            dic['from'] = dic['from']       # ?
             if 'desc' in dic['order by']:
                 dic['desc'] = True
             else:
                 dic['desc'] = False
             dic['order by'] = dic['order by'].removesuffix(' asc').removesuffix(' desc')
-            
         else:
             dic['desc'] = None
-
+                        
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
@@ -100,6 +99,7 @@ def create_query_plan(query, keywords, action):
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+        dic['unique column_names'] = ','.join([val[0] for val in arglist if len(val) == 3])
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]
@@ -120,7 +120,13 @@ def create_query_plan(query, keywords, action):
             dic['force'] = True
         else:
             dic['force'] = False
-
+            
+    if action == 'create index':
+        tmp = dic['on'].split('.')
+        dic['column'] = tmp[1]
+        dic['on'] = tmp[0]
+        
+    print(f'Dict in create query: {dic}')
     return dic
 
 
@@ -157,7 +163,6 @@ def evaluate_from_clause(dic):
             join_dic['right'] = interpret(join_dic['right'][1:-1].strip())
 
         dic['from'] = join_dic
-        
     return dic
 
 def interpret(query):

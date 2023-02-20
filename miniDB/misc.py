@@ -19,9 +19,10 @@ def split_condition(condition):
     ops = {'>=': operator.ge,
            '<=': operator.le,
            '=': operator.eq,
+           '!=' : operator.ne,
            '>': operator.gt,
            '<': operator.lt}
-
+    
     for op_key in ops.keys():
         splt=condition.split(op_key)
         if len(splt)>1:
