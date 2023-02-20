@@ -135,6 +135,11 @@ def create_query_plan(query, keywords, action):
         else:
             dic['force'] = False
 
+    if action == 'create index':
+        dic['on'] = ql[3]
+        dic['column'] = ql[5]
+        dic['using'] = ql[8]
+        
     return dic
 
 
@@ -189,7 +194,7 @@ def interpret(query):
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
-                     'create index': ['create index', 'on', 'using'],
+                     'create index': ['create index', 'on', 'column', 'using'],  # add column name
                      'drop index': ['drop index'],
                      'create view' : ['create view', 'as']
                      }
