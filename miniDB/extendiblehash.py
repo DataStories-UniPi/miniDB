@@ -167,7 +167,7 @@ class Hash:
         for record in self.directory[pointer].records:
             if key == record[0]:
                 self.directory[pointer].records.remove(record)
-                if len(self.directory[pointer].records) == 0:
-                    self.merge_bucket(pointer)
+                # if len(self.directory[pointer].records) == 0:
+                #      CREATE METHOD: self.merge_bucket(pointer)
                 return
         return -1
