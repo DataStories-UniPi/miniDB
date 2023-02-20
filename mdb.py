@@ -5,6 +5,7 @@ import sys
 import readline
 import traceback
 import shutil
+from miniDB.equivalentQueries import equiv_print
 sys.path.append('miniDB')
 
 from miniDB.database import Database
@@ -303,6 +304,9 @@ if __name__ == "__main__":
             elif line.startswith('explain'):
                 dic = interpret(line.replace('explain ',''))
                 pprint(dic, sort_dicts=False)
+            elif line.startswith('equivalent of'):
+                 dic = interpret(line.replace('equivalent of ',''))
+                 equiv_print(dic)
             else:
                 dic = interpret(line)
                 result = execute_dic(dic)
