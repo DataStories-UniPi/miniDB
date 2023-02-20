@@ -48,3 +48,84 @@ def reverse_op(op):
         '<=' : '>=',
         '=' : '='
     }.get(op)
+
+def convert_to_RA(dic):
+    '''
+    Convert the given query to relational algebra string
+    '''
+    RA_dic = convert_query_dic_to_RA_dic(dic)
+    projection = RA_dic['projection']
+    selection = selection_to_string(RA_dic['selection'])
+    table = table_name_to_string(RA_dic['table'])
+    RA_expression = ''
+    if RA_dic['distinct']:
+        RA_expression += "δ \n "
+    if projection != '*':
+        RA_expression += "Π " + projection + "\n  "
+    RA_expression += "σ " + selection + " (" + table +")"
+    return RA_expression
+
+def convert_query_dic_to_RA_dic(dic):
+    '''
+    Convert a given query dictionary to a relational algebra dictionary
+    '''
+    RA_expression = {
+        'distinct': None,
+        'projection': 'select',
+        'selection': 'where',
+        'table': 'from'
+    }
+    RA_expression['projection'] = dic['select']
+    RA_expression['selection'] = dic['where']
+    RA_expression['table'] = simplify_from(dic['from'])
+    print(RA_expression['table'])
+    if dic['distinct'] is not None:
+        RA_expression['distinct'] = True
+    return RA_expression
+
+def simplify_from(condition):
+    if (isinstance(condition, dict)) and (isinstance(condition['right'], dict)):
+        condition['right'] = simplify_from(condition['right']['from'])
+        return condition
+    elif (isinstance(condition, dict)) and (not (isinstance(condition['right'], dict))):
+        return condition
+    else:
+        return ''.join(condition)
+
+def evaluate_selection(condition):
+    if (isinstance(condition, dict)) and isinstance(condition['right'], dict):
+        condition['right'] = evaluate_selection(condition['right'])
+        return condition
+    elif isinstance(condition, dict):
+        return condition
+    else:
+        table_string = condition
+        return table_string
+
+def selection_to_string(condition):
+    if isinstance(condition, dict):
+        if (condition['left'] == None):
+            temp_string = condition['operator'] + '(' + selection_to_string(condition['right']) + ')'
+        else:
+            temp_string = selection_to_string(condition['left']) + ' ' + condition['operator'] + ' ' + selection_to_string(condition['right'])
+        return temp_string
+    else:
+        return ''.join(condition)
+
+def table_name_to_string(table):
+
+    if (isinstance(table, dict)) and (table['join'] is not None):
+        join_character = " ⋈ "
+        if table['join'] == 'left':
+            join_character = " ⋈ L "
+        elif table['join'] == 'right':
+            join_character = " ⋈ R "
+        elif table['join'] == 'full':
+            join_character = " ⋈ o "
+
+    if (isinstance(table, dict)):
+        table_string = table_name_to_string(table['left']) + join_character + table['on'] +' '+ table_name_to_string(table['right'])
+        return table_string
+    else:
+        table_string = table
+        return ''.join(table_string)

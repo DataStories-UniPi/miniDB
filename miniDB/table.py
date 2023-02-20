@@ -147,7 +147,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,=,>=,>]value' or
                 'value[<,<=,=,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,=,>=,>)
         '''
         # parse the condition
@@ -179,7 +179,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
         '''
         column_name, operator, value = self._parse_condition(condition)
@@ -216,7 +216,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
             distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
@@ -259,15 +259,82 @@ class Table:
         #         k = int(limit)
         #     except ValueError:
         #         raise Exception("The value following 'top' in the query should be a number.")
-            
+
         #     # Remove from the table's data all the None-filled rows, as they are not shown by default
-        #     # Then, show the first k rows 
+        #     # Then, show the first k rows
         #     s_table.data.remove(len(s_table.column_names) * [None])
         #     s_table.data = s_table.data[:k]
         if isinstance(limit,str):
             s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
 
         return s_table
+
+    def _find_rows(self, condition):
+        """
+        TODO:
+        1. add comments to methods
+        2. correct the priority of logical operations
+        """
+        if isinstance(condition, str):
+            final_rows = self._in_depth(condition)
+        elif isinstance(condition, dict):
+            left_part = condition['left']
+            right_part = condition['right']
+            operator = condition['operator']
+            if(operator != 'not'):
+                left_rows = self._in_depth(left_part)
+            else:
+                left_rows = None
+            right_rows = self._in_depth(right_part)
+
+            if(operator == 'and'):
+                final_rows = list(set(left_rows).intersection(right_rows))
+            elif(operator == 'or'):
+                final_rows = list(set(left_rows).union(set(right_rows)))
+            elif(operator == 'not'):
+                final_rows = [i for i in range(len(self.data)) if i not in right_rows]
+
+            else:
+                raise Exception('Not a valid logical operator.')
+
+        return final_rows
+
+    def _in_depth(self, condition):
+        if isinstance(condition,str):
+            column_name, operator, value = self._parse_condition(condition)
+            column = self.column_by_name(column_name)
+            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            return rows
+
+        elif isinstance(condition,dict):
+
+            left_part = condition['left']
+            right_part = condition['right']
+            operator = condition['operator']
+
+            if(operator != 'not'):
+                left_rows = self._in_depth(left_part)
+            else:
+                left_rows = None
+            right_rows = self._find_rows(right_part)
+
+            if(operator == 'and'):
+                rows = list(set(left_rows).intersection(right_rows))
+            elif(operator == 'or'):
+                rows = list(set(left_rows).union(set(right_rows)))
+            elif(operator == 'not'):
+                rows = [i for i in range(len(self.data)) if i not in right_rows]
+
+
+            else:
+                raise Exception('Not a valid logical operator.')
+
+        else:
+            raise Exception('Not a valid where type.')
+        return rows
+
+
+
 
 
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
@@ -347,7 +414,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operators supported: (<,<=,==,>=,>)
         '''
         # get columns and operator
@@ -391,7 +458,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operators supported: (<,<=,==,>=,>)
         '''
         join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'inner')
@@ -411,7 +478,7 @@ class Table:
                     join_table._insert(row_left+row_right)
 
         return join_table
-    
+
     def _left_join(self, table_right: Table, condition):
         '''
         Perform a left join on the table with the supplied table (right).
@@ -420,7 +487,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operators supported: (<,<=,==,>=,>)
         '''
         join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'left')
@@ -450,7 +517,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operators supported: (<,<=,==,>=,>)
         '''
         join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'right')
@@ -471,7 +538,7 @@ class Table:
                         join_table._insert(row_left + row_right)
 
         return join_table
-    
+
     def _full_join(self, table_right: Table, condition):
         '''
         Perform a full join on the table with the supplied table (right).
@@ -480,7 +547,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operators supported: (<,<=,==,>=,>)
         '''
         join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'full')
@@ -490,7 +557,7 @@ class Table:
 
         right_table_row_length = len(table_right.column_names)
         left_table_row_length = len(self.column_names)
-        
+
         for row_left in self.data:
             left_value = row_left[column_index_left]
             if left_value is None:
@@ -548,7 +615,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
             join: boolean. Whether to join or not (False by default).
         '''
