@@ -361,12 +361,14 @@ class Database:
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
+        condition_column = ''
         if condition is not None:
-            condition_column = split_condition(condition)[0]
             if 'or' in condition.split():
                 condition_column = condition.split(" ")[0]
+            if 'and' in condition.split():
+                 condition_column = condition.split(" ")[0]
             else:
-                condition_column = condition.split(" ")[0]
+                condition_column = split_condition(condition)[0]
         else:
             condition_column = ''
         

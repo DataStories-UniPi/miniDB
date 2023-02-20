@@ -8,7 +8,8 @@ def get_op(op, a, b):
                 '<': operator.lt,
                 '>=': operator.ge,
                 '<=': operator.le,
-                '=': operator.eq}
+                '=': operator.eq,
+                'not': operator.ne}
 
     try:
         return ops[op](a,b)
@@ -20,7 +21,8 @@ def split_condition(condition):
            '<=': operator.le,
            '=': operator.eq,
            '>': operator.gt,
-           '<': operator.lt}
+           '<': operator.lt,
+           'not': operator.ne}
 
     # NOT operator
     if 'not' in condition:
@@ -56,6 +58,7 @@ def not_op(op):
         '<' : '>=',
         '<=' : '>',
         '>=' : '<',
+        '=': '<>'
     }.get(op)
 
 def reverse_op(op):
