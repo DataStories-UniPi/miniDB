@@ -112,8 +112,8 @@ class ExtendibleHashing:
         pprint(self.buckets)
 
 if __name__ == '__main__':
-    # Create an ExtendibleHashing object with a bucket size of 2.
-    hash_table = ExtendibleHashing(1)
+    # Create an extendible hashing data structure with 1 bit and a bucket size of 4.
+    hash_table = ExtendibleHashing(1,4)
 
     # Add some key-value pairs to the hash table.
     hash_table._add(1, "one")
