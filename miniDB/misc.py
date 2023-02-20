@@ -36,6 +36,20 @@ def split_condition(condition):
                 raise ValueError(f'Invalid condition: {condition}\nDouble quotation marks are not allowed inside values.')
 
             return left, op_key, right
+        
+def split_expression(expression):
+    exprs = (('not', operator.not_),
+            ('and', operator.and_),
+             ('or', operator.or_))
+    
+    for exp_key, exp_op in exprs:
+        splt=expression.split(exp_key)
+        if(len(splt) == 1):
+            condition = splt[0].strip("()")
+            return split_condition(condition)
+        else:
+            for i in splt:
+                split_expression(i)
 
 def reverse_op(op):
     '''
@@ -47,4 +61,16 @@ def reverse_op(op):
         '<' : '>',
         '<=' : '>=',
         '=' : '='
+    }.get(op)
+
+def not_op(op):
+    '''
+    Reverse the operator given with not logic
+    '''
+    return {
+        '>' : '<=',
+        '>=' : '<',
+        '<' : '>=',
+        '<=' : '>',
+        '=' : '!='
     }.get(op)

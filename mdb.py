@@ -9,6 +9,8 @@ sys.path.append('miniDB')
 
 from database import Database
 from table import Table
+from miniDB.misc import split_condition, not_op
+
 # art font is "big"
 art = '''
              _         _  _____   ____  
@@ -93,6 +95,33 @@ def create_query_plan(query, keywords, action):
         else:
             dic['desc'] = None
 
+        # TODO: Trying to parse the logic of operators
+        if dic['between'] is not None:
+            if dic['and'] is None:
+                raise AttributeError('Between keyword is always followed by an AND statement')
+            else:
+                lower_val = dic['between']
+                upper_val = dic['and']
+            column = dic['where']
+
+            #between statement is inclusive
+            if dic['not'] is None:
+                dic['where'] = column + '>=' + lower_val + 'and' + column + '<=' + upper_val 
+            else:
+                dic['where'] = column + '<' + lower_val + 'and' + column + '>' + upper_val 
+        else:
+            #Pass the not logic to the whole expression
+            if dic['not'] is not None:
+                #In case all these are in paren
+                dic['not'].replace('and', 'nota')
+                dic['not'].replace('or', 'and')
+                dic['not'].replace('nota', 'or')
+                left, op, right = split_condition(dic['not'])
+                rop = not_op(op)
+                not_condition = " ".join((left,rop,right))
+                dic['where'] = not_condition
+            
+
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
@@ -164,13 +193,15 @@ def interpret(query):
     '''
     Interpret the query.
     '''
+
+    #Adding extra keywords between , not, and, or
     kw_per_action = {'create table': ['create table'],
                      'drop table': ['drop table'],
                      'cast': ['cast', 'from', 'to'],
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
-                     'select': ['select', 'from', 'where', 'distinct', 'order by', 'limit'],
+                     'select': ['select', 'from', 'where', 'not', 'and', 'or', 'distinct', 'order by', 'limit'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
@@ -247,6 +278,55 @@ def interpret_meta(command):
 
 
 if __name__ == "__main__":
+    fname = os.getenv('SQL')
+    dbname = os.getenv('DB')
+
+    db = Database(dbname, load=True)
+
+    
+
+    if fname is not None:
+        for line in open(fname, 'r').read().splitlines():
+            if line.startswith('--'): continue
+            if line.startswith('explain'):
+                dic = interpret(line.removeprefix('explain '))
+                pprint(dic, sort_dicts=False)
+            else :
+                dic = interpret(line.lower())
+                result = execute_dic(dic)
+                if isinstance(result,Table):
+                    result.show()
+        
+
+    from prompt_toolkit import PromptSession
+    from prompt_toolkit.history import FileHistory
+    from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+
+    print(art)
+    session = PromptSession(history=FileHistory('.inp_history'))
+    while 1:
+        try:
+            line = session.prompt(f'({db._name})> ', auto_suggest=AutoSuggestFromHistory()).lower()
+            if line[-1]!=';':
+                line+=';'
+        except (KeyboardInterrupt, EOFError):
+            print('\nbye!')
+            break
+        try:
+            if line=='exit':
+                break
+            if line.split(' ')[0].removesuffix(';') in ['lsdb', 'lstb', 'cdb', 'rmdb']:
+                interpret_meta(line)
+            elif line.startswith('explain'):
+                dic = interpret(line.removeprefix('explain '))
+                pprint(dic, sort_dicts=False)
+            else:
+                dic = interpret(line)
+                result = execute_dic(dic)
+                if isinstance(result,Table):
+                    result.show()
+        except Exception:
+            print(traceback.format_exc())
     fname = os.getenv('SQL')
     dbname = os.getenv('DB')
 
