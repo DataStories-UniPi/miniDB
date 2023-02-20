@@ -9,11 +9,11 @@ sys.path.append('miniDB')
 
 from database import Database
 from table import Table
-# art font is "big"
+# art font is "big"1
 art = '''
              _         _  _____   ____  
             (_)       (_)|  __ \ |  _ \     
-  _ __ ___   _  _ __   _ | |  | || |_) |
+  _ __ ___   _  _ __   _ | |  | || |_) e
  | '_ ` _ \ | || '_ \ | || |  | ||  _ < 
  | | | | | || || | | || || |__| || |_) |
  |_| |_| |_||_||_| |_||_||_____/ |____/   2022                              
@@ -170,7 +170,7 @@ def interpret(query):
                      'import': ['import', 'from'],
                      'export': ['export', 'to'],
                      'insert into': ['insert into', 'values'],
-                     'select': ['select', 'from', 'where', 'distinct', 'order by', 'limit'],
+                     'select': ['select', 'from', 'where', 'AND','OR', 'distinct', 'order by', 'limit'],
                      'lock table': ['lock table', 'mode'],
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
@@ -178,6 +178,7 @@ def interpret(query):
                      'create index': ['create index', 'on', 'using'],
                      'drop index': ['drop index'],
                      'create view' : ['create view', 'as']
+                     
                      }
 
     if query[-1]!=';':
