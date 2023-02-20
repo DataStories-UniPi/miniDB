@@ -26,7 +26,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None,columns_unique=None): # added unique constraint
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -60,6 +60,27 @@ class Table:
 
             self.column_types = [eval(ct) if not isinstance(ct, type) else ct for ct in column_types]
             self.data = [] # data is a list of lists, a list of rows that is.
+
+            self.columns_unique = columns_unique if columns_unique is not None else [] # instance for unique constraint
+            #self.unique_idx = [self.column_names.index(i) for i in columns_unique] if columns_unique is not None else []
+            #print("unique columns: ", columns_unique)
+
+            '''
+            for col_un in columns_unique:
+                if columns_unique[col_un] is not None:
+                    self.unique_idx = self.column_names.index(columns_unique[col_un]) #!!!!
+                else:
+                    self.unique_idx = None
+            '''
+
+            if columns_unique is not None:
+                self.unique_idx=[]
+                for u in columns_unique:
+                    self.unique_idx.append(self.column_names.index(u))
+            else:
+                self.unique_idx = None
+
+            #self.columns_unique = columns_unique
 
             # if primary key is set, keep its index as an attribute
             if primary_key is not None:
@@ -123,12 +144,20 @@ class Table:
             except TypeError as exc:
                 if row[i] != None:
                     print(exc)
+            
+            
+            if (self.column_names[i] in self.columns_unique and str(row[i]) in [str(val) for val in self.column_by_name(self.column_names[i])]):
+                print(f'## ERROR: Cannot insert duplicate value "{str(row[i])}" in column "{self.column_names[i]}". It has the unique constraint.')
+                raise ValueError(f'## ERROR: Cannot insert duplicate value "{str(row[i])}" in column "{self.column_names[i]}". It has the unique constraint.')
+                
 
+            #row[i] = self.column_types[i](row[i])
+            
             # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
             elif i==self.pk_idx and row[i] is None:
-                raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
+                raise ValueError(f'## ERROR -> The value of the primary key cannot be None.')
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
@@ -151,18 +180,88 @@ class Table:
                 Operatores supported: (<,<=,=,>=,>)
         '''
         # parse the condition
-        column_name, operator, value = self._parse_condition(condition)
+        #column_name, operator, value = self._parse_condition(condition)
 
         # get the condition and the set column
-        column = self.column_by_name(column_name)
+        #column = self.column_by_name(column_name)
         set_column_idx = self.column_names.index(set_column)
 
-        # set_columns_indx = [self.column_names.index(set_column_name) for set_column_name in set_column_names]
+        #set_columns_indx = [self.column_names.index(set_column_name) for set_column_name in set_column_names]
 
-        # for each value in column, if condition, replace it with set_value
-        for row_ind, column_value in enumerate(column):
-            if get_op(operator, column_value, value):
-                self.data[row_ind][set_column_idx] = set_value
+        if 'not ' in condition and ' between ' not in condition:
+                condition = condition.replace('not ', '')
+               # condition_columnn, op, value = split_condition(condition,True)
+                #print(condition_column)
+                #print(condition)
+                column_name, operator, value = self._parse_condition(condition, False, True)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+                for row_ind, column_value in enumerate(column):
+                    if get_op(operator, column_value, value):
+                        self.data[row_ind][set_column_idx] = set_value
+
+        elif ' between ' and ' and ' in condition:
+                if 'not ' in condition:
+                    condition = condition.replace('not ', '') 
+                    notcheck = True
+                else:
+                    notcheck = False
+
+                splt = condition.split(' between ', 1) # split condition one time on between keyword
+
+                # if splt is more than 1 characters, split "splt" one time on the 'and' keyword
+                if len(splt)>1:
+                    if len(splt[1])>1:
+
+                        # column name, between ... and ...
+                        # splt[0], 'between', splt[1]
+                        splt_and = splt[1].split(' and ', 1)
+                        #value1 and value2
+                        #splt_and[0], 'and', splt_and[1]
+
+                        #remove whitespace
+                        condition_column = splt[0].replace(' ', '') # name of column
+                        value1 = splt_and[0].replace(' ', '') # name of the first value
+                        value2 = splt_and[1].replace(' ', '') # name of second value
+                
+                column = self.column_by_name(condition_column) # get column as a list
+                column_to_str = [str(x) for x in column] # make column list of strings
+
+                values = []
+                
+                if notcheck: # we reverse the operators in case there is the 'not' keyword in front of the 'between' keyowrd
+                    # not between 67000 and 75000 => value < 67000 or value > 75000
+                    if value1.isdigit() and value2.isdigit(): #if values are numbers
+                        values = [x for x in column_to_str if(x!='None' and int(x) < int(value1) or int(x) > int(value2))] # exclude None in case of deleted record
+                    else: # else if we compare strings, it kinda works if we check: name between a and k
+                        values = [x for x in column_to_str if(x < value1 or x > value2)]
+                else: # normal between format
+                    # between 67000 and 75000 => value >= 67000 and value <= 75000
+                    if value1.isdigit() and value2.isdigit():
+                        values = [x for x in column_to_str if(x!='None' and int(x) >= int(value1) and int(x) <= int(value2))]
+                    else:
+                        values = [x for x in column_to_str if(x >= value1 and x <= value2)] 
+                
+                set_column_idx = self.column_names.index(set_column)
+
+                column = self.column_by_name(column_name)
+                for row_ind, column_value in enumerate(column_to_str):
+                    for i in range(len(values)):
+                        if (column_value == values[i]):
+                            self.data[row_ind][set_column_idx] = set_value
+        
+        else:
+            # parse the condition
+            column_name, operator, value = self._parse_condition(condition)
+
+            # get the condition and the set column
+            column = self.column_by_name(column_name)
+            set_column_idx = self.column_names.index(set_column)
+
+            # for each value in column, if condition, replace it with set_value
+            for row_ind, column_value in enumerate(column):
+                if get_op(operator, column_value, value):
+                    self.data[row_ind][set_column_idx] = set_value
 
         # self._update()
                 # print(f"Updated {len(indexes_to_del)} rows")
@@ -182,20 +281,85 @@ class Table:
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
-        column_name, operator, value = self._parse_condition(condition)
-
+        #column_name, operator, value = self._parse_condition(condition)
+        
         indexes_to_del = []
 
-        column = self.column_by_name(column_name)
-        for index, row_value in enumerate(column):
-            if get_op(operator, row_value, value):
-                indexes_to_del.append(index)
+        if 'not ' in condition and ' between ' not in condition:
+                condition = condition.replace('not ', '')
+               # condition_columnn, op, value = split_condition(condition,True)
+                #print(condition_column)
+                #print(condition)
+                column_name, operator, value = self._parse_condition(condition, False, True)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+                for index, row_value in enumerate(column):
+                    if get_op(operator, row_value, value):
+                        indexes_to_del.append(index)
+
+        elif ' between ' and ' and ' in condition:
+                if 'not ' in condition:
+                    condition = condition.replace('not ', '') 
+                    notcheck = True
+                else:
+                    notcheck = False
+
+                splt = condition.split(' between ', 1) # split condition one time on between keyword
+
+                # if splt is more than 1 characters, split "splt" one time on the 'and' keyword
+                if len(splt)>1:
+                    if len(splt[1])>1:
+
+                        # column name, between ... and ...
+                        # splt[0], 'between', splt[1]
+                        splt_and = splt[1].split(' and ', 1)
+                        #value1 and value2
+                        #splt_and[0], 'and', splt_and[1]
+
+                        #remove whitespace
+                        condition_column = splt[0].replace(' ', '') # name of column
+                        value1 = splt_and[0].replace(' ', '') # name of the first value
+                        value2 = splt_and[1].replace(' ', '') # name of second value
+                
+                column = self.column_by_name(condition_column) # get column as a list
+                column_to_str = [str(x) for x in column] # make column list of strings
+
+                values = []
+                
+                if notcheck: # we reverse the operators in case there is the 'not' keyword in front of the 'between' keyowrd
+                    # not between 67000 and 75000 => value < 67000 or value > 75000
+                    if value1.isdigit() and value2.isdigit(): #if values are numbers
+                        values = [x for x in column_to_str if(x!='None' and int(x) < int(value1) or int(x) > int(value2))] # exclude None in case of deleted record
+                    else: # else if we compare strings, it kinda works if we check: name between a and k
+                        values = [x for x in column_to_str if(x < value1 or x > value2)]
+                else: # normal between format
+                    # between 67000 and 75000 => value >= 67000 and value <= 75000
+                    if value1.isdigit() and value2.isdigit():
+                        values = [x for x in column_to_str if(x!='None' and int(x) >= int(value1) and int(x) <= int(value2))]
+                    else:
+                        values = [x for x in column_to_str if(x >= value1 and x <= value2)] 
+
+                column = self.column_by_name(column_name)
+                for index, row_value in enumerate(column):
+                    for i in range(len(values)):
+                        if row_value == values[i]:
+                            indexes_to_del.append(index)
+                            #print("with special word: ", indexes_to_del)
+        
+        else:
+            column_name, operator, value = self._parse_condition(condition)
+            column = self.column_by_name(column_name)
+            for index, row_value in enumerate(column):
+                if get_op(operator, row_value, value):
+                    indexes_to_del.append(index)
+                    #print("without special word: ", indexes_to_del)
 
         # we pop from highest to lowest index in order to avoid removing the wrong item
         # since we dont delete, we dont have to to pop in that order, but since delete is used
         # to delete from meta tables too, we still implement it.
 
         for index in sorted(indexes_to_del, reverse=True):
+            
             if self._name[:4] != 'meta':
                 # if the table is not a metatable, replace the row with a row of nones
                 self.data[index] = [None for _ in range(len(self.column_names))]
@@ -217,31 +381,125 @@ class Table:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
-                Operatores supported: (<,<=,==,>=,>)
+                Operatores supported: (<,<=,==,>=,>,not,between)
             distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (False by default).
             limit: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
-
+        #multiple = False        
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
+        #print("return_cols:", return_cols)
+        #print(condition)
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            notcheck = False
+            if 'not ' in condition and ' between ' not in condition: 
+                condition = condition.replace('not ', '') # split condition one time on 'not' keyword
+                #print(condition)
+                column_name, operator, value = self._parse_condition(condition, False, True) # thrid parameter is about 'notcheck', a variable set to true if 'not' exists in said condition
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+            elif ' between ' in condition and ' and ' in condition:
+                if 'not ' in condition:
+                    condition = condition.replace('not ', '') # remove not from the condition
+                    notcheck = True # used to negate the operators
+                else:
+                    notcheck = False
+
+                splt = condition.split(' between ', 1) # split condition one time on between keyword
+
+                # if splt is more than 1 characters, split "splt" one time on the 'and' keyword
+                if len(splt)>1:
+                    if len(splt[1])>1:
+
+                        # column name, between ... and ...
+                        # splt[0], 'between', splt[1]
+                        splt_and = splt[1].split(' and ', 1)
+                        #value1 and value2
+                        #splt_and[0], 'and', splt_and[1]
+
+                        #remove whitespace
+                        condition_column = splt[0].replace(' ', '') # name of column
+                        value1 = splt_and[0].replace(' ', '') # name of the first value
+                        value2 = splt_and[1].replace(' ', '') # name of second value
+                
+                column = self.column_by_name(condition_column) # get column as a list
+                column_to_str = [str(x) for x in column] # make column list of strings
+
+                values = []
+
+                if notcheck: # we reverse the operators in case there is the 'not' keyword in front of the 'between' keyowrd
+                    # not between 67000 and 75000 => value < 67000 or value > 75000
+                    if value1.isdigit() and value2.isdigit(): #if values are numbers
+                        values = [x for x in column_to_str if(x!='None' and int(x) < int(value1) or int(x) > int(value2))] # exclude None in case of deleted record
+                    else: # else if we compare strings, it kinda works if we check: name between a and k
+                        values = [x for x in column_to_str if(x < value1 or x > value2)]
+                else: # normal between format
+                    # between 67000 and 75000 => value >= 67000 and value <= 75000
+                    if value1.isdigit() and value2.isdigit():
+                        values = [x for x in column_to_str if(x!='None' and int(x) >= int(value1) and int(x) <= int(value2))]
+                    else:
+                        values = [x for x in column_to_str if(x >= value1 and x <= value2)] 
+                
+
+                rows = [ind for ind, x in enumerate(column_to_str) if(x in list(values))]
+            elif ' and ' in condition:
+                list_conditions = [] # create a list for all the conditions
+                list_rows = [] # list containing the rows that correspond with the conditon
+                rows = []           
+                splt = condition.split(' and ') # split the condition in the 'and' keyword
+
+                for i in range(len(splt)):
+                    list_conditions.append(splt[i]) # add the condition to the list
+                
+                for i in range(len(list_conditions)): # for each condition in the list with the conditions
+                    column_name, operator, value = self._parse_condition(list_conditions[i]) # parse the condition as usual
+                    column = self.column_by_name(column_name)
+                    list_rows.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)]) # add them to the list of total rows
+                                 
+                rows = set(list_rows[0]).intersection(*list_rows) # create an intersection to get the records that match all the conditions              
+                
+            elif ' or ' in condition:
+                list_conditions = [] # create a list for all the conditions
+                list_rows = [] # list containing the rows that correspond with the conditon
+                rows = []              
+                splt = condition.split(' or ') # split the condition in the 'or' keyword
+                for i in range(len(splt)):
+                    list_conditions.append(splt[i]) # add the condition to the list
+
+                for i in range(len(list_conditions)): # for each condition in the list with the conditions
+                    column_name, operator, value = self._parse_condition(list_conditions[i]) # parse the condition as usual
+                    column = self.column_by_name(column_name)
+                    list_rows.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)]) # add them to the list of total rows
+
+                for li in list_rows: # for each index in the list of rows
+                    for row in li: # and for each row of that index
+                        if not row in rows: 
+                            rows.append(row) 
+
+            else:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+                
+        
         else:
             rows = [i for i in range(len(self.data))]
+            
 
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
+        
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
-
+        #print(rows)
         # we need to set the new column names/types and no of columns, since we might
         # only return some columns
         dict['column_names'] = [self.column_names[i] for i in return_cols]
@@ -270,7 +528,7 @@ class Table:
         return s_table
 
 
-    def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
+    def _select_where_with_btree(self, return_columns, bt, condition,  distinct=False, order_by=None, desc=True, limit=None):
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
@@ -278,12 +536,14 @@ class Table:
         else:
             return_cols = [self.column_names.index(colname) for colname in return_columns]
 
-
+        #print(condition)
         column_name, operator, value = self._parse_condition(condition)
+        '''
 
         # if the column in condition is not a primary key, abort the select
         if column_name != self.column_names[self.pk_idx]:
             print('Column is not PK. Aborting')
+        '''
 
         # here we run the same select twice, sequentially and using the btree.
         # we then check the results match and compare performance (number of operation)
@@ -294,11 +554,15 @@ class Table:
         opsseq = 0
         for ind, x in enumerate(column):
             opsseq+=1
+            
             if get_op(operator, x, value):
                 rows1.append(ind)
+                
 
         # btree find
+        
         rows = bt.find(operator, value)
+        
 
         try:
             k = int(limit)
@@ -306,7 +570,60 @@ class Table:
             k = None
         # same as simple select from now on
         rows = rows[:k]
+        
         # TODO: this needs to be dumbed down
+        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+        
+        dict['column_names'] = [self.column_names[i] for i in return_cols]
+        dict['column_types']   = [self.column_types[i] for i in return_cols]
+
+        s_table = Table(load=dict)
+
+        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+
+        if order_by:
+            s_table.order_by(order_by, desc)
+
+        if isinstance(limit,str):
+            s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
+
+        
+        print("B+Tree used for select.")
+        return s_table
+
+
+    def _select_where_with_hash(self, return_columns, exthash, condition, distinct=False, order_by=None, desc=True, limit=None):  #!!! To be changed
+        # if * return all columns, else find the column indexes for the columns specified
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
+        else:
+            return_cols = [self.column_names.index(colname) for colname in return_columns]
+
+        column_name, operator, value = self._parse_condition(condition)
+
+      
+        # sequential search in case of range query which is not supported by Hash Index.
+        rows = []
+        if (operator == '<' or operator == '>' or operator == '<=' or operator == '>='):
+            column = self.column_by_name(column_name)
+            opsseq = 0
+            for ind, x in enumerate(column):
+                opsseq+=1
+                if get_op(operator, x, value):
+                    rows.append(ind)
+        # using hashtable
+        else: 
+            index = exthash.get(value)
+            rows.append(index)
+
+
+        try:
+            k = int(limit)
+        except TypeError:
+            k = None
+        # same as simple select from now on
+        rows = rows[:k]
+        
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
 
         dict['column_names'] = [self.column_names[i] for i in return_cols]
@@ -323,6 +640,7 @@ class Table:
             s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
 
         return s_table
+
 
     def order_by(self, column_name, desc=True):
         '''
@@ -533,6 +851,17 @@ class Table:
         if self.pk_idx is not None:
             # table has a primary key, add PK next to the appropriate column
             headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
+
+        '''
+        if self.unique_idx is not None:
+            headers[self.unique_idx] = headers[self.unique_idx]+' #U#'
+        '''
+
+        if self.unique_idx is not None:
+            # table has unique columns, add UQ next to the appropriate column
+            for i in self.unique_idx:
+               headers[i] = headers[i]+' #UQ#'
+
         # detect the rows that are no tfull of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]
@@ -540,7 +869,7 @@ class Table:
         print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
 
 
-    def _parse_condition(self, condition, join=False):
+    def _parse_condition(self, condition, join=False, notcheck=False):
         '''
         Parse the single string condition and return the value of the column and the operator.
 
@@ -556,8 +885,13 @@ class Table:
         if join:
             return split_condition(condition)
 
+        if notcheck:
+            left, op, right = split_condition(condition, True) #added a parameter to the split_condition method
+        else:
+            left, op, right = split_condition(condition)
+
         # cast the value with the specified column's type and return the column name, the operator and the casted value
-        left, op, right = split_condition(condition)
+        
         if left not in self.column_names:
             raise ValueError(f'Condition is not valid (cant find column name)')
         coltype = self.column_types[self.column_names.index(left)]
