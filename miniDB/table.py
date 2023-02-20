@@ -136,7 +136,7 @@ class Table:
 
             # if value already exists in a unique column, raise an error (no duplicate values in unique columns).
             if self.unique_columns is not None and i in self.unique_columns_idx and row[i] in self.column_by_name(self.column_names[i]):
-                raise ValueError(f'## ERROR -> Value "{row[i]}" already exists in unique column "{self.column_names[i]}".')
+                raise ValueError(f'ERROR -> Value "{row[i]}" already exists in unique column "{self.column_names[i]}".')
             
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
