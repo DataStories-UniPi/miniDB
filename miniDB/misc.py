@@ -27,7 +27,7 @@ def split_condition(condition):
         if len(splt)>1:
             left, right = splt[0].strip(), splt[1].strip()
 
-            if right[0] == '"' == right[-1]: # If the value has leading and trailing quotes, remove them.
+            if right[0] == '"' == right[-1]: # If the value has leading and trailing quotes, remove them
                 right = right.strip('"')
             elif ' ' in right: # If it has whitespaces but no leading and trailing double quotes, throw.
                 raise ValueError(f'Invalid condition: {condition}\nValue must be enclosed in double quotation marks to include whitespaces.')

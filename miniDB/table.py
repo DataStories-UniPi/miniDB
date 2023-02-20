@@ -230,7 +230,7 @@ class Table:
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
-        # if condition is None, return all rows
+        # if condition is None, return all row
         # if not, return the rows with values where condition is met for value
         if condition is not None:
             column_name, operator, value = self._parse_condition(condition)
