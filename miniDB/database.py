@@ -365,7 +365,7 @@ class Database:
         if condition is not None:
             if 'or' in condition.split():
                 condition_column = condition.split(" ")[0]
-            if 'and' in condition.split():
+            elif 'and' in condition.split():
                  condition_column = condition.split(" ")[0]
             else:
                 condition_column = split_condition(condition)[0]

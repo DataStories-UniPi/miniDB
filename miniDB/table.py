@@ -279,13 +279,23 @@ class Table:
                 rows2 = [ind for ind, x in enumerate(column1) if get_op(operator1, x, value1)]
                 rows = set(rows1).intersection(rows2)
             elif 'or' in condition.split():
-                cond1 = condition1.split('or')
-                condition = cond1[0].split('or')
-                row_lists = []
-                for cond in condition:
-                    column_name, operator, value = self._parse_condition(cond)
-                    column = self.column_by_name(column_name)
-                    row_lists.append([ind for ind, x in enumerate(column) if get_op(operator, x, value)])
+                c1 = condition.split("or")
+                condition = c1[0]
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows1 = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+                condition1 = c1[1]
+                column_name1, operator1, value1 = self._parse_condition(condition1)
+                column1 = self.column_by_name(column_name1)
+                rows2 = [ind for ind, x in enumerate(column1) if get_op(operator1, x, value1)]
+
+                rows3 = [rows1,rows2]
+                rows = []
+                for i in rows3:
+                    for j in i:
+                        if not (j in rows):
+                            rows.append(j)
                     
             else:
                 column_name, operator, value = self._parse_condition(condition)
