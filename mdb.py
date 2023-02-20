@@ -7,8 +7,8 @@ import traceback
 import shutil
 sys.path.append('miniDB')
 
-from database import Database
-from table import Table
+from miniDB.database import Database
+from miniDB.table import Table
 # art font is "big"
 art = '''
              _         _  _____   ____  
@@ -93,20 +93,27 @@ def create_query_plan(query, keywords, action):
         else:
             dic['desc'] = None
 
-    if action=='create table':
-        args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
-        dic['create table'] = dic['create table'].removesuffix(args).strip()
-        arg_nopk = args.replace('primary key', '')[1:-1]
-        arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
-        dic['column_names'] = ','.join([val[0] for val in arglist])
-        dic['column_types'] = ','.join([val[1] for val in arglist])
-        if 'primary key' in args:
-            arglist = args[1:-1].split(' ')
-            dic['primary key'] = arglist[arglist.index('primary')-2]
-        else:
-            dic['primary key'] = None
-    
-    if action=='import': 
+    if action == 'create table':
+            args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
+            dic['create table'] = dic['create table'].removesuffix(args).strip()
+            arg_nopk = args.replace('primary key', '')[1:-1]
+            arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
+            dic['column_names'] = ','.join([val[0] for val in arglist])
+            dic['column_types'] = ','.join([val[1] for val in arglist])
+            if 'primary key' in args:
+                arglist = args[1:-1].split(' ')
+                dic['primary key'] = arglist[arglist.index('primary')-2]
+            else:
+                dic['primary key'] = None
+
+            if 'unique' in args:
+                arglist= args[1:-1].split(' ')
+                dic['unique'] = arglist[arglist.index('unique') - 2]
+
+            else:
+                dic['column'] = None
+
+    if action == 'import':
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
     if action=='insert into':
@@ -115,11 +122,16 @@ def create_query_plan(query, keywords, action):
         else:
             raise ValueError('Your parens are not right m8')
     
-    if action=='unlock table':
+    if action == 'unlock table':
         if dic['force'] is not None:
             dic['force'] = True
         else:
             dic['force'] = False
+
+    if action == 'create index':    # created action 'creat index'
+        dic['column name'] = dic['on'][dic['on'].index('(')+1:-1]
+        dic['column name'] = dic['column name'].strip()     # name of column where index is going to be created
+        dic['on'] = dic['on'][0:dic['on'].index('(')]       # name of table where index is going to be created
 
     return dic
 
@@ -164,6 +176,8 @@ def interpret(query):
     '''
     Interpret the query.
     '''
+    #dictionary
+    # hi
     kw_per_action = {'create table': ['create table'],
                      'drop table': ['drop table'],
                      'cast': ['cast', 'from', 'to'],
@@ -282,7 +296,7 @@ if __name__ == "__main__":
             print('\nbye!')
             break
         try:
-            if line=='exit':
+            if line == 'exit':
                 break
             if line.split(' ')[0].removesuffix(';') in ['lsdb', 'lstb', 'cdb', 'rmdb']:
                 interpret_meta(line)
