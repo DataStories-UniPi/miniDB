@@ -464,14 +464,26 @@ if __name__ == "__main__":
                 interpret_meta(line)
             elif line.startswith('explain'):
                 dic = interpret(line.removeprefix('explain '))
-                queries = multiple_query_plans(dic)
-                evaluate_query_plans(db,queries)
-                #pprint(dic, sort_dicts=False)
+                if isinstance(dic['from'],dict):
+                    queries, is_valid = multiple_query_plans(dic)
+                    if(is_valid):
+                        dic = evaluate_query_plans(db,queries)
+                elif not dic['from'].startswith('meta'):
+                    queries, is_valid = multiple_query_plans(dic)
+                    if(is_valid):
+                        dic = evaluate_query_plans(db,queries)
+                pprint(dic, sort_dicts=False)
             else:
                 dic = interpret(line)
                 #if 'select' in dic.keys() and not dic['from'].startswith('meta'):
-                queries = multiple_query_plans(dic)
-                dic = evaluate_query_plans(db,queries)
+                if isinstance(dic['from'],dict):
+                    queries, is_valid = multiple_query_plans(dic)
+                    if(is_valid):
+                        dic = evaluate_query_plans(db,queries)
+                elif not dic['from'].startswith('meta'):
+                    queries, is_valid = multiple_query_plans(dic)
+                    if(is_valid):
+                        dic = evaluate_query_plans(db,queries)
                 result = execute_dic(dic)
                 if isinstance(result,Table):
                     result.show()

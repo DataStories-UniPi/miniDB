@@ -7,6 +7,41 @@ def get_final_from(dic):
             return get_final_from(dic['from'])
     else:
         return None
+def count_selects(dict):
+    global num_of_selects
+    num_of_selects += 1
+    if 'from' in dict:
+        if isinstance(dict['from'],str):
+            return num_of_selects
+        else:
+            return count_selects(dict['from'])
+    else:
+        return None
+num_of_selects = 0
+count = 0
+
+def check_query(dic):
+    global count   # increment counter
+    count +=1
+    if 'from' in dic:
+        if isinstance(dic['from'], str):
+            # check if 'where' is None when 'from' is a string
+            if dic['where'] is None or count==1:
+                return dic['from'], count
+            else:
+                return None
+        # check if 'where' is not None and count is greater than 1
+        elif dic['where'] is not None and count >= 1 and 'select' in dic['from']:
+            return None
+        elif isinstance(dic['from'], dict):
+            # recursively call function with 'from' key as new dictionary
+            return check_query(dic['from'])
+            
+    elif 'join' in dic:
+        return dic,count
+    else:        
+        return None,count
+
 
 def multiple_query_plans(dic):
     
@@ -14,13 +49,41 @@ def multiple_query_plans(dic):
     Query_Plan_List=[]
     Query_Plan_List.append(dic)
     query_plan_1 = copy.deepcopy(dic)
-    
+    is_valid = True
     
     
     if query_plan_1['where'] and query_plan_1['from'] is None:
-        return dic
-    
+        is_valid = False
+        return Query_Plan_List , is_valid
+    if isinstance(query_plan_1['where'],dict):
+        and_idx = [i for i,word in enumerate(query_plan_1['where'].keys()) if word=='and']
+        or_idx = [i for i,word in enumerate(query_plan_1['where'].keys()) if word=='or']
+        btween_idx = [i for i,word in enumerate(query_plan_1['where'].keys()) if word=='between']
+        not_idx = [i for i,word in enumerate(query_plan_1['where'].keys()) if word=='not']
+        if not_idx or btween_idx or or_idx or len(and_idx) > 1:
+            is_valid = False
+            return Query_Plan_List , is_valid
+    query_plan_test = copy.deepcopy(query_plan_1)
+    count_selects(query_plan_test)
+
     if isinstance(query_plan_1['from'],dict):
+
+        if isinstance(query_plan_1['from']['where'],dict):
+            and_idx = [i for i,word in enumerate(query_plan_1['where'].keys()) if word=='and']
+            or_idx = [i for i,word in enumerate(query_plan_1['where'].keys()) if word=='or']
+            btween_idx = [i for i,word in enumerate(query_plan_1['where'].keys()) if word=='between']
+            not_idx = [i for i,word in enumerate(query_plan_1['where'].keys()) if word=='not']
+            if not_idx or btween_idx or or_idx or len(and_idx) > 1:
+                is_valid = False
+                return Query_Plan_List , is_valid
+
+        if num_of_selects > 2 :
+            valid = check_query(query_plan_1)
+
+            if valid is None:
+                is_valid = False
+                return Query_Plan_List , is_valid
+
         # Check if the first and second rules of relational algebra (RA) can be applied to the query plan
         if 'select' in  query_plan_1['from'].keys() and query_plan_1['where'] != None:#if isinstance(query_plan_1['from'],dict) 'select' in  query_plan_1['from'].keys() and query_plan_1['where'] != None
             '''
@@ -57,8 +120,28 @@ def multiple_query_plans(dic):
             query_plan_1['from'] = get_final_from(query_plan_1)
             Query_Plan_List.append(query_plan_1)
 
+        # This block of code applies the fifth rule of relational algebra to the query plan.    
+        elif ('join' in query_plan_1['from'].keys() and query_plan_1['where'] == None) and isinstance(query_plan_1['from']['on'],str): 
+            '''
+
+            If the query involves a join and doesn't have a WHERE clause, the left and right operands of the join are swapped.
+            A new query plan is created by copying the original query plan and modifying its 'from' clause, and then it is added to Query_Plan_List for further evaluation and optimization.
+                        
+            '''
+            on_clause = copy.deepcopy(query_plan_1['from']['on'])
+            split_on_clause = on_clause.split("=")
+            split_on_clause.insert(1, "=")
+            split_on_clause[0], split_on_clause[2] = split_on_clause[2], split_on_clause[0]
+            new_on_clause = "".join(split_on_clause)
+            second_on_clause = copy.deepcopy(new_on_clause)
+            query_plan_2 = copy.deepcopy(query_plan_1)
+            query_plan_1['from']['on'] = second_on_clause
+            query_plan_1['from']['left'] = query_plan_2['from']['right']
+            query_plan_1['from']['right'] = query_plan_2['from']['left']
+            Query_Plan_List.append(query_plan_1)
         # This block of code checks if the fourth and fifth rules of relational algebra can be applied to the given query plan.   
         # If so, it creates several new query plans and appends them to the Query_Plan_List for further evaluation.
+
         elif 'join' in query_plan_1['from'].keys() and query_plan_1['where'] != None:
             '''
 
@@ -150,25 +233,7 @@ def multiple_query_plans(dic):
             query_plan_6['from']['right'] = query_plan_3['from']['left']
             Query_Plan_List.append(query_plan_6)
 
-        # This block of code applies the fifth rule of relational algebra to the query plan.    
-        elif ('join' in query_plan_1['from'].keys() and query_plan_1['where'] == None) and isinstance(query_plan_1['from']['on'],str): 
-            '''
-
-            If the query involves a join and doesn't have a WHERE clause, the left and right operands of the join are swapped.
-            A new query plan is created by copying the original query plan and modifying its 'from' clause, and then it is added to Query_Plan_List for further evaluation and optimization.
-                        
-            '''
-            on_clause = copy.deepcopy(query_plan_1['from']['on'])
-            split_on_clause = on_clause.split("=")
-            split_on_clause.insert(1, "=")
-            split_on_clause[0], split_on_clause[2] = split_on_clause[2], split_on_clause[0]
-            new_on_clause = "".join(split_on_clause)
-            second_on_clause = copy.deepcopy(new_on_clause)
-            query_plan_2 = copy.deepcopy(query_plan_1)
-            query_plan_1['from']['on'] = second_on_clause
-            query_plan_1['from']['left'] = query_plan_2['from']['right']
-            query_plan_1['from']['right'] = query_plan_2['from']['left']
-            Query_Plan_List.append(query_plan_1)
+        
     else:
         if isinstance(query_plan_1['from'], str) and query_plan_1['where'] == None:
             '''
@@ -180,9 +245,9 @@ def multiple_query_plans(dic):
             '''
             query_plan_1['from'] = get_final_from(query_plan_1)
             Query_Plan_List.append(query_plan_1)
+        #This block of code checks if the first and second rules of relational algebra can be applied to the given query plan.
         elif isinstance(query_plan_1['where'],dict):
-            #This block of code checks if the first and second rules of relational algebra can be applied to the given query plan.
-            and_idx = [i for i,word in enumerate(query_plan_1['where'].keys()) if word=='and']
+            
             '''
 
             If so, it creates several new query plans and appends them to the Query_Plan_List for further evaluation.
@@ -216,7 +281,7 @@ def multiple_query_plans(dic):
     for index, dictionary in enumerate(unique_dictionaries):
         print(f"Dictionary {index + 1}:")
         print(dictionary)
-    return unique_dictionaries
+    return unique_dictionaries , is_valid
     
 
     

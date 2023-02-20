@@ -14,6 +14,7 @@ import re
 
 
 # A dictionary that contains statistics about tables
+'''
 stats = {
     "instructor": {
         "size": 12,
@@ -41,7 +42,7 @@ stats = {
         },
     },
 }
-
+'''
 # A function that evaluates the cost of a subquery in the SELECT clause
 def evaluate_select_clause(db, subquery):
     """
@@ -61,6 +62,7 @@ def evaluate_select_clause(db, subquery):
         int: The cost of evaluating the SELECT clause.
 
     """
+    stats = db.stats
     cost = 0
     from_clause = subquery["from"]
     table_name = None
@@ -140,7 +142,7 @@ def evaluate_query_plans(db , queries):
 
     # Create a dictionary to store the costs of each query
     query_costs = {}
-
+    stats = db.stats
     # Loop through each query and calculate its cost
     for query in queries:
         cost = 0
