@@ -110,10 +110,6 @@ def create_query_plan(query, keywords, action):
                 arglist= args[1:-1].split(' ')
                 dic['unique'] = arglist[arglist.index('unique') - 2]
 
-                #arglist=args[args.index('unique')+len('unique'):-1].replace('(','').replace(')','').split(',')
-                #for x in range(len(arglist)):
-                 #   arglist[x] = arglist[x].strip()
-                  #  dic['column']=arglist
             else:
                 dic['column'] = None
 
@@ -132,10 +128,10 @@ def create_query_plan(query, keywords, action):
         else:
             dic['force'] = False
 
-    if action == 'create index':
+    if action == 'create index':    # created action 'creat index'
         dic['column name'] = dic['on'][dic['on'].index('(')+1:-1]
-        dic['column name'] = dic['column name'].strip()
-        dic['on'] = dic['on'][0:dic['on'].index('(')]
+        dic['column name'] = dic['column name'].strip()     # name of column where index is going to be created
+        dic['on'] = dic['on'][0:dic['on'].index('(')]       # name of table where index is going to be created
 
     return dic
 

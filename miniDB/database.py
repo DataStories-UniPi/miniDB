@@ -54,7 +54,7 @@ class Database:
         self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
-        self.create_table('meta_indexes', 'table_name,index_name,column_name', 'str,str,str')
+        self.create_table('meta_indexes', 'table_name,index_name,column_name', 'str,str,str')   # added column_name
         self.save_database()
 
     def save_database(self):
@@ -110,6 +110,7 @@ class Database:
             column_names: list. Names of columns.
             column_types: list. Types of columns.
             primary_key: string. The primary key (if it exists).
+            unique : list. List of unique columns (if any exist).
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
         # print('here -> ', column_names.split(','))
@@ -671,17 +672,17 @@ class Database:
         Args:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
+            column_name: string. Name of column, on which the index is created.
         '''
         table_name=table_name.strip()
-        if table_name not in self.tables:
+        if table_name not in self.tables:   # Checking if table exists
             raise Exception('Table does not exist')
-        if self.tables[table_name].unique[0] not in self.tables[table_name].column_names:
+        if self.tables[table_name].unique[0] not in self.tables[table_name].column_names:   # checking if column exists
             raise Exception('Column does not exist')
-        if column_name not in self.tables[table_name].unique and column_name!=self.tables[table_name].pk:
-            raise Exception('Cannot create')
+        if column_name not in self.tables[table_name].unique and column_name!=self.tables[table_name].pk:   #checking if column is unique and if column is PK
+            raise Exception('Column is not unique')
 
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
-            # currently only btree is supported. This can be changed by adding another if.
 
             if index_type == 'btree':
                 if self.tables[table_name].pk == column_name or column_name in self.tables[table_name].unique:
@@ -692,8 +693,14 @@ class Database:
                     self._construct_index(table_name, index_name,index_type, column_name)
                     self.save_database()
                     print('Btree creation done!')
-            else:
-                print('not btree')
+
+            elif index_type=='hash':
+                logging.info('Creating Hash index.')
+                self.tables['meta_indexes']._insert([table_name, index_name, column_name])
+                self._construct_index(table_name, index_name, index_type, column_name)
+                self.save_database()
+                print('Hash creation done!')
+
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
@@ -716,6 +723,13 @@ class Database:
             # save the btree
             self._save_index(index_name, bt)
 
+        if index_type=='hash': # commented out because class Hash() does not exist
+            # h=Hash()
+            for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
+                if key is None:
+                    continue
+                # h.insert(key, idx)
+                # self._save_index(index_name, h)
 
     def _has_index(self, table_name):
         '''
