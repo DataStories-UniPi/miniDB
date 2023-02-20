@@ -200,7 +200,7 @@ def evaluate_where_clause(dic):
                     '=': '!=',
                     }
 
-    #for ever not between, delete not, between keywords and change it to < and >
+    #for ever not between, delete not, between keywords and change the condition to "column < value1 and column > value2"
     while not_between_idx:
         not_between_idx = not_between_idx[0]
         column_name = where_split[not_between_idx-1]
@@ -209,7 +209,7 @@ def evaluate_where_clause(dic):
 
         where_split_right = ' '.join(where_split[not_between_idx+5:])
         where_split_left = ' '.join(where_split[:not_between_idx-1])
-        dic['where'] = where_split_left + ' ' + column_name + " < " + value1 + " and " + column_name + " > " + value2 + ' ' + where_split_right
+        dic['where'] = where_split_left + ' ' + column_name + " < " + value1 + " or " + column_name + " > " + value2 + ' ' + where_split_right
 
         where_split = split_statement(dic['where'])
         not_between_idx = [i for i,word in enumerate(where_split) if word=='not' and where_split[i+1]=='between' and not in_paren(where_split,i)]
