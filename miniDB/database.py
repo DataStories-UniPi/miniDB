@@ -422,7 +422,7 @@ class Database:
         self.tables['meta_insert_stack'].tropopoisi_seiras(nea_stoiva, 'indexes', f'table_name={onoma_pinaka}')
 
     # indexes
-    def create_index(self, index_name, onoma_pinaka, onoma_stilis, typos_eurethriou): #Index in a specific column of the table
+    def create_index(self, index_name, onoma_pinaka, onoma_stilis, typos_eurethriou): #Enarxi deuterou erotimatos
         if onoma_pinaka not in self.tables:   #Non-existing table
             raise Exception('Den einai dynath h dhmiourgia eurethriou se pinaka pou den yparxei.')
         if onoma_stilis not in self.tables[onoma_pinaka].column_names:   #Non-existing column
@@ -441,7 +441,7 @@ class Database:
         else:
             raise Exception('Hdh yparxei eurethrio me auto to onoma.')
 
-    def kataskeui_euretiriou(self, onoma_pinaka, index_name, onoma_stilis):  #Create Btree in the primary_key of the table specified
+    def kataskeui_euretiriou(self, onoma_pinaka, index_name, onoma_stilis):  #Kai me b-dendro
         b_dendro = Btree(3)  
         for idx, key in enumerate(self.tables[onoma_pinaka].column_by_name(onoma_stilis)):
             if key is None:
@@ -451,7 +451,7 @@ class Database:
         print('To eftiaxa to btree eurethrio.')
         return
 
-    def ftiaxe_hash_euretirio(self, onoma_pinaka, index_name, onoma_stilis):
+    def ftiaxe_hash_euretirio(self, onoma_pinaka, index_name, onoma_stilis): #Kai me eurethrio katakermatismou
         mhkos_grammhs = len(self.tables[onoma_pinaka].data)
         hm = {}
         hm[0] = {}
