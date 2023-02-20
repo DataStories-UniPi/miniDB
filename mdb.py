@@ -196,7 +196,7 @@ def execute_dic(dic):
     Execute the given dictionary
     '''
     for key in dic.keys():
-        if isinstance(dic[key],dict):
+        if (isinstance(dic[key],dict)):
             dic[key] = execute_dic(dic[key])
     
     action = list(dic.keys())[0].replace(' ','_')

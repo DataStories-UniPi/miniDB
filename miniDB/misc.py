@@ -4,11 +4,15 @@ def get_op(op, a, b):
     '''
     Get op as a function of a and b by using a symbol
     '''
-    ops = {'>': operator.gt,
-                '<': operator.lt,
-                '>=': operator.ge,
-                '<=': operator.le,
-                '=': operator.eq}
+    ops = { '>': operator.gt,
+            '<': operator.lt,
+            '>=': operator.ge,
+            '<=': operator.le,
+            '=': operator.eq,
+            'not': operator.ne,
+            'between': 'between'
+            }
+
 
     try:
         return ops[op](a,b)
@@ -20,13 +24,17 @@ def split_condition(condition):
            '<=': operator.le,
            '=': operator.eq,
            '>': operator.gt,
-           '<': operator.lt}
+           '<': operator.lt,
+           'not': operator.ne,
+           'between': 'between'
+           }
 
     for op_key in ops.keys():
         splt=condition.split(op_key)
         if len(splt)>1:
             left, right = splt[0].strip(), splt[1].strip()
-
+            if op_key=='between':
+                return left, op_key, right
             if right[0] == '"' == right[-1]: # If the value has leading and trailing quotes, remove them.
                 right = right.strip('"')
             elif ' ' in right: # If it has whitespaces but no leading and trailing double quotes, throw.
