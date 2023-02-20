@@ -13,6 +13,7 @@ sys.modules['table'] = table
 
 from joins import Inlj, Smj
 from btree import Btree
+from hash import Hash
 from misc import split_condition
 from table import Table
 
@@ -666,21 +667,21 @@ class Database:
             if index_type=='btree':
                 logging.info('Creating Btree index.')
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
-                self.tables['meta_indexes']._insert([table_name, index_name])
-                # crate the actual index
-                self._construct_index(table_name, index_name)
+                self.tables['meta_indexes']._insert([table_name, self.tables[table_name].pk_idx, index_name])
+                # create the actual index
+                self._construct_btree_index(table_name, index_name)
                 self.save_database()
             elif index_type=='hash':
                 logging.info('Creating Hash index.')
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
-                self.tables['meta_indexes']._insert([table_name, index_name])
-                # crate the actual index
-                self._construct_index(table_name, index_name)
+                self.tables['meta_indexes']._insert([table_name, self.tables[table_name].pk_idx, index_name])
+                # create the actual index
+                self._construct_hash_index(table_name, index_name)
                 self.save_database()
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
-    def _construct_index(self, table_name, index_name):
+    def _construct_btree_index(self, table_name, index_name):
         '''
         Construct a btree on a table and save.
 
@@ -696,7 +697,27 @@ class Database:
                 continue
             bt.insert(key, idx)
         # save the btree
-        self._save_index(index_name, bt)
+        self._save_index(index_name, bt, "btree")
+
+    def _construct_hash_index(self, table_name, index_name):
+        '''
+        Construct a hash index on a table column and save.
+
+        Args:
+            table_name: string. Table name (must be part of database).
+            index_name: string. Name of the created index.
+            column_name: string. Name of the column to create the index on.
+        '''
+        h_ind = Hash()
+
+        # for each record in the column, insert its value and index to the hash table
+        for idx, value in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
+            if value is None:
+                continue
+            h_ind.insert(value, idx)
+
+        # save the hash table
+        self._save_index(index_name, h_ind, "hash")
 
 
     def _has_index(self, table_name):
@@ -708,7 +729,7 @@ class Database:
         '''
         return table_name in self.tables['meta_indexes'].column_by_name('table_name')
 
-    def _save_index(self, index_name, index):
+    def _save_index(self, index_name, index, index_type):
         '''
         Save the index object.
 
@@ -721,7 +742,7 @@ class Database:
         except:
             pass
 
-        with open(f'{self.savedir}/indexes/meta_{index_name}_index.pkl', 'wb') as f:
+        with open(f'{self.savedir}/indexes/meta_{index_name}_{index_type}_index.pkl', 'wb') as f:
             pickle.dump(index, f)
 
     def _load_idx(self, index_name):
