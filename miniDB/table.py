@@ -8,7 +8,6 @@ sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/
 
 from misc import get_op, split_condition
 
-
 class Table:
     '''
     Table object represents a table inside a database
@@ -95,8 +94,8 @@ class Table:
         Cast all values of a column using a specified type.
 
         Args:
-            column_name: string. The column that will be casted.
-            cast_type: type. Cast type (do not encapsulate in quotes).
+            <> column_name: string. The column that will be casted.
+            <> cast_type: type. Cast type (do not encapsulate in quotes).
         '''
         # get the column from its name
         column_idx = self.column_names.index(column_name)
@@ -112,8 +111,8 @@ class Table:
         Insert row to table.
 
         Args:
-            row: list. A list of values to be inserted (will be casted to a predifined type automatically).
-            insert_stack: list. The insert stack (empty by default).
+            <> row: list. A list of values to be inserted (will be casted to a predifined type automatically).
+            <> insert_stack: list. The insert stack (empty by default).
         '''
         if len(row)!=len(self.column_names):
             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
@@ -129,9 +128,9 @@ class Table:
                 if row[i] != None:
                     print(exc)
 
-            # if value is to be appended to the primary_key column, check that it doesn't already exist (no duplicate primary keys)
+            # if value is to be appended to the primary_key column, check that it doesn't already exist (no duplicate primary keys).
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
-                raise ValueError(f'## ERROR -> Value "{row[i]}" already exists in primary key column.')
+                raise ValueError(f'ERROR -> Value "{row[i]}" already exists in primary key column.')
             elif i==self.pk_idx and (row[i] is None or row[i] == ''):
                 raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
 
@@ -151,9 +150,9 @@ class Table:
         Update where Condition is met.
 
         Args:
-            set_value: string. The provided set value.
-            set_column: string. The column to be altered.
-            condition: string or dict (the condition is the returned dic['where'] from interpret method).
+            <> set_value: string. The provided set value.
+            <> set_column: string. The column to be altered.
+            <> condition: string or dict (the condition is the returned dic['where'] from interpret method).
                 Operatores supported: (<,<=,=,>=,>)
         '''
 
@@ -180,7 +179,7 @@ class Table:
         These rows are then appended to the insert_stack.
 
         Args:
-            condition: string or dict (the condition is the returned dic['where'] from interpret method).
+            <> condition: string or dict (the condition is the returned dic['where'] from interpret method).
                 Operatores supported: (<,<=,=,>=,>)
         '''
         if condition is not None:
@@ -203,18 +202,20 @@ class Table:
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
 
-    def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
+    def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None, btree_dic=None, hash_dic=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
         Args:
-            return_columns: list. The columns to be returned.
-            condition: string or dict (the condition is the returned dic['where'] from interpret method).
+            <> return_columns: list. The columns to be returned.
+            <> condition: string or dict (the condition is the returned dic['where'] from interpret method).
                 Operatores supported: (<,<=,=,>=,>)
-            distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
-            order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
-            desc: boolean. If True, order_by will return results in descending order (False by default).
-            limit: int. An integer that defines the number of rows that will be returned (all rows if None).
+            <> distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
+            <> order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
+            <> desc: boolean. If True, order_by will return results in descending order (False by default).
+            <> limit: int. An integer that defines the number of rows that will be returned (all rows if None).
+            <> btree_dic: dict. A dictionary containing the btree indexes of the table. If None, no btree indexes are used.
+            <> hash_dic: dict. A dictionary containing the hash indexes of the table. If None, no hash indexes are used.
         '''
 
         # if * return all columns, else find the column indexes for the columns specified
@@ -225,8 +226,8 @@ class Table:
 
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
-        if condition is not None:               
-            rows = self.find_rows_by_condition(condition) # get the rows where condition is met
+        if condition is not None:
+            rows = self.find_rows_by_condition(condition, btree_dic, hash_dic) # get the rows where condition is met
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -260,62 +261,13 @@ class Table:
 
         return s_table
 
-    def _select_where_with_btree(self, return_columns, bt_dic, condition, distinct=False, order_by=None, desc=True, limit=None):
-
-        # if * return all columns, else find the column indexes for the columns specified
-        if return_columns == '*':
-            return_cols = [i for i in range(len(self.column_names))]
-        else:
-            return_cols = [self.column_names.index(colname) for colname in return_columns]
-
-        """
-        # here we run the same select twice, sequentially and using the btree.
-        # we then check the results match and compare performance (number of operation)
-        column_name, operator, value = self._parse_condition(condition)
-        column = self.column_by_name(column_name)
-
-        # sequential
-        rows1 = []
-        opsseq = 0
-        for ind, x in enumerate(column):
-            opsseq+=1
-            if get_op(operator, x, value):
-                rows1.append(ind)
-        """
-
-        rows = self.find_rows_by_condition(condition, bt_dic) # get the rows where condition is met
-
-        try:
-            k = int(limit)
-        except TypeError:
-            k = None
-        # same as simple select from now on
-        rows = rows[:k]
-        # TODO: this needs to be dumbed down
-        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
-
-        dict['column_names'] = [self.column_names[i] for i in return_cols]
-        dict['column_types']   = [self.column_types[i] for i in return_cols]
-
-        s_table = Table(load=dict)
-
-        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
-
-        if order_by:
-            s_table.order_by(order_by, desc)
-
-        if isinstance(limit,str):
-            s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
-
-        return s_table
-
     def order_by(self, column_name, desc=True):
         '''
         Order table based on column.
 
         Args:
-            column_name: string. Name of column.
-            desc: boolean. If True, order_by will return results in descending order (False by default).
+            <> column_name: string. Name of column.
+            <> desc: boolean. If True, order_by will return results in descending order (False by default).
         '''
         column = [val if val is not None else 0 for val in self.column_by_name(column_name)]
         idx = sorted(range(len(column)), key=lambda k: column[k], reverse=desc)
@@ -328,7 +280,7 @@ class Table:
         Performs the processes all the join operations need (regardless of type) so that there is no code repetition.
 
         Args:
-            condition: string. A condition using the following format:
+            <> condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
@@ -371,7 +323,7 @@ class Table:
         Join table (left) with a supplied table (right) where condition is met.
 
         Args:
-            condition: string. A condition using the following format:
+            <> condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
@@ -400,7 +352,7 @@ class Table:
         Perform a left join on the table with the supplied table (right).
 
         Args:
-            condition: string. A condition using the following format:
+            <> condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
@@ -430,7 +382,7 @@ class Table:
         Perform a right join on the table with the supplied table (right).
 
         Args:
-            condition: string. A condition using the following format:
+            <> condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
@@ -460,7 +412,7 @@ class Table:
         Perform a full join on the table with the supplied table (right).
 
         Args:
-            condition: string. A condition using the following format:
+            <> condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
@@ -501,8 +453,8 @@ class Table:
         Print the table in a nice readable format.
 
         Args:
-            no_of_rows: int. Number of rows.
-            is_locked: boolean. Whether it is locked (False by default).
+            <> no_of_rows: int. Number of rows.
+            <> is_locked: boolean. Whether it is locked (False by default).
         '''
         output = ""
         # if the table is locked, add locked keyword to title
@@ -533,12 +485,12 @@ class Table:
         Parse the single string condition and return the value of the column and the operator.
 
         Args:
-            condition: string. A condition using the following format:
+            <> condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
                 Operatores supported: (<,<=,==,>=,>)
-            join: boolean. Whether to join or not (False by default).
+            <> join: boolean. Whether to join or not (False by default).
         '''
         # if both_columns (used by the join function) return the names of the names of the columns (left first)
         if join:
@@ -557,7 +509,7 @@ class Table:
         Load table from a pkl file (not used currently).
 
         Args:
-            filename: string. Name of pkl file.
+            <> filename: string. Name of pkl file.
         '''
         f = open(filename, 'rb')
         tmp_dict = pickle.load(f)
@@ -565,45 +517,56 @@ class Table:
 
         self.__dict__.update(tmp_dict.__dict__)
 
-    def find_rows_by_condition(self, condition, bt_dic=None):
+    def find_rows_by_condition(self, condition, btree_dic=None, hash_dic=None):
         '''
         Traverse the dictionary and return the rows that satisfy the condition.
         Args:
-            condition: string or dictionary (the condition is the returned dic['where'] from interpret method).
-            bt_dic: dictionary. Dictionary structure: {indexed_column_1: btree_1 , indexed_column_2: btree_2, ...}.
-            None if the table does not support btree index (works for primary key and unique columns).
+            <> condition: string or dictionary (the condition is the returned dic['where'] from interpret method).
+            <> btree_dic: dictionary. The dictionary of btree, the key is the column name and the value is the btree object.
+            if None, we don't have btree.
+            <> hash_dic: dictionary. The dictionary of hash table, the key is the column name and the value is the hash table object.
+            if None, we don't have hash table.
         '''
         if isinstance(condition, str):
             column_name, operator, value = self._parse_condition(condition)
-            if bt_dic is not None and column_name in bt_dic.keys():
+            
+            if hash_dic is not None and column_name in hash_dic.keys() and operator == '=':
                 '''
-                If bt_dic is not None and the column_name is in the bt_dic keys, we use the btree to find the rows.
+                If hash_dic is not None and the operator is '=', we use the hash table to find the row.
                 '''
-                rows = bt_dic[column_name].find(operator, value)
-            else:
+                row = hash_dic[column_name]._get(value)
+                if row is not None:
+                    return [int(r) for r in list(str(row))]
+            
+            if btree_dic is not None and column_name in btree_dic.keys():
                 '''
-                If bt_dic is None or the column_name is not in the bt_dic keys, we use the linear search to find the rows.
+                If btree_dic is not None and the column_name is in the btree_dic keys, we use the btree to find the rows.
                 '''
-                column = self.column_by_name(column_name)
-                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+                rows = btree_dic[column_name].find(operator, value)
+                return rows
+            ''' 
+            If we don't have btree or hash table, we use the linear search to find the rows.
+            '''
+            column = self.column_by_name(column_name)
+            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
             return rows
         elif 'and' in condition:
-            left = self.find_rows_by_condition(condition['and']['left'], bt_dic)
-            right = self.find_rows_by_condition(condition['and']['right'], bt_dic)
+            left = self.find_rows_by_condition(condition['and']['left'], btree_dic, hash_dic)
+            right = self.find_rows_by_condition(condition['and']['right'], btree_dic, hash_dic)
             intersection = set(left).intersection(set(right)) # get the intersection of left and right
             return list(intersection)
         elif 'or' in condition:
-            left = self.find_rows_by_condition(condition['or']['left'], bt_dic)
-            right = self.find_rows_by_condition(condition['or']['right'], bt_dic)
+            left = self.find_rows_by_condition(condition['or']['left'], btree_dic, hash_dic)
+            right = self.find_rows_by_condition(condition['or']['right'], btree_dic, hash_dic)
             union = set(left).union(set(right)) # get the union of left and right
             return list(union)
         elif 'not' in condition:
             all_rows = [i for i in range(len(self.data))] # get all rows
-            result = self.find_rows_by_condition(condition['not'], bt_dic)
+            result = self.find_rows_by_condition(condition['not'], btree_dic, hash_dic)
             not_result = set(all_rows) - set(result) # get the difference of all rows and result
             return list(not_result)
         elif 'between' in condition:
             column_name = condition['column']
             condition['between']['and']['left'] = f"{column_name}>={condition['between']['and']['left']}" # build the condition for left side of between
             condition['between']['and']['right'] = f"{column_name}<={condition['between']['and']['right']}" # build the condition for right side of between
-            return self.find_rows_by_condition(condition['between'], bt_dic)
+            return self.find_rows_by_condition(condition['between'], btree_dic, hash_dic)
