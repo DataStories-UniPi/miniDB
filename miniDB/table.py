@@ -18,6 +18,7 @@ class Table:
         - column names (list of strings)
         - column types (list of functions like str/int etc)
         - primary (name of the primary key column)
+        - unique (name of unique column)
 
     OR
 
@@ -26,7 +27,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None, unique_cols=None):  # add UNIQUE constraint
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -60,8 +61,18 @@ class Table:
 
             self.column_types = [eval(ct) if not isinstance(ct, type) else ct for ct in column_types]
             self.data = [] # data is a list of lists, a list of rows that is.
-
+            #print("UNIQUE:")
+            #print( unique_cols)
+            if (unique_cols is not None):
+                self.unique_cols = unique_cols
+                #self.uk_idx = self.column_names.index(unique_cols)
+            else:
+                self.unique_cols = []
+                #self.uk_idx = None
+            self.uk = unique_cols
             # if primary key is set, keep its index as an attribute
+            #print("PK:")
+            #print(primary_key)
             if primary_key is not None:
                 self.pk_idx = self.column_names.index(primary_key)
             else:
@@ -115,17 +126,31 @@ class Table:
 
         for i in range(len(row)):
             # for each value, cast and replace it in row.
-            try:
+            '''try:
                 row[i] = self.column_types[i](row[i])
             except ValueError:
                 if row[i] != 'NULL':
                     raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
             except TypeError as exc:
                 if row[i] != None:
-                    print(exc)
+                    print(exc)'''
 
+            if self._name[:4] != 'meta': # check whether the current column being evaluated is a metadata column
+                is_unique = self.column_names[i] in self.unique_cols # If the column has the UNIQUE constraint
+                # print(is_unique)
+                is_duplicate = str(row[i]) in [str(val) for val in self.column_by_name(self.column_names[i])] # Check if the value is already in the table
+                #print(is_duplicate)
+                if (is_unique and is_duplicate):  
+                    err_msg = f'ERROR -> Value "{str(row[i])}" already exists in column "{self.column_names[i]}" that has the UNIQUE constraint.'
+                    print(err_msg)
+                    raise ValueError(err_msg)
+
+
+            row[i] = self.column_types[i](row[i])
+            
             # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
+                print(f'ERROR -> Value {row[i]} already exists in primary key column.')
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
             elif i==self.pk_idx and row[i] is None:
                 raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
@@ -233,11 +258,51 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            if 'between' in condition:
+                splt=condition.split()
+                condition1 = splt[0].strip() + '>=' + splt[2].strip()
+                column_name, operator1, value1 = self._parse_condition(condition1)
+                condition2 = splt[0].strip() + '<=' + splt[4].strip()
+                column_name, operator2, value2 = self._parse_condition(condition2)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator1, x, value1) and get_op(operator2, x, value2)]
+            elif 'and' in condition:
+                cond1 = condition.split("and")
+                condition = cond1[0]
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows1 = [ind for ind, x in enumerate(column) if get_op(operator,x,value)]
+                
+                condition1 = cond1[1]
+                column_name1, operator1, value1 = self._parse_condition(condition1)
+                column1 = self.column_by_name(column_name1)
+                rows2 = [ind for ind, x in enumerate(column1) if get_op(operator1, x, value1)]
+                rows = set(rows1).intersection(rows2)
+            elif 'or' in condition.split():
+                c1 = condition.split("or")
+                condition = c1[0]
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows1 = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+                condition1 = c1[1]
+                column_name1, operator1, value1 = self._parse_condition(condition1)
+                column1 = self.column_by_name(column_name1)
+                rows2 = [ind for ind, x in enumerate(column1) if get_op(operator1, x, value1)]
+
+                rows3 = [rows1,rows2]
+                rows = []
+                for i in rows3:
+                    for j in i:
+                        if not (j in rows):
+                            rows.append(j)
+                    
+            else:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
-            rows = [i for i in range(len(self.data))]
+                rows = [i for i in range(len(self.data))]
 
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
@@ -269,6 +334,63 @@ class Table:
 
         return s_table
 
+    def _select_where_with_hash(self, return_columns, hs, condition, distinct=False, order_by=None, desc=True, limit=None):
+        # if * return all columns, else find the column indexes for the columns specified
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
+        else:
+            return_cols = [self.column_names.index(colname) for colname in return_columns]
+
+
+        column_name, operator, value = self._parse_condition(condition)
+        rows = []
+        # Check if the operator is =
+        if operator != "=":
+            column = self.column_by_name(column_name)
+            opsseq = 0
+            for ind, x in enumerate(column):
+                opsseq+=1
+                if get_op(operator, x, value):
+                    rows.append(ind)
+        '''else:
+            ind = hs.get(value)
+            rows.append(ind)'''
+
+        column = self.column_by_name(column_name)
+        opsseq = 0
+        for ind, x in enumerate(column):
+                opsseq+=1
+                if get_op(operator, x, value):
+                    rows.append(ind)
+        
+        # same as simple select from now on
+        
+        try:
+            k = int(limit)
+        except TypeError:
+            k = None
+        
+        # same as simple select from now on
+        rows = rows[:k]
+        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+
+        dict['column_names'] = [self.column_names[i] for i in return_cols]
+        dict['column_types']   = [self.column_types[i] for i in return_cols]
+
+        s_table = Table(load=dict)
+
+        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+
+        if order_by:
+            s_table.order_by(order_by, desc)
+
+        if isinstance(limit,str):
+            s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
+
+        
+        print("Hash select")
+        return s_table
+        
 
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
 
@@ -282,8 +404,8 @@ class Table:
         column_name, operator, value = self._parse_condition(condition)
 
         # if the column in condition is not a primary key, abort the select
-        if column_name != self.column_names[self.pk_idx]:
-            print('Column is not PK. Aborting')
+        '''if column_name != self.column_names[self.pk_idx] or column_name not in self.unique_cols:
+            print('Column is not PK or UNIQUE. Aborting')'''    
 
         # here we run the same select twice, sequentially and using the btree.
         # we then check the results match and compare performance (number of operation)
@@ -320,8 +442,9 @@ class Table:
             s_table.order_by(order_by, desc)
 
         if isinstance(limit,str):
-            s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
+            s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
 
+        print("Btree select")
         return s_table
 
     def order_by(self, column_name, desc=True):

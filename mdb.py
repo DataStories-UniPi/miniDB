@@ -7,8 +7,8 @@ import traceback
 import shutil
 sys.path.append('miniDB')
 
-from database import Database
-from table import Table
+from miniDB.database import Database
+from miniDB.table import Table
 # art font is "big"
 art = '''
              _         _  _____   ____  
@@ -39,6 +39,7 @@ def in_paren(qsplit, ind):
 
 
 def create_query_plan(query, keywords, action):
+    
     '''
     Given a query, the set of keywords that we expect to pe present and the overall action, return the query plan for this query.
 
@@ -48,6 +49,8 @@ def create_query_plan(query, keywords, action):
     dic = {val: None for val in keywords if val!=';'}
 
     ql = [val for val in query.split(' ') if val !='']
+
+    
 
     kw_in_query = []
     kw_positions = []
@@ -97,19 +100,30 @@ def create_query_plan(query, keywords, action):
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
         arg_nopk = args.replace('primary key', '')[1:-1]
+        #arg_nouk = arg_nopk.replace('unique', '')[1:-1]
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
+            #print(arglist)
             dic['primary key'] = arglist[arglist.index('primary')-2]
+            #print(dic['primary key'])
         else:
             dic['primary key'] = None
+        if 'unique' in args:
+            arglist = args[1:-1].split(' ')
+            #print(arglist)
+            dic['unique_cols'] = arglist[arglist.index('unique')-2]
+            #print(dic['unique_cols'])
+        else:
+            dic['unique_cols'] = None
     
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
     if action=='insert into':
+        
         if dic['values'][0] == '(' and dic['values'][-1] == ')':
             dic['values'] = dic['values'][1:-1]
         else:
@@ -121,6 +135,11 @@ def create_query_plan(query, keywords, action):
         else:
             dic['force'] = False
 
+    if action == 'create index':
+        dic['on'] = ql[3]
+        dic['column'] = ql[5]
+        dic['using'] = ql[8]
+        
     return dic
 
 
@@ -175,7 +194,7 @@ def interpret(query):
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
-                     'create index': ['create index', 'on', 'using'],
+                     'create index': ['create index', 'on', 'column', 'using'],  # add column name
                      'drop index': ['drop index'],
                      'create view' : ['create view', 'as']
                      }

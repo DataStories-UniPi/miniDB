@@ -8,7 +8,8 @@ def get_op(op, a, b):
                 '<': operator.lt,
                 '>=': operator.ge,
                 '<=': operator.le,
-                '=': operator.eq}
+                '=': operator.eq,
+                'not': operator.ne}
 
     try:
         return ops[op](a,b)
@@ -20,8 +21,21 @@ def split_condition(condition):
            '<=': operator.le,
            '=': operator.eq,
            '>': operator.gt,
-           '<': operator.lt}
+           '<': operator.lt,
+           'not': operator.ne}
 
+    # NOT operator
+    if 'not' in condition:
+        condition=condition.replace('not','')  # remove NOT from condition
+        for op_key in ops.keys():
+            if op_key in condition:
+                condition=condition.replace(op_key,not_op(op_key))  # reverse the condition
+
+    # BETWEEN operator
+    if 'between' in condition:
+         splt=condition.split()  
+         return splt[0].strip()  # return only column name
+    
     for op_key in ops.keys():
         splt=condition.split(op_key)
         if len(splt)>1:
@@ -36,6 +50,16 @@ def split_condition(condition):
                 raise ValueError(f'Invalid condition: {condition}\nDouble quotation marks are not allowed inside values.')
 
             return left, op_key, right
+
+
+def not_op(op):
+    return { 
+        '>' : '<=',
+        '<' : '>=',
+        '<=' : '>',
+        '>=' : '<',
+        '=': '<>'
+    }.get(op)
 
 def reverse_op(op):
     '''
