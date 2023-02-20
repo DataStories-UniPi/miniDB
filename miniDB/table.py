@@ -73,6 +73,15 @@ class Table:
                     self.unique_idx = None
             '''
 
+            if columns_unique is not None:
+                self.unique_idx=[]
+                for u in columns_unique:
+                    self.unique_idx.append(self.column_names.index(u))
+            else:
+                self.unique_idx = None
+
+            #self.columns_unique = columns_unique
+
             # if primary key is set, keep its index as an attribute
             if primary_key is not None:
                 self.pk_idx = self.column_names.index(primary_key)
@@ -847,6 +856,11 @@ class Table:
         if self.unique_idx is not None:
             headers[self.unique_idx] = headers[self.unique_idx]+' #U#'
         '''
+
+        if self.unique_idx is not None:
+            # table has unique columns, add UQ next to the appropriate column
+            for i in self.unique_idx:
+               headers[i] = headers[i]+' #UQ#'
 
         # detect the rows that are no tfull of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
