@@ -1,6 +1,6 @@
 class Hash:
     def __init__(self):
-        self.capacity = 100 # Set the initial capacity of the hash table to 100.
+        self.capacity = 2 # Set the initial capacity of the hash table to 100.
         self.size = 0
         self.buckets = [None] * self.capacity # Initialize the hash table with None values.
 

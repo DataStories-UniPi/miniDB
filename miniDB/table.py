@@ -6,7 +6,7 @@ import sys
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
-from misc import get_op, split_condition
+from misc import get_op, split_condition, logical_operator_on_rows
 
 
 class Table:
@@ -147,7 +147,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,=,>=,>]value' or
                 'value[<,<=,=,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,=,>=,>)
         '''
         # parse the condition
@@ -179,7 +179,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
         '''
         column_name, operator, value = self._parse_condition(condition)
@@ -207,15 +207,21 @@ class Table:
         return indexes_to_del
 
 
-    def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
+    def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None, supported_indexes=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
         Args:
             return_columns: list. The columns to be returned.
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+            condition: string or dict. 
+                String is using the following format:
+                    'column[<,<=,==,>=,>]value' or
+                    'value[<,<=,==,>=,>]column'.
+                Dict is using the following format:
+                    {'left': 'column[<,<=,==,>=,>]value',
+                     'operator': '[and,or]',
+                     'right': 'column[<,<=,==,>=,>]value',
+                    }
                 
                 Operatores supported: (<,<=,==,>=,>)
             distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
@@ -233,9 +239,7 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            rows = self._find_rows(condition, supported_indexes)
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -259,9 +263,9 @@ class Table:
         #         k = int(limit)
         #     except ValueError:
         #         raise Exception("The value following 'top' in the query should be a number.")
-            
+
         #     # Remove from the table's data all the None-filled rows, as they are not shown by default
-        #     # Then, show the first k rows 
+        #     # Then, show the first k rows
         #     s_table.data.remove(len(s_table.column_names) * [None])
         #     s_table.data = s_table.data[:k]
         if isinstance(limit,str):
@@ -269,7 +273,119 @@ class Table:
 
         return s_table
 
+    def _find_rows(self, condition, supported_indexes):
+        '''
+        Find and return all the rows where condition is met.
 
+        Args:
+            condition: string or dict. 
+                String is using the following format:
+                    'column[<,<=,==,>=,>]value' or
+                    'value[<,<=,==,>=,>]column'.
+                Dict is using the following format:
+                    {'left': 'column[<,<=,==,>=,>]value',
+                     'operator': '[and,or]',
+                     'right': 'column[<,<=,==,>=,>]value',
+                    }
+            supported_indexes: dict.
+                Dict is using the following format:
+                {
+                    'column': btree object,
+                }   
+        '''
+        
+        if isinstance(condition, str):
+            final_rows = self._in_depth(condition, supported_indexes)
+        elif isinstance(condition, dict):
+            left_part = condition['left']
+            right_part = condition['right']
+            operator = condition['operator']
+            if(operator != 'not'):
+                left_rows = self._in_depth(left_part, supported_indexes)
+            else:
+                left_rows = None
+            right_rows = self._in_depth(right_part, supported_indexes)
+
+            final_rows = logical_operator_on_rows(rows_len=len(self.data), left_rows=left_rows, operator=operator, right_rows=right_rows)
+        
+        return final_rows
+
+    def _in_depth(self, condition, supported_indexes):
+        '''
+        This method is used for recursion for the nested dictionaries.
+
+        Args:
+            condition: string or dict. 
+                String is using the following format:
+                    'column[<,<=,==,>=,>]value' or
+                    'value[<,<=,==,>=,>]column'.
+                Dict is using the following format:
+                    {'left': 'column[<,<=,==,>=,>]value',
+                     'operator': '[and,or]',
+                     'right': 'column[<,<=,==,>=,>]value',
+                    }
+            supported_indexes: dict.
+                Dict is using the following format:
+                {
+                    'column': btree object,
+                }   
+        '''
+
+        if isinstance(condition,str):
+            column_name, operator, value = self._parse_condition(condition)
+            if supported_indexes is not None and column_name in supported_indexes:
+                rows = self._find_btree_rows(supported_indexes[column_name], column_name, operator, value)
+            else:
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            return rows
+
+        elif isinstance(condition,dict):
+
+            left_part = condition['left']
+            right_part = condition['right']
+            operator = condition['operator']
+
+            if(operator != 'not'):
+                left_rows = self._in_depth(left_part, supported_indexes)
+            else:
+                left_rows = None
+            right_rows = self._in_depth(right_part, supported_indexes)
+            
+            rows = logical_operator_on_rows(rows_len=len(self.data), left_rows=left_rows, operator=operator, right_rows=right_rows)
+
+        else:
+            raise Exception('Not a valid where type.')
+
+        return rows
+
+    def _find_btree_rows(self, bt, column_name, operator, value):
+        '''
+        This method is used for finding row indexes using a btree.
+
+        Args:
+            bt: btree object.
+            column_name: string.
+            operator: string.
+            value: string or int.
+        '''
+
+        column = self.column_by_name(column_name)
+
+        # sequential
+        rows1 = []
+        opsseq = 0
+        for ind, x in enumerate(column):
+            opsseq+=1
+            if get_op(operator, x, value):
+                rows1.append(ind)
+
+        # btree find
+        rows = bt.find(operator, value)
+
+        return rows
+
+    """
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
 
         # if * return all columns, else find the column indexes for the columns specified
@@ -324,6 +440,7 @@ class Table:
 
         return s_table
 
+    """
     def order_by(self, column_name, desc=True):
         '''
         Order table based on column.
@@ -347,7 +464,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operators supported: (<,<=,==,>=,>)
         '''
         # get columns and operator
@@ -391,7 +508,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operators supported: (<,<=,==,>=,>)
         '''
         join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'inner')
@@ -411,7 +528,7 @@ class Table:
                     join_table._insert(row_left+row_right)
 
         return join_table
-    
+
     def _left_join(self, table_right: Table, condition):
         '''
         Perform a left join on the table with the supplied table (right).
@@ -420,7 +537,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operators supported: (<,<=,==,>=,>)
         '''
         join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'left')
@@ -450,7 +567,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operators supported: (<,<=,==,>=,>)
         '''
         join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'right')
@@ -471,7 +588,7 @@ class Table:
                         join_table._insert(row_left + row_right)
 
         return join_table
-    
+
     def _full_join(self, table_right: Table, condition):
         '''
         Perform a full join on the table with the supplied table (right).
@@ -480,7 +597,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operators supported: (<,<=,==,>=,>)
         '''
         join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'full')
@@ -490,7 +607,7 @@ class Table:
 
         right_table_row_length = len(table_right.column_names)
         left_table_row_length = len(self.column_names)
-        
+
         for row_left in self.data:
             left_value = row_left[column_index_left]
             if left_value is None:
@@ -543,15 +660,15 @@ class Table:
     def _parse_condition(self, condition, join=False):
         '''
         Parse the single string condition and return the value of the column and the operator.
-
         Args:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
             join: boolean. Whether to join or not (False by default).
         '''
+
         # if both_columns (used by the join function) return the names of the names of the columns (left first)
         if join:
             return split_condition(condition)
@@ -559,10 +676,11 @@ class Table:
         # cast the value with the specified column's type and return the column name, the operator and the casted value
         left, op, right = split_condition(condition)
         if left not in self.column_names:
-            raise ValueError(f'Condition is not valid (cant find column name)')
+            raise ValueError(f'Condition is not valid (cant find column {left})')
         coltype = self.column_types[self.column_names.index(left)]
 
         return left, op, coltype(right)
+
 
 
     def _load_from_file(self, filename):
