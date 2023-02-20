@@ -147,7 +147,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,=,>=,>]value' or
                 'value[<,<=,=,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,=,>=,>)
         '''
         # parse the condition
@@ -169,19 +169,6 @@ class Table:
 
 
     def _delete_where(self, condition):
-        '''
-        Deletes rows where condition is met.
-
-        Important: delete replaces the rows to be deleted with rows filled with Nones.
-        These rows are then appended to the insert_stack.
-
-        Args:
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
-                
-                Operatores supported: (<,<=,==,>=,>)
-        '''
         column_name, operator, value = self._parse_condition(condition)
 
         indexes_to_del = []
@@ -208,21 +195,46 @@ class Table:
 
 
     def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
-        '''
-        Select and return a table containing specified columns and rows where condition is met.
 
-        Args:
-            return_columns: list. The columns to be returned.
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
-                
-                Operatores supported: (<,<=,==,>=,>)
-            distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
-            order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
-            desc: boolean. If True, order_by will return results in descending order (False by default).
-            limit: int. An integer that defines the number of rows that will be returned (all rows if None).
-        '''
+        where_clause = ""
+        where_found = False
+
+        for line in query.splitlines():
+            line = line.strip()
+            if line.startswith("WHERE"):
+                where_clause = line
+                where_found = True
+
+            if not where_found:
+                raise ValueError("No WHERE clause found in the query")
+
+        for i, filter in enumerate(filters):
+            if "field" not in filter or "value" not in filter:
+                raise ValueError(f"Invalid filter provided at index {i}")
+
+            field = filter["field"]
+            value = filter["value"]
+
+            if "not" in filter and filter["not"]:
+                if isinstance(value, str):
+                    where_clause += f" AND {field} != '{value}'"
+                else:
+                    where_clause += f" AND {field} NOT BETWEEN {value[0]} AND {value[1]}"
+            else:
+                if isinstance(value, str):
+                    where_clause += f" AND {field} = '{value}'"
+                else:
+                    where_clause += f" AND {field} BETWEEN {value[0]} AND {value[1]}"
+
+            if "or" in filter and filter["or"]:
+                where_clause = where_clause.replace("AND", "OR")
+
+                where_clause = where_clause.replace("WHERE", "WHERE ")
+
+
+
+
+
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
@@ -259,9 +271,9 @@ class Table:
         #         k = int(limit)
         #     except ValueError:
         #         raise Exception("The value following 'top' in the query should be a number.")
-            
+
         #     # Remove from the table's data all the None-filled rows, as they are not shown by default
-        #     # Then, show the first k rows 
+        #     # Then, show the first k rows
         #     s_table.data.remove(len(s_table.column_names) * [None])
         #     s_table.data = s_table.data[:k]
         if isinstance(limit,str):
@@ -347,7 +359,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operators supported: (<,<=,==,>=,>)
         '''
         # get columns and operator
@@ -391,7 +403,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operators supported: (<,<=,==,>=,>)
         '''
         join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'inner')
@@ -411,7 +423,7 @@ class Table:
                     join_table._insert(row_left+row_right)
 
         return join_table
-    
+
     def _left_join(self, table_right: Table, condition):
         '''
         Perform a left join on the table with the supplied table (right).
@@ -420,7 +432,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operators supported: (<,<=,==,>=,>)
         '''
         join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'left')
@@ -450,7 +462,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operators supported: (<,<=,==,>=,>)
         '''
         join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'right')
@@ -471,7 +483,7 @@ class Table:
                         join_table._insert(row_left + row_right)
 
         return join_table
-    
+
     def _full_join(self, table_right: Table, condition):
         '''
         Perform a full join on the table with the supplied table (right).
@@ -480,7 +492,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operators supported: (<,<=,==,>=,>)
         '''
         join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'full')
@@ -490,7 +502,7 @@ class Table:
 
         right_table_row_length = len(table_right.column_names)
         left_table_row_length = len(self.column_names)
-        
+
         for row_left in self.data:
             left_value = row_left[column_index_left]
             if left_value is None:
@@ -548,7 +560,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,==,>=,>)
             join: boolean. Whether to join or not (False by default).
         '''
