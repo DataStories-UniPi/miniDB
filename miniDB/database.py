@@ -768,7 +768,7 @@ class Database:
             if key is None:
                 continue
             hash_table.insert(key, idx)
-        
+        hash_table.show()
         # save the hashtable
         self._save_index(index_name, hash_table)
 

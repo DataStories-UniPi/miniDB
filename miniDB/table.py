@@ -200,20 +200,60 @@ class Table:
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
-        column_name, operator, value = self._parse_condition(condition)
 
-        indexes_to_del = []
+        rows = []
+        if condition is not None:
+
+            # BETWEEN case
+            if "between" in condition:
+                condition_list=condition.split(" ")
+                if len(condition_list)!=5 or condition_list[1]!="between" or condition_list[3]!="and":
+                    raise Exception("Condition containing between keyword must have the following format: column between value1 and value2")
+                else:
+                    try:
+                        column=self.column_by_name(condition_list[0])
+                        value1=int(condition_list[2])
+                        value2=int(condition_list[4])
+                        rows = [ind for ind, x in enumerate(column) if value1 <= x <= value2] #append index of row if x between value1 and value2
+                    except:
+                        raise TypeError('You need to provide numeric values inside a between statement')
+            # AND case
+            elif "and" in condition:
+                all_rows=[]
+                seperated_conditions=condition.split(" and ")
+                for cond in seperated_conditions: #select all the rows that match each condition
+                    column_name, operator, value = self._parse_condition(cond)
+                    column = self.column_by_name(column_name)
+                    all_rows+=[ind for ind, x in enumerate(column) if get_op(operator, x, value)]#add indexes to all_rows
+                # Keep the rows from the all_rows list that appear as many times as the number of conditions in the AND clauses
+                rows=[*set(i for i in all_rows if all_rows.count(i) > len(seperated_conditions)-1)] 
+            # OR case
+            elif "or" in condition:
+                all_rows=[]
+                seperated_conditions=condition.split(" or ")
+                for cond in seperated_conditions: #select all the rows that match each condition
+                    column_name, operator, value = self._parse_condition(cond)
+                    column = self.column_by_name(column_name)
+                    all_rows+=[ind for ind, x in enumerate(column) if get_op(operator, x, value)]#add indexes to all_rows
+                rows=[*set(all_rows)] #keep all rows that match either of the conditions but first remove the double values
+            else:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+        else:
+            rows = [i for i in range(len(self.data))]
 
         column = self.column_by_name(column_name)
         for index, row_value in enumerate(column):
             if get_op(operator, row_value, value):
-                indexes_to_del.append(index)
+                rows.append(index)
 
         # we pop from highest to lowest index in order to avoid removing the wrong item
         # since we dont delete, we dont have to to pop in that order, but since delete is used
         # to delete from meta tables too, we still implement it.
 
-        for index in sorted(indexes_to_del, reverse=True):
+        for index in sorted(rows, reverse=True):
             if self._name[:4] != 'meta':
                 # if the table is not a metatable, replace the row with a row of nones
                 self.data[index] = [None for _ in range(len(self.column_names))]
@@ -222,7 +262,7 @@ class Table:
 
         # self._update()
         # we have to return the deleted indexes, since they will be appended to the insert_stack
-        return indexes_to_del
+        return rows
 
 
     def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
