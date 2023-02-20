@@ -3,6 +3,7 @@ from tabulate import tabulate
 import pickle
 import os
 import sys
+from misc import reverse_op
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
@@ -223,21 +224,61 @@ class Table:
             desc: boolean. If True, order_by will return results in descending order (False by default).
             limit: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
-
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
         else:
             return_cols = [self.column_names.index(col.strip()) for col in return_columns.split(',')]
 
-        # if condition is None, return all rows
-        # if not, return the rows with values where condition is met for value
+            
         if condition is not None:
+            if "between" in condition:
+                #storing the condition split in a variable
+                splitcond=condition.split()
+                if (splitcond[3]=="and"):
+                    left=splitcond[2] #the first value to be compared
+                    right=splitcond[4] #the second value to be compared
+                    column_name=splitcond[0]
+                    rows=[]
+                    if (left.isdigit() and right.isdigit()):
+                        for i,j in enumerate(column):
+                            if (int(i)>=left and int(j)<=int(right)):
+                                rows.append(i)
+            elif "not" in condition:   
+                condlist=condition.split("not")
+                column_name,operator,value=self._parse_condition(condlist[2])
+                column=self.column_by_name(column_name)
+                #reversing the operator
+                op=reverse_op(operator)
+                rows= [i for i,j in enumerate(column) if get_op(op,j,value)]
+            elif "and" in condition :
+                condlist=condition.split("and")
+                rows2=[]
+                for c in condlist:
+                    #running for each conditon
+                    column_name,op,value=self._parse_condition(c)
+                    column=self.column_by_name(column_name)
+                    rows2.append([i for i,j in enumerate(column) if get_op(op,j,value)])
+                #storing the conditions' intersection
+                rows=set(rows2[0]).intersection(*rows2)
+            elif "or" in condition: 
+                condlist=condition.split("or")
+                rows2=[]
+                for c in condlist:
+                    #running for each conditon
+                    column_name,op,value=self._parse_condition(c)
+                    column=self.column_by_name(column_name)
+                    rows2.append([i for i,j in enumerate(column) if get_op(op,j,value)])
+                rows=[]
+                for i in rows2:
+                    for j in i:
+                        if not(j in rows):#to avoid duplicates
+                            rows.append(j)
+        else:
             column_name, operator, value = self._parse_condition(condition)
             column = self.column_by_name(column_name)
             rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
-        else:
-            rows = [i for i in range(len(self.data))]
+        
 
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
