@@ -1,5 +1,8 @@
 # import hashlib
 
+#would work in theory B)   ^v_v^
+
+
 # class HashTable(object):
 #     def __init__(self, size=10)
      
