@@ -66,8 +66,6 @@ def create_query_plan(query, keywords, action):
             ql.pop(i+1)
             kw_positions.append(i)
         i+=1
-        
-
 
     for i in range(len(kw_in_query)-1):
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
@@ -92,11 +90,11 @@ def create_query_plan(query, keywords, action):
             
         else:
             dic['desc'] = None
-
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
-        arg_nopk = args.replace('primary key', '')[1:-1]
+        arg_nopk = args.replace('primary key', '')
+        arg_nopk = arg_nopk.replace('unique', '')[1:-1]
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
@@ -105,6 +103,14 @@ def create_query_plan(query, keywords, action):
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
+
+        if 'unique' in args:
+            arglist = args[1:-1].replace(',', '')
+            arglist = arglist.split(' ')
+            dic['unique'] = arglist[arglist.index('unique')-2]
+        else:
+            dic['unique'] = None
+
     
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
@@ -120,6 +126,36 @@ def create_query_plan(query, keywords, action):
             dic['force'] = True
         else:
             dic['force'] = False
+
+    # add action == 'create index'
+    if action == 'create index':
+
+        dic['on'] = dic[kw_in_query[1]]
+        if dic['on'] != "":
+            if '(' in dic[kw_in_query[1]] and ')' in dic[kw_in_query[1]]:
+                condition_split = dic['on'].split()
+                condition_split.remove("(")
+                condition_split.remove(")")
+                dic['on'] = condition_split[0]
+                dic['column'] = condition_split[1]
+            elif '(' in dic[kw_in_query[1]]:
+                raise ValueError('Must be: create index name_of_index on name_table(name_of_column) using btree)')
+            elif ')' in dic[kw_in_query[1]]:
+                raise ValueError('Must be: create index name_of_index on name_table(name_of_column) using btree)')
+        else:
+            raise ValueError('There is no table and column for an index to be created')
+
+        #
+        # if (dic['column'] is not None) and (dic['using'] is not None):
+        #
+        #    dic['using'] = dic[kw_in_query[2]]
+
+
+
+        #dic['create index'] = dic[kw_in_query[0]]
+
+        #    print('Create index')
+
 
     return dic
 
@@ -175,9 +211,9 @@ def interpret(query):
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
-                     'create index': ['create index', 'on', 'using'],
+                     'create index': ['create index', 'on', 'column', 'using'], #add in query: column
                      'drop index': ['drop index'],
-                     'create view' : ['create view', 'as']
+                     'create view': ['create view', 'as']
                      }
 
     if query[-1]!=';':
