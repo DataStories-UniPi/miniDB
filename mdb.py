@@ -66,9 +66,7 @@ def create_query_plan(query, keywords, action):
             ql.pop(i+1)
             kw_positions.append(i)
         i+=1
-
-
-
+    
     for i in range(len(kw_in_query)-1):
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
 
@@ -95,20 +93,33 @@ def create_query_plan(query, keywords, action):
 
         else:
             dic['desc'] = None
-
+    
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
         arg_nopk = args.replace('primary key', '')[1:-1]
+
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
+
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
+
         if 'primary key' in args:
             arglist = args[1:-1].split(' ')
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
-
+        
+        # Check if there are unique keywords
+        if 'unique' in args:
+            arglist = args[1:-1].split(' ')
+            # Get the column names
+            column_names = [arglist[i-2] for i, kw in enumerate(arglist) if kw.rstrip(',') == 'unique']
+            dic['unique'] = ','.join(column_names)
+        else:
+            dic['unique'] = None
+    
+ 
     if action=='import':
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
@@ -125,11 +136,12 @@ def create_query_plan(query, keywords, action):
             dic['force'] = False
 
     if action=='create index':
-        on_split = dic['on'].split(" ")
-        if len(on_split) == 4:
-            dic["on"] = on_split[0]
-            dic["column"] = on_split[2]
+        on_value = dic["on"].split(" ")
 
+        if len(on_value) == 4 and on_value[1] == '(' and on_value[-1]==')':
+            dic['on'] = on_value[0]
+            dic['column'] = on_value[2]
+    
     return dic
 
 def evaluate_from_clause(dic):
@@ -279,7 +291,7 @@ def execute_dic(dic):
             dic[key] = execute_dic(dic[key])
 
     action = list(dic.keys())[0].replace(' ','_')
-
+    
     return getattr(db, action)(*dic.values())
 
 
@@ -333,8 +345,6 @@ if __name__ == "__main__":
 
     db = Database(dbname, load=True)
 
-
-
     if fname is not None:
         for line in open(fname, 'r').read().splitlines():
             if line.startswith('--'): continue
@@ -351,6 +361,7 @@ if __name__ == "__main__":
     from prompt_toolkit import PromptSession
     from prompt_toolkit.history import FileHistory
     from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+
 
     print(art)
     session = PromptSession(history=FileHistory('.inp_history'))
@@ -377,3 +388,5 @@ if __name__ == "__main__":
                     result.show()
         except Exception:
             print(traceback.format_exc())
+
+

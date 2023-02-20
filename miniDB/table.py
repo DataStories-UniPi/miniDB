@@ -26,8 +26,8 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
-
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, unique_columns=None, load=None):
+        
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
             if isinstance(load, dict):
@@ -36,7 +36,7 @@ class Table:
             # if load is str, load from a file
             elif isinstance(load, str):
                 self._load_from_file(load)
-
+        
         # if name, columns_names and column types are not none
         elif (name is not None) and (column_names is not None) and (column_types is not None):
 
@@ -46,9 +46,9 @@ class Table:
                 raise ValueError('Need same number of column names and types.')
 
             self.column_names = column_names
-
+            self.unique_columns = unique_columns
             self.columns = []
-
+            
             for col in self.column_names:
                 if col not in self.__dir__():
                     # this is used in order to be able to call a column using its name as an attribute.
@@ -102,7 +102,7 @@ class Table:
         # self._update()
 
 
-    def _insert(self, row, insert_stack=[]):
+    def _insert(self, row, insert_stack=[], indexes=None):
         '''
         Insert row to table.
 
@@ -110,6 +110,7 @@ class Table:
             row: list. A list of values to be inserted (will be casted to a predifined type automatically).
             insert_stack: list. The insert stack (empty by default).
         '''
+        
         if len(row)!=len(self.column_names):
             raise ValueError(f'ERROR -> Cannot insert {len(row)} values. Only {len(self.column_names)} columns exist')
 
@@ -123,12 +124,18 @@ class Table:
             except TypeError as exc:
                 if row[i] != None:
                     print(exc)
-
-            # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
+            
+            # if value is to be appended to the primary_key column, check that it doesnt already exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
             elif i==self.pk_idx and row[i] is None:
                 raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
+            
+            # if value is to be appended to the unique column, check that it doesnt already exist
+            if hasattr(self, 'unique_columns') and self.unique_columns is not None:
+                column_name = self.column_names[i]
+                if column_name in self.unique_columns and row[i] in self.column_by_name(column_name):
+                    raise ValueError(f'## ERROR -> Value {row[i]} already exists in {column_name} unique column.')
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
@@ -136,6 +143,13 @@ class Table:
         else: # else append to the end
             self.data.append(row)
         # self._update()
+
+        # add row values to the index
+        if indexes is not None:
+            for column_name, btree in indexes.items():
+                column_pointer = self.column_names.index(column_name)
+                row_pointer = len(self.data)
+                btree.insert(row[column_pointer], row_pointer)
 
     def _update_rows(self, set_value, set_column, condition):
         '''
@@ -359,7 +373,7 @@ class Table:
 
         return rows
 
-    def _find_btree_rows(self, bt, column_name, operator, value):
+    def _find_btree_rows(self, bt, operator, value):
         '''
         This method is used for finding row indexes using a btree.
 
@@ -369,16 +383,6 @@ class Table:
             operator: string.
             value: string or int.
         '''
-
-        column = self.column_by_name(column_name)
-
-        # sequential
-        rows1 = []
-        opsseq = 0
-        for ind, x in enumerate(column):
-            opsseq+=1
-            if get_op(operator, x, value):
-                rows1.append(ind)
 
         # btree find
         rows = bt.find(operator, value)
@@ -396,11 +400,10 @@ class Table:
 
 
         column_name, operator, value = self._parse_condition(condition)
-
         # if the column in condition is not a primary key, abort the select
         if column_name != self.column_names[self.pk_idx]:
             print('Column is not PK. Aborting')
-
+        
         # here we run the same select twice, sequentially and using the btree.
         # we then check the results match and compare performance (number of operation)
         column = self.column_by_name(column_name)
@@ -440,7 +443,7 @@ class Table:
 
         return s_table
 
-    """
+        """
     def order_by(self, column_name, desc=True):
         '''
         Order table based on column.
@@ -650,6 +653,11 @@ class Table:
         if self.pk_idx is not None:
             # table has a primary key, add PK next to the appropriate column
             headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
+        # adds unique keyword next to the column name
+        if hasattr(self, 'unique_columns') and self.unique_columns is not None:
+            unique_indxs = [i for i, x in enumerate(self.column_names) if x in self.unique_columns]
+            for indx in unique_indxs:
+                headers[indx] = headers[indx] + " #UNIQUE#"
         # detect the rows that are no tfull of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]
