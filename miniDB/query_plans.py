@@ -1,4 +1,6 @@
 import copy
+
+
 def get_final_from(dic):
     if 'from' in dic:
         if isinstance(dic['from'],str):
@@ -7,6 +9,7 @@ def get_final_from(dic):
             return get_final_from(dic['from'])
     else:
         return None
+    
 def count_selects(dict):
     global num_of_selects
     num_of_selects += 1
@@ -17,6 +20,7 @@ def count_selects(dict):
             return count_selects(dict['from'])
     else:
         return None
+
 num_of_selects = 0
 count = 0
 
@@ -41,7 +45,6 @@ def check_query(dic):
         return dic,count
     else:        
         return None,count
-
 
 def multiple_query_plans(dic):
     
@@ -68,11 +71,11 @@ def multiple_query_plans(dic):
 
     if isinstance(query_plan_1['from'],dict):
 
-        if isinstance(query_plan_1['from']['where'],dict):
-            and_idx = [i for i,word in enumerate(query_plan_1['where'].keys()) if word=='and']
-            or_idx = [i for i,word in enumerate(query_plan_1['where'].keys()) if word=='or']
-            btween_idx = [i for i,word in enumerate(query_plan_1['where'].keys()) if word=='between']
-            not_idx = [i for i,word in enumerate(query_plan_1['where'].keys()) if word=='not']
+        if 'where' in query_plan_1['from'] and isinstance(query_plan_1['from']['where'],dict):
+            and_idx = [i for i,word in enumerate(query_plan_1['from']['where'].keys()) if word=='and']
+            or_idx = [i for i,word in enumerate(query_plan_1['from']['where'].keys()) if word=='or']
+            btween_idx = [i for i,word in enumerate(query_plan_1['from']['where'].keys()) if word=='between']
+            not_idx = [i for i,word in enumerate(query_plan_1['from']['where'].keys()) if word=='not']
             if not_idx or btween_idx or or_idx or len(and_idx) > 1:
                 is_valid = False
                 return Query_Plan_List , is_valid
@@ -85,9 +88,9 @@ def multiple_query_plans(dic):
                 return Query_Plan_List , is_valid
 
         # Check if the first and second rules of relational algebra (RA) can be applied to the query plan
-        if 'select' in  query_plan_1['from'].keys() and query_plan_1['where'] != None:#if isinstance(query_plan_1['from'],dict) 'select' in  query_plan_1['from'].keys() and query_plan_1['where'] != None
+        if 'select' in  query_plan_1['from'].keys() and query_plan_1['where'] != None:
             '''
-
+            
             The first and second rules of RA are applied in order to optimize the query plan.
             The first step creates two separate query plans, each containing one of the two operands of the 'and' operator in the WHERE clause.
             The second step creates a new query plan by combining the two previous ones with a new 'and' operator.
@@ -121,7 +124,7 @@ def multiple_query_plans(dic):
             Query_Plan_List.append(query_plan_1)
 
         # This block of code applies the fifth rule of relational algebra to the query plan.    
-        elif ('join' in query_plan_1['from'].keys() and query_plan_1['where'] == None) and isinstance(query_plan_1['from']['on'],str): 
+        elif 'join' in query_plan_1['from'].keys() and query_plan_1['where'] == None and isinstance(query_plan_1['from']['on'],str): 
             '''
 
             If the query involves a join and doesn't have a WHERE clause, the left and right operands of the join are swapped.
@@ -232,8 +235,7 @@ def multiple_query_plans(dic):
             query_plan_6['from']['left'] = query_plan_3['from']['right']
             query_plan_6['from']['right'] = query_plan_3['from']['left']
             Query_Plan_List.append(query_plan_6)
-
-        
+     
     else:
         if isinstance(query_plan_1['from'], str) and query_plan_1['where'] == None:
             '''
@@ -278,9 +280,9 @@ def multiple_query_plans(dic):
             
             unique_dictionaries.append(dictionary)
     
-    for index, dictionary in enumerate(unique_dictionaries):
+    '''for index, dictionary in enumerate(unique_dictionaries):
         print(f"Dictionary {index + 1}:")
-        print(dictionary)
+        print(dictionary)'''
     return unique_dictionaries , is_valid
     
 

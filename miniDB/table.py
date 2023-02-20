@@ -536,7 +536,7 @@ class Table:
                 '''
                 row = hash_dic[column_name]._get(value)
                 if row is not None:
-                    return [int(r) for r in list(str(row))]
+                    return [row]
             
             if btree_dic is not None and column_name in btree_dic.keys():
                 '''

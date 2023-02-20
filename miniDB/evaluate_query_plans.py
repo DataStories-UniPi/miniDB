@@ -1,48 +1,7 @@
-
-
-# table_name = 'instructor'
-
-# column_name = list(condition)[0]
-
-# table = db.tables[table_name] # instance of Table class
-
-# check if the table has an index and the column is the primary key
-
-# if db._has_index(table_name) and column_name == table.column_names[table.pk_idx]:
 import ast
 import re
 
 
-# A dictionary that contains statistics about tables
-'''
-stats = {
-    "instructor": {
-        "size": 12,
-        "columns": {
-            "id": {"distinct_values": 12},
-            "name": {"distinct_values": 12},
-            "dept_name": {"distinct_values": 7},
-            "salary": {"distinct_values": 11},
-        },
-    },
-    "advisor": {
-        "size": 9,
-        "columns": {
-            "s_id": {"distinct_values": 9},
-            "i_id": {"distinct_values": 6},
-        },
-    },
-    "student": {
-        "size": 13,
-        "columns": {
-            "id": {"distinct_values": 13},
-            "name": {"distinct_values": 13},
-            "dept_name": {"distinct_values": 7},
-            "tot_cred": {"distinct_values": 12},
-        },
-    },
-}
-'''
 # A function that evaluates the cost of a subquery in the SELECT clause
 def evaluate_select_clause(db, subquery):
     """
@@ -62,6 +21,7 @@ def evaluate_select_clause(db, subquery):
         int: The cost of evaluating the SELECT clause.
 
     """
+    # A dictionary that contains statistics about tables
     stats = db.stats
     cost = 0
     from_clause = subquery["from"]
@@ -120,8 +80,6 @@ def evaluate_select_clause(db, subquery):
         # Add the size of the table to the cost  
         cost += stats[table_name]["size"]
 
-             
-    
     return cost,table_name
 
 
@@ -187,13 +145,9 @@ def evaluate_query_plans(db , queries):
             elif "join" in from_clause:
                 # If there is a join in the "from" clause, calculate the cost of the join
                 
-                join_type = from_clause["join"]
                 left_table = from_clause["left"]
                 right_table = from_clause["right"]
                 table_right = db.tables[right_table]
-                table_left = db.tables[left_table]
-
-                
 
                 # If the right table has an index on its primary key, use its size as the cost (INLJ) (Σημείωση:το on_clause μόνο με primary key υποστιρίζεται)
                 if db._has_index(right_table,table_right.pk):

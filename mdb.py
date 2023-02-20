@@ -455,12 +455,18 @@ if __name__ == "__main__":
                 line+=';'
         except (KeyboardInterrupt, EOFError):
             print('\nbye!')
-            db.calculate_tables_statistics() # calculate statistics before exiting.
+            try:
+                db.calculate_tables_statistics() # calculate statistics before exiting.
+            except:
+                pass # if the database is not loaded or does not exist, do not calculate statistics.
             break
         try:
             if line=='exit;':
                 print('\nbye!')
-                db.calculate_tables_statistics() # calculate statistics before exiting.
+                try:
+                    db.calculate_tables_statistics() # calculate statistics before exiting.
+                except:
+                    pass # if the database is not loaded or does not exist, do not calculate statistics.
                 break
             if line.split(' ')[0].removesuffix(';') in ['lsdb', 'lstb', 'cdb', 'rmdb']:
                 interpret_meta(line)
@@ -477,15 +483,12 @@ if __name__ == "__main__":
                 pprint(dic, sort_dicts=False)
             else:
                 dic = interpret(line)
-                #if 'select' in dic.keys() and not dic['from'].startswith('meta'):
-                if isinstance(dic['from'],dict):
+
+                if 'select' in dic.keys() and not (isinstance(dic['from'],str) and dic['from'].startswith('meta')):
                     queries, is_valid = multiple_query_plans(dic)
                     if(is_valid):
                         dic = evaluate_query_plans(db,queries)
-                elif not dic['from'].startswith('meta'):
-                    queries, is_valid = multiple_query_plans(dic)
-                    if(is_valid):
-                        dic = evaluate_query_plans(db,queries)
+
                 result = execute_dic(dic)
                 if isinstance(result,Table):
                     result.show()
