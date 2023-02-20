@@ -374,7 +374,7 @@ if __name__ == "__main__":
             print('\nbye!')
             break
         try:
-            if line=='exit ;':
+            if line=='exit;':
                 break
             if line.split(' ')[0].removesuffix(';') in ['lsdb', 'lstb', 'cdb', 'rmdb']:
                 interpret_meta(line)

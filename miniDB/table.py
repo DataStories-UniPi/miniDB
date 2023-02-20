@@ -197,14 +197,10 @@ class Table:
 
                 Operatores supported: (<,<=,==,>=,>)
         '''
-        column_name, operator, value = self._parse_condition(condition)
-
-        indexes_to_del = []
-
-        column = self.column_by_name(column_name)
-        for index, row_value in enumerate(column):
-            if get_op(operator, row_value, value):
-                indexes_to_del.append(index)
+        if condition is not None:
+            indexes_to_del = self._find_rows(condition)
+        else:
+            indexes_to_del = [i for i in range(len(self.data))]
 
         # we pop from highest to lowest index in order to avoid removing the wrong item
         # since we dont delete, we dont have to to pop in that order, but since delete is used
@@ -288,7 +284,7 @@ class Table:
 
         return s_table
 
-    def _find_rows(self, condition, supported_indexes):
+    def _find_rows(self, condition, supported_indexes=None):
         '''
         Find and return all the rows where condition is met.
 
