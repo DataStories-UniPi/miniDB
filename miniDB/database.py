@@ -1,748 +1,508 @@
 from __future__ import annotations
 import pickle
 from time import sleep, localtime, strftime
-import os,sys
+import os, sys
 import logging
 import warnings
 import readline
 from tabulate import tabulate
-
-sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
+sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB') #Our path for the miniDB
 from miniDB import table
 sys.modules['table'] = table
-
 from joins import Inlj, Smj
-from btree import Btree
+from btree import Btree #Needed for the 2nd question
 from misc import split_condition
 from table import Table
 
-
-# readline.clear_history()
-
 class Database:
-    '''
-    Main Database class, containing tables.
-    '''
-
-    def __init__(self, name, load=True, verbose = True):
+    
+    def __init__(self, name, load=True, verbose=True):
         self.tables = {}
         self._name = name
         self.verbose = verbose
-
         self.savedir = f'dbdata/{name}_db'
-
         if load:
             try:
-                self.load_database()
-                logging.info(f'Loaded "{name}".')
+                self.fortoma_vasis()
+                logging.info(f'Fortonei "{name}".')
                 return
             except:
                 if verbose:
-                    warnings.warn(f'Database "{name}" does not exist. Creating new.')
+                    warnings.warn(f'H vash dedomenon "{name}" den yfistatai. Dhmiourgia neas.') #Creates a new database 
 
         # create dbdata directory if it doesnt exist
         if not os.path.exists('dbdata'):
             os.mkdir('dbdata')
-
         # create new dbs save directory
         try:
             os.mkdir(self.savedir)
         except:
             pass
-
-        # create all the meta tables
+        
         self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
-        self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
-        self.save_database()
+        self.create_table('meta_indexes', 'table_name,index_name,column_name', 'str,str,str')#After typing the command on Git Bash, meta are firstly created and then the others. 
+        self.sosimo_vasis()
 
-    def save_database(self):
-        '''
-        Save database as a pkl file. This method saves the database object, including all tables and attributes.
-        '''
+    def sosimo_vasis(self): #Swzei thn vash ws arxeio
         for name, table in self.tables.items():
             with open(f'{self.savedir}/{name}.pkl', 'wb') as f:
                 pickle.dump(table, f)
 
-    def _save_locks(self):
-        '''
-        Stores the meta_locks table to file as meta_locks.pkl.
-        '''
+    def sosimo_louketon(self): #Swzontai ta locks ws arxeio
         with open(f'{self.savedir}/meta_locks.pkl', 'wb') as f:
             pickle.dump(self.tables['meta_locks'], f)
 
-    def load_database(self):
-        '''
-        Load all tables that are part of the database (indices noted here are loaded).
-
-        Args:
-            path: string. Directory (path) of the database on the system.
-        '''
+    def fortoma_vasis(self): 
         path = f'dbdata/{self._name}_db'
         for file in os.listdir(path):
-
-            if file[-3:]!='pkl': # if used to load only pkl files
+            if file[-3:] != 'pkl':  
                 continue
-            f = open(path+'/'+file, 'rb')
+            f = open(path + '/' + file, 'rb')
             tmp_dict = pickle.load(f)
             f.close()
             name = f'{file.split(".")[0]}'
             self.tables.update({name: tmp_dict})
             # setattr(self, name, self.tables[name])
 
-    #### IO ####
+    def _update(self): #Tropopoihsi ton meta-pinakon.
+        self.tropopoisi_meta_length()
+        self.tropopoisi_tis_stoivas_meta_insert()
 
-    def _update(self):
+    def create_table(self, name, column_names, column_types, primary_key=None, load=None): #Creating and configuring the table
         '''
-        Update all meta tables.
-        '''
-        self._update_meta_length()
-        self._update_meta_insert_stack()
-
-
-    def create_table(self, name, column_names, column_types, primary_key=None, load=None):
-        '''
-        This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
-
+        This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
         Args:
             name: string. Name of table.
-            column_names: list. Names of columns.
-            column_types: list. Types of columns.
-            primary_key: string. The primary key (if it exists).
+            column_names: list. 
+            column_types: list.
+            primary_key: string.(if it exists)
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
-        # print('here -> ', column_names.split(','))
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)})
+        self.tables.update({name: Table(name=name, column_names=column_names.split(','),
+                                        column_types=column_types.split(','), primary_key=primary_key, load=load)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
         self._update()
-        self.save_database()
-        # (self.tables[name])
+        self.sosimo_vasis()
         if self.verbose:
-            print(f'Created table "{name}".')
+            print(f'Dimiourgithike o pinakas "{name}".')
 
-
-    def drop_table(self, table_name):
-        '''
-        Drop table from current database.
-
-        Args:
-            table_name: string. Name of table.
-        '''
-        self.load_database()
-        self.lock_table(table_name)
-
-        self.tables.pop(table_name)
-        if os.path.isfile(f'{self.savedir}/{table_name}.pkl'):
-            os.remove(f'{self.savedir}/{table_name}.pkl')
+    def diagrafi_pinaka(self, onoma_pinaka):#Delete the table from the db
+        self.fortoma_vasis()
+        self.kleidoma_pinaka(onoma_pinaka)
+        self.tables.pop(onoma_pinaka)
+        if os.path.isfile(f'{self.savedir}/{onoma_pinaka}.pkl'):
+            os.remove(f'{self.savedir}/{onoma_pinaka}.pkl')
         else:
-            warnings.warn(f'"{self.savedir}/{table_name}.pkl" not found.')
-        self.delete_from('meta_locks', f'table_name={table_name}')
-        self.delete_from('meta_length', f'table_name={table_name}')
-        self.delete_from('meta_insert_stack', f'table_name={table_name}')
-
-        if self._has_index(table_name):
-            to_be_deleted = []
+            warnings.warn(f'"{self.savedir}/{onoma_pinaka}.pkl" den vrethike.')
+        self.diagrafi_apo('meta_locks', f'table_name={onoma_pinaka}')
+        self.diagrafi_apo('meta_length', f'table_name={onoma_pinaka}')
+        self.diagrafi_apo('meta_insert_stack', f'table_name={onoma_pinaka}')
+        if self._exei_index(onoma_pinaka):
+            pros_diagrafi = []
             for key, table in enumerate(self.tables['meta_indexes'].column_by_name('table_name')):
-                if table == table_name:
-                    to_be_deleted.append(key)
-
-            for i in reversed(to_be_deleted):
+                if table == onoma_pinaka:
+                    pros_diagrafi.append(key)
+            for i in reversed(pros_diagrafi):
                 self.drop_index(self.tables['meta_indexes'].data[i][1])
-
         try:
-            delattr(self, table_name)
+            delattr(self, onoma_pinaka)
         except AttributeError:
             pass
-        # self._update()
-        self.save_database()
+        self.sosimo_vasis()
 
-
-    def import_table(self, table_name, filename, column_types=None, primary_key=None):
-        '''
-        Creates table from CSV file.
-
-        Args:
-            filename: string. CSV filename. If not specified, filename's name will be used.
-            column_types: list. Types of columns. If not specified, all will be set to type str.
-            primary_key: string. The primary key (if it exists).
-        '''
-        file = open(filename, 'r')
-
-        first_line=True
-        for line in file.readlines():
-            if first_line:
+    def eisagogi_pinaka(self, onoma_pinaka, onoma_arxeiou, column_types=None, primary_key=None): #Create table according to elements of a CSV file.
+        arxeio = open(onoma_arxeiou, 'r')
+        proti_seira = True
+        for line in arxeio.readlines():
+            if proti_seira:
                 colnames = line.strip('\n')
                 if column_types is None:
                     column_types = ",".join(['str' for _ in colnames.split(',')])
-                self.create_table(name=table_name, column_names=colnames, column_types=column_types, primary_key=primary_key)
-                lock_ownership = self.lock_table(table_name, mode='x')
-                first_line = False
+                self.create_table(name=onoma_pinaka, column_names=colnames, column_types=column_types, primary_key=primary_key)
+                louketo = kleidoma_pinaka(onoma_pinaka, tropos='x')
+                proti_seira = False
                 continue
-            self.tables[table_name]._insert(line.strip('\n').split(','))
-
-        if lock_ownership:
-             self.unlock_table(table_name)
+            self.tables[onoma_pinaka]._insert(line.strip('\n').split(','))
+        if louketo:
+            self.xekleidoma_pinaka(onoma_pinaka)
         self._update()
-        self.save_database()
+        self.sosimo_vasis()
 
-
-    def export(self, table_name, filename=None):
+    def eksagogi_pinaka(self, onoma_pinaka, onoma_arxeiou=None):
         '''
-        Transform table to CSV.
-
-        Args:
-            table_name: string. Name of table.
-            filename: string. Output CSV filename.
+        O pinakas ginetai se morfi arxeiou csv
         '''
         res = ''
-        for row in [self.tables[table_name].column_names]+self.tables[table_name].data:
-            res+=str(row)[1:-1].replace('\'', '').replace('"','').replace(' ','')+'\n'
+        for row in [self.tables[onoma_pinaka].column_names] + self.tables[onoma_pinaka].data:
+            res += str(row)[1:-1].replace('\'', '').replace('"', '').replace(' ', '') + '\n'
+        if onoma_arxeiou is None:
+            onoma_arxeiou = f'{onoma_pinaka}.csv'
+        with open(onoma_arxeiou, 'w') as file:
+            file.write(res)
 
-        if filename is None:
-            filename = f'{table_name}.csv'
-
-        with open(filename, 'w') as file:
-           file.write(res)
-
-    def table_from_object(self, new_table):
+    def pinakas_apo_antikeimeno(self, neos_pinakas):
         '''
         Add table object to database.
-
-        Args:
-            new_table: string. Name of new table.
         '''
-
-        self.tables.update({new_table._name: new_table})
-        if new_table._name not in self.__dir__():
-            setattr(self, new_table._name, new_table)
+        self.tables.update({neos_pinakas._name: neos_pinakas})
+        if neos_pinakas._name not in self.__dir__():
+            setattr(self, neos_pinakas._name, neos_pinakas)
         else:
-            raise Exception(f'"{new_table._name}" attribute already exists in class "{self.__class__.__name__}".')
+            raise Exception(f'"{neos_pinakas._name}" yparxei hdh, vres etero onoma "{self.__class__.__name__}".')
         self._update()
-        self.save_database()
+        self.sosimo_vasis()
 
-
-
-    ##### table functions #####
-
-    # In every table function a load command is executed to fetch the most recent table.
-    # In every table function, we first check whether the table is locked. Since we have implemented
-    # only the X lock, if the tables is locked we always abort.
-    # After every table function, we update and save. Update updates all the meta tables and save saves all
-    # tables.
-
-    # these function calls are named close to the ones in postgres
-
-    def cast(self, column_name, table_name, cast_type):
+    #Now, the functions regarding the table.
+    def cast(self, stili, onoma_pinaka, cast_type):
         '''
         Modify the type of the specified column and cast all prexisting values.
         (Executes type() for every value in column and saves)
-
-        Args:
-            table_name: string. Name of table (must be part of database).
-            column_name: string. The column that will be casted (must be part of database).
-            cast_type: type. Cast type (do not encapsulate in quotes).
         '''
-        self.load_database()
-        
-        lock_ownership = self.lock_table(table_name, mode='x')
-        self.tables[table_name]._cast_column(column_name, eval(cast_type))
-        if lock_ownership:
-            self.unlock_table(table_name)
+        self.fortoma_vasis()
+        louketo = self.kleidoma_pinaka(onoma_pinaka, tropos='x')
+        self.tables[onoma_pinaka]._cast_column(stili, eval(cast_type))
+        if louketo:
+            self.xekleidoma_pinaka(onoma_pinaka)
         self._update()
-        self.save_database()
+        self.sosimo_vasis()
 
-    def insert_into(self, table_name, row_str):
+    def insert_into(self, onoma_pinaka, row_str):
         '''
-        Inserts data to given table.
-
         Args:
-            table_name: string. Name of table (must be part of database).
-            row: list. A list of values to be inserted (will be casted to a predifined type automatically).
-            lock_load_save: boolean. If False, user needs to load, lock and save the states of the database (CAUTION). Useful for bulk-loading.
+            table_name: string.(prepei na apotelei meros tis vaseos).
+            row: list. Katalogos timon pros eisagogi (Tha oristei automatos os sygkekrimenos typos).
+            lock_load_save: boolean. If False, user needs to load, lock and save the states of the database.
         '''
         row = row_str.strip().split(',')
-        self.load_database()
-        # fetch the insert_stack. For more info on the insert_stack
-        # check the insert_stack meta table
-        lock_ownership = self.lock_table(table_name, mode='x')
-        insert_stack = self._get_insert_stack_for_table(table_name)
+        self.fortoma_vasis()
+        louketo = self.kleidoma_pinaka(onoma_pinaka, tropos='x')
+        insert_stack = self.pare_tin_stoiva(onoma_pinaka) #Get the insert stack.
         try:
-            self.tables[table_name]._insert(row, insert_stack)
-        except Exception as e:
-            logging.info(e)
-            logging.info('ABORTED')
-        self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
-
-        if lock_ownership:
-            self.unlock_table(table_name)
+            self.tables[onoma_pinaka]._insert(row, insert_stack)
+        except Exception as eksairesi:
+            logging.info(eksairesi)
+            logging.info('H DIADIKASIA APETYXE')
+        self._update_meta_insert_stack_for_tb(onoma_pinaka, insert_stack[:-1])
+        if louketo:
+            self.xekleidoma_pinaka(onoma_pinaka)
         self._update()
-        self.save_database()
+        self.sosimo_vasis()
 
-
-    def update_table(self, table_name, set_args, condition):
-        '''
-        Update the value of a column where a condition is met.
-
-        Args:
-            table_name: string. Name of table (must be part of database).
-            set_value: string. New value of the predifined column name.
-            set_column: string. The column to be altered.
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
-                
-                Operatores supported: (<,<=,==,>=,>)
-        '''
-        set_column, set_value = set_args.replace(' ','').split('=')
-        self.load_database()
-        
-        lock_ownership = self.lock_table(table_name, mode='x')
-        self.tables[table_name]._update_rows(set_value, set_column, condition)
-        if lock_ownership:
-            self.unlock_table(table_name)
+    def tropopoisi_pinaka(self, onoma_pinaka, vale_arguments, synthiki): #Allagi se sygkekrimeno simeio tou pinaka
+        set_column, set_value = vale_arguments.replace(' ', '').split('=')
+        self.fortoma_vasis()
+        louketo = self.kleidoma_pinaka(onoma_pinaka, tropos='x')
+        self.tables[onoma_pinaka].tropopoisi_seiras(set_value, set_column, condition)
+        if louketo:
+            self.xekleidoma_pinaka(onoma_pinaka)
         self._update()
-        self.save_database()
+        self.sosimo_vasis()
 
-    def delete_from(self, table_name, condition):
-        '''
-        Delete rows of table where condition is met.
-
-        Args:
-            table_name: string. Name of table (must be part of database).
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
-                
-                Operatores supported: (<,<=,==,>=,>)
-        '''
-        self.load_database()
-        
-        lock_ownership = self.lock_table(table_name, mode='x')
-        deleted = self.tables[table_name]._delete_where(condition)
-        if lock_ownership:
-            self.unlock_table(table_name)
+    def diagrafi_apo(self, onoma_pinaka, synthiki): #Diagrafi sykekrimenon simeion tou pinaka.
+        self.fortoma_vasis()
+        louketo = self.kleidoma_pinaka(onoma_pinaka, tropos='x')
+        deleted = self.tables[onoma_pinaka].diagrafi_opou(synthiki)
+        if louketo:
+            self.xekleidoma_pinaka(onoma_pinaka)
         self._update()
-        self.save_database()
-        # we need the save above to avoid loading the old database that still contains the deleted elements
-        if table_name[:4]!='meta':
-            self._add_to_insert_stack(table_name, deleted)
-        self.save_database()
+        self.sosimo_vasis()#apothikeusi tis vasis meta apo kathe allagi
+        if onoma_pinaka[:4] != 'meta':
+            self.valto_sti_stoiva(onoma_pinaka, deleted)
+        self.sosimo_vasis()
 
-    def select(self, columns, table_name, condition, distinct=None, order_by=None, \
-               limit=True, desc=None, save_as=None, return_object=True):
+    def select(self, columns, table_name, condition, distinct=None, order_by=None, limit=True, desc=None, apothikeusi_ws=None, return_object=True): #Deixnei auta poy ikanopoioun thn sunthiki
         '''
-        Selects and outputs a table's data where condtion is met.
-
         Args:
-            table_name: string. Name of table (must be part of database).
-            columns: list. The columns that will be part of the output table (use '*' to select all available columns)
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
-                
-                Operatores supported: (<,<=,==,>=,>)
-            order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
-            desc: boolean. If True, order_by will return results in descending order (True by default).
-            limit: int. An integer that defines the number of rows that will be returned (all rows if None).
-            save_as: string. The name that will be used to save the resulting table into the database (no save if None).
-            return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
-            distinct: boolean. If True, the resulting table will contain only unique rows.
+            all written as parameters, plus the boolean variable distinct.
         '''
-
-        # print(table_name)
-        self.load_database()
-        if isinstance(table_name,Table):
-            return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
-
         if condition is not None:
-            condition_column = split_condition(condition)[0]
+            if "BETWEEN" in condition.split() or "between" in condition.split():#Does the condition contain between?
+                condition_column = condition.split(" ")[0]
+            elif "NOT" in condition.split() or "not" in condition.split():#Looking for condition with NOT operator
+                condition_column = condition.split(" ")[0]
+            elif "AND" in condition.split() or "and" in condition.split() or "OR" in condition.split() or "or" in condition.split():#Looking for condition containing AND or OR
+                condition_column = condition.split(" ")[0]
+            else:
+                condition_column = split_condition(condition)[0]
         else:
             condition_column = ''
-
-        
-        # self.lock_table(table_name, mode='x')
-        if self.is_locked(table_name):
+        if self.einai_kleidomeno(table_name): #Is table locked?
             return
-        if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
-            index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
-            bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+        if self._exei_index(table_name) and condition_column == self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
+            index_name = \
+                self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name(
+                    'index_name')[0]
+            b_dendro = self._fortose_index(index_name)
+            try:
+                table = self.tables[table_name].epilogi_alla_me_btree(columns, b_dendro, condition, distinct, order_by, desc, limit)
+            except:
+                table = self.tables[table_name].epilogi_alla_me_hash(columns, b_dendro, condition, distinct, order_by, desc, limit) # if btree fails, try hash
         else:
             table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
-        # self.unlock_table(table_name)
-        if save_as is not None:
-            table._name = save_as
-            self.table_from_object(table)
+        if apothikeusi_ws is not None:
+            table._name = apothikeusi_ws
+            self.pinakas_apo_antikeimeno(table)
         else:
             if return_object:
                 return table
             else:
                 return table.show()
 
+    def deixe_ton_pinaka(self, onoma_pinaka, plithos_grammon=None): #Showing the table
+        self.fortoma_vasis()
+        self.tables[onoma_pinaka].show(plithos_grammon, self.einai_kleidomeno(onoma_pinaka))
 
-    def show_table(self, table_name, no_of_rows=None):
+    def taxinomisi(self, onoma_pinaka, stili, asc=False):
         '''
-        Print table in a readable tabular design (using tabulate).
-
-        Args:
-            table_name: string. Name of table (must be part of database).
+        asc: If True sort will return results in ascending order (False by default).
         '''
-        self.load_database()
-        
-        self.tables[table_name].show(no_of_rows, self.is_locked(table_name))
-
-
-    def sort(self, table_name, column_name, asc=False):
-        '''
-        Sorts a table based on a column.
-
-        Args:
-            table_name: string. Name of table (must be part of database).
-            column_name: string. the column name that will be used to sort.
-            asc: If True sort will return results in ascending order (False by default).
-        '''
-
-        self.load_database()
-        
-        lock_ownership = self.lock_table(table_name, mode='x')
-        self.tables[table_name]._sort(column_name, asc=asc)
-        if lock_ownership:
-            self.unlock_table(table_name)
+        self.fortoma_vasis()
+        louketo = self.kleidoma_pinaka(onoma_pinaka, tropos='x')
+        self.tables[onoma_pinaka]._sort(stili, asc=asc)
+        if louketo:
+            self.xekleidoma_pinaka(onoma_pinaka)
         self._update()
-        self.save_database()
+        self.sosimo_vasis()
 
-    def create_view(self, table_name, table):
-        '''
-        Create a virtual table based on the result-set of the SQL statement provided.
-
-        Args:
-            table_name: string. Name of the table that will be saved.
-            table: table. The table that will be saved.
-        '''
+    def provoli(self, table_name, table): #Emfanisi provolis tou pinaka
         table._name = table_name
-        self.table_from_object(table)
+        self.pinakas_apo_antikeimeno(table)
 
-    def join(self, mode, left_table, right_table, condition, save_as=None, return_object=True):
+    def enosi_opou_sinthiki_isxyei(self, tropos, left_table, right_table, synthiki, apothikeusi_ws=None, emfanisi_antikeimenou=True):
         '''
-        Join two tables that are part of the database where condition is met.
-
         Args:
             left_table: string. Name of the left table (must be in DB) or Table obj.
             right_table: string. Name of the right table (must be in DB) or Table obj.
-            condition: string. A condition using the following format:
+            synthiki: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
-                
                 Operators supported: (<,<=,==,>=,>)
         save_as: string. The output filename that will be used to save the resulting table in the database (won't save if None).
-        return_object: boolean. If True, the result will be a table object (useful for internal usage - the result will be printed by default).
+        emfanisi_antikeimenou: boolean. If True, the result will be a table object (useful for internal usage - the result will be printed by default).
         '''
-        self.load_database()
-        if self.is_locked(left_table) or self.is_locked(right_table):
+        self.fortoma_vasis()
+        if self.einai_kleidomeno(left_table) or self.einai_kleidomeno(right_table):
             return
-
-        left_table = left_table if isinstance(left_table, Table) else self.tables[left_table] 
-        right_table = right_table if isinstance(right_table, Table) else self.tables[right_table] 
-
-
-        if mode=='inner':
-            res = left_table._inner_join(right_table, condition)
-        
-        elif mode=='left':
-            res = left_table._left_join(right_table, condition)
-        
-        elif mode=='right':
-            res = left_table._right_join(right_table, condition)
-        
-        elif mode=='full':
-            res = left_table._full_join(right_table, condition)
-
-        elif mode=='inl':
-            # Check if there is an index of either of the two tables available, as if there isn't we can't use inlj
-            leftIndexExists = self._has_index(left_table._name)
-            rightIndexExists = self._has_index(right_table._name)
-
-            if not leftIndexExists and not rightIndexExists:
-                res = None
-                raise Exception('Index-nested-loop join cannot be executed. Use inner join instead.\n')
-            elif rightIndexExists:
-                index_name = self.select('*', 'meta_indexes', f'table_name={right_table._name}', return_object=True).column_by_name('index_name')[0]
-                res = Inlj(condition, left_table, right_table, self._load_idx(index_name), 'right').join()
-            elif leftIndexExists:
-                index_name = self.select('*', 'meta_indexes', f'table_name={left_table._name}', return_object=True).column_by_name('index_name')[0]
-                res = Inlj(condition, left_table, right_table, self._load_idx(index_name), 'left').join()
-
-        elif mode=='sm':
-            res = Smj(condition, left_table, right_table).join()
-
+        left_table = left_table if isinstance(left_table, Table) else self.tables[left_table]
+        right_table = right_table if isinstance(right_table, Table) else self.tables[right_table]
+        if tropos == 'inner':#Inner join
+            enosi = left_table._inner_join(right_table, synthiki)
+        elif tropos == 'left':
+            enosi = left_table.enosi_apo_aristera(right_table, synthiki) #Left join 
+        elif tropos == 'right':
+            enosi = left_table.enosi_apo_dexia(right_table, synthiki) #Right join
+        elif tropos == 'full':
+            enosi = left_table.pliris_enosi(right_table, synthiki) #Full join
+        elif tropos == 'inl': #for index-nested-loop join
+            # Check if there is an index of either of the two tables available.
+            yparxei_aristero_index = self._exei_index(left_table._name)
+            yparxei_dexio_index = self._exei_index(right_table._name)
+            if not yparxei_aristero_index and not yparxei_dexio_index:
+                enosi = None
+                raise Exception('Adynati i ektelesi tou INLJ. Kalytera kane inner join.')
+            elif yparxei_dexio_index:
+                index_name = \
+                    self.select('*', 'meta_indexes', f'table_name={right_table._name}',
+                                emfanisi_antikeimenou=True).column_by_name(
+                        'index_name')[0]
+                enosi = Inlj(synthiki, left_table, right_table, self._fortose_index(index_name), 'right').enosi_opou_sinthiki_isxyei()
+            elif yparxei_aristero_index:
+                index_name = \
+                    self.select('*', 'meta_indexes', f'table_name={left_table._name}',
+                                emfanisi_antikeimenou=True).column_by_name(
+                        'index_name')[0]
+                enosi = Inlj(synthiki, left_table, right_table, self._fortose_index(index_name), 'left').enosi_opou_sinthiki_isxyei()
+        elif tropos == 'sm':
+            enosi = Smj(synthiki, left_table, right_table).enosi_opou_sinthiki_isxyei()#To implement sort-merge join
         else:
             raise NotImplementedError
-
-        if save_as is not None:
-            res._name = save_as
-            self.table_from_object(res)
+        if apothikeusi_ws is not None:
+            enosi._name = apothikeusi_ws
+            self.pinakas_apo_antikeimeno(res)
         else:
-            if return_object:
-                return res
+            if emfanisi_antikeimenou:
+                return enosi
             else:
-                res.show()
-
-        if return_object:
-            return res
+                enosi.show()
+        if emfanisi_antikeimenou:
+            return enosi
         else:
-            res.show()
+            enosi.show()
 
-    def lock_table(self, table_name, mode='x'):
-        '''
-        Locks the specified table using the exclusive lock (X).
-
-        Args:
-            table_name: string. Table name (must be part of database).
-        '''
-        if table_name[:4]=='meta' or table_name not in self.tables.keys() or isinstance(table_name,Table):
+    def kleidoma_pinaka(self, onoma_pinaka, tropos='x'): #Lock the table!
+        if onoma_pinaka[:4] == 'meta' or onoma_pinaka not in self.tables.keys() or isinstance(onoma_pinaka, Table):
             return
-
         with open(f'{self.savedir}/meta_locks.pkl', 'rb') as f:
             self.tables.update({'meta_locks': pickle.load(f)})
-
         try:
-            pid = self.tables['meta_locks']._select_where('pid',f'table_name={table_name}').data[0][0]
-            if pid!=os.getpid():
-                raise Exception(f'Table "{table_name}" is locked by process with pid={pid}')
+            pid = self.tables['meta_locks']._select_where('pid', f'table_name={onoma_pinaka}').data[0][0]
+            if pid != os.getpid():
+                raise Exception(f'O pinakas "{onoma_pinaka}" einai kleidomenos apo thn diadikasia me pid={pid}')
             else:
                 return False
-
         except IndexError:
             pass
-
-        if mode=='x':
-            self.tables['meta_locks']._insert([table_name, os.getpid(), mode])
+        if tropos == 'x':
+            self.tables['meta_locks']._insert([onoma_pinaka, os.getpid(), tropos])
         else:
             raise NotImplementedError
-        self._save_locks()
+        self.sosimo_louketon()
         return True
-        # print(f'Locking table "{table_name}"')
+        
 
-    def unlock_table(self, table_name, force=False):
-        '''
-        Unlocks the specified table that is exclusively locked (X).
-
-        Args:
-            table_name: string. Table name (must be part of database).
-        '''
-        if table_name not in self.tables.keys():
-            raise Exception(f'Table "{table_name}" is not in database')
-
-        if not force:
+    def xekleidoma_pinaka(self, onoma_pinaka, isxys=False): #Unlock the table.
+        if onoma_pinaka not in self.tables.keys():
+            raise Exception(f'O pinakas "{onoma_pinaka}" den einai stin vasi')
+        if not isxys:
             try:
-                # pid = self.select('*','meta_locks',  f'table_name={table_name}', return_object=True).data[0][1]
-                pid = self.tables['meta_locks']._select_where('pid',f'table_name={table_name}').data[0][0]
-                if pid!=os.getpid():
-                    raise Exception(f'Table "{table_name}" is locked by the process with pid={pid}')
+                pid = self.tables['meta_locks']._select_where('pid', f'table_name={onoma_pinaka}').data[0][0]
+                if pid != os.getpid():
+                    raise Exception(f'O pinakas "{onoma_pinaka}" einai kleidomenos apo thn diadikasia me pid={pid}')
             except IndexError:
                 pass
-        self.tables['meta_locks']._delete_where(f'table_name={table_name}')
-        self._save_locks()
-        # print(f'Unlocking table "{table_name}"')
+        self.tables['meta_locks'].diagrafi_opou(f'table_name={onoma_pinaka}')
+        self.sosimo_louketon()
+        
 
-    def is_locked(self, table_name):
-        '''
-        Check whether the specified table is exclusively locked (X).
-
-        Args:
-            table_name: string. Table name (must be part of database).
-        '''
-        if isinstance(table_name,Table) or table_name[:4]=='meta':  # meta tables will never be locked (they are internal)
+    def einai_kleidomeno(self, onoma_pinaka):
+        if isinstance(onoma_pinaka, Table) or onoma_pinaka[:4] == 'meta':  # meta tables will never be locked (they are internal)
             return False
-
         with open(f'{self.savedir}/meta_locks.pkl', 'rb') as f:
             self.tables.update({'meta_locks': pickle.load(f)})
-
         try:
-            pid = self.tables['meta_locks']._select_where('pid',f'table_name={table_name}').data[0][0]
-            if pid!=os.getpid():
-                raise Exception(f'Table "{table_name}" is locked by the process with pid={pid}')
-
+            pid = self.tables['meta_locks']._select_where('pid', f'table_name={onoma_pinaka}').data[0][0]
+            if pid != os.getpid():
+                raise Exception(f'O pinakas "{onoma_pinaka}" einai kleidomenos apo tin diadikasia me pid={pid}')
         except IndexError:
             pass
         return False
 
-
-    #### META ####
-
-    # The following functions are used to update, alter, load and save the meta tables.
-    # Important: Meta tables contain info regarding the NON meta tables ONLY.
-    # i.e. meta_length will not show the number of rows in meta_locks etc.
-
-    def _update_meta_length(self):
-        '''
-        Updates the meta_length table.
-        '''
+    #Functions regarding the meta tables
+    def tropopoisi_meta_length(self):
         for table in self.tables.values():
-            if table._name[:4]=='meta': #skip meta tables
+            if table._name[:4] == 'meta':  #meta skipped
                 continue
-            if table._name not in self.tables['meta_length'].column_by_name('table_name'): # if new table, add record with 0 no. of rows
+            if table._name not in self.tables['meta_length'].column_by_name(
+                    'table_name'):  # if new table, add record with 0 no. of rows
                 self.tables['meta_length']._insert([table._name, 0])
+            
+            mh_kenes_seires = len([row for row in table.data if any(row)]) #Mh kenes seires
+            self.tables['meta_length'].tropopoisi_seiras(mh_kenes_seires, 'no_of_rows', f'table_name={table._name}')
+            
 
-            # the result needs to represent the rows that contain data. Since we use an insert_stack
-            # some rows are filled with Nones. We skip these rows.
-            non_none_rows = len([row for row in table.data if any(row)])
-            self.tables['meta_length']._update_rows(non_none_rows, 'no_of_rows', f'table_name={table._name}')
-            # self.update_row('meta_length', len(table.data), 'no_of_rows', 'table_name', '==', table._name)
-
-    def _update_meta_locks(self):
-        '''
-        Updates the meta_locks table.
-        '''
+    def tropopoisi_louketwn_meta(self):
         for table in self.tables.values():
-            if table._name[:4]=='meta': #skip meta tables
+            if table._name[:4] == 'meta':  # meta skipped
                 continue
             if table._name not in self.tables['meta_locks'].column_by_name('table_name'):
-
                 self.tables['meta_locks']._insert([table._name, False])
-                # self.insert('meta_locks', [table._name, False])
+                
 
-    def _update_meta_insert_stack(self):
-        '''
-        Updates the meta_insert_stack table.
-        '''
+    def tropopoisi_tis_stoivas_meta_insert(self):
         for table in self.tables.values():
-            if table._name[:4]=='meta': #skip meta tables
+            if table._name[:4] == 'meta':  # meta skipped
                 continue
             if table._name not in self.tables['meta_insert_stack'].column_by_name('table_name'):
                 self.tables['meta_insert_stack']._insert([table._name, []])
 
+    def valto_sti_stoiva(self, onoma_pinaka, indexes): #Adding indexes to the table's stack.
+        old_lst = self.pare_tin_stoiva(onoma_pinaka)
+        self._update_meta_insert_stack_for_tb(onoma_pinaka, old_lst + indexes)
 
-    def _add_to_insert_stack(self, table_name, indexes):
-        '''
-        Adds provided indices to the insert stack of the specified table.
+    def pare_tin_stoiva(self, table_name):
+        return \
+            self.tables['meta_insert_stack']._select_where('*', f'table_name={table_name}').column_by_name('indexes')[0]
+       
 
-        Args:
-            table_name: string. Table name (must be part of database).
-            indexes: list. The list of indices that will be added to the insert stack (the indices of the newly deleted elements).
-        '''
-        old_lst = self._get_insert_stack_for_table(table_name)
-        self._update_meta_insert_stack_for_tb(table_name, old_lst+indexes)
-
-    def _get_insert_stack_for_table(self, table_name):
-        '''
-        Returns the insert stack of the specified table.
-
-        Args:
-            table_name: string. Table name (must be part of database).
-        '''
-        return self.tables['meta_insert_stack']._select_where('*', f'table_name={table_name}').column_by_name('indexes')[0]
-        # res = self.select('meta_insert_stack', '*', f'table_name={table_name}', return_object=True).indexes[0]
-        # return res
-
-    def _update_meta_insert_stack_for_tb(self, table_name, new_stack):
-        '''
-        Replaces the insert stack of a table with the one supplied by the user.
-
-        Args:
-            table_name: string. Table name (must be part of database).
-            new_stack: string. The stack that will be used to replace the existing one.
-        '''
-        self.tables['meta_insert_stack']._update_rows(new_stack, 'indexes', f'table_name={table_name}')
-
+    def _update_meta_insert_stack_for_tb(self, onoma_pinaka, nea_stoiva):
+        self.tables['meta_insert_stack'].tropopoisi_seiras(nea_stoiva, 'indexes', f'table_name={onoma_pinaka}')
 
     # indexes
-    def create_index(self, index_name, table_name, index_type='btree'):
-        '''
-        Creates an index on a specified table with a given name.
-        Important: An index can only be created on a primary key (the user does not specify the column).
-
-        Args:
-            table_name: string. Table name (must be part of database).
-            index_name: string. Name of the created index.
-        '''
-        if self.tables[table_name].pk_idx is None: # if no primary key, no index
-            raise Exception('Cannot create index. Table has no primary key.')
-        if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
-            # currently only btree is supported. This can be changed by adding another if.
-            if index_type=='btree':
-                logging.info('Creating Btree index.')
-                # insert a record with the name of the index and the table on which it's created to the meta_indexes table
-                self.tables['meta_indexes']._insert([table_name, index_name])
-                # crate the actual index
-                self._construct_index(table_name, index_name)
-                self.save_database()
+    def create_index(self, index_name, onoma_pinaka, onoma_stilis, typos_eurethriou): #Index in a specific column of the table
+        if onoma_pinaka not in self.tables:   #Non-existing table
+            raise Exception('Den einai dynath h dhmiourgia eurethriou se pinaka pou den yparxei.')
+        if onoma_stilis not in self.tables[onoma_pinaka].column_names:   #Non-existing column
+            raise Exception('Den einai dynath h dhmiourgia eurethriou se sthlh pou den yparxei.')    
+        if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):  #if index_name already exists,or not.
+            if typos_eurethriou == 'BTREE' or typos_eurethriou == 'btree': #Trying to insert Btree index on the meta_indexes table
+                logging.info('Ftiaxno to btree.')
+                self.tables['meta_indexes']._insert([onoma_pinaka, index_name, onoma_stilis])
+                self.kataskeui_euretiriou(onoma_pinaka, index_name, onoma_stilis)
+                self.sosimo_vasis()
+            elif typos_eurethriou == 'HASH' or typos_eurethriou == 'hash': #Trying to insert Hash index on the meta_indexes table
+                logging.info('Ftiaxno to hash.')
+                self.tables['meta_indexes']._insert([onoma_pinaka, index_name, onoma_stilis])
+                self.ftiaxe_hash_euretirio(onoma_pinaka, index_name, onoma_stilis)
+                self.sosimo_vasis()
         else:
-            raise Exception('Cannot create index. Another index with the same name already exists.')
+            raise Exception('Hdh yparxei eurethrio me auto to onoma.')
 
-    def _construct_index(self, table_name, index_name):
-        '''
-        Construct a btree on a table and save.
-
-        Args:
-            table_name: string. Table name (must be part of database).
-            index_name: string. Name of the created index.
-        '''
-        bt = Btree(3) # 3 is arbitrary
-
-        # for each record in the primary key of the table, insert its value and index to the btree
-        for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
+    def kataskeui_euretiriou(self, onoma_pinaka, index_name, onoma_stilis):  #Create Btree in the primary_key of the table specified
+        b_dendro = Btree(3)  
+        for idx, key in enumerate(self.tables[onoma_pinaka].column_by_name(onoma_stilis)):
             if key is None:
                 continue
-            bt.insert(key, idx)
-        # save the btree
-        self._save_index(index_name, bt)
+            b_dendro.insert(key, idx) 
+        self._apothikeusi_index(index_name, b_dendro)
+        print('To eftiaxa to btree eurethrio.')
+        return
 
+    def ftiaxe_hash_euretirio(self, onoma_pinaka, index_name, onoma_stilis):
+        mhkos_grammhs = len(self.tables[onoma_pinaka].data)
+        hm = {}
+        hm[0] = {}
+        hm[0][0] = [str(mhkos_grammhs)] # store the number of the rows
+        for idx, key in enumerate(self.tables[onoma_pinaka].column_by_name(onoma_stilis)):
+                if key is None:
+                    continue
+                hash_athroisma = 0
+                for letter in key:
+                    hash_athroisma += ord(letter) #To gramma to metatrepoume ston antistoixo arithmo tou, px gia to a einai 1, gia to b einai 2 ktl.
+                index_megalou_hash = hash_athroisma % mhkos_grammhs #modulo 
+                index_mikroterou_hash = index_megalou_hash
+                if not(index_megalou_hash in hm):
+                    hm[index_megalou_hash] = {}
+                else:
+                    while True:
+                        if not(index_mikroterou_hash in hm[index_megalou_hash]):
+                            break
+                        if (index_mikroterou_hash == mhkos_grammhs):
+                            index_mikroterou_hash = 0
+                        else:
+                            index_mikroterou_hash += 1
+                hm[index_megalou_hash][index_mikroterou_hash] = [idx, key]
+        self._apothikeusi_index(index_name, hm)
+        print ('To eftiaxa to hash eurethrio.')
 
-    def _has_index(self, table_name):
-        '''
-        Check whether the specified table's primary key column is indexed.
+    def _exei_index(self, onoma_pinaka): #Does the column have index?
+        return onoma_pinaka in self.tables['meta_indexes'].column_by_name('table_name')
 
-        Args:
-            table_name: string. Table name (must be part of database).
-        '''
-        return table_name in self.tables['meta_indexes'].column_by_name('table_name')
-
-    def _save_index(self, index_name, index):
-        '''
-        Save the index object.
-
-        Args:
-            index_name: string. Name of the created index.
-            index: obj. The actual index object (btree object).
-        '''
+    def _apothikeusi_index(self, index_name, index): #Save the index!
         try:
             os.mkdir(f'{self.savedir}/indexes')
         except:
             pass
-
         with open(f'{self.savedir}/indexes/meta_{index_name}_index.pkl', 'wb') as f:
             pickle.dump(index, f)
 
-    def _load_idx(self, index_name):
-        '''
-        Load and return the specified index.
+    def _fortose_index(self, index_name):#Load index.
+        arxeion = open(f'{self.savedir}/indexes/meta_{index_name}_index.pkl', 'rb')
+        eurethrio = pickle.load(arxeion)
+        arxeion.close()
+        return eurethrio
 
-        Args:
-            index_name: string. Name of created index.
-        '''
-        f = open(f'{self.savedir}/indexes/meta_{index_name}_index.pkl', 'rb')
-        index = pickle.load(f)
-        f.close()
-        return index
-
-    def drop_index(self, index_name):
-        '''
-        Drop index from current database.
-
-        Args:
-            index_name: string. Name of index.
-        '''
+    def drop_index(self, index_name): #Get rid of the index.
         if index_name in self.tables['meta_indexes'].column_by_name('index_name'):
-            self.delete_from('meta_indexes', f'index_name = {index_name}')
-
+            self.diagrafi_apo('meta_indexes', f'index_name = {index_name}')
             if os.path.isfile(f'{self.savedir}/indexes/meta_{index_name}_index.pkl'):
                 os.remove(f'{self.savedir}/indexes/meta_{index_name}_index.pkl')
             else:
-                warnings.warn(f'"{self.savedir}/indexes/meta_{index_name}_index.pkl" not found.')
-
-            self.save_database()
-        
+                warnings.warn(f'"{self.savedir}/indexes/meta_{index_name}_index.pkl" den vrethike.')
+            self.sosimo_vasis()
+            print('Entaxei, to diegrapsa.')
+        else:
+            raise Exception('Den yparxei eurethrio me auto to onoma.')   
