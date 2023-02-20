@@ -23,7 +23,7 @@ class Inlj:
 
     def join(self):
         # Get the column of the left and right tables and the operator, from the condition of the join
-        column_name_left, operator, column_name_right = Table()._parse_condition(self.condition, join=True)
+        column_name_left, column_name_right, operator, column_name_right,isnot = Table()._parse_condition(self.condition, join=True)
         
         reversed = False
         # If we have the index of the left table, reverse the order of the tables
@@ -73,7 +73,7 @@ class Smj:
 
     def join(self):
         # Get the column of the left and right tables and the operator, from the condition of the join
-        column_name_left, operator, column_name_right = Table()._parse_condition(self.condition, join=True)
+        column_name_left,column_name_right, operator, column_name_right,isnot = Table()._parse_condition(self.condition, join=True)
         column_index_left = self.left_table.column_names.index(column_name_left)
         column_index_right = self.right_table.column_names.index(column_name_right)
 

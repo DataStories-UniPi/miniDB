@@ -510,10 +510,10 @@ class Database:
 
         try:
             pid = self.tables['meta_locks']._select_where('pid',f'table_name={table_name}').data[0][0]
-            if pid!=os.getpid():
-                raise Exception(f'Table "{table_name}" is locked by process with pid={pid}')
-            else:
-                return False
+            #if pid!=os.getpid():
+                #raise Exception(f'Table "{table_name}" is locked by process with pid={pid}')
+            #else:
+                #return False
 
         except IndexError:
             pass
@@ -540,8 +540,8 @@ class Database:
             try:
                 # pid = self.select('*','meta_locks',  f'table_name={table_name}', return_object=True).data[0][1]
                 pid = self.tables['meta_locks']._select_where('pid',f'table_name={table_name}').data[0][0]
-                if pid!=os.getpid():
-                    raise Exception(f'Table "{table_name}" is locked by the process with pid={pid}')
+                #if pid!=os.getpid():
+                 #   raise Exception(f'Table "{table_name}" is locked by the process with pid={pid}')
             except IndexError:
                 pass
         self.tables['meta_locks']._delete_where(f'table_name={table_name}')
@@ -634,7 +634,7 @@ class Database:
         Args:
             table_name: string. Table name (must be part of database).
         '''
-        return self.tables['meta_insert_stack']._select_where('*', f'table_name={table_name}').column_by_name('indexes')[0]
+        return self.tables['meta_insert_stack']._select_where('*', f'table_name={table_name}').column_by_name('indexes')[0 ]
         # res = self.select('meta_insert_stack', '*', f'table_name={table_name}', return_object=True).indexes[0]
         # return res
 

@@ -9,13 +9,15 @@ class Node:
     def __init__(self, b, values=None, ptrs=None,left_sibling=None, right_sibling=None, parent=None, is_leaf=False):
         self.b = b # branching factor
         self.values = [] if values is None else values # Values (the data from the pk column)
+        self.keys = [] 
+        self.children = []
         self.ptrs = [] if ptrs is None else ptrs # ptrs (the indexes of each datapoint or the index of another bucket)
         self.left_sibling = left_sibling # the index of a buckets left sibling
         self.right_sibling = right_sibling # the index of a buckets right sibling
         self.parent = parent # the index of a buckets parent
         self.is_leaf = is_leaf # a boolean value signaling whether the node is a leaf or not
 
-
+    
     def find(self, value, return_ops=False):
         '''
         Returns the index of the next node to search for a value if the node is not a leaf (a ptrs of the available ones).
@@ -57,6 +59,7 @@ class Node:
             ptr: float. The ptr of the inserted value (e.g. its index).
             ptr1: float. The 2nd ptr (e.g. in case the user wants to insert into a nonleaf node).
         '''
+        
         # for each value in the node, if the user supplied value is smaller, insert the value and its ptr into that position
         # if a second ptr is provided, insert it right next to the 1st ptr
         # else (no value in the node is larger) append value and ptr/s to the back of the list.
@@ -68,7 +71,7 @@ class Node:
                 self.ptrs.insert(index+1, ptr)
 
                 if ptr1:
-                    self.ptrs.insert(index+1, ptr1)
+                    self.ptrs.insert(index+2, ptr1)
                 return
         self.values.append(value)
         self.ptrs.append(ptr)
@@ -239,7 +242,7 @@ class Btree:
             self.nodes[ptr].show()
             print('----')
 
-
+#test
     def plot(self):
         ## arrange the nodes top to bottom left to right
         nds = []
@@ -346,3 +349,61 @@ class Btree:
         # print the number of operations (usefull for benchamrking)
         # print(f'With BTree -> {ops} comparison operations')
         return results
+    
+class Row:
+    def __init__(self, table, values):
+        self.table = table
+        self.values = values
+   
+class Table:
+    def __init__(self, name, columns):
+        self.name = name
+        self.columns = columns
+        self.rows = []
+        self.primary_key_index = None
+        self.unique_indexes = {}
+
+    def insert(self, values):
+        if len(values) != len(self.columns):
+            raise ValueError("the number of values is not the same as columns number")
+        row = Row(self, values)
+        for column in self.columns:
+            if column.is_primary_key:
+                if self.primary_key_index is None:
+                   self.primary_key_index = Btree(column)
+                   self.primary_key_index.insert(row)
+            elif column.is_unique:
+                if column.name not in self.unique_indexes:
+                    self.unique_indexes[column.name] = Btree(column)
+                    self.unique_indexes[column.name].insert(row)
+                    self.rows.append(row)
+
+    def select(self, column_names=None, where=None):
+        if where is None:
+            rows = self.rows
+        else:
+            rows = []
+            for row in self.rows:
+                if where.matches(row):
+                    rows.append(row)
+        if column_names is None:
+            return [row.values for row in rows]
+        else:
+            indices = [self.get_index(column_name) for column_name in column_names]
+            result = []
+            for row in rows:
+                result.append([row.values[index] for index in indices])
+            return result
+
+    def get_index(self, column_name):
+        if column_name in [column.name for column in self.columns]:
+            for column in self.columns:
+                if column.name == column_name:
+                    if column.is_primary_key:
+                        return self.primary_key_index
+                    elif column.is_unique:
+                        return self.unique_indexes[column.name]
+                    else:
+                        return None
+        else:
+            raise ValueError(f"this column {column_name} does not exist in this table {self.name}")
