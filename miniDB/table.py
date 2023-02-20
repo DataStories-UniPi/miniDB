@@ -239,22 +239,37 @@ class Table:
         # if not, return the rows with values where condition is met for value
         if condition is not None:
             rows = []
-            if "between" in condition.split():
+            # if condition contains string "between"
+            if "between" in condition.split() :
                 splt = condition.split()
-                column_name = splt[0]
-                min_value = splt[2]
-                max_value = splt[4]
+                column_name = splt[0]       # saving column name given by user
+                min_value = splt[2]         # saving number before the word 'and' in the condition
+                max_value = splt[4]         # saving number after the word 'and' in the condition
                 column = self.column_by_name(column_name)
-                for i, j in enumerate(column):
-                    if int(min_value) <= int(j) <= int(max_value):
-                        rows.append(i)
+                if min_value.isdigit() and max_value.isdigit():     # checking if given values are numbers
+                    if all([isinstance(x,int) for x in column]):    # checking if column contains integers
+                        for i, j in enumerate(column):
+                            if int(min_value) <= int(j) <= int(max_value):  # checking if each column value is between minimum and maximum values
+                                rows.append(i)      # appending number of row to list rows
+
+                    else:
+                        raise Exception("Column does not contain integers")
+                else:
+                    raise Exception("You must enter integers. For example: between 1 and 10")
+
             elif "not" in condition.split():
                 splt = condition.split("not")
                 cond = splt[1]
                 column_name, operator, value = self._parse_condition(cond)
                 column = self.column_by_name(column_name)
                 reversed_operator = reverse_op(operator)
-                rows = [ind for ind, x in enumerate(column) if get_op(reversed_operator, x, value)]
+                if reversed_operator=='=':
+                    for i,j in enumerate(column):
+                        if j!=value:
+                            rows.append(i)
+
+                else:
+                    rows = [ind for ind, x in enumerate(column) if get_op(reversed_operator, x, value)]
 
             elif "and" in condition.split():
                 splt= condition.split("and")

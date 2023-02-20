@@ -23,13 +23,7 @@ def split_condition(condition):
            '>': operator.gt,
            '<': operator.lt}
 
-    #splt = condition.split(' ')
-    #[x.lower() for x in splt]
-    #if "between" in splt:
-     #   between_exists = True
-      #  col, min, max = splt[0], splt[2], splt[4]
-       # return col, min, max, between_exists
-    #else:
+
     for op_key in ops.keys():
             splt1=condition.split(op_key)
             if len(splt1) > 1:

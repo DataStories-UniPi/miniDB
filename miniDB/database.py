@@ -338,7 +338,7 @@ class Database:
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
 
-    def select(self, columns, table_name, condition, distinct=None, order_by=None, \
+    def select(self, columns, table_name, condition, distinct=None, order_by=None,
                limit=True, desc=None, save_as=None, return_object=True):
         '''
         Selects and outputs a table's data where condtion is met.
@@ -365,12 +365,11 @@ class Database:
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
         if condition is not None:
-
-            if "between" in condition.split():
+            if "not" in condition.split() or "NOT" in condition.split():
                 condition_column=condition.split(" ")[0]
-            elif "not" in condition.split():
+            elif "and" in condition.split() or "AND" in condition.split():
                 condition_column=condition.split(" ")[0]
-            elif "and" in condition.split():
+            elif "or" in condition.split() or "OR" in condition.split():
                 condition_column=condition.split(" ")[0]
             else:
                 condition_column = split_condition(condition)[0]
