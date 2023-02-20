@@ -2,13 +2,14 @@ import os
 import re
 from pprint import pprint
 import sys
-import readline
+# import readline
+from pyreadline3 import Readline
 import traceback
 import shutil
 sys.path.append('miniDB')
 
-from database import Database
-from table import Table
+from miniDB.database import Database
+from miniDB.table import Table
 # art font is "big"
 art = '''
              _         _  _____   ____  
@@ -120,6 +121,17 @@ def create_query_plan(query, keywords, action):
             dic['force'] = True
         else:
             dic['force'] = False
+    #Elegxos ean dothei to create index sto command line
+    #Afairoume tis parentheseis me thn sunarthsh strip()
+    #Dhmiourgia tou neou dictionary
+    if action=='create index':
+        split_con=dic[kw_in_query[1]].strip('()').split()
+        dic.update({
+            'create index': dic[kw_in_query[0]],
+            'on': split_con[0],
+            'column': split_con[1],
+            'using': dic[kw_in_query[2]]
+        })
 
     return dic
 
@@ -164,6 +176,7 @@ def interpret(query):
     '''
     Interpret the query.
     '''
+    #Dhlwsh kai ths sthlhs column sto key word create index
     kw_per_action = {'create table': ['create table'],
                      'drop table': ['drop table'],
                      'cast': ['cast', 'from', 'to'],
@@ -175,7 +188,7 @@ def interpret(query):
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
-                     'create index': ['create index', 'on', 'using'],
+                     'create index': ['create index', 'on', 'column', 'using'],
                      'drop index': ['drop index'],
                      'create view' : ['create view', 'as']
                      }

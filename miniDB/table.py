@@ -6,7 +6,7 @@ import sys
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
-from misc import get_op, split_condition
+from misc import get_op, split_condition, reverse_op
 
 
 class Table:
@@ -224,6 +224,7 @@ class Table:
             limit: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
 
+
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
@@ -233,9 +234,92 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            #Ektelesh between h BETWEEN
+            #Apomonwsh twn 2 timwn kai epistrofh olwn twn stoixeiwn pou vriskontai metaksu twn 2 timwn
+            if "BETWEEN" in condition.split() or "between" in condition.split():
+                strings = condition.split()
+                print("Strings:")
+                print(strings)
+                column_name = strings[0]
+                prwth_timh = strings[2]
+                deuterh_timh = strings[4]
+                column = self.column_by_name(column_name)
+                rows = []      
+                for i,j in enumerate(column):
+                    if j >= int(prwth_timh) and j <= int(deuterh_timh):
+                        rows.append(i)
+            #Ektelesh or h OR
+            #Apomonwsh twn strings apo to comand line
+            #Epistofh twn rows1 kai rowsw me vash ta column_name, operator kai value apo ta 2 diaforetika strings
+            #Dhmiourgia enwmenou pinaka rows3 kai dhmiourgia telikou pinaka row gia akrupwsh twn katallhlwn stoixeiwn
+            elif "OR" in condition.split() or "or" in condition.split():
+                strings = condition.split("OR")
+                strings = condition.split("or")
+                print(strings)
+
+                column_name, operator, value = self._parse_condition(strings[0])
+                column = self.column_by_name(column_name)
+                rows1 = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+                column_name, operator, value = self._parse_condition(strings[1])
+                column = self.column_by_name(column_name)
+                rows2 = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+                rows3 = [rows1,rows2]
+                rows = []
+                for i in rows3:
+                    for j in i:
+                        if not (j in rows):
+                            rows.append(j)
+            #Ektelesh AND h and
+            #Apomonwsh twn strings apo to comand line
+            #Epistofh twn rows1 kai rowsw me vash ta column_name, operator kai value apo ta 2 diaforetika strings
+            #Dhmiourgia enwmenou pinaka rows3 kai dhmiourgia telikou pinaka row me bash to intersection me ton pinaka rows3 gia akrupwsh twn katallhlwn stoixeiwn
+            elif "AND" in condition.split() or "and" in condition.split():
+                strings = condition.split("AND")
+                strings = condition.split("and")
+                print(strings)
+
+                column_name, operator, value = self._parse_condition(strings[0])
+                column = self.column_by_name(column_name)
+                rows1 = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+                column_name, operator, value = self._parse_condition(strings[1])
+                column = self.column_by_name(column_name)
+                rows2 = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+                rows3 = [rows1,rows2]
+                rows = set(rows3[0]).intersection(*rows3)
+                print(rows)
+            #Ektelesh NOT, not
+            #Apomonwsh twn strings apo to command line
+            #epistrofh tou pinaka rows me vash ton reverse operator
+            #Eidikos elegxos an o operator einai =
+            elif "NOT" in condition.split() or "not" in condition.split():
+                strings = condition.split("NOT")
+                strings = condition.split("not")
+                column_name, operator, value = self._parse_condition(strings[1])
+                column = self.column_by_name(column_name)
+                operatorNOT = reverse_op(operator)
+                rows = [ind for ind, x in enumerate(column) if get_op(operatorNOT, x, value)]
+
+                if operator == "=":
+                    operatorNOT1 = "<"
+                    operatorNOT2 = ">"
+                
+                    rows1 = [ind for ind, x in enumerate(column) if get_op(operatorNOT1, x, value)]
+                    rows2 = [ind for ind, x in enumerate(column) if get_op(operatorNOT2, x, value)]
+                    rows3 = [rows1,rows2]
+                    rows = []
+                    for i in rows3:
+                        for j in i:
+                            if not (j in rows):
+                                rows.append(j)
+
+            else:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]    
+
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -324,6 +408,57 @@ class Table:
 
         return s_table
 
+    #Dhmiourgia synarthshs select_where_with_hash
+    #epistrogh twn katallhlwn seirwn
+    '''
+        oi επιστρεφόμενες σειρές φιλτράρονται με βάση τη συνθήκη και το αποτέλεσμα μπορεί προαιρετικά na ταξινομηθεί κατά μια καθορισμένη στήλη, na περιοριστεί σε έναν ορισμένο αριθμό σειρών ή na γίνει διακριτό.
+    '''
+    def _select_where_with_hash(self, return_columns, hashT, condition, distinct=False, order_by=None, desc=True, limit=None):
+        if return_columns == '*':
+            return_cols = range(len(self.column_names))
+        else:
+            return_cols = [self.column_names.index(colname) for colname in return_columns]
+
+        pk_col_name = self.column_names[self.pk_idx]
+        where_col_name, operator, value = self._parse_condition(condition)
+
+        if where_col_name != pk_col_name:
+            print(f'Error: {where_col_name} is not the primary key column name.')
+            return None
+
+        rows = []
+        #elegxos operators >,< h xrhsimopoieite enas hash index gia thn euresh twn seirwn pou ikanopoioyn thn synthikh
+        if operator in ('<', '>'):
+            where_col = self.column_by_name(where_col_name)
+            for i, val in enumerate(where_col):
+                if get_op(operator, val, value):
+                    rows.append(i)
+        else:
+            hash_sum = sum(ord(c) for c in value)
+            hash_index = hash_sum % int(hashT[0][0][0])
+            for i, row in hashT[hash_index].items():
+                if row[1] == value and row[0] != hashT[0][0][0]:
+                    rows.append(row[0])
+
+        if distinct:
+            rows = list(set(rows))
+
+        if order_by is not None:
+            s_table = self.select(return_columns, order_by=order_by, desc=desc)
+            s_table.data = [s_table.data[i] for i in rows]
+        else:
+            s_table = Table()
+            s_table.column_names = [self.column_names[i] for i in return_cols]
+            s_table.column_types = [self.column_types[i] for i in return_cols]
+            s_table.data = [[self.data[i][j] for j in return_cols] for i in rows]
+
+        if limit is not None:
+            limit = int(limit)
+            s_table.data = s_table.data[:limit]
+
+        return s_table
+
+
     def order_by(self, column_name, desc=True):
         '''
         Order table based on column.
@@ -333,6 +468,7 @@ class Table:
             desc: boolean. If True, order_by will return results in descending order (False by default).
         '''
         column = [val if val is not None else 0 for val in self.column_by_name(column_name)]
+        column = self.column_by_name(column_name)
         idx = sorted(range(len(column)), key=lambda k: column[k], reverse=desc)
         # print(idx)
         self.data = [self.data[i] for i in idx]

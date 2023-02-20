@@ -54,7 +54,7 @@ class Database:
         self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
-        self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
+        self.create_table('meta_indexes', 'table_name, index_name, column_name', 'str, str, str')
         self.save_database()
 
     def save_database(self):
@@ -352,15 +352,26 @@ class Database:
             distinct: boolean. If True, the resulting table will contain only unique rows.
         '''
 
+
         # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
+        #Εκτέλεση ελέγχου εάν στο condition υπάρχουν οι λέξεις BETWEEN, between, NOT, not, AND, and, OR, or
+        #Εφόσον υπάρχουν με τη βοήθεια της split εισάγονται στο condition_column
         if condition is not None:
-            condition_column = split_condition(condition)[0]
+            #condition_column = split_condition(condition)[0]
+            if "BETWEEN" in condition.split() or "between" in condition.split():
+                condition_column = condition.split(' ')[0]
+            elif "NOT" in condition.split() or "not" in condition.split():
+                condition_column = condition.split(' ')[0]
+            elif "AND" in condition.split() or "and" in condition.split() or "OR" in condition.split() or "or" in condition.split():
+                condition_column = condition.split(' ')[0]
+            else: condition_column = split_condition(condition)[0]
         else:
             condition_column = ''
+
 
         
         # self.lock_table(table_name, mode='x')
@@ -369,7 +380,11 @@ class Database:
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+            #Ean to BTREE apotyxei tote to programma tha treksei HASH me mia nea synarthsh select_where_with_hash
+            try:
+                table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+            except:
+                table = self.tables[table_name]._select_where_with_hash(columns, bt, condition, distinct, order_by, desc, limit)
         else:
             table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
         # self.unlock_table(table_name)
@@ -650,7 +665,7 @@ class Database:
 
 
     # indexes
-    def create_index(self, index_name, table_name, index_type='btree'):
+    def create_index(self, index_name, table_name, column_name, index_type):
         '''
         Creates an index on a specified table with a given name.
         Important: An index can only be created on a primary key (the user does not specify the column).
@@ -659,21 +674,36 @@ class Database:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
         '''
-        if self.tables[table_name].pk_idx is None: # if no primary key, no index
-            raise Exception('Cannot create index. Table has no primary key.')
+        if table_name not in self.tables:
+            print("O pinakas den yparxei")
+            exit
+        
+        if column_name not in self.tables[table_name].column_names:
+            print("h sthlh den yparxei")
+            exit
+
+        #if self.tables[table_name].pk_idx is None: # if no primary key, no index
+            #raise Exception('Cannot create index. Table has no primary key.')
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
-            # currently only btree is supported. This can be changed by adding another if.
-            if index_type=='btree':
-                logging.info('Creating Btree index.')
-                # insert a record with the name of the index and the table on which it's created to the meta_indexes table
-                self.tables['meta_indexes']._insert([table_name, index_name])
-                # crate the actual index
-                self._construct_index(table_name, index_name)
+            #Elegxos an o index_type einai BTREE
+            #Eisagwgh tou table_name, index_name, column_name ston pinaka meta_indexes
+            #Dhmiourgia tou index me vash ta table_name, index_name, column_name
+            if index_type == "BTREE":
+                self.tables['meta_indexes']._insert([table_name, index_name, column_name])
+                self._construct_index(table_name, index_name, column_name)
+                self.save_database()
+            #Elegxos an o index_type einai Hash
+            #Eisagwgh tou table_name, index_name, column_name ston pinaka meta_indexes
+            #Dhmiourgia tou index me vash ta table_name, index_name, column_name   
+            elif index_type == 'HASH':
+                self.tables['meta_indexes']._insert([table_name, index_name, column_name])
+                self._construct_index_hash(table_name, index_name, column_name)
                 self.save_database()
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
-    def _construct_index(self, table_name, index_name):
+    #Eisagwgh enos akoma orismatos tou column_name
+    def _construct_index(self, table_name, index_name, column_name):
         '''
         Construct a btree on a table and save.
 
@@ -684,12 +714,29 @@ class Database:
         bt = Btree(3) # 3 is arbitrary
 
         # for each record in the primary key of the table, insert its value and index to the btree
-        for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
+        for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
             if key is None:
                 continue
             bt.insert(key, idx)
         # save the btree
         self._save_index(index_name, bt)
+        return
+    #O κώδικας κατασκευάζει ένα $index hash$ για μια δεδομένη στήλη ενός πίνακα στη βάση δεδομένων.
+    def _construct_index_hash(self, table_name, index_name, column_name):
+        table = self.tables[table_name]
+        length = len(table.data)
+        index = {}
+    
+        for i, value in enumerate(table.column_by_name(column_name)):
+            hash_val = sum(ord(char) for char in value)
+            idx = hash_val % length
+            if idx not in index:
+                index[idx] = {}
+            if i not in index[idx]:
+                index[idx][i] = []
+            index[idx][i].append(value)
+        
+        self._save_index(index_name, index)
 
 
     def _has_index(self, table_name):
