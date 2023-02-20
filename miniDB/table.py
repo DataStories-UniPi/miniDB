@@ -29,21 +29,16 @@ class Table:
     def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, unique=None, load=None):
 
         if load is not None:
-            print("******Updating table.")
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
             if isinstance(load, dict):
-                print("__init --> load: ",load)
-                print("__init --> dict: ",dict)
                 self.__dict__.update(load)
-                print("__init --> updated __dict__: ",self.__dict__)
-                # self._update()
+                self._update()
             # if load is str, load from a file
             elif isinstance(load, str):
                 self._load_from_file(load)
 
         # if name, columns_names and column types are not none
         elif (name is not None) and (column_names is not None) and (column_types is not None):
-            print("__init__ --> __dict__ : ",self.__dict__)
             self._name = name
 
             if len(column_names)!=len(column_types):
@@ -70,6 +65,14 @@ class Table:
             print("PK: ",primary_key)
             print("Unique: ",unique)
 
+            # if primary key is set, keep its index as an attribute
+            if primary_key is not None:
+                self.pk_idx = self.column_names.index(primary_key)
+            else:
+                self.pk_idx = None
+
+            self.pk = primary_key
+            # self._update()
             self.unique_columns = []    ## ---> A list of unique column indexes
             self.unique_column_names = [unique]   ## ---> A list of unique column names
 
@@ -84,30 +87,6 @@ class Table:
             # setattr(self,unique_columns,self.unique_columns)
             # setattr(self,unique_column_names,self.unique_column_names)
             
-            print("INit table - unique_columns: ",self.unique_columns)
-            print("Init table - unique names: ",self.unique_column_names)
-            
-            # if unique column is set keep its index as an attribute
-            # for type_idx,col_type in enumerate(self.column_types):
-            #     print("type_idx,col_type:",type_idx,col_type)
-            #     if 'unique' in col_type:
-            #         print("Table Init. Found unique kw")
-            #         self.unique_idx = type_idx
-            #         self.unique_columns.append(type_idx)
-            #         self.unique_column_names.append(self.column_names[type_idx])
-            #     else:
-            #         # Operate as a flag
-            #         self.unique_idx = None
-
-            # if primary key is set, keep its index as an attribute
-            if primary_key is not None:
-                self.pk_idx = self.column_names.index(primary_key)
-            else:
-                self.pk_idx = None
-
-            self.pk = primary_key
-            # self._update()
-            
 
     # if any of the name, columns_names and column types are none. return an empty table object
 
@@ -119,12 +98,10 @@ class Table:
         '''
         Update all the available columns with the appended rows.
         '''
-        print("******Updating table.")
         self.columns = [[row[i] for row in self.data] for i in range(len(self.column_names))]
         for ind, col in enumerate(self.column_names):
             setattr(self, col, self.columns[ind])
-        print("Update",self.unique_columns)
-
+        
     def _cast_column(self, column_name, cast_type):
         '''
         Cast all values of a column using a specified type.
@@ -172,8 +149,7 @@ class Table:
                 raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
 
             #if value is to be appended to a unique column, check that it doesnt already exist
-            print("Insert: ",self,row,insert_stack)
-            print(self.pk)
+            
             if self.unique_columns is not None: 
                 if i in self.unique_columns: 
                     for unique in self.unique_columns:
@@ -719,7 +695,7 @@ class Table:
             # table has a primary key, add PK next to the appropriate column
             headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
         
-        if self.unique_idx is not None:
+        if self.unique_columns is not None:
             #table has unique columns
             for unique in self.unique_columns:
                 headers[unique] = headers[unique]+' #Unique#'

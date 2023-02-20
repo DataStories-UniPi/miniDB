@@ -86,7 +86,7 @@ class Database:
                 continue
             f = open(path+'/'+file, 'rb')
             tmp_dict = pickle.load(f)
-            print("Load - tmp_dict: ",tmp_dic)
+            # print("Load - tmp_dict: ",tmp_dict)
             f.close()
             name = f'{file.split(".")[0]}'
             self.tables.update({name: tmp_dict})
@@ -111,6 +111,7 @@ class Database:
             column_names: list. Names of columns.
             column_types: list. Types of columns.
             primary_key: string. The primary key (if it exists).
+            unique: string
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
         # print('here -> ', column_names.split(','))
@@ -119,6 +120,7 @@ class Database:
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
         self._update()
+        
         self.save_database()
         # (self.tables[name])
         if self.verbose:
