@@ -871,7 +871,6 @@ class Database:
             if key is None:
                 continue
             h.insert(key, idx)
-            print("\n")
         self._save_index(index_name,h) 
        
 
