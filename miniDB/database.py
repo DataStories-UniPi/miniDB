@@ -358,7 +358,8 @@ class Database:
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
-        
+        #Εκτέλεση ελέγχου εάν στο condition υπάρχουν οι λέξεις BETWEEN, between, NOT, not, AND, and, OR, or
+        #Εφόσον υπάρχουν με τη βοήθεια της split εισάγονται στο condition_column
         if condition is not None:
             #condition_column = split_condition(condition)[0]
             if "BETWEEN" in condition.split() or "between" in condition.split():
@@ -379,6 +380,7 @@ class Database:
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
+            #Ean to BTREE apotyxei tote to programma tha treksei HASH me mia nea synarthsh select_where_with_hash
             try:
                 table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
             except:
@@ -672,13 +674,27 @@ class Database:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
         '''
-        if self.tables[table_name].pk_idx is None: # if no primary key, no index
-            raise Exception('Cannot create index. Table has no primary key.')
+        if table_name not in self.tables:
+            print("O pinakas den yparxei")
+            exit
+        
+        if column_name not in self.tables[table_name].column_names:
+            print("h sthlh den yparxei")
+            exit
+
+        #if self.tables[table_name].pk_idx is None: # if no primary key, no index
+            #raise Exception('Cannot create index. Table has no primary key.')
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
-            if index_type == 'BTREE':
+            #Elegxos an o index_type einai BTREE
+            #Eisagwgh tou table_name, index_name, column_name ston pinaka meta_indexes
+            #Dhmiourgia tou index me vash ta table_name, index_name, column_name
+            if index_type == "BTREE":
                 self.tables['meta_indexes']._insert([table_name, index_name, column_name])
                 self._construct_index(table_name, index_name, column_name)
                 self.save_database()
+            #Elegxos an o index_type einai Hash
+            #Eisagwgh tou table_name, index_name, column_name ston pinaka meta_indexes
+            #Dhmiourgia tou index me vash ta table_name, index_name, column_name   
             elif index_type == 'HASH':
                 self.tables['meta_indexes']._insert([table_name, index_name, column_name])
                 self._construct_index_hash(table_name, index_name, column_name)
@@ -686,6 +702,7 @@ class Database:
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
+    #Eisagwgh enos akoma orismatos tou column_name
     def _construct_index(self, table_name, index_name, column_name):
         '''
         Construct a btree on a table and save.
@@ -704,31 +721,23 @@ class Database:
         # save the btree
         self._save_index(index_name, bt)
         return
-
+    #O κώδικας κατασκευάζει ένα $index hash$ για μια δεδομένη στήλη ενός πίνακα στη βάση δεδομένων.
     def _construct_index_hash(self, table_name, index_name, column_name):
-        length = len(self.tables[table_name].data)
-        list = {}
-        list[0][0] = [str(length)]
-        sum = 0
-        for i, j in enumerate(self.tables[table_name].column_by_name(column_name)):
-            for l in j:
-                sum += ord(l)
+        table = self.tables[table_name]
+        length = len(table.data)
+        index = {}
+    
+        for i, value in enumerate(table.column_by_name(column_name)):
+            hash_val = sum(ord(char) for char in value)
+            idx = hash_val % length
+            if idx not in index:
+                index[idx] = {}
+            if i not in index[idx]:
+                index[idx][i] = []
+            index[idx][i].append(value)
         
-            print(sum)
+        self._save_index(index_name, index)
 
-            index = sum % length
-
-            index1 = index
-            
-            while 1:
-                if (index1 == length):
-                    index1 = 0
-                else:
-                    index1 += 1
-
-        list[index][index1] = [i, j]
-
-        self._save_index(index_name, list)
 
     def _has_index(self, table_name):
         '''
