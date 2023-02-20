@@ -6,9 +6,12 @@ import readline
 import traceback
 import shutil
 sys.path.append('miniDB')
+import random
+import copy
 
 from database import Database
 from table import Table
+from misc import split_condition
 # art font is "big"
 art = '''
              _         _  _____   ____  
@@ -101,10 +104,18 @@ def create_query_plan(query, keywords, action):
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
         if 'primary key' in args:
-            arglist = args[1:-1].split(' ')
-            dic['primary key'] = arglist[arglist.index('primary')-2]
+            arglist2 = args[1:-1].split(' ')
+            dic['primary key'] = arglist2[arglist2.index('primary')-2]
         else:
-            dic['primary key'] = None
+            dic['primary key'] = None        
+        list_of_uniques = []        
+        for val in arglist:
+            if len(val) > 2:
+                if val[2] == "unique":
+                    list_of_uniques.append(val[0])
+                    dic['unique'] = ','.join(list_of_uniques)
+                else:
+                    dic['unique'] = None
     
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
@@ -194,12 +205,12 @@ def interpret(query):
 def execute_dic(dic):
     '''
     Execute the given dictionary
-    '''
+    '''    
     for key in dic.keys():
         if isinstance(dic[key],dict):
             dic[key] = execute_dic(dic[key])
     
-    action = list(dic.keys())[0].replace(' ','_')
+    action = list(dic.keys())[0].replace(' ','_')    
     return getattr(db, action)(*dic.values())
 
 def interpret_meta(command):
@@ -245,6 +256,125 @@ def interpret_meta(command):
 
     commands_dict[action](db_name)
 
+def genbetterdic(baddic,i):
+    #No4        
+    key = list(baddic.keys())    
+    if key[0]=="select":    
+        if (i==0 and (type(baddic['from'])==dict) and list(baddic['from'].keys())[0]=='join'):
+            left=baddic['from']['left']
+            right=baddic['from']['right']
+            baddic['from']['right']=left
+            baddic['from']['left']=right        
+            return baddic
+
+        #No3b
+        if(i==1 and (type(baddic['from'])==dict) and list(baddic['from'].keys())[3]=='on' and baddic['where'] != None):
+            str1=baddic['from']['on']
+            str2=baddic['where']
+            str2 = str2.split(".")
+            if len(str2)>1:
+                        str2 = str2[1]                
+            baddic['where']=None
+            baddic['from']['on']=str1+' and '+str2
+            return baddic
+        #No1
+        if(i==2 and (type(baddic['from'])==dict) and list(baddic['from'].keys())[0]=='select' and baddic['from']['where'] != None):
+            s=baddic['from']['where']
+            b=baddic['from']['from']
+            baddic['from']=b
+            a=baddic['where']
+            baddic['where']=a+" and "+s
+            return baddic
+
+        #No6 Olokliro + den exei olokliro8i        
+        if(i==3 and (type(baddic['from'])==dict) and list(baddic['from'].keys())[0]=='join' and baddic['where'] != None and type(baddic['from']['left']) !=dict and type(baddic['from']['right']) !=dict) :
+            column, operator, value=_parse_condition2(baddic['where'])
+            if (isinstance(column, list)):
+                for j in range(len(column)):  
+                    col = column[j].split(".")                
+                    if len(col)>1:
+                        col = col[1]                
+                    if col in db.tables[baddic['from']['left']].column_names:
+                        s={'select': '*',
+                        'from': baddic['from']['left'],
+                            'where': col+' '+operator[j]+' '+value[j],
+                            'order by': None,
+                            'limit': None,
+                        'desc': None}
+                        baddic['from']['left']=s
+                    else:
+                        s={'select': '*',
+                            'from': baddic['from']['right'],
+                            'where': col+' '+operator[j]+' '+value[j],
+                            'order by': None,
+                            'limit': None,
+                            'desc': None}
+                        baddic['from']['right']=s
+                baddic['where']=None
+
+            else:
+                col = column.split(".")            
+                if len(col)>1:
+                    col = col[1]                
+                if col in db.tables[baddic['from']['left']].column_names:
+                    s={'select': '*',
+                        'from': baddic['from']['left'],
+                        'where': col+' '+operator+' '+value,
+                        'order by': None,
+                        'limit': None,
+                        'desc': None}
+                    baddic['from']['left']=s
+                else:                    
+                    s={'select': '*',
+                        'from': baddic['from']['right'],
+                        'where': col+' '+operator+' '+value,
+                        'order by': None,
+                        'limit': None,
+                        'desc': None}
+                    baddic['from']['right']=s
+                    baddic['where']=None
+            return baddic
+    return None
+
+def _parse_condition2(condition):
+        '''
+        Parse the single string condition and return the value of the column and the operator.
+
+        Args:
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+                
+                Operatores supported: (<,<=,==,>=,>)
+            join: boolean. Whether to join or not (False by default).
+        '''
+        # if both_columns (used by the join function) return the names of the names of the columns (left first)
+              
+        # cast the value with the specified column's type and return the column name, the operator and the casted value
+        left, op, right = split_condition(condition)                                             
+        return left, op, right
+
+def check_lists(lists,dic):    
+    for l in lists:
+        if l == dic:
+            return False        
+    return True
+
+
+def genMultipleQueries(dic):
+    listOfDicts=[]
+    listOfDicts.append(dic)
+    count=0
+    while len(listOfDicts)!=count:
+        tmp=count
+        count=len(listOfDicts)        
+        for l in range(tmp,len(listOfDicts)):  
+            for i in range(4):
+                d = copy.deepcopy(listOfDicts[l])                
+                temp=genbetterdic(d,i)                
+                if(temp!=None and check_lists(listOfDicts,temp)) :
+                    listOfDicts.append(temp)            
+    return listOfDicts
 
 if __name__ == "__main__":
     fname = os.getenv('SQL')
@@ -261,7 +391,7 @@ if __name__ == "__main__":
                 dic = interpret(line.removeprefix('explain '))
                 pprint(dic, sort_dicts=False)
             else :
-                dic = interpret(line.lower())
+                dic = interpret(line.lower())                
                 result = execute_dic(dic)
                 if isinstance(result,Table):
                     result.show()
@@ -291,6 +421,9 @@ if __name__ == "__main__":
                 pprint(dic, sort_dicts=False)
             else:
                 dic = interpret(line)
+                listdics = genMultipleQueries(dic)    
+                print(listdics)            
+                dic = listdics[(random.randrange(len(listdics)))]                
                 result = execute_dic(dic)
                 if isinstance(result,Table):
                     result.show()
