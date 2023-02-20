@@ -428,7 +428,8 @@ if __name__ == "__main__":
     dbname = os.getenv('DB')
 
     db = Database(dbname, load=True)
-
+    #db.print_statistics() # uncomment to print statistics
+    
     if fname is not None:
         for line in open(fname, 'r').read().splitlines():
             if line.startswith('--'): continue
@@ -472,14 +473,12 @@ if __name__ == "__main__":
                 interpret_meta(line)
             elif line.startswith('explain'):
                 dic = interpret(line.removeprefix('explain '))
-                if isinstance(dic['from'],dict):
+                
+                if 'select' in dic.keys() and not (isinstance(dic['from'],str) and dic['from'].startswith('meta')):
                     queries, is_valid = multiple_query_plans(dic)
                     if(is_valid):
                         dic = evaluate_query_plans(db,queries)
-                elif not dic['from'].startswith('meta'):
-                    queries, is_valid = multiple_query_plans(dic)
-                    if(is_valid):
-                        dic = evaluate_query_plans(db,queries)
+                        
                 pprint(dic, sort_dicts=False)
             else:
                 dic = interpret(line)

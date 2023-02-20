@@ -1,5 +1,6 @@
 from __future__ import annotations
 import pickle
+from pprint import pprint
 from time import sleep, localtime, strftime
 import os,sys
 import logging
@@ -742,6 +743,17 @@ class Database:
                 }
         self.stats = stats
         self.save_statistics()
+
+    def print_statistics(self):
+        '''
+        Print statistics for all the tables in the database.
+        '''
+        print()
+        if self.stats == {}:
+            print('No statistics available.')
+            return
+        pprint(self.stats)
+        print()
 
     # indexes
     def create_index(self, index_name, on_clause, index_type='btree'):

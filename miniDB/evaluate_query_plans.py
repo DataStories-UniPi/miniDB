@@ -13,13 +13,6 @@ def evaluate_select_clause(db, subquery):
     This estimate is intended to provide a rough measure of the amount of data that needs to be read from disk and processed in memory in order to complete the query.
     Please note that this is just a heuristic for estimating query costs and may not be accurate in all cases.
 
-    Args:
-    db (database object): The database object containing the table data and statistics.
-    subquery (dict): A dictionary representing the subquery to evaluate.
-
-    Returns:
-    int: The estimated cost of evaluating the SELECT clause.
-
     """
     # A dictionary that contains statistics about tables
     stats = db.stats
