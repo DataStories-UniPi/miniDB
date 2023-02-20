@@ -698,30 +698,31 @@ class Database:
             brackett = table_name.split("(")
             table_name = brackett[0].strip()
             column_name = brackett[1].replace(")", "").strip()
-            table_to_check_all, table_to_check = None, None
+            table_to_check_all = None
 
             if self.tables[table_name].pk is not None:
+                # check if column with pk is equal to column specified
                 if self.tables[table_name].pk == column_name:
                     table_to_check_all = self.tables[table_name].column_by_name(self.tables[table_name].pk)
-                    table_to_check = list(set(self.tables[table_name].column_by_name(self.tables[table_name].pk)))
+
             if self.tables[table_name].unique is not None:
+                # check if unique column with pk is equal to column specified
                 if self.tables[table_name].unique == column_name:
                     table_to_check_all = self.tables[table_name].column_by_name(self.tables[table_name].unique)
-                    table_to_check = list(set(self.tables[table_name].column_by_name(self.tables[table_name].unique)))
+
 
             if table_to_check_all is not None:
-                if len(table_to_check_all) == len(table_to_check):
-                    self.tables['meta_indexes']._insert([table_name, index_name])
+                self.tables['meta_indexes']._insert([table_name, index_name])
 
-                    # for each record in the primary key of the table, insert its value and index to the btree
-                    for idx, key in enumerate(table_to_check):
-                        if key is None:
-                            continue
+                # for each record in the primary key of the table, insert its value and index to the btree
+                for idx, key in enumerate(table_to_check_all):
+                    if key is None:
+                        continue
                         bt.insert(key, idx)
 
-                    # save the btree
-                    print("Btree index", index_name, "created successfully!")
-                    self._save_index(index_name, bt)
+                # save the btree
+                print("Btree index", index_name, "created successfully!")
+                self._save_index(index_name, bt)
             else:
                 raise Exception('Cannot create index. Column is not PK or UNIQUE!')
         else:
