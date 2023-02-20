@@ -7,6 +7,8 @@ class Node:
     Node abstraction. Represents a single bucket
     '''
     def __init__(self, b, values=None, ptrs=None,left_sibling=None, right_sibling=None, parent=None, is_leaf=False):
+       
+       
         self.b = b # branching factor
         self.values = [] if values is None else values # Values (the data from the pk column)
         self.ptrs = [] if ptrs is None else ptrs # ptrs (the indexes of each datapoint or the index of another bucket)
