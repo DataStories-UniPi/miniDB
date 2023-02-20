@@ -48,3 +48,47 @@ def reverse_op(op):
         '<=' : '>=',
         '=' : '='
     }.get(op)
+
+
+    def init(self, column_name, operator, value):
+        self.column_name = column_name
+        self.operator = operator
+        self.value = value
+
+    def invert(self):
+        return Where(self.column_name, "NOT " + self.operator, self.value)
+
+        def init2(self, column_name, operator, value):
+            self.column_name = column_name
+            self.operator = operator
+            self.value = value
+
+        def between(self, value1, value2):
+            return Where(self.column_name, "BETWEEN", (value1, value2))
+
+        def str(self):
+            if self.operator == "BETWEEN":
+                return f"{self.column_name} BETWEEN {self.value[0]} AND {self.value[1]}"
+            else:
+                return f"{self.column_name} {self.operator} {self.value}"
+
+
+        def where_clause(self, where):
+            if not where:
+                return ""
+            elif isinstance(where, Where):
+                return f"WHERE {where}"
+            else:
+                conditions = " AND ".join(str(w) for w in where)
+                return f"WHERE {conditions}"
+
+    
+        def where_clause(self, where):
+            if not where:
+                return ""
+            elif isinstance(where,
+
+
+
+
+
