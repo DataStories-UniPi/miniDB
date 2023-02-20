@@ -239,7 +239,7 @@ class Table:
                     low = splitCondition[2]
                     high = splitCondition[4]
                     name = splitCondition[0]
-                    column = self.column_by_name(column_name)
+                    column = self.column_by_name(name)
                     rows = []
 
                     if(low.isdigit() and high.isdigit()):
