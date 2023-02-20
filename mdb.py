@@ -1,14 +1,10 @@
 import os
-import re
 from pprint import pprint
-import sys
-import readline
 import traceback
 import shutil
-sys.path.append('miniDB')
 
-from database import Database
-from table import Table
+from miniDB.database import Database
+from miniDB.table import Table
 # art font is "big"
 art = '''
              _         _  _____   ____  
@@ -123,6 +119,28 @@ def create_query_plan(query, keywords, action):
 
     return dic
 
+
+def equivalent_queries():
+    equivalence_rules = {'select * from R where t1 and t2': 'select * from (select * from R where t2) as w where t1',
+                         # σ θ1^θ2(R) = σ θ1(σ θ2 (R))
+                         'select * from (select * from R where t2) as w where t1': 'select * from (select * from R where t1) as w where t2', #σ θ1(σ θ2 (R)) =σ θ2(σ θ1 (R))
+                         'select * from R where R.attribute ="value" natural join s': 'select * from R join s on R.key = S.key where R.attribute="value"', # σ θ (RxS) = R ⋈θ S
+                         '': '', # σ θ1 (R ⋈θ2 S) = R ⋈θ1^θ2 S
+                         '': '', # R ⋈θ S = S ⋈θ R
+                         '': '', # (R ⋈ S) ⋈ T = R ⋈ (S ⋈ T)
+                         '': '', # (R ⋈θ1 S) ⋈θ2^θ3 T = R ⋈θ1^θ3 (S ⋈θ2 T)
+                         '': '', # σ θ1 (R ⋈θ S) = σ θ1 (R) ⋈θ S
+                         '': '', # σ θ1^θ2 (R ⋈θ S) = σ θ1 (R) ⋈θ σ θ2 (S)
+                         '': '', # R ⋃ S = S ⋃ R
+                         '': '', # R ⋂ S = S ⋂ R
+                         '': '', # (R ⋃ S) ⋃ T = R ⋃ S ⋃ T
+                         '': '', # (R ⋂ S) ⋂ T = R ⋂ S ⋂ T
+                         '': '', # σ θ (R-S) = σ θ (R) - σ θ (S)
+                         '': '', # σ θ (R-S) = σ θ (R) - S
+                         '': '',  # σ θ (R ⋂ S) = σ θ (R) ⋂ σ θ (S)
+                         '': '',  # σ θ (R ⋂ S) = σ θ (R) ⋂ S
+                         '': '',  # σ θ (R ⋃ S) = σ θ (R) ⋃ σ θ (S)
+                         '': ''}  # σ θ (R ⋃ S) = σ θ (R) ⋃ S
 
 
 def evaluate_from_clause(dic):

@@ -6,7 +6,7 @@ import sys
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
-from misc import get_op, split_condition
+from misc import get_op, split_condition,reverse_op
 
 
 class Table:
@@ -147,7 +147,7 @@ class Table:
             condition: string. A condition using the following format:
                 'column[<,<=,=,>=,>]value' or
                 'value[<,<=,=,>=,>]column'.
-                
+
                 Operatores supported: (<,<=,=,>=,>)
         '''
         # parse the condition
@@ -233,9 +233,14 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
+            # split the condition into parts
+            condition_parts = self._parse_condition(condition)
+            # get the rows that satisfy the condition
+            rows = self._get_rows_satisfying_condition(condition_parts)
+            """
             column_name, operator, value = self._parse_condition(condition)
             column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]"""
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -269,6 +274,24 @@ class Table:
 
         return s_table
 
+    def _get_rows_satisfying_condition(self, condition):
+        # Return the list of rows that satisfy the given condition.
+        rows = set()
+        """logical_operators = {'AND': lamda a,b:a and b,
+                            'OR':,
+                            'NOT':,
+                            'BETWEEN':,
+                            'and':,
+                            'or':,
+                            'not':,
+                            'between':}
+        
+        for op in logical_operators:
+            if op in condition:
+                
+                """
+
+        return list(rows)
 
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
 
@@ -299,6 +322,54 @@ class Table:
 
         # btree find
         rows = bt.find(operator, value)
+
+        try:
+            k = int(limit)
+        except TypeError:
+            k = None
+        # same as simple select from now on
+        rows = rows[:k]
+        # TODO: this needs to be dumbed down
+        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+
+        dict['column_names'] = [self.column_names[i] for i in return_cols]
+        dict['column_types']   = [self.column_types[i] for i in return_cols]
+
+        s_table = Table(load=dict)
+
+        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+
+        if order_by:
+            s_table.order_by(order_by, desc)
+
+        if isinstance(limit,str):
+            s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
+
+        return s_table
+    def _select_where_with_hash(self, return_columns, hsh, condition, distinct=False, order_by=None, desc=True, limit=None):
+
+        # if * return all columns, else find the column indexes for the columns specified
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
+        else:
+            return_cols = [self.column_names.index(colname) for colname in return_columns]
+
+
+        column_name, operator, value = self._parse_condition(condition)
+
+        # here we run the same select twice, sequentially and using the btree.
+        # we then check the results match and compare performance (number of operation)
+        column = self.column_by_name(column_name)
+
+        rows = []
+        operators = ('<', '>', '<=', '>=')
+        if operator in operators:
+            column = self.column_by_name(column_name)
+            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+        #else:
+            # find in hash dictionary
+
+        rows = list(rows)
 
         try:
             k = int(limit)
