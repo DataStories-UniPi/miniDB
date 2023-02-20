@@ -3,17 +3,17 @@ from tabulate import tabulate
 import pickle
 import os
 import sys
-
+import numpy as np
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
-from misc import get_op, split_condition
+from misc import get_op, split_condition, reverse_op
 
 
 class Table:
     '''
     Table object represents a table inside a database
 
-    A Table object can be created either by assigning:
+     :
         - a table name (string)
         - column names (list of strings)
         - column types (list of functions like str/int etc)
@@ -233,9 +233,79 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            '''
+            Ex year > 2000
+            column_name,operator, value = "year", ">" ,200
+            column = actual column instance of table (Table.year)
+            ind => 1, 2, 3..
+            x=> 1890,2010,1900...
+            rows =
+            '''
+            #check if a not statement is present in the condition, if so reverse condition
+            if('not' in condition):
+                print('not is  in condition ',condition)
+                condition = condition[4:]
+                print(condition)
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(reverse_op(operator), x, value)]
+            elif('between' in condition):
+                print('between operator found')
+                column_name, operator, value = split_condition(condition)
+                values= value.split('and')
+                start_value = values[0].strip()
+                end_value = values[1].strip()
+                print('columnt name:', column_name,'operator:',operator,'values:',start_value," ,",end_value )
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if x >= int(start_value) and x <= int(end_value) ]
+            elif('and' in condition):
+
+                print('and is in condition ')
+                conditions = split_condition(condition)
+                rows=[]
+                for con in conditions:
+                    column_name, operator, value = self._parse_condition(con)
+                    print('columnt name:', column_name, 'operator:', operator, 'value: ', value)
+                    column = self.column_by_name(column_name)
+                    rowsTemp=[ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+                    rows.append(rowsTemp)
+                rowsTemp=[]
+                # flatten 2d array to 1d array
+                for i in rows[0]:
+                    for j in rows[1]:
+                        if i==j:
+                            rowsTemp.append(i)
+                print(rowsTemp)
+
+                #remove duplicates
+                res = []
+                [res.append(x) for x in rowsTemp if x not in res]
+                print(res)
+                rows = res
+            elif('or_condition' in condition):
+
+                print('or is in condition ')
+                conditions = split_condition(condition)
+                rows = []
+                for con in conditions:
+                    column_name, operator, value = self._parse_condition(con)
+                    print('columnt name:', column_name, 'operator:', operator, 'value: ', value)
+                    column = self.column_by_name(column_name)
+                    rowsTemp = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+                    rows.append(rowsTemp)
+
+                # flatten 2d array to 1d array
+                rows = [j for sub in rows for j in sub]
+                print(rows)
+                # remove duplicates
+                res = []
+                [res.append(x) for x in rows if x not in res]
+                print(res)
+                rows = res
+            else:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -542,7 +612,7 @@ class Table:
 
     def _parse_condition(self, condition, join=False):
         '''
-        Parse the single string condition and return the value of the column and the operator.
+
 
         Args:
             condition: string. A condition using the following format:
@@ -559,7 +629,7 @@ class Table:
         # cast the value with the specified column's type and return the column name, the operator and the casted value
         left, op, right = split_condition(condition)
         if left not in self.column_names:
-            raise ValueError(f'Condition is not valid (cant find column name)')
+            raise ValueError(f'Condition is not valid (cant find column name) ', left)
         coltype = self.column_types[self.column_names.index(left)]
 
         return left, op, coltype(right)

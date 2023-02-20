@@ -4,7 +4,8 @@ from time import sleep, localtime, strftime
 import os,sys
 import logging
 import warnings
-import readline
+from pyreadline3 import Readline
+readline = Readline()
 from tabulate import tabulate
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
@@ -331,7 +332,7 @@ class Database:
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
 
-    def select(self, columns, table_name, condition, distinct=None, order_by=None, \
+    def select(self, columns, table_name, condition, distinct=None, order_by=None,
                limit=True, desc=None, save_as=None, return_object=True):
         '''
         Selects and outputs a table's data where condtion is met.

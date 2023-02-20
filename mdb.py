@@ -2,13 +2,14 @@ import os
 import re
 from pprint import pprint
 import sys
-import readline
+from pyreadline3 import Readline
+readline = Readline()
 import traceback
 import shutil
 sys.path.append('miniDB')
 
-from database import Database
-from table import Table
+from miniDB.database import Database
+from miniDB.table import Table
 # art font is "big"
 art = '''
              _         _  _____   ____  
@@ -247,8 +248,11 @@ def interpret_meta(command):
 
 
 if __name__ == "__main__":
-    fname = os.getenv('SQL')
-    dbname = os.getenv('DB')
+    '''
+        Hard coded file name and database name ,due to unresolvable technical difficulties 
+    '''
+    fname = "sql_files/smallRelationsInsertFile.sql"
+    dbname = "smdb"
 
     db = Database(dbname, load=True)
 
