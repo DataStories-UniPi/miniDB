@@ -156,7 +156,7 @@ class Smj:
         join_table_name = ''
         join_table_colnames = left_names + right_names
         join_table_coltypes = self.left_table.column_types + self.right_table.column_types
-        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
+        join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types=join_table_coltypes)
 
         # Save merged file first. The hypothesis is that the RAM cannot fit the file, thus we have it saved
         # However we load the file to display it like this, might need to be changed in the future
