@@ -13,6 +13,7 @@ sys.modules['table'] = table
 
 from joins import Inlj, Smj
 from btree import Btree
+from hash import Hash
 from misc import split_condition
 from table import Table
 
@@ -357,9 +358,7 @@ class Database:
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
-        if condition is not None:
-            condition_column = split_condition(condition)[0]
-        else:
+        if condition is None:
             condition_column = ''
 
         
@@ -668,6 +667,11 @@ class Database:
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
                 self.tables['meta_indexes']._insert([table_name, index_name])
                 # crate the actual index
+                self._construct_index(table_name, index_name)
+                self.save_database()
+            elif index_type=='hash':
+                logging.info('Creating Hash index.')
+                self.tables['meta_indexes']._insert([table_name, index_name])
                 self._construct_index(table_name, index_name)
                 self.save_database()
         else:

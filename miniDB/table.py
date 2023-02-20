@@ -223,7 +223,6 @@ class Table:
             desc: boolean. If True, order_by will return results in descending order (False by default).
             limit: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
-
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
             return_cols = [i for i in range(len(self.column_names))]
@@ -233,11 +232,128 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            if ('and' in condition):
+                conditions = condition.split('and')
+                column_name1, operator1, value1 = self._parse_condition(conditions[0])
+                column1 = self.column_by_name(column_name1)
+                
+                column_name2, operator2, value2 = self._parse_condition(conditions[1])
+                column2 = self.column_by_name(column_name2)
+                if(operator1 == 'between'):
+                    right = value1.split(',')
+                    r1 = right[0][1:len(right[0])]
+                    r2 = right[1][:len(right[1])-1]
+                    try:
+                        r1 = int(r1)
+                        r2 = int(r2)
+                    except:
+                        print("")
+                    rows = [x[0] for x,y in zip(enumerate(column1),enumerate(column2)) if get_op('>=', x[1], r1) and get_op('<=', x[1], r2) and get_op(operator2, y[1], value2)]
+                    #rows = [ind for ind, x in enumerate(column1) if get_op('>=', x, r1) and get_op('<=', x, r2)]               
+                elif(operator2 == 'between'):
+                    right = value2.split(',')
+                    r1 = right[0][1:len(right[0])]
+                    r2 = right[1][:len(right[1])-1]
+                    try:
+                        r1 = int(r1)
+                        r2 = int(r2)
+                    except:
+                        print("")
+                    rows = [x[0] for x,y in zip(enumerate(column1),enumerate(column2)) if get_op(operator1, x[1], value1) and get_op('>=', y[1], r1) and get_op('<=', y[1], r2)]
+                elif(operator2 == operator1 == 'between'):
+                    right = value1.split(',')
+                    r1 = right[0][1:len(right[0])]
+                    r2 = right[1][:len(right[1])-1]
+                    right = value2.split(',')
+                    l1 = right[0][1:len(right[0])]
+                    l2 = right[1][:len(right[1])-1]
+                    try:
+                        r1 = int(r1)
+                        r2 = int(r2)
+                    except:
+                        print("")
+                    rows = [x[0] for x,y in zip(enumerate(column1),enumerate(column2)) if get_op('>=', x[1], r1) and get_op('<=', x[1], r2) and get_op('>=', y[1], l1) and get_op('<=', y[1], l2)]
+                else:
+                    try:
+                        value1 = int(value1)
+                        value2 = int(value2)
+                    except:
+                        print("")
+                    #rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+                    rows = [x[0] for x,y in zip(enumerate(column1),enumerate(column2)) if get_op(operator1, x[1], value1) and get_op(operator2, y[1], value2)]
+                    #print(rows)
+            elif('or' in condition):
+                conditions = condition.split('or')
+                column_name1, operator1, value1 = self._parse_condition(conditions[0])
+                column1 = self.column_by_name(column_name1)
+                
+                column_name2, operator2, value2 = self._parse_condition(conditions[1])
+                column2 = self.column_by_name(column_name2)
+                if(operator1 == 'between'):
+                    right = value1.split(',')
+                    r1 = right[0][1:len(right[0])]
+                    r2 = right[1][:len(right[1])-1]
+                    try:
+                        r1 = int(r1)
+                        r2 = int(r2)
+                    except:
+                        print("")
+                    rows = [x[0] for x,y in zip(enumerate(column1),enumerate(column2)) if (get_op('>=', x[1], r1) and get_op('<=', x[1], r2)) or get_op(operator2, y[1], value2)]
+                    #rows = [ind for ind, x in enumerate(column1) if get_op('>=', x, r1) and get_op('<=', x, r2)]               
+                elif(operator2 == 'between'):
+                    right = value2.split(',')
+                    r1 = right[0][1:len(right[0])]
+                    r2 = right[1][:len(right[1])-1]
+                    try:
+                        r1 = int(r1)
+                        r2 = int(r2)
+                    except:
+                        print("")
+                    rows = [x[0] for x,y in zip(enumerate(column1),enumerate(column2)) if get_op(operator1, x[1], value1) or (get_op('>=', y[1], r1) and get_op('<=', y[1], r2))]
+                elif(operator2 == operator1 == 'between'):
+                    right = value1.split(',')
+                    r1 = right[0][1:len(right[0])]
+                    r2 = right[1][:len(right[1])-1]
+                    right = value2.split(',')
+                    l1 = right[0][1:len(right[0])]
+                    l2 = right[1][:len(right[1])-1]
+                    try:
+                        r1 = int(r1)
+                        r2 = int(r2)
+                    except:
+                        print("")
+                    rows = [x[0] for x,y in zip(enumerate(column1),enumerate(column2)) if (get_op('>=', x[1], r1) and get_op('<=', x[1], r2)) or (get_op('>=', y[1], l1) and get_op('<=', y[1], l2))]
+                else:
+                    try:
+                        value1 = int(value1)
+                        value2 = int(value2)
+                    except:
+                        print("")
+                    #rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+                    rows = [x[0] for x,y in zip(enumerate(column1),enumerate(column2)) if get_op(operator1, x[1], value1) or get_op(operator2, y[1], value2)]
+                    #print(rows)
+            else:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                if(operator == 'between'):
+                    right = value.split(',')
+                    r1 = right[0][1:len(right[0])]
+                    r2 = right[1][:len(right[1])-1]
+                    try:
+                        r1 = int(r1)
+                        r2 = int(r2)
+                    except:
+                        print("")
+                    rows = [ind for ind, x in enumerate(column) if get_op('>=', x, r1) and get_op('<=', x, r2)]
+                else:
+                    try:
+                        value = int(value)
+                    except:
+                        print("")
+                    rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
+            print(rows)
 
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
@@ -562,6 +678,7 @@ class Table:
             raise ValueError(f'Condition is not valid (cant find column name)')
         coltype = self.column_types[self.column_names.index(left)]
 
+        return left, op, right
         return left, op, coltype(right)
 
 
