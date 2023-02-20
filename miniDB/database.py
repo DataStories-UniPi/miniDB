@@ -13,6 +13,7 @@ sys.modules['table'] = table
 
 from joins import Inlj, Smj
 from btree import Btree
+from hash import Hash
 from misc import split_condition
 from table import Table
 
@@ -54,7 +55,7 @@ class Database:
         self.create_table('meta_length', 'table_name,no_of_rows', 'str,int')
         self.create_table('meta_locks', 'table_name,pid,mode', 'str,int,str')
         self.create_table('meta_insert_stack', 'table_name,indexes', 'str,list')
-        self.create_table('meta_indexes', 'table_name,index_name', 'str,str')
+        self.create_table('meta_indexes', 'table_name,table_column,index_name,index_type', 'str,str,str,str')
         self.save_database()
 
     def save_database(self):
@@ -101,19 +102,24 @@ class Database:
         self._update_meta_insert_stack()
 
 
-    def create_table(self, name, column_names, column_types, primary_key=None, load=None):
+    def create_table(self, name, column_names, column_types, primary_key=None, unique_columns=None, load=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
 
         Args:
             name: string. Name of table.
-            column_names: list. Names of columns.
-            column_types: list. Types of columns.
+            column_names: list?. Names of columns.
+            column_types: list?. Types of columns.
             primary_key: string. The primary key (if it exists).
+            unique_columns: string. Names of columns that will be unique (seperated by comma).
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
+        
         # print('here -> ', column_names.split(','))
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)})
+        if unique_columns is not None:
+            unique_columns = unique_columns.split(',')
+
+        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, unique_columns=unique_columns, load=load)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
@@ -269,8 +275,10 @@ class Database:
         # check the insert_stack meta table
         lock_ownership = self.lock_table(table_name, mode='x')
         insert_stack = self._get_insert_stack_for_table(table_name)
+
+        indexes = self._find_idxs(table_name)
         try:
-            self.tables[table_name]._insert(row, insert_stack)
+            self.tables[table_name]._insert(row, insert_stack, indexes)
         except Exception as e:
             logging.info(e)
             logging.info('ABORTED')
@@ -334,14 +342,20 @@ class Database:
     def select(self, columns, table_name, condition, distinct=None, order_by=None, \
                limit=True, desc=None, save_as=None, return_object=True):
         '''
-        Selects and outputs a table's data where condtion is met.
+        Selects and outputs a table's data where condition is met.
 
         Args:
             table_name: string. Name of table (must be part of database).
             columns: list. The columns that will be part of the output table (use '*' to select all available columns)
-            condition: string. A condition using the following format:
-                'column[<,<=,==,>=,>]value' or
-                'value[<,<=,==,>=,>]column'.
+            condition: string or dict. 
+                String is using the following format:
+                    'column[<,<=,==,>=,>]value' or
+                    'value[<,<=,==,>=,>]column'.
+                Dict is using the following format:
+                    {'left': 'column[<,<=,==,>=,>]value',
+                     'operator': '[and,or]',
+                     'right': 'column[<,<=,==,>=,>]value',
+                    }
                 
                 Operatores supported: (<,<=,==,>=,>)
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
@@ -351,27 +365,29 @@ class Database:
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
             distinct: boolean. If True, the resulting table will contain only unique rows.
         '''
-
-        # print(table_name)
-        self.load_database()
-        if isinstance(table_name,Table):
-            return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
-
-        if condition is not None:
-            condition_column = split_condition(condition)[0]
-        else:
-            condition_column = ''
-
-        
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
-        if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
-            index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
-            bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
-        else:
-            table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+        
+        # print(table_name)
+        self.load_database()
+        if isinstance(table_name, Table):
+            return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
+
+        # self.lock_table(table_name, mode='x')
+        if self.is_locked(table_name):
+            return
+        
+        supported_indexes = None
+        if self._has_index(table_name):
+            index_rows = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).data
+            supported_indexes = {}
+            for index in index_rows:
+                supported_indexes[index[1]] = self._load_idx(index[2])
+
+        table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit, supported_indexes)
+        
+
         # self.unlock_table(table_name)
         if save_as is not None:
             table._name = save_as
@@ -650,46 +666,88 @@ class Database:
 
 
     # indexes
-    def create_index(self, index_name, table_name, index_type='btree'):
+    def create_index(self, index_name, table_name, table_column=None, index_type=None):
         '''
         Creates an index on a specified table with a given name.
-        Important: An index can only be created on a primary key (the user does not specify the column).
+        Important: An index can only be created on a primary key or unique column.
 
         Args:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
+            index_type: string. Hash or Btree
         '''
-        if self.tables[table_name].pk_idx is None: # if no primary key, no index
-            raise Exception('Cannot create index. Table has no primary key.')
+        table_instance = self.tables[table_name]
+        
+        # Sets index to primary key by default
+        if table_column is None:
+            if table_instance.pk is not None:
+                table_column = table_instance.pk
+            else:
+                raise Exception(f'Cannot create index. {table_instance._name} does not have a primary key.')
+        
+        # Check if column exists
+        if(table_column not in table_instance.column_names):
+            raise Exception(f'Cannot create index. {table_column} column does not exist.')
+
+        if (table_column is not table_instance.pk) and table_column not in table_instance.unique_columns:
+            raise Exception(f'Cannot create index. {table_column} is not a unique column.')
+        
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
-            # currently only btree is supported. This can be changed by adding another if.
             if index_type=='btree':
                 logging.info('Creating Btree index.')
                 # insert a record with the name of the index and the table on which it's created to the meta_indexes table
-                self.tables['meta_indexes']._insert([table_name, index_name])
-                # crate the actual index
-                self._construct_index(table_name, index_name)
+                self.tables['meta_indexes']._insert([table_name, table_column, index_name, index_type])
+                # create the actual index
+                self._construct_btree_index(table_name, table_column, index_name)
                 self.save_database()
-        else:
-            raise Exception('Cannot create index. Another index with the same name already exists.')
+            elif index_type=='hash':
+                logging.info('Creating Hash index.')
+                # insert a record with the name of the index and the table on which it's created to the meta_indexes table
+                self.tables['meta_indexes']._insert([table_name, table_column, index_name, index_type])
+                # create the actual index
+                self._construct_hash_index(table_name, table_column, index_name)
+                self.save_database()
 
-    def _construct_index(self, table_name, index_name):
+    def _construct_btree_index(self, table_name, table_column, index_name):
         '''
         Construct a btree on a table and save.
 
         Args:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
+            table_column: string. Column name (must be unique).
         '''
         bt = Btree(3) # 3 is arbitrary
-
-        # for each record in the primary key of the table, insert its value and index to the btree
-        for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
+        
+        # for each record in the table_column of the table, insert its value and index to the btree
+        for idx, key in enumerate(self.tables[table_name].column_by_name(table_column)):
             if key is None:
                 continue
             bt.insert(key, idx)
+
         # save the btree
         self._save_index(index_name, bt)
+
+    def _construct_hash_index(self, table_name, table_column, index_name):
+        '''
+        Construct a hash index on a table column and save.
+
+        Args:
+            table_name: string. Table name (must be part of database).
+            index_name: string. Name of the created index.
+            column_name: string. Name of the column to create the index on.
+        '''
+        hash = Hash()
+
+        # for each record in the column, insert its value and index to the hash table
+        for idx, value in enumerate(self.tables[table_name].column_by_name(table_column)):
+            if value is None:
+                continue
+            hash.insert(value, idx)
+
+        # save the hash table
+        self._save_index(index_name, hash)
+
 
 
     def _has_index(self, table_name):
@@ -698,8 +756,15 @@ class Database:
 
         Args:
             table_name: string. Table name (must be part of database).
+            table_column: string. Table column.
         '''
-        return table_name in self.tables['meta_indexes'].column_by_name('table_name')
+        rows = self.tables['meta_indexes'].data
+        for row_idx in range(len(rows)):
+            if rows[row_idx][0] == table_name: 
+                return True
+        
+        return False
+
 
     def _save_index(self, index_name, index):
         '''
@@ -716,6 +781,27 @@ class Database:
 
         with open(f'{self.savedir}/indexes/meta_{index_name}_index.pkl', 'wb') as f:
             pickle.dump(index, f)
+
+    def _find_idxs(self, table_name, table_column=None):
+        '''
+        Find all the indexes for that table object.
+
+        Args:
+            table_name: string.
+        '''
+        if self._has_index(table_name):
+            supported_idxs = {}
+            if table_column is None:
+                index_rows = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).data
+            else:
+                index_rows = self.select('*', 'meta_indexes', f'table_name={table_name} and table_column={table_column}', return_object=True).data
+        
+            for row in index_rows:
+                supported_idxs[row[1]] = self._load_idx(row[2])
+        else:
+            supported_idxs = None
+
+        return supported_idxs
 
     def _load_idx(self, index_name):
         '''
@@ -736,6 +822,7 @@ class Database:
         Args:
             index_name: string. Name of index.
         '''
+
         if index_name in self.tables['meta_indexes'].column_by_name('index_name'):
             self.delete_from('meta_indexes', f'index_name = {index_name}')
 
