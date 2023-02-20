@@ -331,6 +331,20 @@ class Database:
             self._add_to_insert_stack(table_name, deleted)
         self.save_database()
 
+    def delete_fromNot(self, table_name, condition):
+        
+        self.load_database()
+        
+        lock_ownership = self.lock_table(table_name, mode='x')
+        deleted = self.tables[table_name]._delete_whereNot(condition)
+        if lock_ownership:
+            self.unlock_table(table_name)
+        self._update()
+        self.save_database()
+        if table_name[:4]!='meta':
+            self._add_to_insert_stack(table_name, deleted)
+        self.save_database()
+        
     def select(self, columns, table_name, condition, distinct=None, order_by=None, \
                limit=True, desc=None, save_as=None, return_object=True):
         '''
@@ -382,6 +396,15 @@ class Database:
             else:
                 return table.show()
 
+    def selectBetween(self,table_name,columnname,value1,value2):
+        self.load_database()
+        if isinstance(table_name,Table):
+            return table_name._select_whereBetween(columnname, value1, value2)
+        
+    def selectAndOr(self,table_name,columnname,value1,columnname2,value2,value3):
+        self.load_database()
+        if isinstance(table_name,Table):
+            return table_name._select_whereAndOr(columnname, value1,columnname2,value2,value3) 
 
     def show_table(self, table_name, no_of_rows=None):
         '''

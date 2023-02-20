@@ -206,6 +206,24 @@ class Table:
         # we have to return the deleted indexes, since they will be appended to the insert_stack
         return indexes_to_del
 
+    def _delete_whereNot(self, condition):
+        condition = not condition
+        column_name, operator, value = self._parse_condition(condition)
+
+        indexes_to_del = []
+
+        column = self.column_by_name(column_name)
+        for index, row_value in enumerate(column):
+            if get_op(operator, row_value, value):
+                indexes_to_del.append(index)     
+
+        for index in sorted(indexes_to_del, reverse=True):
+            if self._name[:4] != 'meta':
+                # if the table is not a metatable, replace the row with a row of nones
+                self.data[index] = [None for _ in range(len(self.column_names))]
+            else:
+                self.data.pop(index)      
+        return indexes_to_del
 
     def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
         '''
@@ -269,7 +287,19 @@ class Table:
 
         return s_table
 
+    def _select_whereBetween(self,column_name,value1,value2):     
+        s_table = Table(load=dict)         
+        for data in s_table.column_by_name(column_name):            
+            if value1 <= data <= value2:
+              s_table += data               
+        return s_table
 
+    def _select_whereAndOr(self,column_name,value,column_name2,value2,value3):
+        for data in self: 
+            if data.column_by_name(column_name) is value and (data.column_by_name(column_name2) is value2 or data.column_by_name(column_name2) is value3):
+              s_table += data               
+        return s_table 
+            
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
 
         # if * return all columns, else find the column indexes for the columns specified
