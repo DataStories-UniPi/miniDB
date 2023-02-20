@@ -41,7 +41,6 @@ def in_paren(qsplit, ind):
 def create_query_plan(query, keywords, action):
     '''
     Given a query, the set of keywords that we expect to pe present and the overall action, return the query plan for this query.
-
     This can and will be used recursively
     '''
 
@@ -95,16 +94,39 @@ def create_query_plan(query, keywords, action):
 
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
+        #print("\n")
         dic['create table'] = dic['create table'].removesuffix(args).strip()
+        
+        # 4 primary key
         arg_nopk = args.replace('primary key', '')[1:-1]
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
-        dic['column_names'] = ','.join([val[0] for val in arglist])
-        dic['column_types'] = ','.join([val[1] for val in arglist])
+        
+        # 4 unique columns
+        arg_nounique = args.replace('unique', '')[1:-1]
+        arglist1 = [val.strip().split(' ') for val in arg_nounique.split(',')]
+       
+        dic['column_names'] = ','.join([val[0] for val in arglist1])
+        dic['column_types'] = ','.join([val[1] for val in arglist1])
+       
         if 'primary key' in args:
+            #print("primary here")
             arglist = args[1:-1].split(' ')
-            dic['primary key'] = arglist[arglist.index('primary')-2]
+            
+            dic['primary key'] = arglist[arglist.index('primary')-2] # -2 tp find key's name, -1 to find key's data type  e.g string/ integer
         else:
             dic['primary key'] = None
+        
+        # handle unique columns
+        if 'unique' in args:
+            arglist1 = args[1:-1].split(' ')
+            indx_lst = [idx for idx, value in enumerate(arglist1) if value == 'unique' or value == 'unique,']
+            
+            dic['unique'] = ','.join(arglist1[n-2] for n in indx_lst) 
+        else:
+            dic['unique'] = None
+        #print("\n")
+        #print(dic)
+        #print("\n")
     
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
@@ -175,7 +197,8 @@ def interpret(query):
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
-                     'create index': ['create index', 'on', 'using'],
+                     #'create index': ['create index', 'on', 'using'],
+                     'create index': ['create index', 'on', 'column', 'using'],
                      'drop index': ['drop index'],
                      'create view' : ['create view', 'as']
                      }
@@ -205,9 +228,7 @@ def execute_dic(dic):
 def interpret_meta(command):
     """
     Interpret meta commands. These commands are used to handle DB stuff, something that can not be easily handled with mSQL given the current architecture.
-
     The available meta commands are:
-
     lsdb - list databases
     lstb - list tables
     cdb - change/create database

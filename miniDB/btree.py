@@ -15,7 +15,7 @@ class Node:
         self.parent = parent # the index of a buckets parent
         self.is_leaf = is_leaf # a boolean value signaling whether the node is a leaf or not
 
-
+    
     def find(self, value, return_ops=False):
         '''
         Returns the index of the next node to search for a value if the node is not a leaf (a ptrs of the available ones).
@@ -28,10 +28,20 @@ class Node:
         ops = 0 # number of operations (<>= etc). Used for benchmarking
         if self.is_leaf: #
             return
-
+        
+        '''
+        if (isinstance(value, int)):
+            value = float(value)
+        '''
+        #print(value)
         # for each value in the node, if the user supplied value is smaller, return the btrees value index
         # else (no value in the node is larger) return the last ptr
+        #print(self.values)
+        #for index, existing_val in enumerate(self.values):
+            #print("existing val: ", existing_val)
+            #print("index: ", index)
         for index, existing_val in enumerate(self.values):
+            #print("existing val: ", existing_val)
             ops+=1
             if value is None or existing_val is None:
                 continue
@@ -221,8 +231,6 @@ class Btree:
                 self.split(node.parent)
 
 
-
-
     def show(self):
         '''
         Show important info for each node (sort by level - root first, then left to right).
@@ -288,9 +296,18 @@ class Btree:
             operator: string. The provided evaluation operator.
             value: float. The value being searched for.
         '''
+
+        '''
+        if (isinstance(value, int)):
+            value = float(value)
+        '''   
         results = []
+        
+
         # find the index of the node that the element should exist in
         leaf_idx, ops = self._search(value, True)
+        #print("leaf idx: ",leaf_idx)
+        #print("ops: ", ops)
         target_node = self.nodes[leaf_idx]
 
         if operator == '=':
@@ -343,6 +360,7 @@ class Btree:
                 target_node = self.nodes[target_node.left_sibling]
                 results.extend(target_node.ptrs)
 
+    
         # print the number of operations (usefull for benchamrking)
         # print(f'With BTree -> {ops} comparison operations')
         return results
