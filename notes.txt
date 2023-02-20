@@ -36,3 +36,7 @@
 <> Check all references of meta_indexes and _has_index -> Database: join(470-475)
 
 <> line 661 database.py
+
+<> INSERT INTO, DELETE FROM, UPDATE -> btree update.
+
+<>n = The length of the binary string should always be greater than or equal to the depth of the extendible hash table. This is because the depth of the hash table determines the number of bits used to index the buckets, and the binary string is used to extract the most significant bit of the hash value to determine which bucket to place the key in. If the length of the binary string is less than the depth of the hash table, there won't be enough bits to extract the most significant bit for indexing the bucket.
