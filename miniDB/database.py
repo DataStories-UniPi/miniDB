@@ -6,6 +6,7 @@ import logging
 import warnings
 import readline
 from tabulate import tabulate
+import condtion_handler
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 from miniDB import table
@@ -13,6 +14,7 @@ sys.modules['table'] = table
 
 from joins import Inlj, Smj
 from btree import Btree
+from extendible_hash import ExtendibleHash
 from misc import split_condition
 from table import Table
 
@@ -101,7 +103,7 @@ class Database:
         self._update_meta_insert_stack()
 
 
-    def create_table(self, name, column_names, column_types, primary_key=None, load=None):
+    def create_table(self, name, column_names, column_types, unique_column_names=None, primary_key=None, load=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
 
@@ -113,7 +115,7 @@ class Database:
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
         # print('here -> ', column_names.split(','))
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)})
+        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), unique_column_names=unique_column_names.split(','), primary_key=primary_key, load=load)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
@@ -267,7 +269,7 @@ class Database:
         self.load_database()
         # fetch the insert_stack. For more info on the insert_stack
         # check the insert_stack meta table
-        lock_ownership = self.lock_table(table_name, mode='x')
+        #lock_ownership = self.lock_table(table_name, mode='x')     # uncomment this later
         insert_stack = self._get_insert_stack_for_table(table_name)
         try:
             self.tables[table_name]._insert(row, insert_stack)
@@ -276,8 +278,8 @@ class Database:
             logging.info('ABORTED')
         self._update_meta_insert_stack_for_tb(table_name, insert_stack[:-1])
 
-        if lock_ownership:
-            self.unlock_table(table_name)
+        #if lock_ownership:
+        #    self.unlock_table(table_name)
         self._update()
         self.save_database()
 
@@ -351,28 +353,58 @@ class Database:
             return_object: boolean. If True, the result will be a table object (useful for internal use - the result will be printed by default).
             distinct: boolean. If True, the resulting table will contain only unique rows.
         '''
-
-        # print(table_name)
         self.load_database()
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
-
+        
+        range_query = False
         if condition is not None:
-            condition_column = split_condition(condition)[0]
+            # we need to store the first subcondition of the full condition
+            # if condition: id > 3 and name = john, the generated condition_plan is: { 'id > 3': [ 'name', '=', 'john', '' ] }
+            # we want to get the first part of the condition, meaning -> 'id > 3' then split it into a list
+            tokens = list(condtion_handler.get_condition_plan(condition).keys())[0].split()
+            print(f'tokens: {tokens}, {condtion_handler.get_condition_plan(condition).keys()}')
+            condition_column = tokens[0]
+            range_query = condtion_handler.is_range_query(tokens)   # we need to know where or not the query is a range query in case we're using EHash Index
+            #condition_column = split_condition(condition)[0]
         else:
             condition_column = ''
-
         
         # self.lock_table(table_name, mode='x')
         if self.is_locked(table_name):
             return
-        if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
-            index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
-            bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
-        else:
-            table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
-        # self.unlock_table(table_name)
+                        
+        this_table = self.tables[table_name]                
+        
+        if self._has_index(table_name):
+            index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]   # the name of the index
+            index_info = self._load_idx(index_name)     # a list: [index object, indexed_column name]
+            index = index_info[0]       # the actual index onject (either a Btree object or an ExtendibleHash object)
+            indexed_column = index_info[1]      # the name of the column that is indexed
+            
+            table = None
+            
+            if indexed_column == condition_column:      # if the indexed_column name is the same with the condition_column name then we check if we can use our index
+                if isinstance(index, Btree):
+                    print('USING BTREE')
+                    table = this_table._select_where_with_btree(columns, index, condition, distinct, order_by, desc, limit)
+                elif isinstance(index, ExtendibleHash):
+                    if not range_query:     # ExtendibleHash support only non-range based queries
+                        print('USING EHASH')
+                        table = this_table._select_where_with_extendible_hash(columns, index, condition, distinct, order_by, desc, limit)
+                    else:       # if it is a range query then we cant use Hash index so we go with linear search
+                        print(f'USING LINEAR -> indexed_column: {indexed_column}, condition_column: {condition_column}')                    
+                        table = this_table._select_where(columns, condition, distinct, order_by, desc, limit)
+            else:   # if the indexed_column name is not the same with the condition_column name we use linear search
+                print(f'USING LINEAR -> indexed_column: {indexed_column}, condition_column: {condition_column}')
+                table = this_table._select_where(columns, condition, distinct, order_by, desc, limit)        
+        else:   # if there is no index we use linear search
+            print('USING LINEAR')
+            table = this_table._select_where(columns, condition, distinct, order_by, desc, limit)
+        
+        ##### self.unlock_table(table_name)        
+        self.unlock_table(table_name)
+        
         if save_as is not None:
             table._name = save_as
             self.table_from_object(table)
@@ -514,7 +546,6 @@ class Database:
                 raise Exception(f'Table "{table_name}" is locked by process with pid={pid}')
             else:
                 return False
-
         except IndexError:
             pass
 
@@ -546,7 +577,6 @@ class Database:
                 pass
         self.tables['meta_locks']._delete_where(f'table_name={table_name}')
         self._save_locks()
-        # print(f'Unlocking table "{table_name}"')
 
     def is_locked(self, table_name):
         '''
@@ -565,7 +595,6 @@ class Database:
             pid = self.tables['meta_locks']._select_where('pid',f'table_name={table_name}').data[0][0]
             if pid!=os.getpid():
                 raise Exception(f'Table "{table_name}" is locked by the process with pid={pid}')
-
         except IndexError:
             pass
         return False
@@ -650,46 +679,66 @@ class Database:
 
 
     # indexes
-    def create_index(self, index_name, table_name, index_type='btree'):
+    def create_index(self, index_name, table_name, index_type, column_name):
         '''
         Creates an index on a specified table with a given name.
-        Important: An index can only be created on a primary key (the user does not specify the column).
+        Important: An index can only be created on a primary key or on a unique column (the user specifies the column like this: create index index_name on table_name.column_name using index_type).
 
         Args:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
+            index_type: string. Type of index, either btree or ehash
+            column_name: string. The indexed column
         '''
-        if self.tables[table_name].pk_idx is None: # if no primary key, no index
-            raise Exception('Cannot create index. Table has no primary key.')
+        if column_name != self.tables[table_name].pk and column_name not in self.tables[table_name].unique_column_names:
+            raise Exception('Cannot create index. Given column is not unique or primary key.')
+        
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
-            # currently only btree is supported. This can be changed by adding another if.
-            if index_type=='btree':
+            if index_type == 'btree':
                 logging.info('Creating Btree index.')
-                # insert a record with the name of the index and the table on which it's created to the meta_indexes table
-                self.tables['meta_indexes']._insert([table_name, index_name])
-                # crate the actual index
-                self._construct_index(table_name, index_name)
-                self.save_database()
+            elif index_type == 'ehash':
+                logging.info('Creating ExtendibleHash index.')
+            # insert a record with the name of the index and the table on which it's created to the meta_indexes table
+            self.tables['meta_indexes']._insert([table_name, index_name])
+            # crate the actual index
+            print(f'Creating index: {index_name}, on: {table_name}.{column_name}')
+            self._construct_index(table_name, index_name, index_type, column_name)
+            self.save_database()
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
-    def _construct_index(self, table_name, index_name):
+    def _construct_index(self, table_name, index_name, index_type, column_name):
         '''
         Construct a btree on a table and save.
 
         Args:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
+            index_type: string. The type of the created index, either btree or ehash
+            column_name: string. The name of the indexed column
         '''
-        bt = Btree(3) # 3 is arbitrary
-
-        # for each record in the primary key of the table, insert its value and index to the btree
-        for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
-            if key is None:
-                continue
-            bt.insert(key, idx)
-        # save the btree
-        self._save_index(index_name, bt)
+        index = None
+        if index_type == 'btree':
+            index = Btree(3) # 3 is arbitrary
+        elif index_type == 'ehash':
+            index = ExtendibleHash(method='lsb') 
+            
+        #if on_pk[0]:            
+        #    # for each record in the primary key of the table, insert its value and index to the btree
+        #    for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
+        #        if key is None:
+        #            continue
+        #        index.insert(key, idx)
+        #else:
+        #    for idx, key in enumerate(self.tables[table_name].column_by_name(on_pk[1])):
+        #        if key is None:
+        #            continue
+        #        index.insert(key, idx)
+        for idx, key in enumerate(self.tables[table_name].column_by_name(column_name)):
+                if key is None:
+                    continue
+                index.insert(key, idx)
+        self._save_index(index_name, column_name, index)    # saving : name of the index, name of index column, index object
 
 
     def _has_index(self, table_name):
@@ -700,8 +749,8 @@ class Database:
             table_name: string. Table name (must be part of database).
         '''
         return table_name in self.tables['meta_indexes'].column_by_name('table_name')
-
-    def _save_index(self, index_name, index):
+    
+    def _save_index(self, index_name, column_name, index):
         '''
         Save the index object.
 
@@ -715,7 +764,8 @@ class Database:
             pass
 
         with open(f'{self.savedir}/indexes/meta_{index_name}_index.pkl', 'wb') as f:
-            pickle.dump(index, f)
+            print(f'Saving index: {index_name}, indexed column: {column_name}')
+            pickle.dump([index, column_name], f)        # saves index object and column_name (the column that the index is on)
 
     def _load_idx(self, index_name):
         '''
@@ -727,7 +777,8 @@ class Database:
         f = open(f'{self.savedir}/indexes/meta_{index_name}_index.pkl', 'rb')
         index = pickle.load(f)
         f.close()
-        return index
+        print(f'Loading index: {index_name}, indexed_column: {index[1]}')
+        return index        # returns index onject and the column name the index is on
 
     def drop_index(self, index_name):
         '''
@@ -738,9 +789,10 @@ class Database:
         '''
         if index_name in self.tables['meta_indexes'].column_by_name('index_name'):
             self.delete_from('meta_indexes', f'index_name = {index_name}')
-
+            print(f'Index name: {index_name} is in meta_indexes')
             if os.path.isfile(f'{self.savedir}/indexes/meta_{index_name}_index.pkl'):
                 os.remove(f'{self.savedir}/indexes/meta_{index_name}_index.pkl')
+                print(f'Index name: {index_name} removed from meta_indexes')
             else:
                 warnings.warn(f'"{self.savedir}/indexes/meta_{index_name}_index.pkl" not found.')
 

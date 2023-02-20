@@ -3,6 +3,7 @@ from tabulate import tabulate
 import pickle
 import os
 import sys
+import condtion_handler
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
@@ -26,8 +27,8 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
-
+    def __init__(self, name=None, column_names=None, column_types=None, unique_column_names=None, primary_key=None, load=None):
+        
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
             if isinstance(load, dict):
@@ -36,6 +37,8 @@ class Table:
             # if load is str, load from a file
             elif isinstance(load, str):
                 self._load_from_file(load)
+
+            self.unique_column_names = unique_column_names
 
         # if name, columns_names and column types are not none
         elif (name is not None) and (column_names is not None) and (column_types is not None):
@@ -60,7 +63,10 @@ class Table:
 
             self.column_types = [eval(ct) if not isinstance(ct, type) else ct for ct in column_types]
             self.data = [] # data is a list of lists, a list of rows that is.
-
+            
+            self.unique_column_names = unique_column_names
+            print(f'Tables unique columns: {self.unique_column_names}')
+            
             # if primary key is set, keep its index as an attribute
             if primary_key is not None:
                 self.pk_idx = self.column_names.index(primary_key)
@@ -74,7 +80,6 @@ class Table:
 
     def column_by_name(self, column_name):
         return [row[self.column_names.index(column_name)] for row in self.data]
-
 
     def _update(self):
         '''
@@ -129,6 +134,17 @@ class Table:
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
             elif i==self.pk_idx and row[i] is None:
                 raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
+            
+            try:            
+                for name in self.unique_column_names:
+                    print(row[i], self.column_by_name(name))
+                    if row[i] in self.column_by_name(name):
+                        raise ValueError(f'## ERROR -> Value {row[i]} already exists in unique column {name}')
+            except ValueError as e:     # case where the user tried to insert an a record that contains an already existing unique value
+                print(e)
+                return
+            except AttributeError:      # the meta_indexes table was saved in a previus version where it didn't have attribute unique_column_names, in this case we just conitinue
+                pass
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
@@ -137,7 +153,7 @@ class Table:
             self.data.append(row)
         # self._update()
 
-    def _update_rows(self, set_value, set_column, condition):
+    def _update_rows(self, set_value, set_column, condition):                            
         '''
         Update where Condition is met.
 
@@ -149,21 +165,31 @@ class Table:
                 'value[<,<=,=,>=,>]column'.
                 
                 Operatores supported: (<,<=,=,>=,>)
-        '''
+        '''        
         # parse the condition
-        column_name, operator, value = self._parse_condition(condition)
+        #column_name, operator, value = self._parse_condition(condition)
 
         # get the condition and the set column
-        column = self.column_by_name(column_name)
+        #column = self.column_by_name(column_name)
         set_column_idx = self.column_names.index(set_column)
 
         # set_columns_indx = [self.column_names.index(set_column_name) for set_column_name in set_column_names]
 
         # for each value in column, if condition, replace it with set_value
-        for row_ind, column_value in enumerate(column):
-            if get_op(operator, column_value, value):
-                self.data[row_ind][set_column_idx] = set_value
+        #for row_ind, column_value in enumerate(column):
+        #    if get_op(operator, column_value, value):
+        #        self.data[row_ind][set_column_idx] = set_value
 
+        for i in range(len(self.data)):
+            cond_cpy = condition
+            for column_name in self.column_names:
+                if column_name in cond_cpy.split():
+                    cond_cpy = cond_cpy.replace(column_name, str(self.data[i][self.column_names.index(column_name)]))
+            condition_plan = condtion_handler.get_condition_plan(cond_cpy)
+            result = condtion_handler.evaluate_condition(condition_plan)
+            if result:
+                self.data[i][set_column_idx] = set_value
+                
         # self._update()
                 # print(f"Updated {len(indexes_to_del)} rows")
 
@@ -182,14 +208,24 @@ class Table:
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
-        column_name, operator, value = self._parse_condition(condition)
+        #column_name, operator, value = self._parse_condition(condition)
 
         indexes_to_del = []
+                
+        for i in range(len(self.data)):
+            cond_cpy = condition
+            for column_name in self.column_names:
+                if column_name in cond_cpy.split():
+                    cond_cpy = cond_cpy.replace(column_name, str(self.data[i][self.column_names.index(column_name)]))
+            condition_plan = condtion_handler.get_condition_plan(cond_cpy)
+            result = condtion_handler.evaluate_condition(condition_plan)
+            if result:
+                indexes_to_del.append(i)
 
-        column = self.column_by_name(column_name)
-        for index, row_value in enumerate(column):
-            if get_op(operator, row_value, value):
-                indexes_to_del.append(index)
+        #column = self.column_by_name(column_name)
+        #for index, row_value in enumerate(column):
+        #    if get_op(operator, row_value, value):
+        #        indexes_to_del.append(index)
 
         # we pop from highest to lowest index in order to avoid removing the wrong item
         # since we dont delete, we dont have to to pop in that order, but since delete is used
@@ -232,13 +268,27 @@ class Table:
 
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
+        rows = []
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+            if 'table_name=' not in condition:      # if table_name= is in condition then this is meta_indexes table related, otherwise do as follows:
+                for i in range(len(self.data)):
+                    cond_cpy = condition
+                    for column_name in self.column_names:
+                        if column_name in cond_cpy.split():
+                            cond_cpy = cond_cpy.replace(column_name, str(self.data[i][self.column_names.index(column_name)]))
+                    condition_plan = condtion_handler.get_condition_plan(cond_cpy)
+                    print(condition_plan)
+                    result = condtion_handler.evaluate_condition(condition_plan)
+                    print(condition_plan, result)
+                    if result:
+                        rows.append(i)
+            else:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
-
+    
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
 
@@ -254,16 +304,6 @@ class Table:
         if order_by:
             s_table.order_by(order_by, desc)
 
-        # if isinstance(limit, str):
-        #     try:
-        #         k = int(limit)
-        #     except ValueError:
-        #         raise Exception("The value following 'top' in the query should be a number.")
-            
-        #     # Remove from the table's data all the None-filled rows, as they are not shown by default
-        #     # Then, show the first k rows 
-        #     s_table.data.remove(len(s_table.column_names) * [None])
-        #     s_table.data = s_table.data[:k]
         if isinstance(limit,str):
             s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
 
@@ -278,36 +318,62 @@ class Table:
         else:
             return_cols = [self.column_names.index(colname) for colname in return_columns]
 
-
-        column_name, operator, value = self._parse_condition(condition)
+        # we want to find the records using btree based on the first subcondition of the full condition
+        # then we will scan the returned records do see if the rest of the condition also applies, if yes we add this to the returned result
+        # for example if condition is: id > 3 and name = john
+        # the generated condition plan is: { 'id > 3': ['id', '>', '3', 'and'], { 'name = john': ['name', '=', 'john', ''] } }
+        # we want to search based on the first part, meaning 'id > 3' using btree and then we'll check about the second part, 'and name = john'
+        first_condition_tokens = list(condtion_handler.get_condition_plan(condition).keys())[0].split()
+        column_name = first_condition_tokens[0]
+        operator = first_condition_tokens[1]
+        value = first_condition_tokens[2]
+        
+        # remove this if need be
+        #column_name, operator, value = self._parse_condition(condition)
 
         # if the column in condition is not a primary key, abort the select
-        if column_name != self.column_names[self.pk_idx]:
-            print('Column is not PK. Aborting')
+        #if self.pk_idx is not None:
+        #    if column_name != self.column_names[self.pk_idx]:
+        #        print('Column is not PK. Aborting')
 
         # here we run the same select twice, sequentially and using the btree.
         # we then check the results match and compare performance (number of operation)
-        column = self.column_by_name(column_name)
-
+        #column = self.column_by_name(column_name)
         # sequential
-        rows1 = []
-        opsseq = 0
-        for ind, x in enumerate(column):
-            opsseq+=1
-            if get_op(operator, x, value):
-                rows1.append(ind)
+        #rows1 = []
+        #opsseq = 0
+        #for ind, x in enumerate(column):
+        #    opsseq+=1
+        #    #print(f'operator:{operator}, x:{x}, value:{value}')
+        #    if get_op(operator, x, value):
+        #        rows1.append(ind)
 
         # btree find
+        bt.show()
         rows = bt.find(operator, value)
-
+        #print(f'rows1: {rows1}, rows: {rows}')
         try:
             k = int(limit)
         except TypeError:
             k = None
         # same as simple select from now on
         rows = rows[:k]
+        final_rows = []
+        for i in range(len(self.data)):
+            cond_cpy = condition
+            for column_name in self.column_names:
+                if column_name in cond_cpy.split():
+                    cond_cpy = cond_cpy.replace(column_name, str(self.data[i][self.column_names.index(column_name)]))
+            condition_plan = condtion_handler.get_condition_plan(cond_cpy)
+            result = condtion_handler.evaluate_condition(condition_plan)
+            print(condition_plan, result)
+            if result:
+                final_rows.append(i)
+
+        
+        print(f'Rows from btree find: {rows}, Final rows: {final_rows}')
         # TODO: this needs to be dumbed down
-        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+        dict = {(key):([[self.data[i][j] for j in return_cols] for i in final_rows] if key=="data" else value) for key,value in self.__dict__.items()}
 
         dict['column_names'] = [self.column_names[i] for i in return_cols]
         dict['column_types']   = [self.column_types[i] for i in return_cols]
@@ -324,6 +390,62 @@ class Table:
 
         return s_table
 
+
+    def _select_where_with_extendible_hash(self, return_columns, ehash, condition, distinct=False, order_by=None, desc=True, limit=None):
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
+        else:
+            return_cols = [self.column_names.index(colname) for colname in return_columns]
+
+        #column_name, operator, value = self._parse_condition(condition)
+
+        first_condition_tokens = list(condtion_handler.get_condition_plan(condition).keys())[0].split()
+        column_name = first_condition_tokens[0]
+        value = first_condition_tokens[2]
+
+        
+        # extendible hash find
+        rows = ehash.find(value, distinct)
+        try:
+            k = int(limit)
+        except TypeError:
+            k = None
+        # same as simple select from now on
+        rows = rows[:k]
+
+        final_rows = []
+        for i in range(len(self.data)):
+            cond_cpy = condition
+            for column_name in self.column_names:
+                if column_name in cond_cpy.split():
+                    cond_cpy = cond_cpy.replace(column_name, str(self.data[i][self.column_names.index(column_name)]))
+            condition_plan = condtion_handler.get_condition_plan(cond_cpy)
+            result = condtion_handler.evaluate_condition(condition_plan)
+            print(f'condition_plan: {condition_plan}, result: {result}')
+            if result:
+                final_rows.append(i)
+
+        print(f'Rows from ehash find: {rows}, final_rows: {final_rows}')
+
+        # TODO: this needs to be dumbed down
+        dict = {(key):([[self.data[i][j] for j in return_cols] for i in final_rows] if key=="data" else value) for key,value in self.__dict__.items()}
+
+        dict['column_names'] = [self.column_names[i] for i in return_cols]
+        dict['column_types']   = [self.column_types[i] for i in return_cols]
+
+        s_table = Table(load=dict)
+
+        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+
+        if order_by:
+            s_table.order_by(order_by, desc)
+
+        if isinstance(limit,str):
+            s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
+
+        return s_table
+
+        
     def order_by(self, column_name, desc=True):
         '''
         Order table based on column.
@@ -549,7 +671,7 @@ class Table:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
-                Operatores supported: (<,<=,==,>=,>)
+                Operators supported: (<,<=,==,>=,>)
             join: boolean. Whether to join or not (False by default).
         '''
         # if both_columns (used by the join function) return the names of the names of the columns (left first)
