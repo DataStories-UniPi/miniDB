@@ -6,7 +6,7 @@ import sys
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
-from misc import get_op, split_condition
+from misc import get_op, split_condition, split_between_values
 
 
 class Table:
@@ -234,8 +234,21 @@ class Table:
         # if not, return the rows with values where condition is met for value
         if condition is not None:
             column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+            if (operator == 'between' or operator == None): # if between or not between, get values
+                coltype = self.column_types[self.column_names.index(column_name)]
+                a, b = split_between_values(value)
+                a = coltype(a)
+                b = coltype(b)
+                column = self.column_by_name(column_name)
+                if (operator == 'between'):
+                    rows = [ind for ind, x in enumerate(column) if get_op('>=', x, a) and get_op('<=', x, b)]
+                else:
+                    rows = [ind for ind, x in enumerate(column) if get_op('<', x, a) or get_op('>', x, b)]
+                    
+            else:
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -562,6 +575,12 @@ class Table:
             raise ValueError(f'Condition is not valid (cant find column name)')
         coltype = self.column_types[self.column_names.index(left)]
 
+        if (op == 'between' or op == None): # if between operation we check if values are valid
+            a, b = split_between_values(right)
+            coltype(a)
+            coltype(b)
+            return left, op, right
+        
         return left, op, coltype(right)
 
 
