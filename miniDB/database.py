@@ -693,9 +693,11 @@ class Database:
             table_name: string. Table name (must be part of database).
             index_name: string. Name of the created index.
         '''
-        # if self.tables[table_name].pk_idx is None: # if no primary key, no index
-        #     raise Exception('Cannot create index. Table has no primary key.')
         table_name, index_name = table_name.split()
+        if self.tables[table_name].pk_idx is None and self.tables[table_name].unique_idx is None: # if no unique, no index
+            raise Exception('Cannot create index. Table has no unique values.')
+        if index_name is None:
+            raise Exception('Cannot create index. You need to specify column name.')
         if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
             # currently only btree is supported. This can be changed by adding another if.
             if index_type=='btree':
