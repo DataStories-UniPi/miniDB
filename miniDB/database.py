@@ -1,5 +1,6 @@
 from __future__ import annotations
 import pickle
+import re
 from time import sleep, localtime, strftime
 import os,sys
 import logging
@@ -357,30 +358,63 @@ class Database:
         if isinstance(table_name,Table):
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
 
+        def get_data(condition_column, condition):
+            # self.lock_table(table_name, mode='x')
+            if self.is_locked(table_name):
+                return
+            if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
+                index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
+                bt = self._load_idx(index_name)
+                table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+            else:
+                table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+            # self.unlock_table(table_name)
+            if save_as is not None:
+                table._name = save_as
+                self.table_from_object(table)
+            else:
+                if return_object:
+                    return table
+                else:
+                    return table.show()
+
+        if condition is not None:
+            if(' and ' in condition or ' or ' in condition):
+                operations = []
+                words = condition.split()
+                for word in words:
+                    if word == 'and' or word == 'or':
+                        operations.append(word)
+
+                conditions = re.split(' and | or ', condition)
+
+                itter = -2
+                for cond in conditions:
+                    itter += 1
+                    col = split_condition(cond)[0]
+                    if itter == -1:
+                        data = get_data(col, cond)
+                    else:
+                        if operations[itter] == 'and':
+                            temp = get_data(col, cond)
+                            combination = []
+                            for row in data.data:
+                                if row in temp.data:
+                                    combination.append(row)
+                            data.data = combination
+                        else:
+                            temp = get_data(col, cond)
+                            for t in temp.data:
+                                if t not in data.data:
+                                    data.data.append(t)
+                return data
+                
         if condition is not None:
             condition_column = split_condition(condition)[0]
         else:
             condition_column = ''
-
-        
-        # self.lock_table(table_name, mode='x')
-        if self.is_locked(table_name):
-            return
-        if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
-            index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
-            bt = self._load_idx(index_name)
-            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
-        else:
-            table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
-        # self.unlock_table(table_name)
-        if save_as is not None:
-            table._name = save_as
-            self.table_from_object(table)
-        else:
-            if return_object:
-                return table
-            else:
-                return table.show()
+            
+        return get_data(condition_column, condition)
 
 
     def show_table(self, table_name, no_of_rows=None):
