@@ -698,7 +698,7 @@ class Database:
             raise Exception('Cannot create index. Table has no unique values.')
         if index_name is None:
             raise Exception('Cannot create index. You need to specify column name.')
-        if index_name not in self.tables['meta_indexes'].column_by_name('index_name'):
+        if index_name not in self.tables['meta_indexes'].column_by_name('index_name') or table_name not in self.tables['meta_indexes'].column_by_name('table_name'):
             # currently only btree is supported. This can be changed by adding another if.
             if index_type=='btree':
                 logging.info('Creating Btree index.')
