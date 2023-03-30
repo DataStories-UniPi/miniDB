@@ -8,6 +8,7 @@ def get_op(op, a, b):
                 '<': operator.lt,
                 '>=': operator.ge,
                 '<=': operator.le,
+                '!=': operator.ne,
                 '=': operator.eq}
 
     try:
@@ -18,6 +19,7 @@ def get_op(op, a, b):
 def split_condition(condition):
     ops = {'>=': operator.ge,
            '<=': operator.le,
+           '!=': operator.ne,
            '=': operator.eq,
            '>': operator.gt,
            '<': operator.lt}
@@ -26,6 +28,10 @@ def split_condition(condition):
         splt=condition.split(op_key)
         if len(splt)>1:
             left, right = splt[0].strip(), splt[1].strip()
+
+            if 'not' in left:
+                left = left.replace('not ','') # if not reverse condition
+                op_key = reverse_op(op_key)
 
             if right[0] == '"' == right[-1]: # If the value has leading and trailing quotes, remove them.
                 right = right.strip('"')
@@ -46,5 +52,6 @@ def reverse_op(op):
         '>=' : '<=',
         '<' : '>',
         '<=' : '>=',
-        '=' : '='
+        '=' : '!=',
+        '!=' : '='
     }.get(op)
