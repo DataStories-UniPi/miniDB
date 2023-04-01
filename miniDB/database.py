@@ -362,10 +362,11 @@ class Database:
             # self.lock_table(table_name, mode='x')
             if self.is_locked(table_name):
                 return
-            if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
+            if self._has_index(table_name) and self._has_index_col(condition_column) and self._has_index_btree('btree'):
                 index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
                 bt = self._load_idx(index_name)
                 table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+                print('selected using btree')
             else:
                 table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
             # self.unlock_table(table_name)
@@ -721,7 +722,7 @@ class Database:
         bt = Btree(3) # 3 is arbitrary
 
         # for each record in the primary key of the table, insert its value and index to the btree
-        for idx, key in enumerate(self.tables[table_name].column_by_name(self.tables[table_name].pk)):
+        for idx, key in enumerate(self.tables[table_name].column_by_name(index_name)):
             if key is None:
                 continue
             bt.insert(key, idx)
@@ -737,6 +738,12 @@ class Database:
             table_name: string. Table name (must be part of database).
         '''
         return table_name in self.tables['meta_indexes'].column_by_name('table_name')
+    
+    def _has_index_col(self, index_name):
+        return index_name in self.tables['meta_indexes'].column_by_name('index_name')
+    
+    def _has_index_btree(self, index_type):
+        return index_type in self.tables['meta_indexes'].column_by_name('index_type')
 
     def _save_index(self, index_name, index):
         '''
