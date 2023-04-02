@@ -368,6 +368,11 @@ class Database:
                 bt = self._load_idx(index_name)
                 table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
                 print('selected using btree')
+            elif self._has_index(table_name) and self._has_index_col(condition_column) and self._has_index_type('hash'):
+                index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
+                hash = self._load_idx(index_name)
+                table = self.tables[table_name]._select_where_with_btree(columns, hash, condition, distinct, order_by, desc, limit)
+                print('selected using hash')
             else:
                 table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
             # self.unlock_table(table_name)
