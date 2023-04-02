@@ -14,6 +14,7 @@ sys.modules['table'] = table
 
 from joins import Inlj, Smj
 from btree import Btree
+from hash import Hash
 from misc import split_condition
 from table import Table
 
@@ -362,7 +363,7 @@ class Database:
             # self.lock_table(table_name, mode='x')
             if self.is_locked(table_name):
                 return
-            if self._has_index(table_name) and self._has_index_col(condition_column) and self._has_index_btree('btree'):
+            if self._has_index(table_name) and self._has_index_col(condition_column) and self._has_index_type('btree'):
                 index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
                 bt = self._load_idx(index_name)
                 table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
@@ -708,6 +709,13 @@ class Database:
                 # crate the actual index
                 self._construct_index(table_name, index_name)
                 self.save_database()
+            if index_type=='hash':
+                logging.info('Creating Hash index.')
+                # insert a record with the name of the index and the table on which it's created to the meta_indexes table
+                self.tables['meta_indexes']._insert([table_name, index_name, index_type])
+                # crate the actual index
+                self._construct_index_hash(table_name, index_name)
+                self.save_database()
         else:
             raise Exception('Cannot create index. Another index with the same name already exists.')
 
@@ -729,6 +737,13 @@ class Database:
         # save the btree
         self._save_index(index_name, bt)
 
+    def _construct_index_hash(self, table_name, index_name):
+        hash = Hash(9)
+        for idx, key in enumerate(self.tables[table_name].column_by_name(index_name)):
+            if key is None:
+                continue
+            hash.add(key, idx)
+        self._save_index(index_name, hash)
 
     def _has_index(self, table_name):
         '''
@@ -742,7 +757,7 @@ class Database:
     def _has_index_col(self, index_name):
         return index_name in self.tables['meta_indexes'].column_by_name('index_name')
     
-    def _has_index_btree(self, index_type):
+    def _has_index_type(self, index_type):
         return index_type in self.tables['meta_indexes'].column_by_name('index_type')
 
     def _save_index(self, index_name, index):
