@@ -5,10 +5,11 @@ import sys
 import readline
 import traceback
 import shutil
+from miniDB.equivalentQueries import equiv_print
 sys.path.append('miniDB')
 
-from database import Database
-from table import Table
+from miniDB.database import Database
+from miniDB.table import Table
 # art font is "big"
 art = '''
              _         _  _____   ____  
@@ -45,14 +46,14 @@ def create_query_plan(query, keywords, action):
     This can and will be used recursively
     '''
 
-    dic = {val: None for val in keywords if val!=';'}
+    dic = {val: None for val in keywords if val!=';'} # dict of query words
 
-    ql = [val for val in query.split(' ') if val !='']
+    ql = [val for val in query.split(' ') if val !=''] # list of query words
 
     kw_in_query = []
     kw_positions = []
     i=0
-    while i<len(ql):
+    while i<len(ql): # finds indexes of query keywords in the action format (eg. [0,2,4,6], 0:select)
         if in_paren(ql, i): 
             i+=1
             continue
@@ -68,7 +69,7 @@ def create_query_plan(query, keywords, action):
         i+=1
         
 
-
+    # Fill dict (eg. 'select':'*') excluding ;
     for i in range(len(kw_in_query)-1):
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
     
@@ -76,7 +77,7 @@ def create_query_plan(query, keywords, action):
         dic['as'] = interpret(dic['as'])
 
     if action=='select':
-        dic = evaluate_from_clause(dic)
+        dic = evaluate_from_clause(dic) # for subqueries using join statement
 
         if dic['distinct'] is not None:
             dic['select'] = dic['distinct']
@@ -88,23 +89,28 @@ def create_query_plan(query, keywords, action):
                 dic['desc'] = True
             else:
                 dic['desc'] = False
-            dic['order by'] = dic['order by'].removesuffix(' asc').removesuffix(' desc')
+            dic['order by'] = dic['order by'].replace(' asc','').replace(' desc','')
             
         else:
             dic['desc'] = None
 
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
-        dic['create table'] = dic['create table'].removesuffix(args).strip()
+        dic['create table'] = dic['create table'].replace(args,"").strip()
         arg_nopk = args.replace('primary key', '')[1:-1]
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
         dic['column_names'] = ','.join([val[0] for val in arglist])
         dic['column_types'] = ','.join([val[1] for val in arglist])
         if 'primary key' in args:
-            arglist = args[1:-1].split(' ')
-            dic['primary key'] = arglist[arglist.index('primary')-2]
+            arglist = args[1:-1].split(' ') # remove () from create table arguments statement and split into keywords
+
+            dic['primary key'] = arglist[arglist.index('primary')-2] # search for index of keyword primary, and get index of the PK (-2 because -1 is type)
         else:
             dic['primary key'] = None
+        if 'unique' in args:
+            arglist = args[1:-1].split(' ')
+            matched_indexes = [i for i, kw in enumerate(arglist) if kw in ('unique', 'unique,')]
+            dic['unique'] =[arglist[m-2] for m in matched_indexes] # list of columns with unique keyword
     
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
@@ -121,6 +127,13 @@ def create_query_plan(query, keywords, action):
         else:
             dic['force'] = False
 
+    if action=='create index':
+        if '(' and ')' in dic['on']: #if user has specified a column on which we will create the index
+            l=dic['on'].split(' ')
+            dic['index_column']=l[2] #key is the specified column
+            dic['on']=l[0] #now the key contains only the table name
+        else:
+            dic['index_column']=None #default case->index column is not specified
     return dic
 
 
@@ -130,7 +143,7 @@ def evaluate_from_clause(dic):
     Evaluate the part of the query (argument or subquery) that is supplied as the 'from' argument
     '''
     join_types = ['inner', 'left', 'right', 'full', 'sm', 'inl']
-    from_split = dic['from'].split(' ')
+    from_split = dic['from'].split(' ') # if from key in () then we have an inner query from the join_types
     if from_split[0] == '(' and from_split[-1] == ')':
         subquery = ' '.join(from_split[1:-1])
         dic['from'] = interpret(subquery)
@@ -162,7 +175,7 @@ def evaluate_from_clause(dic):
 
 def interpret(query):
     '''
-    Interpret the query.
+    Interpret the query. (keywords per action)
     '''
     kw_per_action = {'create table': ['create table'],
                      'drop table': ['drop table'],
@@ -180,11 +193,13 @@ def interpret(query):
                      'create view' : ['create view', 'as']
                      }
 
-    if query[-1]!=';':
+    if query[-1]!=';': # append ; to query if not there
         query+=';'
     
+    # format () and ; with one whitespace before and after
     query = query.replace("(", " ( ").replace(")", " ) ").replace(";", " ;").strip()
 
+    # find action from first word in query
     for kw in kw_per_action.keys():
         if query.startswith(kw):
             action = kw
@@ -213,7 +228,7 @@ def interpret_meta(command):
     cdb - change/create database
     rmdb - delete database
     """
-    action = command.split(' ')[0].removesuffix(';')
+    action = command.split(' ')[0].replace(';','')
 
     db_name = db._name if search_between(command, action,';')=='' else search_between(command, action,';')
 
@@ -223,10 +238,10 @@ def interpret_meta(command):
         verbose = False
 
     def list_databases(db_name):
-        [print(fold.removesuffix('_db')) for fold in os.listdir('dbdata')]
+        [print(fold.replace('_db','')) for fold in os.listdir('dbdata')]
     
     def list_tables(db_name):
-        [print(pklf.removesuffix('.pkl')) for pklf in os.listdir(f'dbdata/{db_name}_db') if pklf.endswith('.pkl')\
+        [print(pklf.replace('.pkl','')) for pklf in os.listdir(f'dbdata/{db_name}_db') if pklf.endswith('.pkl')\
             and not pklf.startswith('meta')]
 
     def change_db(db_name):
@@ -258,7 +273,7 @@ if __name__ == "__main__":
         for line in open(fname, 'r').read().splitlines():
             if line.startswith('--'): continue
             if line.startswith('explain'):
-                dic = interpret(line.removeprefix('explain '))
+                dic = interpret(line.replace('explain ',''))
                 pprint(dic, sort_dicts=False)
             else :
                 dic = interpret(line.lower())
@@ -284,11 +299,14 @@ if __name__ == "__main__":
         try:
             if line=='exit':
                 break
-            if line.split(' ')[0].removesuffix(';') in ['lsdb', 'lstb', 'cdb', 'rmdb']:
+            if line.split(' ')[0].replace(';','') in ['lsdb', 'lstb', 'cdb', 'rmdb']:
                 interpret_meta(line)
             elif line.startswith('explain'):
-                dic = interpret(line.removeprefix('explain '))
+                dic = interpret(line.replace('explain ',''))
                 pprint(dic, sort_dicts=False)
+            elif line.startswith('equivalent of'):
+                 dic = interpret(line.replace('equivalent of ',''))
+                 equiv_print(dic)
             else:
                 dic = interpret(line)
                 result = execute_dic(dic)

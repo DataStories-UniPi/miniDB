@@ -2,6 +2,13 @@
   <img width="550" alt="mdblogo" src="https://user-images.githubusercontent.com/15364873/146045747-5dbdce9c-a70a-494b-8fdd-52ba932cdd19.png">
 </p>
 
+# Fork by P20074,P20199,P20220
+
+This fork provides implementations for key features of a modern RDBMS which include 
+ - Enriching WHERE statement by supporting (a) NOT and BETWEEN operators and (b) AND and OR operators
+ - Enriching indexing functionality by supporting (a) BTree index over unique (non-PK) columns and (b) Hash index over PK or unique columns
+ - Implementing miniDB’s query optimiser by building equivalent query plans based on respective RA expressions
+
 # miniDB
 
 The miniDB project is a minimal and easy to expand and develop for RMDBS tool, written exclusivelly in Python 3. MiniDB's main goal is to provide the user with as much functionality as possible while being easy to understand and even easier to expand. Thus, miniDB's primary market are students and researchers that want to work with a tool that they can understand through and through, while being able to implement additional features as quickly as possible.

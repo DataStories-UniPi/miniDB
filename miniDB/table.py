@@ -6,7 +6,8 @@ import sys
 
 sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
 
-from misc import get_op, split_condition
+from misc import get_op, reverse_op_not, split_condition
+from hash import Hash
 
 
 class Table:
@@ -26,7 +27,7 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None,unique=None, load=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -70,6 +71,15 @@ class Table:
             self.pk = primary_key
             # self._update()
 
+            # if unique is set, keep its index as an attribute
+            if unique is not None:
+                self.unique_idx=[]
+                for u in unique:
+                    self.unique_idx.append(self.column_names.index(u))
+            else:
+                self.unique_idx = None
+
+            self.unique = unique
     # if any of the name, columns_names and column types are none. return an empty table object
 
     def column_by_name(self, column_name):
@@ -125,11 +135,19 @@ class Table:
                     print(exc)
 
             # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
+            
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
-                raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
+                raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column "{self.pk}".')
             elif i==self.pk_idx and row[i] is None:
                 raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
-
+            
+            # if value is to be appended to a unique column, check that it doesnt alrady exist
+            if self.unique_idx is not None:
+                if i in self.unique_idx and row[i] in self.column_by_name(self.unique[self.unique_idx.index(i)]):
+                    raise ValueError(f'## ERROR -> Value {row[i]} already exists in unique column.')
+                elif i in self.unique_idx and row[i] is None:
+                    raise ValueError(f'ERROR -> The value of a unique field cannot be None.')
+            
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
             self.data[insert_stack[-1]] = row
@@ -182,20 +200,60 @@ class Table:
                 
                 Operatores supported: (<,<=,==,>=,>)
         '''
-        column_name, operator, value = self._parse_condition(condition)
 
-        indexes_to_del = []
+        rows = []
+        if condition is not None:
+
+            # BETWEEN case
+            if "between" in condition:
+                condition_list=condition.split(" ")
+                if len(condition_list)!=5 or condition_list[1]!="between" or condition_list[3]!="and":
+                    raise Exception("Condition containing between keyword must have the following format: column between value1 and value2")
+                else:
+                    try:
+                        column=self.column_by_name(condition_list[0])
+                        value1=int(condition_list[2])
+                        value2=int(condition_list[4])
+                        rows = [ind for ind, x in enumerate(column) if value1 <= x <= value2] #append index of row if x between value1 and value2
+                    except:
+                        raise TypeError('You need to provide numeric values inside a between statement')
+            # AND case
+            elif "and" in condition:
+                all_rows=[]
+                seperated_conditions=condition.split(" and ")
+                for cond in seperated_conditions: #select all the rows that match each condition
+                    column_name, operator, value = self._parse_condition(cond)
+                    column = self.column_by_name(column_name)
+                    all_rows+=[ind for ind, x in enumerate(column) if get_op(operator, x, value)]#add indexes to all_rows
+                # Keep the rows from the all_rows list that appear as many times as the number of conditions in the AND clauses
+                rows=[*set(i for i in all_rows if all_rows.count(i) > len(seperated_conditions)-1)] 
+            # OR case
+            elif "or" in condition:
+                all_rows=[]
+                seperated_conditions=condition.split(" or ")
+                for cond in seperated_conditions: #select all the rows that match each condition
+                    column_name, operator, value = self._parse_condition(cond)
+                    column = self.column_by_name(column_name)
+                    all_rows+=[ind for ind, x in enumerate(column) if get_op(operator, x, value)]#add indexes to all_rows
+                rows=[*set(all_rows)] #keep all rows that match either of the conditions but first remove the double values
+            else:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+        else:
+            rows = [i for i in range(len(self.data))]
 
         column = self.column_by_name(column_name)
         for index, row_value in enumerate(column):
             if get_op(operator, row_value, value):
-                indexes_to_del.append(index)
+                rows.append(index)
 
         # we pop from highest to lowest index in order to avoid removing the wrong item
         # since we dont delete, we dont have to to pop in that order, but since delete is used
         # to delete from meta tables too, we still implement it.
 
-        for index in sorted(indexes_to_del, reverse=True):
+        for index in sorted(rows, reverse=True):
             if self._name[:4] != 'meta':
                 # if the table is not a metatable, replace the row with a row of nones
                 self.data[index] = [None for _ in range(len(self.column_names))]
@@ -204,7 +262,7 @@ class Table:
 
         # self._update()
         # we have to return the deleted indexes, since they will be appended to the insert_stack
-        return indexes_to_del
+        return rows
 
 
     def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
@@ -233,9 +291,44 @@ class Table:
         # if condition is None, return all rows
         # if not, return the rows with values where condition is met for value
         if condition is not None:
-            column_name, operator, value = self._parse_condition(condition)
-            column = self.column_by_name(column_name)
-            rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
+            # BETWEEN case
+            if "between" in condition:
+                condition_list=condition.split(" ")
+                if len(condition_list)!=5 or condition_list[1]!="between" or condition_list[3]!="and":
+                    raise Exception("Condition containing between keyword must have the following format: column between value1 and value2")
+                else:
+                    try:
+                        column=self.column_by_name(condition_list[0])
+                        value1=int(condition_list[2])
+                        value2=int(condition_list[4])
+                        rows = [ind for ind, x in enumerate(column) if value1 <= x <= value2] #append index of row if x between value1 and value2
+                    except:
+                        raise TypeError('You need to provide numeric values inside a between statement')
+            # AND case
+            elif "and" in condition:
+                all_rows=[]
+                seperated_conditions=condition.split(" and ")
+                for cond in seperated_conditions: #select all the rows that match each condition
+                    column_name, operator, value = self._parse_condition(cond)
+                    column = self.column_by_name(column_name)
+                    all_rows+=[ind for ind, x in enumerate(column) if get_op(operator, x, value)]#add indexes to all_rows
+                # Keep the rows from the all_rows list that appear as many times as the number of conditions in the AND clauses
+                rows=[*set(i for i in all_rows if all_rows.count(i) > len(seperated_conditions)-1)] 
+            # OR case
+            elif "or" in condition:
+                all_rows=[]
+                seperated_conditions=condition.split(" or ")
+                for cond in seperated_conditions: #select all the rows that match each condition
+                    column_name, operator, value = self._parse_condition(cond)
+                    column = self.column_by_name(column_name)
+                    all_rows+=[ind for ind, x in enumerate(column) if get_op(operator, x, value)]#add indexes to all_rows
+                rows=[*set(all_rows)] #keep all rows that match either of the conditions but first remove the double values
+            else:
+                column_name, operator, value = self._parse_condition(condition)
+                column = self.column_by_name(column_name)
+                rows = [ind for ind, x in enumerate(column) if get_op(operator, x, value)]
+
         else:
             rows = [i for i in range(len(self.data))]
 
@@ -268,7 +361,7 @@ class Table:
             s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
 
         return s_table
-
+        
 
     def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
 
@@ -278,51 +371,106 @@ class Table:
         else:
             return_cols = [self.column_names.index(colname) for colname in return_columns]
 
+        value1=None
+        value2=None
+        conditionBetween=False
+        if "between" in condition: # Supporting between search on btree 
+            condition_list=condition.split(" ")
+            if len(condition_list)!=5 or condition_list[1]!="between" or condition_list[3]!="and":
+                raise Exception("Condition containing between keyword must have the following format: column between value1 and value2")
+            else:
+                try:
+                    column_name=condition_list[0]
+                    value1=int(condition_list[2])
+                    value2=int(condition_list[4])
+                    conditionBetween=True
+                except:
+                    raise TypeError('You need to provide numeric values inside a between statement')
+        else: # simple where statement
+            column_name, operator, value = self._parse_condition(condition)
+
+        #if the column in condition is a primary key or a unique column,continue the select
+        if column_name in self.unique or (self.pk is not None and column_name==self.pk) : 
+            # here we run the same select twice, sequentially and using the btree.
+            # we then check the results match and compare performance (number of operations)
+            if conditionBetween:
+                    rows1 = bt.find(">=",value1) # lower bound rows
+                    rows2 = bt.find("<=",value2) # upper bound rows
+                    rows = [row for row in rows1 if row in rows2] # intersection
+            else:            
+                column = self.column_by_name(column_name)
+                # sequential
+                rows1 = []
+                opsseq = 0
+                for ind, x in enumerate(column):
+                    opsseq+=1
+                    if get_op(operator, x, value):
+                        rows1.append(ind)
+
+                # btree find
+                rows = bt.find(operator, value)
+
+            try:
+                k = int(limit)
+            except TypeError:
+                k = None
+            # same as simple select from now on
+            rows = rows[:k]
+            # TODO: this needs to be dumbed down
+            dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+
+            dict['column_names'] = [self.column_names[i] for i in return_cols]
+            dict['column_types']   = [self.column_types[i] for i in return_cols]
+
+            s_table = Table(load=dict)
+
+            s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+
+            if order_by:
+                s_table.order_by(order_by, desc)
+
+            if isinstance(limit,str):
+                s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
+
+            return s_table
+        else:
+            print('Column is neither a PK nor unique. Aborting')# if the column in condition is not a primary key or a unique column, abort the select
+            return
+
+    def _select_where_with_hash(self, return_columns, hsh, condition):
+        
+        # if * return all columns, else find the column indexes for the columns specified
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
+        else:
+            return_cols = [self.column_names.index(colname) for colname in return_columns]
+
 
         column_name, operator, value = self._parse_condition(condition)
 
-        # if the column in condition is not a primary key, abort the select
-        if column_name != self.column_names[self.pk_idx]:
-            print('Column is not PK. Aborting')
+        if operator != '=':
+            print('Hash index only supports equality. Aborting')
+            return
+        
+        #if the column in condition is a primary key or a unique column,continue the select
+        if column_name in self.unique or (self.pk is not None and column_name==self.pk) :
+            column = self.column_by_name(column_name)
+            #hash index find
+            ptr = hsh.find(value)
+            dict = {(key):([[self.data[ptr][j] for j in return_cols]] if key=="data" else value) for key,value in self.__dict__.items()}
 
-        # here we run the same select twice, sequentially and using the btree.
-        # we then check the results match and compare performance (number of operation)
-        column = self.column_by_name(column_name)
+            dict['column_names'] = [self.column_names[i] for i in return_cols]
+            dict['column_types']   = [self.column_types[i] for i in return_cols]
 
-        # sequential
-        rows1 = []
-        opsseq = 0
-        for ind, x in enumerate(column):
-            opsseq+=1
-            if get_op(operator, x, value):
-                rows1.append(ind)
+            s_table = Table(load=dict)
+            return s_table
+        
+        else:
+            print('Column is neither a PK nor unique. Aborting')# if the column in condition is not a primary key or a unique column, abort the select
+            return
+            
+        
 
-        # btree find
-        rows = bt.find(operator, value)
-
-        try:
-            k = int(limit)
-        except TypeError:
-            k = None
-        # same as simple select from now on
-        rows = rows[:k]
-        # TODO: this needs to be dumbed down
-        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
-
-        dict['column_names'] = [self.column_names[i] for i in return_cols]
-        dict['column_types']   = [self.column_types[i] for i in return_cols]
-
-        s_table = Table(load=dict)
-
-        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
-
-        if order_by:
-            s_table.order_by(order_by, desc)
-
-        if isinstance(limit,str):
-            s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
-
-        return s_table
 
     def order_by(self, column_name, desc=True):
         '''
@@ -533,6 +681,10 @@ class Table:
         if self.pk_idx is not None:
             # table has a primary key, add PK next to the appropriate column
             headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
+        if self.unique_idx is not None:
+            # table has unique columns, add UQ next to the appropriate column
+            for i in self.unique_idx:
+                headers[i] = headers[i]+' #UQ#'     
         # detect the rows that are no tfull of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]
@@ -552,6 +704,11 @@ class Table:
                 Operatores supported: (<,<=,==,>=,>)
             join: boolean. Whether to join or not (False by default).
         '''
+        not_condition = False
+        if "not " in condition: #not condition
+            condition=condition[4:] # remove not keyword
+            not_condition = True
+
         # if both_columns (used by the join function) return the names of the names of the columns (left first)
         if join:
             return split_condition(condition)
@@ -561,7 +718,8 @@ class Table:
         if left not in self.column_names:
             raise ValueError(f'Condition is not valid (cant find column name)')
         coltype = self.column_types[self.column_names.index(left)]
-
+        if not_condition:
+            return left,reverse_op_not(op), coltype(right)
         return left, op, coltype(right)
 
 

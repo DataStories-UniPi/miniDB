@@ -4,3 +4,5 @@ dbdata/
 __pycache__/
 .idea/
 .pytest_cache
+.vscode/launch.json
+.vscode/settings.json
