@@ -1,3 +1,5 @@
+#CHANGES BY P16058 P16197
+
 from __future__ import annotations
 import pickle
 from time import sleep, localtime, strftime
@@ -100,8 +102,8 @@ class Database:
         self._update_meta_length()
         self._update_meta_insert_stack()
 
-
-    def create_table(self, name, column_names, column_types, primary_key=None, load=None):
+    #modifying the constructor in order to use the unique identifier
+    def create_table(self, name, column_names, column_types, primary_key=None,unique_key=None,load=None):
         '''
         This method create a new table. This table is saved and can be accessed via db_object.tables['table_name'] or db_object.table_name
 
@@ -113,7 +115,7 @@ class Database:
             load: boolean. Defines table object parameters as the name of the table and the column names.
         '''
         # print('here -> ', column_names.split(','))
-        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, load=load)})
+        self.tables.update({name: Table(name=name, column_names=column_names.split(','), column_types=column_types.split(','), primary_key=primary_key, unique=unique_key,load=load)})
         # self._name = Table(name=name, column_names=column_names, column_types=column_types, load=load)
         # check that new dynamic var doesnt exist already
         # self.no_of_tables += 1
@@ -367,6 +369,11 @@ class Database:
         if self.is_locked(table_name):
             return
         if self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].pk_idx]:
+            index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
+            bt = self._load_idx(index_name)
+            table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+        #the following code block performs the btree search with the unique column
+        elif self._has_index(table_name) and condition_column==self.tables[table_name].column_names[self.tables[table_name].unique_idx]:
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
             bt = self._load_idx(index_name)
             table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)

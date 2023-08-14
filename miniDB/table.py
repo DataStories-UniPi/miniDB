@@ -1,3 +1,5 @@
+#CHANGES BY P16058 P16197
+
 from __future__ import annotations
 from tabulate import tabulate
 import pickle
@@ -26,7 +28,8 @@ class Table:
             - a dictionary that includes the appropriate info (all the attributes in __init__)
 
     '''
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+    #adding the unique constraint to the constructor
+    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None,unique=None,load=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -69,6 +72,11 @@ class Table:
 
             self.pk = primary_key
             # self._update()
+            #we will save in the database the unique constraint like the primary key constraint
+            if(unique is not None):
+                self.unique_idx=self.column_names.index(unique)
+            else:
+                self.unique_idx=None
 
     # if any of the name, columns_names and column types are none. return an empty table object
 
@@ -536,9 +544,47 @@ class Table:
         # detect the rows that are no tfull of nones (these rows have been deleted)
         # if we dont skip these rows, the returning table has empty rows at the deleted positions
         non_none_rows = [row for row in self.data if any(row)]
+        #adding the header unique
+        if(hasattr(self,'unique_idx')):
+            if(self.unique_idx is not None and self.unique_idx<len(headers)):
+                headers[self.unique_idx]=headers[self.unique_idx]+'#UNIQUE#'
         # print using tabulate
         print(tabulate(non_none_rows[:no_of_rows], headers=headers)+'\n')
 
+
+    def get_op_headers(self, no_of_rows=None, is_locked=False):
+        #same function as show but returns the headers in order to be printed
+        output = ""
+        if is_locked:
+            output += f"\n## {self._name} (locked) ##\n"
+        else:
+            output += f"\n## {self._name} ##\n"
+        headers = [f'{col} ({tp.__name__})' for col, tp in zip(self.column_names, self.column_types)]
+        if self.pk_idx is not None:
+            headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
+        #adding the header unique
+        if(hasattr(self,'unique_idx')):
+            if(self.unique_idx is not None and self.unique_idx<len(headers)):
+                headers[self.unique_idx]=headers[self.unique_idx]+'#UNIQUE#'
+        return headers
+
+    def get_op_res(self, no_of_rows=None, is_locked=False):
+        #same function as show but returns the result rather than printing it
+        output = ""
+        if is_locked:
+            output += f"\n## {self._name} (locked) ##\n"
+        else:
+            output += f"\n## {self._name} ##\n"
+        headers = [f'{col} ({tp.__name__})' for col, tp in zip(self.column_names, self.column_types)]
+        if self.pk_idx is not None:
+            headers[self.pk_idx] = headers[self.pk_idx]+' #PK#'
+        #adding the header unique
+        if(hasattr(self,'unique_idx')):
+            if(self.unique_idx is not None and self.unique_idx<len(headers)):
+                headers[self.unique_idx]=headers[self.unique_idx]+'#UNIQUE#'
+        non_none_rows = [row for row in self.data if any(row)]
+        #only line that is different,that is used to combine table results
+        return non_none_rows
 
     def _parse_condition(self, condition, join=False):
         '''
@@ -561,8 +607,11 @@ class Table:
         if left not in self.column_names:
             raise ValueError(f'Condition is not valid (cant find column name)')
         coltype = self.column_types[self.column_names.index(left)]
-
-        return left, op, coltype(right)
+        #this if statement exists in order to perform the between operation
+        if(split_condition(condition)[1]=='between'):
+            return left,op,str(right)
+        else:
+            return left, op, coltype(right)
 
 
     def _load_from_file(self, filename):
