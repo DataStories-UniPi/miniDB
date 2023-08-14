@@ -1,3 +1,6 @@
+#CHANGES BY P16058 P16197
+
+
 import os
 import re
 from pprint import pprint
@@ -5,6 +8,7 @@ import sys
 import readline
 import traceback
 import shutil
+from tabulate import tabulate
 sys.path.append('miniDB')
 
 from database import Database
@@ -105,6 +109,13 @@ def create_query_plan(query, keywords, action):
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
+        #adding the unique constraing in the way of the primary key
+        if 'unique' in args:
+            arglist=args[1:-1].split(' ')
+            #REMOVING ALL CHARACTERS BEFORE THE COMMA
+            u=arglist[arglist.index('unique')-2].split(",",1)
+            dic['unique']=u[1]
+            
     
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
@@ -290,9 +301,75 @@ if __name__ == "__main__":
                 dic = interpret(line.removeprefix('explain '))
                 pprint(dic, sort_dicts=False)
             else:
-                dic = interpret(line)
-                result = execute_dic(dic)
-                if isinstance(result,Table):
-                    result.show()
+                #this condition changes the way the queries are executed
+                l=line.split()
+                queries=[]
+                initial_part=[]
+                conditions=[]
+                position=0
+                #first we get the select (condition) part of statement
+                for i in range(0,len(l)):
+                    initial_part.append(l[i])
+                    if(l[i]=='where'):
+                        position=i
+                        break
+                #this part collects the parts that correspond to the condition
+                q=[]
+                for i in range(position+1,len(l)):
+                    if(l[i]=='or'):
+                        queries.append(q)
+                        q=[]
+                        conditions.append('or')
+                    elif(l[i]=='and'):
+                        queries.append(q)
+                        q=[]
+                        conditions.append('and')
+                    else:
+                        q.append(l[i])
+                queries.append(q)
+                #converting the lists into the strings that the parser operates on
+                for i in range(0,len(queries)):
+                    queries[i]=' '.join(queries[i])
+                    if(queries[i][-1]!=';'):
+                        queries[i]=queries[i]+';'
+
+                initial_part=' '.join(initial_part)
+                for i in range(0,len(queries)):
+                    queries[i]=initial_part+' '+queries[i]
+                if(len(queries)==1):
+                    #this condition prints only one condition
+                    dic = interpret(line)
+                    result = execute_dic(dic)
+                    if isinstance(result,Table):
+                        result.show()
+                else:
+                    #multiple conditions
+                    dicts=[]
+                    for q in queries:
+                        dicts.append(interpret(q))
+                    #this line gets the headers in order to print like normal
+                    headers=execute_dic(dicts[0]).get_op_headers()
+                    results=[]
+                    for d in dicts:
+                        results.append(execute_dic(d).get_op_res())
+                    output=results[0]
+                    for i in range(1,len(results)):
+                        if(conditions[i-1]=='or'):
+                            for r in results[i]:
+                                if(r not in output):
+                                    output.append(r)
+                        elif(conditions[i-1]=='and'):
+                            positions=[]
+                            for r in results[i]:
+                                for j in range(0,len(output)):
+                                    if(r==output[j]):
+                                        positions.append(j)
+                            to_be_popped=[]
+                            for j in range(0,len(output)):
+                                if(j not in positions):
+                                    to_be_popped.append(j)
+                            for j in range(len(to_be_popped)-1,-1,-1):
+                                output.pop(to_be_popped[j])
+                    print(tabulate(output,headers=headers))
         except Exception:
             print(traceback.format_exc())

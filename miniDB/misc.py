@@ -1,3 +1,6 @@
+#CHANGES BY P16058 P16197
+
+
 import operator
 
 def get_op(op, a, b):
@@ -8,7 +11,11 @@ def get_op(op, a, b):
                 '<': operator.lt,
                 '>=': operator.ge,
                 '<=': operator.le,
-                '=': operator.eq}
+                '=': operator.eq,
+                #addition to implement NOT operator
+                'not'.casefold():operator.ne,
+                #addition to implement BETWEEN operator
+                'between'.casefold():between_op}
 
     try:
         return ops[op](a,b)
@@ -20,7 +27,11 @@ def split_condition(condition):
            '<=': operator.le,
            '=': operator.eq,
            '>': operator.gt,
-           '<': operator.lt}
+           '<': operator.lt,
+           #addition to implement NOT operator
+           'not'.casefold():operator.ne,
+           #addition to implement BETWEEN operator
+           'between'.casefold():between_op}
 
     for op_key in ops.keys():
         splt=condition.split(op_key)
@@ -34,7 +45,6 @@ def split_condition(condition):
 
             if right.find('"') != -1: # If there are any double quotes in the value, throw. (Notice we've already removed the leading and trailing ones)
                 raise ValueError(f'Invalid condition: {condition}\nDouble quotation marks are not allowed inside values.')
-
             return left, op_key, right
 
 def reverse_op(op):
@@ -48,3 +58,17 @@ def reverse_op(op):
         '<=' : '>=',
         '=' : '='
     }.get(op)
+
+
+#BETWEEN operator function
+def between_op(column_value,between_range):
+    between=between_range.split(',')
+    res=False
+    if(type(column_value)==int or type(column_value)==float):
+        #numerical comparison
+        res=(float(between[0])<column_value and float(between[1])>column_value)
+    else:
+        #string comparison
+        res=between[0]<column_value and between[1]>column_value
+    return res
+
