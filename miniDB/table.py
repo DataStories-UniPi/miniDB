@@ -26,7 +26,7 @@ class Table:
 
     '''
 
-    def __init__(self, name=None, column_names=None, column_types=None, primary_key=None, load=None):
+    def __init__(self, name=None, column_names=None, column_types=None,unique_cols=None, primary_key=None, load=None):
 
         if load is not None:
             # if load is a dict, replace the object dict with it (replaces the object with the specified one)
@@ -69,6 +69,11 @@ class Table:
 
             self.pk = primary_key
             # self._update()
+            if unique_cols is not None:
+                self.unique_index = self.column_names.index(unique_cols)
+            else:
+                self.unique_index = None
+            self.unique = unique_cols
 
     # if any of the name, columns_names and column types are none. return an empty table object
 
@@ -248,7 +253,6 @@ class Table:
                 column = self.column_by_name(column_name)
                 rows = [ind for ind, x in enumerate(column) if int(start_value) <= x <= int(end_value)]
             elif 'and' in condition:
-
                 print('and is in condition ')
                 conditions = split_condition(condition)
                 rows = []
@@ -265,7 +269,6 @@ class Table:
                         if i == j:
                             rowsTemp.append(i)
                 print(rowsTemp)
-
                 # remove duplicates
                 res = []
                 [res.append(x) for x in rowsTemp if x not in res]

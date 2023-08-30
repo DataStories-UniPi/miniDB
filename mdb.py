@@ -106,7 +106,14 @@ def create_query_plan(query, keywords, action):
             dic['primary key'] = arglist[arglist.index('primary')-2]
         else:
             dic['primary key'] = None
-    
+        if 'unique' in args:
+            arglist  = args[1:-1].replace(',','')
+            arglist = arglist.split(' ')
+            print(" Unique condition detected")
+            dic['unique'] = arglist[arglist.index('unique')-2]
+        else:
+            dic['unique'] = None
+
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
@@ -176,7 +183,7 @@ def interpret(query):
                      'unlock table': ['unlock table', 'force'],
                      'delete from': ['delete from', 'where'],
                      'update table': ['update table', 'set', 'where'],
-                     'create index': ['create index', 'on', 'using'],
+                     'create index': ['create index', 'on', 'column', 'using'], # added column keyword
                      'drop index': ['drop index'],
                      'create view' : ['create view', 'as']
                      }
