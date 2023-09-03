@@ -72,6 +72,11 @@ def create_query_plan(query, keywords, action):
     for i in range(len(kw_in_query)-1):
         dic[kw_in_query[i]] = ' '.join(ql[kw_positions[i]+1:kw_positions[i+1]])
     
+    if action == 'create index':
+        dic.update({
+            'on': dic['on'].replace('(','').replace(')','').strip()
+        })
+
     if action == 'create view':
         dic['as'] = interpret(dic['as'])
 
