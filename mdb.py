@@ -7,6 +7,11 @@ import traceback
 import shutil
 sys.path.append('miniDB')
 
+from equivalent_ra import ra_eq1
+from equivalent_ra import ra_eq2
+from equivalent_ra import ra_eq3
+from equivalent_ra import ra_eq4
+
 from database import Database
 from table import Table
 # art font is "big"
@@ -89,10 +94,8 @@ def create_query_plan(query, keywords, action):
             else:
                 dic['desc'] = False
             dic['order by'] = dic['order by'].removesuffix(' asc').removesuffix(' desc')
-            
         else:
             dic['desc'] = None
-
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
@@ -197,7 +200,8 @@ def evaluate_from_clause(dic):
             join_dic['right'] = interpret(join_dic['right'][1:-1].strip())
 
         dic['from'] = join_dic
-        
+    print(ra_eq4(dic))
+    print(dic)
     return dic
 
 def interpret(query):
