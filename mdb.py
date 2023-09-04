@@ -2,10 +2,15 @@ import os
 import re
 from pprint import pprint
 import sys
-import readline
+#import pyreadline
 import traceback
 import shutil
 sys.path.append('miniDB')
+
+from equivalent_ra import ra_eq1
+from equivalent_ra import ra_eq2
+from equivalent_ra import ra_eq3
+from equivalent_ra import ra_eq4
 
 from database import Database
 from table import Table
@@ -89,23 +94,44 @@ def create_query_plan(query, keywords, action):
             else:
                 dic['desc'] = False
             dic['order by'] = dic['order by'].removesuffix(' asc').removesuffix(' desc')
-            
         else:
             dic['desc'] = None
-
     if action=='create table':
         args = dic['create table'][dic['create table'].index('('):dic['create table'].index(')')+1]
         dic['create table'] = dic['create table'].removesuffix(args).strip()
+        
         arg_nopk = args.replace('primary key', '')[1:-1]
+        
         arglist = [val.strip().split(' ') for val in arg_nopk.split(',')]
+        
         dic['column_names'] = ','.join([val[0] for val in arglist])
+        
         dic['column_types'] = ','.join([val[1] for val in arglist])
         if 'primary key' in args:
-            arglist = args[1:-1].split(' ')
-            dic['primary key'] = arglist[arglist.index('primary')-2]
+            arglist_has_pkey = args[1:-1].split(' ')
+            
+            dic['primary key'] = arglist_has_pkey[arglist_has_pkey.index('primary')-2]
         else:
             dic['primary key'] = None
+        
     
+        
+        unique_columns=[]
+        
+       
+        
+        for col in arglist:   
+            if 'unique' in col:
+                
+                unique_columns.append(col[0])
+                
+        if len(unique_columns)!=0:
+            dic['unique'] = ','.join(unique_columns)
+        else:
+            dic['unique']=None    
+
+       
+        
     if action=='import': 
         dic = {'import table' if key=='import' else key: val for key, val in dic.items()}
 
@@ -120,6 +146,23 @@ def create_query_plan(query, keywords, action):
             dic['force'] = True
         else:
             dic['force'] = False
+    
+    if action=='create index':
+        
+        args = dic['on'].split(' ')
+        dic['on'] = dic['on'].split(' ')[0]
+        if len(args) > 1:
+            
+            dic['column'] = args[2]
+        else:
+            dic['column'] = 'pkey'
+        args = dic['using'].split(' ')
+        dic['using'] = dic['using'].split(' ')[0]
+        if len(args) > 1:
+            dic['index_type'] = args[1]
+        
+        
+
 
     return dic
 
@@ -157,7 +200,8 @@ def evaluate_from_clause(dic):
             join_dic['right'] = interpret(join_dic['right'][1:-1].strip())
 
         dic['from'] = join_dic
-        
+    print(ra_eq4(dic))
+    print(dic)
     return dic
 
 def interpret(query):
@@ -200,6 +244,7 @@ def execute_dic(dic):
             dic[key] = execute_dic(dic[key])
     
     action = list(dic.keys())[0].replace(' ','_')
+    
     return getattr(db, action)(*dic.values())
 
 def interpret_meta(command):
@@ -251,7 +296,7 @@ if __name__ == "__main__":
     dbname = os.getenv('DB')
 
     db = Database(dbname, load=True)
-
+    
     
 
     if fname is not None:
@@ -262,6 +307,7 @@ if __name__ == "__main__":
                 pprint(dic, sort_dicts=False)
             else :
                 dic = interpret(line.lower())
+                
                 result = execute_dic(dic)
                 if isinstance(result,Table):
                     result.show()

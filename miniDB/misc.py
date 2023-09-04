@@ -1,4 +1,5 @@
 import operator
+import re
 
 def get_op(op, a, b):
     '''
@@ -8,24 +9,38 @@ def get_op(op, a, b):
                 '<': operator.lt,
                 '>=': operator.ge,
                 '<=': operator.le,
-                '=': operator.eq}
+                '=': operator.eq,
+                '!=': operator.ne}
 
     try:
         return ops[op](a,b)
     except TypeError:  # if a or b is None (deleted record), python3 raises typerror
         return False
 
-def split_condition(condition):
-    ops = {'>=': operator.ge,
-           '<=': operator.le,
-           '=': operator.eq,
-           '>': operator.gt,
-           '<': operator.lt}
 
+    
+
+
+def split_condition(condition,negate=0):    
+
+    if condition.startswith("not "):
+        negate=-1
+        condition = condition[4:].strip()
+    
+       
+    ops = {'>=': operator.ge,
+        '<=': operator.le,
+        '=': operator.eq,
+        '>': operator.gt,
+        '<': operator.lt,
+        '!=': operator.ne}
+   
     for op_key in ops.keys():
+        
         splt=condition.split(op_key)
         if len(splt)>1:
             left, right = splt[0].strip(), splt[1].strip()
+            
 
             if right[0] == '"' == right[-1]: # If the value has leading and trailing quotes, remove them.
                 right = right.strip('"')
@@ -34,7 +49,20 @@ def split_condition(condition):
 
             if right.find('"') != -1: # If there are any double quotes in the value, throw. (Notice we've already removed the leading and trailing ones)
                 raise ValueError(f'Invalid condition: {condition}\nDouble quotation marks are not allowed inside values.')
-
+            if negate==-1:
+                if op_key == '<=':
+                    op_key = '>'
+                elif op_key == '>=':
+                    op_key= '<'
+                elif op_key == '=':
+                    op_key ='!='
+                elif op_key=='>':
+                    op_key = '<='
+                elif op_key=='<':
+                    op_key='>='
+                elif op_key=='!=':
+                    op_key='='    
+                    
             return left, op_key, right
 
 def reverse_op(op):
@@ -46,5 +74,6 @@ def reverse_op(op):
         '>=' : '<=',
         '<' : '>',
         '<=' : '>=',
-        '=' : '='
+        '=' : '=',
+        '!=': '!='
     }.get(op)

@@ -116,6 +116,7 @@ class Btree:
         # insert to it
         self.nodes[index].insert(value,ptr)
         # if the node has more elements than b-1, split the node
+
         if len(self.nodes[index].values)==self.b:
             self.split(index)
 
@@ -309,6 +310,7 @@ class Btree:
         if operator == '>':
             for idx, node_value in enumerate(target_node.values):
                 ops+=1
+                
                 if node_value > value:
                     results.append(target_node.ptrs[idx])
             while target_node.right_sibling is not None:
