@@ -436,12 +436,21 @@ class Database:
                 
                 if self.tables[table_name].unique[j] in condition_column:
                     found = True  
-                    index_name = self.select('*', 'meta_indexes', f'table_name={table_name}', return_object=True).column_by_name('index_name')[0]
-                    print(index_name)
-                    bt = self._load_idx(index_name)
-                    bt.show()
-                    table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
-                    break
+                    index_name = self.select('*', 'meta_indexes', f'table_name={table_name}',return_object=True).column_by_name('index_name')[0]
+                    index_type = self.select('*', 'meta_indexes', f'table_name={table_name}',return_object=True).column_by_name('index_type')[0]
+                    
+                    if index_type=="btree":
+                
+                        bt = self._load_idx(index_name)
+                        table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
+                    elif index_type=="hash":
+                        print("hash")
+                        if op== "=":
+                            bt = self._load_idx(index_name)
+                            table = self.tables[table_name]._select_where_with_hash(columns, bt, condition, distinct, order_by, desc, limit)
+                        else:
+                            table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+                            break
             if not found:
                 
                 table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
