@@ -181,7 +181,7 @@ class Table:
         if condition is not None:
             condition = self.replace_between(condition)
             sub_conditions = condition.split(" or ")
-            print(sub_conditions)
+            
             rows = set()
             for sub_cond in sub_conditions:
                 is_not = False
@@ -309,7 +309,7 @@ class Table:
         if condition is not None:
             condition = self.replace_between(condition)
             sub_conditions = condition.split(" or ")
-            print(sub_conditions)
+            
             rows = set()
             for sub_cond in sub_conditions:
                 is_not = False
@@ -436,7 +436,7 @@ class Table:
         if condition is not None:
             condition = self.replace_between(condition)
             sub_conditions = condition.split(" or ")
-            print(sub_conditions)
+            
             rows = set()
             for sub_cond in sub_conditions:
                 is_not = False
@@ -596,7 +596,7 @@ class Table:
         if condition is not None:
             condition = self.replace_between(condition)
             sub_conditions = condition.split(" or ")
-            print(sub_conditions)
+            
             rows = set()
             for sub_cond in sub_conditions:
                 is_not = False
@@ -738,6 +738,50 @@ class Table:
             s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
         
         return s_table
+
+    def _select_where_with_hash(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
+        print("select with hash")
+        # if * return all columns, else find the column indexes for the columns specified
+        if return_columns == '*':
+            return_cols = [i for i in range(len(self.column_names))]
+        else:
+            return_cols = [self.column_names.index(colname) for colname in return_columns]
+
+
+        column_name, operator, value = self._parse_condition(condition)
+        rows=[]
+        rows.append(bt.find(value))
+        
+
+    
+        
+        try:
+            k = int(limit)
+        except TypeError:
+            k = None
+        # same as simple select from now on
+        rows = rows[:k]
+        rows=list(rows)
+        print(rows)
+        
+        # TODO: this needs to be dumbed down
+        dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
+
+        dict['column_names'] = [self.column_names[i] for i in return_cols]
+        dict['column_types']   = [self.column_types[i] for i in return_cols]
+
+        s_table = Table(load=dict)
+
+        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+
+        if order_by:
+            s_table.order_by(order_by, desc)
+
+        if isinstance(limit,str):
+            s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
+        
+        return s_table
+
 
     def order_by(self, column_name, desc=True):
         '''

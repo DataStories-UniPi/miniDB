@@ -5,14 +5,18 @@ class ExtendibleHashing:
         self.bucket_size = 4  # Number of elements in each bucket
 
     def hash_function(self, key):
-        return key % (2 ** self.global_depth)
+        
+        hash_value = 0
+        for char in key:
+            hash_value = (hash_value * 31 + ord(char)) % (2 ** self.global_depth)
+        return hash_value
 
     def insert(self, key, value):
-        hashed_key = self.hash_function(key)
+        hashed_key = self.hash_function(value)
         if hashed_key in self.directory:
             bucket = self.directory[hashed_key]
             for i, (k, v) in enumerate(bucket):
-                if k == key:
+                if k == value:
                     bucket[i] = (k, value)  # Update value for existing key
                     return
             if len(bucket) < self.bucket_size:
@@ -56,12 +60,13 @@ class ExtendibleHashing:
 
 
     def find(self, key):
+        self.global_depth=1
         hashed_key = self.hash_function(key)
         if hashed_key in self.directory:
             bucket = self.directory[hashed_key]
             for item in bucket:
-                if item[0] == key:
-                    return item[1]
+                if item[1] == key:
+                    return item[0]
         return None
 
     def delete(self, key):

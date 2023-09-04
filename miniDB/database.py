@@ -362,6 +362,7 @@ class Database:
             return table_name._select_where(columns, condition, distinct, order_by, desc, limit)
         
         condition_column=""
+        op=""
         if condition is not None:
             if "between" in condition.split():
                 condition_column = condition.split()[0]
@@ -396,10 +397,9 @@ class Database:
                         condition_column = con[0]
                     else:
                         condition_column = ""
-        else:
-            
-            col,op=self.tables[table_name]._parse_condition(condition)
-            if op=="=":
+            else:
+                
+                col,op,_= self.tables[table_name]._parse_condition(condition)
                 condition_column=col
             
 
@@ -412,18 +412,24 @@ class Database:
         if self.is_locked(table_name):
             return
         
-        if self.tables[table_name].pk_idx is not None and self._has_index(table_name,condition_column):
-            print("here")
+        
+        if self.tables[table_name].pk_idx is not None and self.tables[table_name].pk == condition_column and self._has_index(table_name,condition_column):
+            
             index_name = self.select('*', 'meta_indexes', f'table_name={table_name}',return_object=True).column_by_name('index_name')[0]
             index_type = self.select('*', 'meta_indexes', f'table_name={table_name}',return_object=True).column_by_name('index_type')[0]
+            
             if index_type=="btree":
+                
                 bt = self._load_idx(index_name)
                 table = self.tables[table_name]._select_where_with_btree(columns, bt, condition, distinct, order_by, desc, limit)
             elif index_type=="hash":
-                bt = self._load_idx(index_name)
-                table = self.tables[table_name]._select_where_with_hash(columns, bt, condition, distinct, order_by, desc, limit)
-
-        elif self.tables[table_name].unique_idx is not None and self._has_index(table_name): 
+                print("hash")
+                if op== "=":
+                    bt = self._load_idx(index_name)
+                    table = self.tables[table_name]._select_where_with_hash(columns, bt, condition, distinct, order_by, desc, limit)
+                else:
+                    table = self.tables[table_name]._select_where(columns, condition, distinct, order_by, desc, limit)
+        elif self.tables[table_name].unique_idx is not None and self._has_index(table_name,condition_column): 
             
             found = False
             for j in range (len(self.tables[table_name].unique)):
