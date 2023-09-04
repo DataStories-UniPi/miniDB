@@ -1,38 +1,58 @@
-import pandas as pd
+'''
+INFO
+input : sql query
+output relational algebra expression
+'''
+sql_input = '''SELECT *
+FROM instructor AS I
+INNER JOIN teaches AS T ON I.ID = T.ID
+WHERE I.dept_name = “Music” AND T.year = 2009 '''
 
-class RelationalAlgebra:
-    def __init__(self):
-        self.tables = {}
+def sql_to_rel(query):
+    query_words = query.split()
+    dict={
+        "SELECT":"σ",
+        "*":"",
+        "FROM":"",
+        "INNER JOIN":"⋈",
+        "ON":"",
+        "WHERE":""
+    }
+    ra=[]
+    flag_table = False
+    flag_condition = 0
+    tables=[]
+    join =""
+    conditions=[]
+    for word in query_words:
+        if word == "SELECT":
+            ra.append("σ")
+        elif word == "AS":
+            flag_table=True
+        elif flag_table:
+            tables.append(word)
+            flag_table=False
+        elif word=="ON":
+            flag_condition=5
+        elif flag_condition>0:
+            conditions.append(word)
+            flag_condition--1
+        elif word == "JOIN":
+           join = "⋈"
 
-    def create_table(self, name, columns, data):
-        self.tables[name] = pd.DataFrame(data, columns=columns)
-        print(f"Created table {name} with columns {columns} and data {data}")
 
-    def select(self, table_name, condition):
-        table = self.tables[table_name]
-        selected_rows = table.query(condition)
-        print(f"Selected rows from table {table_name} where {condition}:\n{selected_rows}")
-        return selected_rows
+    for c in conditions:
+        if c == "AND":
+            ra.append("^")
+            continue
+        elif c == "WHERE":
+            continue
+        ra.append(c)
+    for t in tables:
+        ra.append(t)
+        ra.append(join)
+        join = ""
+    print("Input sql -> ",sql_input)
+    print("RA -> ",ra)
 
-    def project(self, table_name, columns):
-        table = self.tables[table_name]
-        projected_data = table[columns]
-        print(f"Projected columns {columns} from table {table_name}:\n{projected_data}")
-        return projected_data
-
-    def join(self, table1_name, table2_name, join_condition):
-        table1 = self.tables[table1_name]
-        table2 = self.tables[table2_name]
-        joined_data = pd.merge(table1, table2, how='inner', left_on=join_condition[0], right_on=join_condition[1])
-        print(f"Joined data from tables {table1_name} and {table2_name} on {join_condition}:\n{joined_data}")
-        return joined_data
-
-# Example usage
-db = RelationalAlgebra()
-
-db.create_table("Students", ["ID", "Name", "Age"], [[1, "Alice", 20], [2, "Bob", 22]])
-db.create_table("Courses", ["ID", "Course"], [[1, "Math"], [2, "History"]])
-
-selected_students = db.select("Students", "Age > 20")
-projected_students = db.project("Students", ["Name", "Age"])
-joined_data = db.join("Students", "Courses", ["ID", "ID"])
+sql_to_rel(sql_input)
