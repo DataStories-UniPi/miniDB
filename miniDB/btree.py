@@ -6,11 +6,10 @@ class Node:
     '''
     Node abstraction. Represents a single bucket
     '''
-    def __init__(self, b, values=[], ptrs=[],\
-                 left_sibling=None, right_sibling=None, parent=None, is_leaf=False):
+    def __init__(self, b, values=None, ptrs=None,left_sibling=None, right_sibling=None, parent=None, is_leaf=False):
         self.b = b # branching factor
-        self.values = values # Values (the data from the pk column)
-        self.ptrs = ptrs # ptrs (the indexes of each datapoint or the index of another bucket)
+        self.values = [] if values is None else values # Values (the data from the pk column)
+        self.ptrs = [] if ptrs is None else ptrs # ptrs (the indexes of each datapoint or the index of another bucket)
         self.left_sibling = left_sibling # the index of a buckets left sibling
         self.right_sibling = right_sibling # the index of a buckets right sibling
         self.parent = parent # the index of a buckets parent
@@ -34,7 +33,9 @@ class Node:
         # else (no value in the node is larger) return the last ptr
         for index, existing_val in enumerate(self.values):
             ops+=1
-            if value<existing_val:
+            if value is None or existing_val is None:
+                continue
+            if value<type(value)(existing_val):
                 if return_ops:
                     return self.ptrs[index], ops
                 else:

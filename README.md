@@ -48,7 +48,7 @@ Installation instructions for non-Linux users can be found [here](https://graphv
 
 ## Documentation
 
-The file [documentation.pdf](documentation.pdf) contains a detailed description of the miniDB library.
+The file [documentation.pdf](docs/documentation.pdf) contains a detailed description of the miniDB library.
 
 ## Loading the [smallRelations database](https://www.db-book.com/db6/lab-dir/sample_tables-dir/index.html)
 

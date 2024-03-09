@@ -2,6 +2,10 @@ from __future__ import annotations
 from tabulate import tabulate
 import pickle
 import os
+import sys
+
+sys.path.append(f'{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/miniDB')
+
 from misc import get_op, split_condition
 
 
@@ -111,14 +115,20 @@ class Table:
 
         for i in range(len(row)):
             # for each value, cast and replace it in row.
-            # try:
-            row[i] = self.column_types[i](row[i])
-            # except:
-            #     raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
+            try:
+                row[i] = self.column_types[i](row[i])
+            except ValueError:
+                if row[i] != 'NULL':
+                    raise ValueError(f'ERROR -> Value {row[i]} of type {type(row[i])} is not of type {self.column_types[i]}.')
+            except TypeError as exc:
+                if row[i] != None:
+                    print(exc)
 
             # if value is to be appended to the primary_key column, check that it doesnt alrady exist (no duplicate primary keys)
             if i==self.pk_idx and row[i] in self.column_by_name(self.pk):
                 raise ValueError(f'## ERROR -> Value {row[i]} already exists in primary key column.')
+            elif i==self.pk_idx and row[i] is None:
+                raise ValueError(f'ERROR -> The value of the primary key cannot be None.')
 
         # if insert_stack is not empty, append to its last index
         if insert_stack != []:
@@ -197,7 +207,7 @@ class Table:
         return indexes_to_del
 
 
-    def _select_where(self, return_columns, condition=None, order_by=None, desc=True, top_k=None):
+    def _select_where(self, return_columns, condition=None, distinct=False, order_by=None, desc=True, limit=None):
         '''
         Select and return a table containing specified columns and rows where condition is met.
 
@@ -208,9 +218,10 @@ class Table:
                 'value[<,<=,==,>=,>]column'.
                 
                 Operatores supported: (<,<=,==,>=,>)
+            distinct: boolean. If True, the resulting table will contain only unique rows (False by default).
             order_by: string. A column name that signals that the resulting table should be ordered based on it (no order if None).
             desc: boolean. If True, order_by will return results in descending order (False by default).
-            top_k: int. An integer that defines the number of rows that will be returned (all rows if None).
+            limit: int. An integer that defines the number of rows that will be returned (all rows if None).
         '''
 
 
@@ -236,6 +247,7 @@ class Table:
         else:
             rows = [i for i in range(len(self.data))]
 
+
             
 
         if distinct:
@@ -260,6 +272,7 @@ class Table:
 
         # top k rows
         # rows = rows[:int(top_k)] if isinstance(top_k,str) else rows
+
         # copy the old dict, but only the rows and columns of data with index in rows/columns (the indexes that we want returned)
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
 
@@ -268,16 +281,30 @@ class Table:
         dict['column_names'] = [self.column_names[i] for i in return_cols]
         dict['column_types']   = [self.column_types[i] for i in return_cols]
 
-        s_table = Table(load=dict) 
+        s_table = Table(load=dict)
+
+        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+
         if order_by:
             s_table.order_by(order_by, desc)
 
-        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
+        # if isinstance(limit, str):
+        #     try:
+        #         k = int(limit)
+        #     except ValueError:
+        #         raise Exception("The value following 'top' in the query should be a number.")
+            
+        #     # Remove from the table's data all the None-filled rows, as they are not shown by default
+        #     # Then, show the first k rows 
+        #     s_table.data.remove(len(s_table.column_names) * [None])
+        #     s_table.data = s_table.data[:k]
+        if isinstance(limit,str):
+            s_table.data = [row for row in s_table.data if any(row)][:int(limit)]
 
         return s_table
 
 
-    def _select_where_with_btree(self, return_columns, bt, condition, order_by=None, desc=True, top_k=None):
+    def _select_where_with_btree(self, return_columns, bt, condition, distinct=False, order_by=None, desc=True, limit=None):
 
         # if * return all columns, else find the column indexes for the columns specified
         if return_columns == '*':
@@ -307,19 +334,27 @@ class Table:
         # btree find
         rows = bt.find(operator, value)
 
+        try:
+            k = int(limit)
+        except TypeError:
+            k = None
         # same as simple select from now on
-        rows = rows[:top_k]
+        rows = rows[:k]
         # TODO: this needs to be dumbed down
         dict = {(key):([[self.data[i][j] for j in return_cols] for i in rows] if key=="data" else value) for key,value in self.__dict__.items()}
 
         dict['column_names'] = [self.column_names[i] for i in return_cols]
         dict['column_types']   = [self.column_types[i] for i in return_cols]
 
-        s_table = Table(load=dict) 
+        s_table = Table(load=dict)
+
+        s_table.data = list(set(map(lambda x: tuple(x), s_table.data))) if distinct else s_table.data
+
         if order_by:
             s_table.order_by(order_by, desc)
 
-        s_table.data = s_table.data[:int(top_k)] if isinstance(top_k,str) else s_table.data
+        if isinstance(limit,str):
+            s_table.data = [row for row in s_table.data if row is not None][:int(limit)]
 
         return s_table
 
@@ -331,27 +366,33 @@ class Table:
             column_name: string. Name of column.
             desc: boolean. If True, order_by will return results in descending order (False by default).
         '''
-        column = self.column_by_name(column_name)
+        column = [val if val is not None else 0 for val in self.column_by_name(column_name)]
         idx = sorted(range(len(column)), key=lambda k: column[k], reverse=desc)
         # print(idx)
         self.data = [self.data[i] for i in idx]
         # self._update()
 
 
-    def _inner_join(self, table_right: Table, condition):
+    def _general_join_processing(self, table_right:Table, condition, join_type):
         '''
-        Join table (left) with a supplied table (right) where condition is met.
+        Performs the processes all the join operations need (regardless of type) so that there is no code repetition.
 
         Args:
             condition: string. A condition using the following format:
                 'column[<,<=,==,>=,>]value' or
                 'value[<,<=,==,>=,>]column'.
                 
-                Operatores supported: (<,<=,==,>=,>)
+                Operators supported: (<,<=,==,>=,>)
         '''
         # get columns and operator
         column_name_left, operator, column_name_right = self._parse_condition(condition, join=True)
         # try to find both columns, if you fail raise error
+
+        if(operator != '=' and join_type in ['left','right','full']):
+            class CustomFailException(Exception):
+                pass
+            raise CustomFailException('Outer Joins can only be used if the condition operator is "=".\n')
+
         try:
             column_index_left = self.column_names.index(column_name_left)
         except:
@@ -373,6 +414,22 @@ class Table:
         join_table_coltypes = self.column_types+table_right.column_types
         join_table = Table(name=join_table_name, column_names=join_table_colnames, column_types= join_table_coltypes)
 
+        return join_table, column_index_left, column_index_right, operator
+
+
+    def _inner_join(self, table_right: Table, condition):
+        '''
+        Join table (left) with a supplied table (right) where condition is met.
+
+        Args:
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+                
+                Operators supported: (<,<=,==,>=,>)
+        '''
+        join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'inner')
+
         # count the number of operations (<,> etc)
         no_of_ops = 0
         # this code is dumb on purpose... it needs to illustrate the underline technique
@@ -381,12 +438,114 @@ class Table:
             left_value = row_left[column_index_left]
             for row_right in table_right.data:
                 right_value = row_right[column_index_right]
+                if(left_value is None and right_value is None):
+                    continue
                 no_of_ops+=1
                 if get_op(operator, left_value, right_value): #EQ_OP
                     join_table._insert(row_left+row_right)
 
         return join_table
+    
+    def _left_join(self, table_right: Table, condition):
+        '''
+        Perform a left join on the table with the supplied table (right).
 
+        Args:
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+                
+                Operators supported: (<,<=,==,>=,>)
+        '''
+        join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'left')
+
+        right_column = table_right.column_by_name(table_right.column_names[column_index_right])
+        right_table_row_length = len(table_right.column_names)
+
+        for row_left in self.data:
+            left_value = row_left[column_index_left]
+            if left_value is None:
+                continue
+            elif left_value not in right_column:
+                join_table._insert(row_left + right_table_row_length*["NULL"])
+            else:
+                for row_right in table_right.data:
+                    right_value = row_right[column_index_right]
+                    if left_value == right_value:
+                        join_table._insert(row_left + row_right)
+
+        return join_table
+
+    def _right_join(self, table_right: Table, condition):
+        '''
+        Perform a right join on the table with the supplied table (right).
+
+        Args:
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+                
+                Operators supported: (<,<=,==,>=,>)
+        '''
+        join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'right')
+
+        left_column = self.column_by_name(self.column_names[column_index_left])
+        left_table_row_length = len(self.column_names)
+
+        for row_right in table_right.data:
+            right_value = row_right[column_index_right]
+            if right_value is None:
+                continue
+            elif right_value not in left_column:
+                join_table._insert(left_table_row_length*["NULL"] + row_right)
+            else:
+                for row_left in self.data:
+                    left_value = row_left[column_index_left]
+                    if left_value == right_value:
+                        join_table._insert(row_left + row_right)
+
+        return join_table
+    
+    def _full_join(self, table_right: Table, condition):
+        '''
+        Perform a full join on the table with the supplied table (right).
+
+        Args:
+            condition: string. A condition using the following format:
+                'column[<,<=,==,>=,>]value' or
+                'value[<,<=,==,>=,>]column'.
+                
+                Operators supported: (<,<=,==,>=,>)
+        '''
+        join_table, column_index_left, column_index_right, operator = self._general_join_processing(table_right, condition, 'full')
+
+        right_column = table_right.column_by_name(table_right.column_names[column_index_right])
+        left_column = self.column_by_name(self.column_names[column_index_left])
+
+        right_table_row_length = len(table_right.column_names)
+        left_table_row_length = len(self.column_names)
+        
+        for row_left in self.data:
+            left_value = row_left[column_index_left]
+            if left_value is None:
+                continue
+            if left_value not in right_column:
+                join_table._insert(row_left + right_table_row_length*["NULL"])
+            else:
+                for row_right in table_right.data:
+                    right_value = row_right[column_index_right]
+                    if left_value == right_value:
+                        join_table._insert(row_left + row_right)
+
+        for row_right in table_right.data:
+            right_value = row_right[column_index_right]
+
+            if right_value is None:
+                continue
+            elif right_value not in left_column:
+                join_table._insert(left_table_row_length*["NULL"] + row_right)
+
+        return join_table
 
     def show(self, no_of_rows=None, is_locked=False):
         '''
@@ -451,4 +610,4 @@ class Table:
         tmp_dict = pickle.load(f)
         f.close()
 
-        self.__dict__.update(tmp_dict)
+        self.__dict__.update(tmp_dict.__dict__)
